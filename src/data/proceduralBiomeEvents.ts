@@ -1315,6 +1315,130 @@ export const PROCEDURAL_BIOME_EVENTS: Record<string, ArenaEventDef[]> = {
             escapeText: '{tribute} breaks cover in {zone} to stamp the blood back into their feet, and takes the risk of being seen over the certainty of losing them.',
             cause: 'Froze in hiding', dodgeStat: 'endurance', dodgeAlt: 'strength', damage: 22, frostbitten: true, requires: { stance: ['Evasive', 'Shadowing'] }, terrains: ['open', 'ice', 'forest', 'highland'],
         },
+        // ---- AUDIT-8 §9.5: twenty-four more, to the 32 target ----
+        {
+            id: 'proc-tundra-sun-dogs', oncePerRun: true,
+            text: 'Three suns come up over {zone}. Two of them are ice in the air, and {tribute} spends an hour walking toward one of the false ones before the real one moves and the others do not.',
+            escapeText: '{tribute} counts three suns over {zone}, picks the one that is climbing, and is not sorry about the hour they did not lose.',
+            cause: 'Walked toward a sun that was not there', dodgeStat: 'intelligence', dodgeAlt: 'willpower', dodgeDifficulty: 7, damage: 14, fatigue: 22, sanity: 10, requires: { time: 'day' }, terrains: ['open', 'ice'],
+        },
+        {
+            text: 'The wind in {zone} has been in {tribute}\'s left ear for nine hours and it has begun answering them.',
+            escapeText: '{tribute} packs their ears with moss in {zone} and the wind goes back to being wind.',
+            cause: 'Followed the voice in the wind', dodgeStat: 'willpower', dodgeAlt: 'intelligence', sanity: 20, fatigue: 8, requires: { sanityBand: 'frayed' }, terrains: ['open', 'ice', 'highland'],
+        },
+        {
+            text: 'There is no wood in {zone} and there has not been for two days. What {tribute} burns tonight is the haft of something they will want tomorrow.',
+            escapeText: '{tribute} finds a seam of peat under the snow in {zone}, dry enough to take a flame, and keeps the haft.',
+            cause: 'Froze without anything left to burn', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 16, frostbitten: true, requires: { time: 'night' }, terrains: ['open', 'ice'],
+        },
+        {
+            text: 'Snow is not water until something has made it water, and {tribute} has been eating it by the handful in {zone} all afternoon.',
+            escapeText: '{tribute} melts snow against their body under their coat in {zone} rather than eating it, which takes an hour and costs nothing.',
+            cause: 'Ate snow and died of it', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 12, thirst: 14, requires: { thirstAbove: 55 }, terrains: ['open', 'ice', 'highland', 'forest'],
+        },
+        {
+            id: 'proc-tundra-lead-opens', chain: 'proc-tundra-lead-closes',
+            text: 'A black seam opens across {zone} with a noise like a rope parting. It is a metre wide and it was not there at breakfast.',
+            escapeText: '{tribute} hears {zone} crack and is off the pan and onto grounded ice before the seam has finished opening.',
+            cause: 'Went into the lead', dodgeStat: 'agility', dodgeAlt: 'intelligence', damage: 18, fatigue: 14, terrains: ['ice', 'water'],
+        },
+        {
+            id: 'proc-tundra-lead-closes', oncePerRun: true, weight: 0.25,
+            text: 'The seam in {zone} is closing again, and {tribute} is on the wrong side of it with the two halves grinding toward each other.',
+            escapeText: '{tribute} goes across the closing seam in {zone} at a dead run and makes it with a boot in the water.',
+            cause: 'Caught between the floes', dodgeStat: 'agility', dodgeAlt: 'strength', dodgeDifficulty: 8, damage: 50, bleeding: true, terrains: ['ice', 'water'], witnesses: true,
+        },
+        {
+            text: 'The glare off {zone} has been working on {tribute}\'s eyes since first light, and by afternoon the white has a grain in it that will not blink away.',
+            escapeText: '{tribute} cuts a slit mask from bark and charcoal in {zone} and the white stays white.',
+            cause: 'Snow-blind and walked wrong', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 8, sanity: 14, requires: { time: 'day' }, terrains: ['ice', 'open'],
+        },
+        {
+            text: 'Something has been paralleling {tribute} across {zone} for a mile, out at the edge of what the light reaches, and it is not hurrying.',
+            escapeText: '{tribute} stops in {zone}, turns, and waits. Whatever was pacing them decides it has an appointment elsewhere.',
+            cause: 'Run down on the open snow', dodgeStat: 'willpower', dodgeAlt: 'stealth', damage: 26, bleeding: true, sanity: 12, requires: { alone: true }, terrains: ['open', 'ice'],
+        },
+        {
+            text: 'The cornice {tribute} is standing on in {zone} is not ground. It is the shape the wind made where the ground stopped.',
+            escapeText: '{tribute} probes ahead of themselves in {zone} and finds the edge two metres before their feet would have.',
+            cause: 'Went off the cornice', dodgeStat: 'intelligence', dodgeAlt: 'agility', dodgeDifficulty: 7, damage: 44, bleeding: true, requires: { elevationOrChoke: true }, terrains: ['highland', 'ice'],
+        },
+        {
+            text: 'The aurora over {zone} is the first beautiful thing in eight days and {tribute} watches it for an hour without moving.',
+            escapeText: '{tribute} watches the aurora over {zone} for exactly as long as they can afford and then gets up.',
+            cause: 'Stopped moving to look at it', dodgeStat: 'willpower', dodgeAlt: 'intelligence', damage: 10, frostbitten: true, fatigue: -6, sanity: -14, requires: { time: 'night' }, terrains: ['open', 'ice', 'highland'],
+        },
+        {
+            text: 'Warmth comes over {tribute} in {zone} like a blanket, and they begin, quite calmly, to take their coat off.',
+            escapeText: '{tribute} feels the false warmth start in {zone}, recognises it for what it is, and keeps every layer on.',
+            cause: 'Undressed in the cold', dodgeStat: 'willpower', dodgeAlt: 'intelligence', dodgeDifficulty: 8, damage: 34, frostbitten: true, requires: { healthBelow: 45 }, terrains: ['open', 'ice', 'highland', 'forest'],
+        },
+        {
+            text: 'The rime on the spruce in {zone} comes off in sheets when the wind turns, and one of the sheets is the size of a door.',
+            escapeText: '{tribute} hears the rime let go above them in {zone} and is out from under the tree before it lands.',
+            cause: 'Buried under falling rime', dodgeStat: 'agility', dodgeAlt: 'endurance', damage: 24, terrains: ['forest'],
+        },
+        {
+            text: 'There is a caribou carcass in {zone}, frozen hard, and something with better claws than {tribute} opened it first and may be coming back.',
+            escapeText: '{tribute} takes what they can carry off the carcass in {zone} and is gone before the owner returns.',
+            cause: 'Killed over a carcass', dodgeStat: 'stealth', dodgeAlt: 'agility', damage: 22, bleeding: true, feed: 30, terrains: ['open', 'forest', 'ice'],
+        },
+        {
+            text: 'The ice underfoot in {zone} sings when {tribute} walks on it — a long carrying note that anyone within a kilometre can hear.',
+            escapeText: '{tribute} works out which way the singing ice in {zone} runs and walks the silent margin instead.',
+            cause: 'Gave themselves away on the singing ice', dodgeStat: 'stealth', dodgeAlt: 'intelligence', sanity: 6, damage: 14, terrains: ['ice'], witnesses: true,
+        },
+        {
+            text: 'A whiteout closes over {zone} in four minutes. {tribute}\'s own tracks fill in behind them faster than they can make new ones.',
+            escapeText: '{tribute} sits down where they are in {zone}, back to the wind, and lets the whiteout pass over them.',
+            cause: 'Lost in the whiteout', dodgeStat: 'willpower', dodgeAlt: 'intelligence', damage: 20, fatigue: 24, frostbitten: true, requires: { storm: true }, terrains: ['open', 'ice'], zoneWide: true, startsZoneEffect: 'fogbound',
+        },
+        {
+            text: 'The permafrost under {zone} has been thawing all week and the ground has opened a mouth exactly wide enough for a leg.',
+            escapeText: '{tribute} spots the thaw mouth in {zone} by the colour of the moss around it and steps wide.',
+            cause: 'Broke a leg in the thaw ground', dodgeStat: 'agility', dodgeAlt: 'intelligence', damage: 28, bleeding: true, terrains: ['wetland', 'open'],
+        },
+        {
+            text: 'Everything {tribute} owns in {zone} is wet, and the temperature is going down, and there is nothing to be done about either.',
+            escapeText: '{tribute} strips and dries their layers over a scraped fire in {zone} while there is still light to do it by.',
+            cause: 'Froze in wet clothes', dodgeStat: 'endurance', dodgeAlt: 'intelligence', damage: 26, frostbitten: true, fatigue: 16, requires: { time: 'night', wounded: true }, terrains: ['open', 'ice', 'wetland', 'forest'],
+        },
+        {
+            text: 'A ptarmigan explodes out of the snow a hand from {tribute}\'s boot in {zone}, and for a full second they are certain it was a person.',
+            escapeText: '{tribute} has a ptarmigan come out of the drift beside them in {zone} and laughs at themselves, which is the first time in days.',
+            cause: 'Ran the wrong way from a bird', dodgeStat: 'willpower', dodgeAlt: 'intelligence', sanity: 10, fatigue: 8, terrains: ['open', 'forest', 'ice'],
+        },
+        {
+            text: 'The research post in {zone} still has its door on, and the door has been closed from the inside for a very long time.',
+            escapeText: '{tribute} works the post door in {zone} open from the hinge side and takes what is behind it without meeting what is behind it.',
+            cause: 'Died in the frozen post', dodgeStat: 'intelligence', dodgeAlt: 'stealth', damage: 18, sanity: 18, grantItem: 'thermal-cloak', terrains: ['ruins'],
+        },
+        {
+            text: 'A wind comes down off the nunatak in {zone} that is not weather. It is one particular current of air that has been falling off that rock for a thousand years and does not care who is in the way.',
+            escapeText: '{tribute} gets to the lee side of the nunatak in {zone} before the katabatic finds them.',
+            cause: 'Taken by the fall wind', dodgeStat: 'endurance', dodgeAlt: 'strength', dodgeDifficulty: 7, damage: 30, frostbitten: true, terrains: ['highland', 'ice'], zoneWide: true,
+        },
+        {
+            text: 'The fire {tribute} has been keeping in {zone} has melted a bowl down into the snow and is now sitting at the bottom of it, out of the wind and out of the air.',
+            escapeText: '{tribute} builds their fire in {zone} on a platform of green wood and it stays where the air is.',
+            cause: 'Lost the fire and did not get it back', dodgeStat: 'intelligence', dodgeAlt: 'willpower', damage: 18, frostbitten: true, requires: { time: 'night' }, terrains: ['open', 'forest', 'ice'],
+        },
+        {
+            text: 'There is meltwater running under the glare shelf in {zone}, and {tribute} can hear it, and the sound is directly below their feet.',
+            escapeText: '{tribute} backs off the glare shelf in {zone} the way they came, one footprint at a time.',
+            cause: 'Through the shelf into the meltwater', dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 7, damage: 38, frostbitten: true, terrains: ['ice', 'water'],
+        },
+        {
+            text: 'The cold has got into {tribute}\'s hands in {zone} past the point of hurting, and the pack straps they need to undo have very small buckles.',
+            escapeText: '{tribute} warms their hands in their armpits in {zone} for ten minutes before trying the buckles, and the buckles come.',
+            cause: 'Could not use their hands', dodgeStat: 'endurance', dodgeAlt: 'willpower', damage: 14, frostbitten: true, fatigue: 12, requires: { fatigueAbove: 60 }, terrains: ['open', 'ice', 'highland'],
+        },
+        {
+            text: 'Eight days in, {tribute} realises in {zone} that they have stopped shivering, and cannot remember when.',
+            escapeText: '{tribute} notices in {zone} that the shivering has stopped and makes fire out of nothing, at speed, correctly.',
+            cause: 'Stopped shivering', dodgeStat: 'willpower', dodgeAlt: 'endurance', dodgeDifficulty: 8, damage: 32, frostbitten: true, requires: { daysAbove: 7 }, terrains: ['open', 'ice', 'highland', 'forest', 'wetland'],
+        },
     ],
     dunes: [
         {
@@ -1360,6 +1484,130 @@ export const PROCEDURAL_BIOME_EVENTS: Record<string, ArenaEventDef[]> = {
             text: 'The cold in the desert night over {zone} is a different animal from the day, and {tribute} dressed for the day.',
             escapeText: '{tribute} digs into the still-warm sand of {zone} and sleeps buried to the neck.',
             cause: 'Froze in the desert night', dodgeStat: 'endurance', dodgeAlt: 'strength', damage: 16, fatigue: 14, requires: { time: 'night' }, terrains: ['desert', 'open'],
+        },
+        // ---- AUDIT-8 §9.5: twenty-four more, to the 32 target ----
+        {
+            id: 'proc-dunes-mirage-water', oncePerRun: true,
+            text: 'There is water at the bottom of {zone}, wide and blue and perfectly still, and {tribute} walks an hour downhill to it and finds hardpan.',
+            escapeText: '{tribute} takes a bearing on the water in {zone} before walking to it, watches the bearing shift, and does not go.',
+            cause: 'Walked to water that was not there', dodgeStat: 'intelligence', dodgeAlt: 'willpower', dodgeDifficulty: 7, damage: 16, thirst: 26, fatigue: 24, requires: { time: 'day' }, terrains: ['desert', 'open'],
+        },
+        {
+            text: 'The sand in {zone} is hot enough through boot leather that {tribute} can feel the shape of their own soles.',
+            escapeText: '{tribute} wraps their feet in cloth over the leather in {zone} and the heat stops coming through.',
+            cause: 'Burned through the soles', dodgeStat: 'endurance', dodgeAlt: 'intelligence', damage: 14, burned: true, fatigue: 14, requires: { time: 'day' }, terrains: ['desert', 'open'],
+        },
+        {
+            id: 'proc-dunes-wadi-cloud', chain: 'proc-dunes-wadi-flood',
+            text: 'There is weather over the high ground a long way from {zone}, and {tribute} notes it the way you note anything that is not happening to you.',
+            escapeText: '{tribute} sees the cloud over the distant high ground from {zone} and climbs out of the wash before dark.',
+            cause: 'Camped in the wash', dodgeStat: 'intelligence', dodgeAlt: 'willpower', sanity: 4, terrains: ['water', 'open', 'desert'],
+        },
+        {
+            id: 'proc-dunes-wadi-flood', oncePerRun: true, weight: 0.25,
+            text: 'The rain that fell somewhere else arrives in {zone} as a wall of brown water with trees in it, and {tribute} is in the bottom of the channel.',
+            escapeText: '{tribute} hears the wash in {zone} before they see it and is up the bank with nothing but what is on their back.',
+            cause: 'Taken by the flash flood', dodgeStat: 'agility', dodgeAlt: 'strength', dodgeDifficulty: 8, damage: 52, bleeding: true, terrains: ['water', 'open', 'desert'], witnesses: true, zoneWide: true, startsZoneEffect: 'flooded',
+        },
+        {
+            text: 'The night in {zone} goes from unbearable to freezing in under an hour, and {tribute} has been rationing shelter against the sun.',
+            escapeText: '{tribute} banks sand over themselves in {zone} at dusk and the cold passes a hand\'s breadth above.',
+            cause: 'Froze in the desert night', dodgeStat: 'endurance', dodgeAlt: 'intelligence', damage: 20, frostbitten: true, requires: { time: 'night' }, terrains: ['desert', 'open', 'highland'],
+        },
+        {
+            text: 'A wind gets up in {zone} carrying enough sand to take the paint off a door, and {tribute} is facing the wrong way when it arrives.',
+            escapeText: '{tribute} gets downwind of a rock in {zone} and lets the scouring wind go over the top of them.',
+            cause: 'Flayed in the sand', dodgeStat: 'agility', dodgeAlt: 'endurance', damage: 24, bleeding: true, thirst: 12, requires: { storm: true }, terrains: ['desert', 'open'], zoneWide: true,
+        },
+        {
+            text: 'The dune face {tribute} is crossing in {zone} is at the exact angle where sand stops being ground, and it goes all at once.',
+            escapeText: '{tribute} traverses the slip face in {zone} along the ridge line instead of across it, and the sand stays put.',
+            cause: 'Buried on the slip face', dodgeStat: 'agility', dodgeAlt: 'strength', damage: 30, fatigue: 20, terrains: ['desert', 'open'],
+        },
+        {
+            text: 'The last well in {zone} has a wall and a rope and no bucket, and the rope ends a long way above the water.',
+            escapeText: '{tribute} lowers a boot on the rope in {zone} and brings up enough to matter, four times.',
+            cause: 'Fell into the last well', dodgeStat: 'agility', dodgeAlt: 'strength', damage: 34, bleeding: true, quench: 40, terrains: ['ruins', 'water'],
+        },
+        {
+            text: 'A scorpion has spent the cold night in the warmest thing in {zone}, which is {tribute}\'s left boot.',
+            escapeText: '{tribute} shakes out both boots in {zone} before putting them on, the way you do here.',
+            cause: 'Stung in the boot', dodgeStat: 'intelligence', dodgeAlt: 'agility', damage: 16, poisoned: true, requires: { time: 'day' }, terrains: ['desert', 'open', 'ruins'],
+        },
+        {
+            text: 'There is shade under the arch in {zone} and there is already somebody\'s kit in it, arranged, and still warm.',
+            escapeText: '{tribute} reads the kit under the arch in {zone}, takes nothing, and is two zones away before the owner comes back.',
+            cause: 'Killed over the shade', dodgeStat: 'stealth', dodgeAlt: 'intelligence', damage: 26, bleeding: true, terrains: ['highland', 'ruins'], witnesses: true,
+        },
+        {
+            text: '{tribute} has stopped sweating in {zone}, and has decided that this is good news.',
+            escapeText: '{tribute} notices they have stopped sweating in {zone} and gets into shade before the next thing happens.',
+            cause: 'Heatstroke on the pan', dodgeStat: 'endurance', dodgeAlt: 'willpower', dodgeDifficulty: 8, damage: 36, thirst: 20, requires: { thirstAbove: 70, time: 'day' }, terrains: ['desert', 'open'],
+        },
+        {
+            text: 'The salt pan in {zone} has a crust on it that holds a boot for most of a step.',
+            escapeText: '{tribute} finds where the salt crust in {zone} is thick enough and crosses on the ribs of it.',
+            cause: 'Through the salt crust', dodgeStat: 'agility', dodgeAlt: 'endurance', damage: 22, terrains: ['wetland', 'desert'],
+        },
+        {
+            text: 'The water in the seep at {zone} is clear, cold, and has been sitting in gypsum for a hundred years.',
+            escapeText: '{tribute} tastes the seep at {zone}, spits it out, and goes thirsty a while longer on purpose.',
+            cause: 'Drank the bitter water', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 18, poisoned: true, thirst: 16, requires: { thirstAbove: 60 }, terrains: ['water', 'wetland'],
+        },
+        {
+            text: 'The caravan in {zone} has been under the sand a long time and the sand has only just given it back, and there is a lot of it still standing up.',
+            escapeText: '{tribute} works the caravan in {zone} from the outside in and gets clear before the rest of it settles.',
+            cause: 'Crushed in the buried caravan', dodgeStat: 'agility', dodgeAlt: 'intelligence', damage: 32, bleeding: true, grantItem: 'gourd', requires: { loadBearing: true }, terrains: ['ruins'],
+        },
+        {
+            text: 'The hoodoos in {zone} all look the same from the north and all look different from the south, and {tribute} has been going in a circle since noon.',
+            escapeText: '{tribute} cairns their route through the hoodoos in {zone} and the route is still there on the way back.',
+            cause: 'Lost among the hoodoos', dodgeStat: 'intelligence', dodgeAlt: 'willpower', damage: 10, thirst: 22, fatigue: 22, terrains: ['highland'],
+        },
+        {
+            text: 'A locust flight crosses {zone} thick enough to cast a shadow, and everything green in the zone stops being green by evening.',
+            escapeText: '{tribute} gets what they can off the tamarisk in {zone} into a bag before the flight arrives.',
+            cause: 'Starved after the locusts', dodgeStat: 'intelligence', dodgeAlt: 'agility', hunger: 26, sanity: 10, terrains: ['forest', 'wetland', 'open'], zoneWide: true, startsZoneEffect: 'swarming',
+        },
+        {
+            text: 'The rock in {zone} is cooling after dark and letting go of the day in cracks that go off like small shots all night.',
+            escapeText: '{tribute} camps off the rock in {zone} and gets a night\'s sleep out of it.',
+            cause: 'Never slept and walked into it', dodgeStat: 'willpower', dodgeAlt: 'endurance', fatigue: 26, sanity: 12, requires: { time: 'night' }, terrains: ['highland', 'ruins'],
+        },
+        {
+            text: 'There is a stand of date palms in {zone} and every date on the ground under them has been on the ground for a season.',
+            escapeText: '{tribute} gets up into the palms in {zone} and takes the fruit that has not been on the sand.',
+            cause: 'Ate what was on the sand', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 14, poisoned: true, feed: 24, requires: { hungerAbove: 55 }, terrains: ['forest'],
+        },
+        {
+            text: 'The wind has uncovered a face in {zone}, and then a shoulder, and it is wearing the same issue as {tribute}.',
+            escapeText: '{tribute} finds what the wind uncovered in {zone}, covers it back over, and moves their camp.',
+            cause: 'Broke at what the sand gave back', dodgeStat: 'willpower', dodgeAlt: 'intelligence', sanity: 24, fatigue: 8, terrains: ['desert', 'open'],
+        },
+        {
+            text: 'The aqueduct above {zone} is dry and has been for a century, and the arch {tribute} is sheltering under has been holding one stone in place the whole time.',
+            escapeText: '{tribute} looks up at the aqueduct arch in {zone}, does the arithmetic, and sleeps somewhere else.',
+            cause: 'Under the aqueduct when it went', dodgeStat: 'intelligence', dodgeAlt: 'agility', damage: 40, bleeding: true, requires: { loadBearing: true }, terrains: ['ruins'], special: 'collapse',
+        },
+        {
+            text: 'Everything in {tribute}\'s pack in {zone} has sand in it now: the food, the water seal, the dressing on the wound.',
+            escapeText: '{tribute} repacks in the lee of a rock in {zone} and gets the sand out of the things that matter.',
+            cause: 'Sand in the wound', dodgeStat: 'intelligence', dodgeAlt: 'endurance', infected: true, damage: 10, requires: { wounded: true }, terrains: ['desert', 'open', 'highland'],
+        },
+        {
+            text: 'The vultures over {zone} have been circling {tribute} specifically for two hours and have started landing.',
+            escapeText: '{tribute} stands up in {zone}, throws a rock, and the vultures go back to being a rumour.',
+            cause: 'Gave up under the vultures', dodgeStat: 'willpower', dodgeAlt: 'strength', damage: 12, sanity: 20, requires: { healthBelow: 35 }, terrains: ['desert', 'open', 'highland'],
+        },
+        {
+            text: 'The wash bottom in {zone} is the only flat ground and the only shade, and it is also the only place the water goes.',
+            escapeText: '{tribute} takes the hard sleep on the bench above the wash in {zone} rather than the comfortable one in it.',
+            cause: 'Slept in the channel', dodgeStat: 'intelligence', dodgeAlt: 'willpower', damage: 28, fatigue: 16, requires: { time: 'night', storm: true }, terrains: ['water', 'open'],
+        },
+        {
+            text: 'Day ten in {zone}, and {tribute} has been rationing a canteen by mouthfuls for so long that they have started counting in their sleep.',
+            escapeText: '{tribute} finds a tinaja in the rock at {zone} with a hand\'s depth of old rain in it and drinks it all.',
+            cause: 'Ran the canteen out', dodgeStat: 'endurance', dodgeAlt: 'willpower', damage: 22, thirst: 30, requires: { daysAbove: 8 }, terrains: ['desert', 'open', 'highland', 'ruins'],
         },
     ],
     bayou: [
@@ -1407,6 +1655,129 @@ export const PROCEDURAL_BIOME_EVENTS: Record<string, ArenaEventDef[]> = {
             escapeText: '{tribute} hears the song from the water in {zone} and puts mud in their ears.',
             cause: 'Lost to the singing water', dodgeStat: 'willpower', dodgeAlt: 'endurance', sanity: 26, damage: 10, requires: { sanityBand: 'unravelling' }, terrains: ['water', 'wetland'],
         },
+        // ---- AUDIT-8 §9.5: twenty-four more, to the 32 target ----
+        {
+            id: 'proc-bayou-fog-arrives', chain: 'proc-bayou-fog-turns',
+            text: 'The fog comes up off the water in {zone} in the last hour of light and takes the far bank, then the near one, then {tribute}\'s own hands.',
+            escapeText: '{tribute} gets a line of blazes cut into the cypress in {zone} while there is still light to cut them by.',
+            cause: 'Lost in the fog', dodgeStat: 'intelligence', dodgeAlt: 'willpower', sanity: 8, fatigue: 8, terrains: ['water', 'wetland', 'forest'], startsZoneEffect: 'fogbound',
+        },
+        {
+            id: 'proc-bayou-fog-turns', oncePerRun: true, weight: 0.3,
+            text: 'Something has been walking parallel to {tribute} in the fog in {zone} for twenty minutes, on the water, which nothing that walks should be able to do.',
+            escapeText: '{tribute} stops dead in the fog in {zone}, and whatever was keeping pace stops too, and then goes away.',
+            cause: 'Followed something into the water', dodgeStat: 'willpower', dodgeAlt: 'intelligence', dodgeDifficulty: 7, damage: 30, sanity: 26, terrains: ['water', 'wetland'], witnesses: true,
+        },
+        {
+            text: 'The log across the channel in {zone} has been there all week and has moved four feet since {tribute} last looked at it.',
+            escapeText: '{tribute} throws a stick at the log in {zone}. The log leaves.',
+            cause: 'Taken off the bank', dodgeStat: 'agility', dodgeAlt: 'stealth', dodgeDifficulty: 7, damage: 42, bleeding: true, terrains: ['water', 'wetland'],
+        },
+        {
+            text: 'The ground {tribute} is crossing in {zone} is a mat of roots over water, and it has been getting springier for fifty metres.',
+            escapeText: '{tribute} feels the mat in {zone} start to give and goes flat, spreading their weight, and crawls off it.',
+            cause: 'Through the floating prairie', dodgeStat: 'agility', dodgeAlt: 'intelligence', damage: 26, fatigue: 18, terrains: ['wetland'],
+        },
+        {
+            text: 'Nothing in {zone} has been dry enough to burn in three days, and {tribute} has been wet for all of them.',
+            escapeText: '{tribute} splits a standing dead tupelo in {zone} and the heart of it is dry enough to take a spark.',
+            cause: 'Rotted through', dodgeStat: 'endurance', dodgeAlt: 'intelligence', infected: true, damage: 14, fatigue: 14, requires: { wounded: true }, terrains: ['wetland', 'water', 'forest'],
+        },
+        {
+            text: 'A cottonmouth in {zone} does not go into the water when {tribute} approaches. It opens its mouth and stays where it is.',
+            escapeText: '{tribute} gives the cottonmouth in {zone} the whole bank and takes the long way round.',
+            cause: 'Bitten by a cottonmouth', dodgeStat: 'agility', dodgeAlt: 'intelligence', damage: 20, poisoned: true, bleeding: true, terrains: ['wetland', 'water', 'open'],
+        },
+        {
+            text: 'The mosquitoes in {zone} are not a nuisance tonight. They are a weight, and {tribute} has been breathing them.',
+            escapeText: '{tribute} smokes their camp in {zone} with green moss and buys a night out of it.',
+            cause: 'Fever off the marsh', dodgeStat: 'endurance', dodgeAlt: 'intelligence', damage: 16, infected: true, sanity: 12, fatigue: 16, requires: { time: 'night' }, terrains: ['wetland', 'water', 'forest'], zoneWide: true, startsZoneEffect: 'swarming',
+        },
+        {
+            text: 'The moss hanging in {zone} is full of something that itches, and {tribute} has been sleeping in it.',
+            escapeText: '{tribute} beats out the moss in {zone} and lays it in the sun for an afternoon before using it.',
+            cause: 'Infected from the moss', dodgeStat: 'intelligence', dodgeAlt: 'endurance', infected: true, damage: 12, sanity: 8, terrains: ['forest'],
+        },
+        {
+            text: 'The chapel in {zone} is half under and the pews are all still facing the same way, and there is a candle on the altar that has been lit recently.',
+            escapeText: '{tribute} reads the candle in the chapel at {zone} for exactly what it is and leaves without going in.',
+            cause: 'Ambushed in the flooded chapel', dodgeStat: 'stealth', dodgeAlt: 'intelligence', damage: 30, bleeding: true, sanity: 14, terrains: ['ruins'], witnesses: true,
+        },
+        {
+            text: 'Leeches. {tribute} has crossed four channels in {zone} today and has not looked at their legs since the first one.',
+            escapeText: '{tribute} checks themselves over in {zone} after every crossing, which is slow and is why they still have their blood.',
+            cause: 'Bled dry by leeches', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 22, bleeding: true, terrains: ['wetland', 'water'],
+        },
+        {
+            text: 'The water in {zone} is black because of what is dissolved in it, and {tribute} has been drinking it because it is the only water there is.',
+            escapeText: '{tribute} filters the black water in {zone} through charcoal and sand and it comes out something like water.',
+            cause: 'Sickened on the black water', dodgeStat: 'endurance', dodgeAlt: 'intelligence', damage: 18, poisoned: true, requires: { thirstAbove: 50 }, terrains: ['water', 'wetland'],
+        },
+        {
+            text: 'The stilt town in {zone} still has walkways between the houses, and the walkways have been holding nothing but weather for thirty years.',
+            escapeText: '{tribute} tests each plank in the stilt town at {zone} before standing on it, and two of them go.',
+            cause: 'Through the walkway', dodgeStat: 'agility', dodgeAlt: 'intelligence', damage: 30, bleeding: true, requires: { loadBearing: true }, terrains: ['ruins'],
+        },
+        {
+            text: 'Something very large turns over in the channel beside {zone} in the middle of the night, twice, and does not surface.',
+            escapeText: '{tribute} moves their camp two hundred metres back from the water in {zone} and sleeps through whatever it was.',
+            cause: 'Never woke in the bayou', dodgeStat: 'stealth', dodgeAlt: 'willpower', sanity: 18, fatigue: 18, requires: { time: 'night' }, terrains: ['water', 'wetland', 'forest'],
+        },
+        {
+            text: 'The knee roots in {zone} come up through the water at exactly the height of a shin and are invisible from above.',
+            escapeText: '{tribute} wades {zone} with a staff ahead of them and finds every root before their shin does.',
+            cause: 'Broke a leg on the knees', dodgeStat: 'agility', dodgeAlt: 'intelligence', damage: 24, bleeding: true, fatigue: 12, terrains: ['water', 'wetland', 'forest'],
+        },
+        {
+            text: 'A hurricane band comes through {zone} sideways and takes the top third off every tree that has a top third.',
+            escapeText: '{tribute} gets into a root hollow in {zone} and lets the band pass over the top of them.',
+            cause: 'Killed by falling timber', dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 7, damage: 44, bleeding: true, requires: { storm: true }, terrains: ['forest', 'open', 'wetland'], zoneWide: true, severesRoute: true,
+        },
+        {
+            text: 'The crawfish beds in {zone} are thick, and getting to them means being up to the elbow in mud that somebody else is also interested in.',
+            escapeText: '{tribute} works the crawfish beds in {zone} from the bank with a woven trap and eats properly for the first time in days.',
+            cause: 'Killed at the crawfish beds', dodgeStat: 'stealth', dodgeAlt: 'agility', damage: 24, bleeding: true, feed: 34, terrains: ['wetland'], witnesses: true,
+        },
+        {
+            text: 'The gar in the deep hole at {zone} is longer than {tribute} is tall and has decided they are in its water.',
+            escapeText: '{tribute} gets out of the gar hole at {zone} without splashing, which is the entire trick.',
+            cause: 'Taken in the gar hole', dodgeStat: 'agility', dodgeAlt: 'strength', damage: 32, bleeding: true, terrains: ['water'],
+        },
+        {
+            text: 'There is a light moving in the marsh at {zone} that is the right height for a lantern and the wrong colour for a flame.',
+            escapeText: '{tribute} watches the marsh light in {zone} from where they are, does not follow it, and it goes out.',
+            cause: 'Followed the marsh light', dodgeStat: 'willpower', dodgeAlt: 'intelligence', damage: 24, sanity: 22, fatigue: 16, requires: { time: 'night', alone: true }, terrains: ['wetland', 'water'],
+        },
+        {
+            text: 'The mill wheel in {zone} still turns when the water is high, and it is high, and there is a gap between the wheel and the wall.',
+            escapeText: '{tribute} jams the mill wheel in {zone} with a beam before going anywhere near the race.',
+            cause: 'Caught in the mill race', dodgeStat: 'agility', dodgeAlt: 'strength', damage: 46, bleeding: true, requires: { storm: true }, terrains: ['ruins'],
+        },
+        {
+            text: 'The levee at {zone} has a weep in it the width of a finger, and the water on the far side is four feet higher than the ground on this one.',
+            escapeText: '{tribute} sees the weep in the levee at {zone} and is off the low side of it within the hour.',
+            cause: 'Under the levee when it went', dodgeStat: 'intelligence', dodgeAlt: 'agility', dodgeDifficulty: 7, damage: 48, terrains: ['highland', 'open'], zoneWide: true, startsZoneEffect: 'flooded', severesRoute: true,
+        },
+        {
+            text: 'Everything {tribute} has been eating out of {zone} for two days has been out of the water, and the water has a mill upstream of it.',
+            escapeText: '{tribute} boils everything that comes out of {zone} for as long as it takes, twice.',
+            cause: 'Poisoned by what the water carried', dodgeStat: 'endurance', dodgeAlt: 'intelligence', damage: 20, poisoned: true, infected: true, requires: { hungerAbove: 50 }, terrains: ['water', 'wetland'],
+        },
+        {
+            text: 'The heat and the wet in {zone} do not let go at night, and {tribute} has not been properly dry or properly cool since the gong.',
+            escapeText: '{tribute} gets up onto the mound in {zone} where there is air moving and sleeps four straight hours.',
+            cause: 'Wore out in the wet', dodgeStat: 'endurance', dodgeAlt: 'willpower', fatigue: 28, damage: 12, requires: { daysAbove: 6 }, terrains: ['wetland', 'water', 'forest'],
+        },
+        {
+            text: 'The owls in {zone} have stopped. All of them, at once, and nothing has replaced the sound.',
+            escapeText: '{tribute} notices the owls in {zone} stop and is moving, quietly, before whatever stopped them arrives.',
+            cause: 'Found in the silence', dodgeStat: 'stealth', dodgeAlt: 'willpower', damage: 28, bleeding: true, sanity: 14, requires: { time: 'night' }, terrains: ['forest', 'wetland'], witnesses: true,
+        },
+        {
+            text: 'The plantation house in {zone} is standing in four feet of water and the staircase inside it goes up into a ceiling that is still, somehow, dry.',
+            escapeText: '{tribute} goes up the plantation stairs in {zone} one at a time on the outside edge and comes down with something worth having.',
+            cause: 'Through the plantation floor', dodgeStat: 'agility', dodgeAlt: 'intelligence', damage: 34, bleeding: true, grantItem: 'rain-tarp', requires: { loadBearing: true }, terrains: ['ruins'],
+        },
     ],
     ruinlands: [
         {
@@ -1452,6 +1823,129 @@ export const PROCEDURAL_BIOME_EVENTS: Record<string, ArenaEventDef[]> = {
             text: 'Someone scratched a warning into the wall of {zone} in a language {tribute} half knows. They stay to read it. That was the warning.',
             escapeText: '{tribute} reads enough of the wall in {zone} to understand the word for RUN.',
             cause: 'Caught in the old city', dodgeStat: 'intelligence', dodgeAlt: 'willpower', damage: 22, sanity: 10, requires: { trait: 'Strategist' }, terrains: ['ruins', 'urban'],
+        },
+        // ---- AUDIT-8 §9.5: twenty-four more, to the 32 target ----
+        {
+            id: 'proc-ruinlands-floor-creaks', chain: 'proc-ruinlands-floor-goes',
+            text: 'The floor of the tenement in {zone} takes {tribute}\'s weight and then makes a sound about it that carries down three storeys.',
+            escapeText: '{tribute} walks the tenement floor in {zone} on the joist line, where it is quiet and holds.',
+            cause: 'Through the tenement floor', dodgeStat: 'intelligence', dodgeAlt: 'agility', sanity: 4, terrains: ['ruins', 'urban'],
+        },
+        {
+            id: 'proc-ruinlands-floor-goes', oncePerRun: true, weight: 0.25,
+            text: 'The floor in {zone} does not creak this time. It simply stops being a floor, and there are three of them underneath it.',
+            escapeText: '{tribute} feels the floor in {zone} go and gets an arm over the joist, and hangs there until it is over.',
+            cause: 'Fell three floors', dodgeStat: 'agility', dodgeAlt: 'strength', dodgeDifficulty: 8, damage: 52, bleeding: true, terrains: ['ruins', 'urban'], special: 'collapse', witnesses: true,
+        },
+        {
+            text: 'The water in the burst main at {zone} is clean, fast, and has been running through a hundred years of lead.',
+            escapeText: '{tribute} runs the main water at {zone} through charcoal and lets it stand, and drinks the top of it.',
+            cause: 'Poisoned on the mains water', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 16, poisoned: true, quench: 30, requires: { thirstAbove: 45 }, terrains: ['water', 'urban'],
+        },
+        {
+            text: 'The metro at {zone} goes down into water of an unknown depth, and the only thing in it that is certainly still working is the dark.',
+            escapeText: '{tribute} works the metro entrance at {zone} by the light off the surface and comes back up with both boots.',
+            cause: 'Drowned in the metro', dodgeStat: 'intelligence', dodgeAlt: 'agility', damage: 38, sanity: 14, requires: { time: 'night' }, terrains: ['water', 'ruins'],
+        },
+        {
+            text: 'Every window on the third floor of {zone} went at once a long time ago, and the street below has been glass ever since.',
+            escapeText: '{tribute} crosses the glass street in {zone} on a flattened door dragged along in front of them.',
+            cause: 'Bled out on the glass', dodgeStat: 'agility', dodgeAlt: 'intelligence', damage: 18, bleeding: true, terrains: ['urban', 'open', 'ruins'],
+        },
+        {
+            text: 'The library at {zone} has not burned yet, and a hundred years of paper is the driest thing in the city.',
+            escapeText: '{tribute} gets out of the library at {zone} down the outside and watches it go from the street.',
+            cause: 'Burned in the library', dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 7, damage: 40, burned: true, terrains: ['ruins'], zoneWide: true, startsZoneEffect: 'burning',
+        },
+        {
+            text: 'The overpass spiral at {zone} has one span with a bend in it that was not in the design.',
+            escapeText: '{tribute} reads the bend in the overpass at {zone} and goes down and around, which costs an hour.',
+            cause: 'Down with the span', dodgeStat: 'intelligence', dodgeAlt: 'agility', damage: 46, bleeding: true, requires: { elevationOrChoke: true, loadBearing: true }, terrains: ['highland', 'ruins'], severesRoute: true,
+        },
+        {
+            text: 'There is a stairwell in {zone} that goes down further than the building goes up, and there is air coming out of it.',
+            escapeText: '{tribute} drops a light down the stairwell in {zone}, counts, and does not go down.',
+            cause: 'Lost in the sub-levels', dodgeStat: 'intelligence', dodgeAlt: 'willpower', damage: 20, sanity: 22, fatigue: 18, requires: { alone: true }, terrains: ['ruins', 'urban'],
+        },
+        {
+            text: 'Rust has taken the rebar in the concourse at {zone} down to wire, and the concourse has not noticed yet.',
+            escapeText: '{tribute} crosses the concourse at {zone} along the column line and hears it complain behind them.',
+            cause: 'Under the concourse', dodgeStat: 'agility', dodgeAlt: 'intelligence', damage: 42, bleeding: true, requires: { loadBearing: true }, terrains: ['urban', 'ruins'], special: 'collapse',
+        },
+        {
+            text: 'Something has been living in the mall at {zone} for a long time and has arranged the ground floor to suit itself.',
+            escapeText: '{tribute} reads the arrangement of the mall floor at {zone} for what it is and does not go in past the light.',
+            cause: 'Killed in the gutted mall', dodgeStat: 'stealth', dodgeAlt: 'intelligence', damage: 34, bleeding: true, sanity: 12, terrains: ['ruins'], witnesses: true,
+        },
+        {
+            text: 'The ivy holding the wall up at {zone} is also the only thing pulling it down, and it has been doing both for years.',
+            escapeText: '{tribute} works out which way the ivy wall at {zone} will fall and is standing the other way when it does.',
+            cause: 'Under the ivy wall', dodgeStat: 'intelligence', dodgeAlt: 'agility', damage: 34, bleeding: true, terrains: ['forest', 'ruins'],
+        },
+        {
+            text: 'The sewer marsh at {zone} is warm, and things grow in it that do not grow anywhere else in the arena.',
+            escapeText: '{tribute} takes nothing out of the sewer marsh at {zone} and keeps their boots on crossing it.',
+            cause: 'Infected in the sewer marsh', dodgeStat: 'endurance', dodgeAlt: 'intelligence', damage: 18, infected: true, poisoned: true, terrains: ['wetland'],
+        },
+        {
+            text: 'The greenhouse at {zone} has been growing without anybody for a century and about a third of what is in it is edible.',
+            escapeText: '{tribute} works the greenhouse at {zone} by leaf and stem and takes only what they can name.',
+            cause: 'Ate the wrong thing in the greenhouse', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 22, poisoned: true, feed: 30, requires: { hungerAbove: 50 }, terrains: ['forest'],
+        },
+        {
+            text: 'The lift shaft in {zone} is open on every floor and the cable is still in it, hanging, with nothing on the end.',
+            escapeText: '{tribute} uses the lift cable in {zone} hand over hand with a wrap round the wrist, and gets down.',
+            cause: 'Down the lift shaft', dodgeStat: 'strength', dodgeAlt: 'agility', damage: 48, bleeding: true, requires: { elevationOrChoke: true }, terrains: ['ruins', 'urban'],
+        },
+        {
+            text: 'The reservoir basin above {zone} is full and the spillway is blocked with a century of trees.',
+            escapeText: '{tribute} clears a channel through the spillway wrack above {zone} and lets it down gently.',
+            cause: 'Taken when the reservoir let go', dodgeStat: 'intelligence', dodgeAlt: 'agility', dodgeDifficulty: 7, damage: 46, requires: { storm: true }, terrains: ['water', 'highland'], zoneWide: true, startsZoneEffect: 'flooded',
+        },
+        {
+            text: 'The theatre at {zone} is intact and dark and has very good acoustics, and {tribute} coughs.',
+            escapeText: '{tribute} stays in the theatre foyer at {zone} where the sound dies, and hears the room before the room hears them.',
+            cause: 'Heard in the theatre', dodgeStat: 'stealth', dodgeAlt: 'intelligence', damage: 26, bleeding: true, terrains: ['ruins'], witnesses: true,
+        },
+        {
+            text: 'There is a street in {zone} where the road surface has gone soft and black in the sun and is holding onto everything that crosses it.',
+            escapeText: '{tribute} crosses the soft road in {zone} on the kerb and the shopfronts, and their boots come with them.',
+            cause: 'Stuck on the road', dodgeStat: 'strength', dodgeAlt: 'agility', fatigue: 24, damage: 12, requires: { time: 'day' }, terrains: ['urban', 'open'],
+        },
+        {
+            text: 'A pigeon loft in {zone} is still full of birds, and the birds are still coming back to it, and something else has worked that out.',
+            escapeText: '{tribute} takes two birds off the loft in {zone} at dusk and is away before the thing that also uses it arrives.',
+            cause: 'Killed at the loft', dodgeStat: 'stealth', dodgeAlt: 'agility', damage: 26, bleeding: true, feed: 28, terrains: ['ruins', 'urban'],
+        },
+        {
+            text: 'The billboard on the ridge at {zone} has been advertising the same thing to nobody for a century and the frame is the only thing left holding it.',
+            escapeText: '{tribute} hears the billboard frame at {zone} start to go and is off the ridge before it clears the mounting.',
+            cause: 'Under the billboard', dodgeStat: 'agility', dodgeAlt: 'intelligence', damage: 36, bleeding: true, requires: { storm: true }, terrains: ['highland'],
+        },
+        {
+            text: 'The bank vault at {zone} is open and everything in it is paper, and {tribute} stands in there a while thinking about that.',
+            escapeText: '{tribute} takes the door off the vault manager\'s cupboard at {zone} instead of looking in the vault, and finds something useful.',
+            cause: 'Broke in the vault', dodgeStat: 'willpower', dodgeAlt: 'intelligence', sanity: 20, grantItem: 'lantern', terrains: ['ruins'],
+        },
+        {
+            text: 'Every clock in {zone} stopped at the same minute and none of them has been touched since, and {tribute} has now noticed.',
+            escapeText: '{tribute} notices the clocks in {zone} and makes themselves stop looking at them, which works.',
+            cause: 'Would not leave the clocks', dodgeStat: 'willpower', dodgeAlt: 'intelligence', sanity: 24, fatigue: 10, requires: { sanityBand: 'frayed' }, terrains: ['ruins', 'urban'],
+        },
+        {
+            text: 'The asbestos in the ceiling at {zone} has been coming down as dust for a century and {tribute} has been sleeping under it for three nights.',
+            escapeText: '{tribute} moves their camp out of the ceilinged part of {zone} and into the open, and coughs less.',
+            cause: 'Drowned on dry land', dodgeStat: 'endurance', dodgeAlt: 'intelligence', damage: 20, fatigue: 14, requires: { daysAbove: 5 }, terrains: ['ruins', 'urban'],
+        },
+        {
+            text: 'The cellar pools at {zone} are the only still water in the city and there is a film on all of them that is not oil.',
+            escapeText: '{tribute} skims a cellar pool at {zone}, boils what is under the film, and drinks it without consequence.',
+            cause: 'Drank from the cellar', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 18, infected: true, quench: 26, terrains: ['wetland', 'ruins'],
+        },
+        {
+            text: 'The rust yard at {zone} shifts when the wind gets into it, and {tribute} is in a canyon of it eight metres deep.',
+            escapeText: '{tribute} gets out of the rust canyon at {zone} the moment the stacks start talking to each other.',
+            cause: 'Buried in the rust yard', dodgeStat: 'agility', dodgeAlt: 'intelligence', damage: 40, bleeding: true, requires: { storm: true }, terrains: ['ruins'], special: 'collapse',
         },
     ],
     steppe: [
@@ -1499,6 +1993,129 @@ export const PROCEDURAL_BIOME_EVENTS: Record<string, ArenaEventDef[]> = {
             escapeText: '{tribute} walks upstream of the trampled bank in {zone} before they drink.',
             cause: 'Died of the trampled spring', dodgeStat: 'intelligence', dodgeAlt: 'willpower', infected: true, damage: 12, quench: 15, terrains: ['water', 'wetland', 'open'],
         },
+        // ---- AUDIT-8 §9.5: twenty-four more, to the 32 target ----
+        {
+            id: 'proc-steppe-smoke-line', chain: 'proc-steppe-fire-front',
+            text: 'There is a brown line along the whole southern edge of {zone} that was not there this morning, and the wind is out of the south.',
+            escapeText: '{tribute} reads the smoke line from {zone}, puts the river between themselves and it, and waits.',
+            cause: 'Caught by the grass fire', dodgeStat: 'intelligence', dodgeAlt: 'willpower', sanity: 6, terrains: ['open', 'forest', 'highland'],
+        },
+        {
+            id: 'proc-steppe-fire-front', oncePerRun: true, weight: 0.3,
+            text: 'The grass fire crosses {zone} at the speed of the wind, which is the speed of a horse, and {tribute} is on foot.',
+            escapeText: '{tribute} burns a patch of {zone} black in front of the front and stands in their own ash while it goes past.',
+            cause: 'Overrun by the grass fire', dodgeStat: 'intelligence', dodgeAlt: 'agility', dodgeDifficulty: 8, damage: 50, burned: true, terrains: ['open', 'forest', 'wetland'], zoneWide: true, startsZoneEffect: 'burning', witnesses: true,
+        },
+        {
+            text: 'The grass in {zone} is chest-high and does not end, and {tribute} has been walking in it since dawn with nothing to steer by.',
+            escapeText: '{tribute} steers off the sun and their own shadow across {zone} and comes out where they meant to.',
+            cause: 'Walked in circles in the grass', dodgeStat: 'intelligence', dodgeAlt: 'willpower', fatigue: 26, thirst: 16, sanity: 10, requires: { time: 'day' }, terrains: ['open'],
+        },
+        {
+            text: 'There is nothing in {zone} taller than {tribute}, in any direction, for as far as the light goes.',
+            escapeText: '{tribute} gets into a wallow in {zone} below the line of the grass and is, for a few hours, nowhere.',
+            cause: 'Run down in the open', dodgeStat: 'stealth', dodgeAlt: 'agility', damage: 30, bleeding: true, requires: { time: 'day' }, terrains: ['open'], witnesses: true,
+        },
+        {
+            text: 'A hailstorm gets up over {zone} with nothing under it but grass, and the stones are the size of a thumb joint.',
+            escapeText: '{tribute} gets under the cutbank in {zone} and lets the hail take the grass instead.',
+            cause: 'Beaten down by the hail', dodgeStat: 'agility', dodgeAlt: 'endurance', damage: 26, bleeding: true, requires: { storm: true }, terrains: ['open', 'wetland', 'highland'], zoneWide: true,
+        },
+        {
+            text: 'The lightning in {zone} is hitting the only high things there are, and {tribute} is standing up.',
+            escapeText: '{tribute} gets flat in a fold of {zone} with their feet together and waits the storm out.',
+            cause: 'Struck in the open', dodgeStat: 'intelligence', dodgeAlt: 'agility', dodgeDifficulty: 7, damage: 44, burned: true, requires: { storm: true }, terrains: ['open', 'highland'],
+        },
+        {
+            text: 'The prairie pothole at {zone} is the only water for a day and there are tracks all round it that are not hoof tracks.',
+            escapeText: '{tribute} takes their water from the pothole at {zone} an hour before dawn and is gone before anything else arrives.',
+            cause: 'Killed at the water', dodgeStat: 'stealth', dodgeAlt: 'intelligence', damage: 30, bleeding: true, quench: 34, terrains: ['wetland', 'water'], witnesses: true,
+        },
+        {
+            text: 'Something is moving through the grass toward {tribute} in {zone} in a straight line and the grass is not tall enough to hide what it is.',
+            escapeText: '{tribute} stands up tall in {zone} and shouts, and whatever was coming decides not to.',
+            cause: 'Taken in the long grass', dodgeStat: 'willpower', dodgeAlt: 'strength', damage: 32, bleeding: true, requires: { alone: true }, terrains: ['open', 'forest'],
+        },
+        {
+            text: 'The wind across {zone} has not stopped for four days and has begun to take something out of {tribute} that is not heat or water.',
+            escapeText: '{tribute} digs into the lee of a windrow in {zone} and gets four hours of silence, which is the point.',
+            cause: 'Worn through by the wind', dodgeStat: 'willpower', dodgeAlt: 'endurance', sanity: 24, fatigue: 16, requires: { daysAbove: 4 }, terrains: ['open', 'highland'],
+        },
+        {
+            text: 'The grain elevator at {zone} is full, and a hundred years of grain has become something that is not grain and gives off heat.',
+            escapeText: '{tribute} opens the elevator at {zone} from the top and lets it breathe for an hour before going in.',
+            cause: 'Suffocated in the elevator', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 38, terrains: ['ruins'],
+        },
+        {
+            text: 'The kurgan mound at {zone} is the only rise in a day\'s walk and everything with an interest in seeing a long way is already on it.',
+            escapeText: '{tribute} circles the kurgan at {zone} at a distance first, counts what is on it, and takes the low ground.',
+            cause: 'Killed on the high ground', dodgeStat: 'intelligence', dodgeAlt: 'stealth', damage: 30, bleeding: true, requires: { elevationOrChoke: true }, terrains: ['highland'], witnesses: true,
+        },
+        {
+            text: 'The alkali creek at {zone} runs clear over white stones and has killed everything that ever drank from it.',
+            escapeText: '{tribute} reads the white rime on the stones of the alkali creek at {zone} and does not drink.',
+            cause: 'Drank the alkali', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 24, poisoned: true, thirst: 14, requires: { thirstAbove: 60 }, terrains: ['water', 'wetland'],
+        },
+        {
+            text: 'There is a sod house at {zone} with the roof fallen in and a cellar under it, and the cellar has been holding cold air all summer.',
+            escapeText: '{tribute} gets into the sod cellar at {zone} through the outside hatch and sleeps cool for the first time.',
+            cause: 'Trapped in the sod cellar', dodgeStat: 'agility', dodgeAlt: 'strength', damage: 28, fatigue: -10, terrains: ['ruins'],
+        },
+        {
+            text: 'The ground in {zone} is riddled with burrows a hand wide and {tribute} is moving at a run.',
+            escapeText: '{tribute} slows to a walk across the burrowed ground in {zone} and puts every foot down where they can see it.',
+            cause: 'Broke an ankle in a burrow', dodgeStat: 'agility', dodgeAlt: 'intelligence', damage: 22, bleeding: true, fatigue: 14, terrains: ['open', 'wetland'],
+        },
+        {
+            text: 'A dust devil crosses {zone} three hundred metres high and takes the tarp, the fire, and most of what was under both.',
+            escapeText: '{tribute} weights everything down in {zone} with stones before the afternoon heat starts making weather.',
+            cause: 'Lost everything to the wind', dodgeStat: 'agility', dodgeAlt: 'strength', damage: 14, fatigue: 16, requires: { time: 'day' }, terrains: ['open', 'wetland'],
+        },
+        {
+            text: 'An antelope herd comes through {zone} at a dead run, several hundred of them, and they are not running from {tribute}.',
+            escapeText: '{tribute} gets behind the one cottonwood in {zone} and lets the herd part around it.',
+            cause: 'Trampled by the herd', dodgeStat: 'agility', dodgeAlt: 'endurance', damage: 34, bleeding: true, terrains: ['open'], zoneWide: true,
+        },
+        {
+            text: 'The snow of last winter is still in the north-facing fold at {zone}, grey and hard, and it is the only water left within a day.',
+            escapeText: '{tribute} chips the old drift in the fold at {zone} into a canteen and lets it melt against their body.',
+            cause: 'Ate the old snow', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 14, thirst: 10, quench: 20, terrains: ['highland', 'forest'],
+        },
+        {
+            text: 'The fence line across {zone} runs from horizon to horizon and has one gate in it, and the gate is the only way through for a mile either way.',
+            escapeText: '{tribute} cuts the fence at {zone} a long way from the gate and goes through where nobody is watching.',
+            cause: 'Killed at the gate', dodgeStat: 'intelligence', dodgeAlt: 'stealth', damage: 28, bleeding: true, requires: { elevationOrChoke: true }, terrains: ['ruins', 'open'], witnesses: true,
+        },
+        {
+            text: 'The windmill at {zone} has been pumping into a stock tank for a hundred years and the tank is full and green.',
+            escapeText: '{tribute} takes the water at the windmill at {zone} from the pipe above the tank, not the tank.',
+            cause: 'Drank from the stock tank', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 16, infected: true, quench: 32, terrains: ['ruins', 'open'],
+        },
+        {
+            text: 'A grass seed has worked its way into {tribute}\'s boot in {zone} and then into the skin, and it only goes one way.',
+            escapeText: '{tribute} gets the seed out of their foot in {zone} with a knife point and a steady hand, the same evening.',
+            cause: 'Infected by a grass seed', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 18, infected: true, fatigue: 12, terrains: ['open', 'forest'],
+        },
+        {
+            text: 'The sky over {zone} goes green in the late afternoon and the grass lies flat in a line that is moving.',
+            escapeText: '{tribute} is in the creek cut below {zone} with their arms over their head before the line arrives.',
+            cause: 'Taken by the twister', dodgeStat: 'intelligence', dodgeAlt: 'agility', dodgeDifficulty: 8, damage: 54, bleeding: true, requires: { storm: true }, terrains: ['open', 'highland', 'wetland'], zoneWide: true, severesRoute: true,
+        },
+        {
+            text: 'The stock pens at {zone} are still standing and the ground inside them is a foot deep in what a century of animals left.',
+            escapeText: '{tribute} works the outside of the stock pens at {zone} and does not go in over the rail.',
+            cause: 'Infected in the pens', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 16, infected: true, terrains: ['ruins'],
+        },
+        {
+            text: 'The moon is full over {zone} and the grass is silver and a person standing in it can be seen from a very long way away.',
+            escapeText: '{tribute} moves in the shadow of the windrow across {zone} and the moon does not help anybody find them.',
+            cause: 'Seen by moonlight', dodgeStat: 'stealth', dodgeAlt: 'intelligence', damage: 28, bleeding: true, requires: { time: 'night' }, terrains: ['open'], witnesses: true,
+        },
+        {
+            text: 'Day nine, and {tribute} has not seen a tree, a wall, or a person in {zone} for long enough that the horizon has started to have a shape to it.',
+            escapeText: '{tribute} talks out loud to themselves all the way across {zone}, on purpose, and it works.',
+            cause: 'Came apart in the open', dodgeStat: 'willpower', dodgeAlt: 'intelligence', sanity: 28, fatigue: 10, requires: { daysAbove: 8, alone: true }, terrains: ['open', 'highland', 'wetland'],
+        },
     ],
     saltmarsh: [
         {
@@ -1544,6 +2161,129 @@ export const PROCEDURAL_BIOME_EVENTS: Record<string, ArenaEventDef[]> = {
             text: 'The mud of {zone} preserves things. {tribute} finds a tribute from a Games nobody remembers, and does not sleep for two nights.',
             escapeText: '{tribute} covers what the mud of {zone} gave up and walks on without looking again.',
             cause: 'Lost to the marsh', dodgeStat: 'willpower', dodgeAlt: 'endurance', sanity: 22, terrains: ['wetland'],
+        },
+        // ---- AUDIT-8 §9.5: twenty-four more, to the 32 target ----
+        {
+            id: 'proc-saltmarsh-tide-turns', chain: 'proc-saltmarsh-tide-in',
+            text: 'The creek {tribute} crossed at {zone} an hour ago is running the other way now, and it is running hard.',
+            escapeText: '{tribute} marks the turn of the water at {zone} against a stick and works out how long they have.',
+            cause: 'Caught by the tide', dodgeStat: 'intelligence', dodgeAlt: 'willpower', sanity: 4, terrains: ['water', 'wetland', 'open'],
+        },
+        {
+            id: 'proc-saltmarsh-tide-in', oncePerRun: true, weight: 0.3,
+            text: 'The tide comes into {zone} faster than a person walks over flat ground, and {tribute} is a long way out on the flat ground.',
+            escapeText: '{tribute} is off the flats at {zone} and onto the saltings before the water is past their boots.',
+            cause: 'Drowned on the flats', dodgeStat: 'endurance', dodgeAlt: 'agility', dodgeDifficulty: 8, damage: 50, terrains: ['open', 'wetland', 'water'], zoneWide: true, witnesses: true, startsZoneEffect: 'flooded',
+        },
+        {
+            text: 'The mud in the saltings at {zone} takes {tribute} to the knee and then keeps the boot when they pull.',
+            escapeText: '{tribute} goes flat on the mud at {zone} and spreads their weight, and comes out of it with both boots.',
+            cause: 'Held by the mud', dodgeStat: 'strength', dodgeAlt: 'endurance', damage: 18, fatigue: 24, terrains: ['wetland'],
+        },
+        {
+            text: 'Every drop of water in {zone} is salt and {tribute} has been drinking from the creek because it looked like a river.',
+            escapeText: '{tribute} tastes the creek at {zone}, works out how far up it they have to go, and walks it.',
+            cause: 'Drank the salt water', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 24, thirst: 26, requires: { thirstAbove: 55 }, terrains: ['water', 'wetland'],
+        },
+        {
+            text: 'The creek maze at {zone} has forty channels in it and thirty-nine of them are a dead end at low water.',
+            escapeText: '{tribute} works the creek maze at {zone} by keeping the sun on one shoulder the whole way through.',
+            cause: 'Lost in the creeks', dodgeStat: 'intelligence', dodgeAlt: 'willpower', fatigue: 24, thirst: 14, sanity: 10, terrains: ['wetland', 'water'],
+        },
+        {
+            text: 'A sea fog comes over {zone} on the flood tide and takes the marks {tribute} has been navigating by, one at a time, in order.',
+            escapeText: '{tribute} sits down on the highest thing in {zone} when the fog arrives and does not move until it lifts.',
+            cause: 'Lost in the sea fog', dodgeStat: 'willpower', dodgeAlt: 'intelligence', damage: 22, sanity: 16, fatigue: 16, terrains: ['open', 'wetland', 'water'], zoneWide: true, startsZoneEffect: 'fogbound',
+        },
+        {
+            text: 'The salt in the wind at {zone} has been in {tribute}\'s cuts since the first day and none of them has closed.',
+            escapeText: '{tribute} gets fresh water from the dune slack at {zone} and washes the salt out of everything that is open.',
+            cause: 'Rotted in the salt', dodgeStat: 'endurance', dodgeAlt: 'intelligence', damage: 16, infected: true, requires: { wounded: true }, terrains: ['open', 'wetland', 'water', 'highland'],
+        },
+        {
+            text: 'The shellfish beds at {zone} are uncovered and there is more food in fifty metres than {tribute} has seen all week.',
+            escapeText: '{tribute} takes the shellfish at {zone} from the seaward edge where the water moves, and eats well.',
+            cause: 'Poisoned on the shellfish', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 26, poisoned: true, feed: 36, requires: { hungerAbove: 50 }, terrains: ['water', 'wetland', 'open'],
+        },
+        {
+            text: 'The bore comes up the main channel at {zone} as a standing wall of brown water with a noise in front of it.',
+            escapeText: '{tribute} hears the bore coming up the channel at {zone} and is on the sea wall before it arrives.',
+            cause: 'Taken by the bore', dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 7, damage: 48, terrains: ['water'], witnesses: true, zoneWide: true,
+        },
+        {
+            text: 'The hulk on the beach at {zone} has been there a long time and the deck plating has rusted to the thickness of paper.',
+            escapeText: '{tribute} works the hulk at {zone} along the frames where the steel is still steel.',
+            cause: 'Through the deck of the hulk', dodgeStat: 'agility', dodgeAlt: 'intelligence', damage: 32, bleeding: true, grantItem: 'wire', requires: { loadBearing: true }, terrains: ['ruins'],
+        },
+        {
+            text: 'The cordgrass at {zone} is over head height and has edges, and {tribute} has been pushing through it for an hour.',
+            escapeText: '{tribute} follows a creek line through the cordgrass at {zone} rather than pushing across it.',
+            cause: 'Cut to pieces in the cordgrass', dodgeStat: 'agility', dodgeAlt: 'endurance', damage: 14, bleeding: true, fatigue: 18, terrains: ['wetland'],
+        },
+        {
+            text: 'The shingle bank at {zone} moves under every step and every step is audible for two hundred metres.',
+            escapeText: '{tribute} crosses the shingle at {zone} on the wet line at the water\'s edge, where it is quiet.',
+            cause: 'Heard on the shingle', dodgeStat: 'stealth', dodgeAlt: 'agility', damage: 26, bleeding: true, terrains: ['highland', 'open'], witnesses: true,
+        },
+        {
+            text: 'The oyster sheds at {zone} are full of shell a hundred years old, and every edge of it is still sharp.',
+            escapeText: '{tribute} picks a line through the oyster sheds at {zone} on the timbers and keeps their hands.',
+            cause: 'Bled out on the oyster shell', dodgeStat: 'agility', dodgeAlt: 'intelligence', damage: 20, bleeding: true, infected: true, terrains: ['ruins'],
+        },
+        {
+            text: 'There is a seal colony on the bar at {zone} and something has been taking them from the seaward side.',
+            escapeText: '{tribute} reads the seal colony at {zone} — which way they are all facing — and stays off that bar.',
+            cause: 'Taken off the bar', dodgeStat: 'intelligence', dodgeAlt: 'agility', damage: 40, bleeding: true, terrains: ['wetland', 'water'],
+        },
+        {
+            text: 'The tide mill at {zone} still has its gate, and the gate is shut, and behind it is a pond that wants to be a channel.',
+            escapeText: '{tribute} works out what the tide mill gate at {zone} is holding and is nowhere near it when it opens.',
+            cause: 'Caught when the mill gate went', dodgeStat: 'intelligence', dodgeAlt: 'agility', damage: 42, requires: { loadBearing: true }, terrains: ['ruins'], severesRoute: true,
+        },
+        {
+            text: 'The wind at {zone} comes off the water at the same strength all day and all night and there is no lee anywhere in the zone.',
+            escapeText: '{tribute} digs into the back of the dune ridge at {zone} and finds the one metre of stillness in the whole place.',
+            cause: 'Exposure on the open shore', dodgeStat: 'endurance', dodgeAlt: 'willpower', damage: 20, frostbitten: true, fatigue: 18, requires: { time: 'night' }, terrains: ['open', 'wetland', 'highland'],
+        },
+        {
+            text: 'The wrack line at {zone} is a metre deep in weed and there is something in it that has been dead a while.',
+            escapeText: '{tribute} works the wrack line at {zone} upwind and finds line, a float, and no disease.',
+            cause: 'Sickened on the wrack', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 18, infected: true, grantItem: 'fishing-kit', terrains: ['open'],
+        },
+        {
+            text: 'The quaking ooze at {zone} looks exactly like the firm ground beside it and is a different colour only when it is wet.',
+            escapeText: '{tribute} tests the ooze at {zone} with a staff every three paces and never puts a foot wrong.',
+            cause: 'Went into the ooze', dodgeStat: 'intelligence', dodgeAlt: 'agility', dodgeDifficulty: 7, damage: 34, fatigue: 22, terrains: ['wetland'],
+        },
+        {
+            text: 'The channel at {zone} is fordable for forty minutes either side of low water and {tribute} has arrived at the wrong end of that.',
+            escapeText: '{tribute} waits out the flood at {zone} on the wrong bank and crosses when the water lets them.',
+            cause: 'Drowned at the ford', dodgeStat: 'endurance', dodgeAlt: 'strength', dodgeDifficulty: 7, damage: 44, fatigue: 20, terrains: ['water'],
+        },
+        {
+            text: 'Curlews are going up off the marsh at {zone} in ones and twos along a line, and the line is coming toward {tribute}.',
+            escapeText: '{tribute} watches the birds go up across {zone}, reads the line of it, and is gone before it arrives.',
+            cause: 'Found by what the birds announced', dodgeStat: 'intelligence', dodgeAlt: 'stealth', damage: 28, bleeding: true, terrains: ['wetland', 'open'], witnesses: true,
+        },
+        {
+            text: 'The pilot station at {zone} has a lamp room at the top of it and a stair that has been in salt air since before the Dark Days.',
+            escapeText: '{tribute} takes the pilot station stair at {zone} on the wall side and gets to the lamp room and back.',
+            cause: 'Down the pilot station stair', dodgeStat: 'agility', dodgeAlt: 'intelligence', damage: 38, bleeding: true, grantItem: 'lantern', requires: { elevationOrChoke: true }, terrains: ['highland', 'ruins'],
+        },
+        {
+            text: 'Everything {tribute} owns in {zone} is damp with salt now, which means it will never be dry again while they are here.',
+            escapeText: '{tribute} gets a fire of dry wrack going in {zone} and bakes the salt out of their kit for an evening.',
+            cause: 'Never got dry', dodgeStat: 'endurance', dodgeAlt: 'intelligence', fatigue: 24, damage: 14, requires: { daysAbove: 5 }, terrains: ['open', 'wetland', 'water', 'ruins'],
+        },
+        {
+            text: 'The map {tribute} made of {zone} on the first day was a map of low water, and it is high water now, and nothing on it is true.',
+            escapeText: '{tribute} makes two maps of {zone}, one for each state of the water, and uses the right one.',
+            cause: 'Trusted the wrong map', dodgeStat: 'intelligence', dodgeAlt: 'willpower', damage: 26, fatigue: 20, sanity: 14, terrains: ['wetland', 'water', 'open'],
+        },
+        {
+            text: 'The eel channel at {zone} is deep, slow, and full, and something in it is longer than an arm and there are a great many of them.',
+            escapeText: '{tribute} crosses the eel channel at {zone} at the shallow bar and does not put a hand in the water.',
+            cause: 'Taken in the eel channel', dodgeStat: 'agility', dodgeAlt: 'endurance', damage: 30, bleeding: true, terrains: ['water'],
         },
     ],
     boreal: [
@@ -1591,6 +2331,129 @@ export const PROCEDURAL_BIOME_EVENTS: Record<string, ArenaEventDef[]> = {
             escapeText: '{tribute} feels their fingers stop hurting in {zone}, which is the sign, and gets a fire going with the last of the light.',
             cause: 'Froze in the taiga', dodgeStat: 'endurance', dodgeAlt: 'strength', damage: 22, frostbitten: true, fatigue: 14, requires: { time: 'night' }, terrains: ['forest', 'open', 'wetland'],
         },
+        // ---- AUDIT-8 §9.5: twenty-four more, to the 32 target ----
+        {
+            id: 'proc-boreal-smoke-smell', chain: 'proc-boreal-crown-run',
+            text: 'There has been a smell of smoke in {zone} all afternoon and no smoke, which means it is a long way off and coming.',
+            escapeText: '{tribute} smells the smoke in {zone}, finds which way the wind has it, and puts the lake behind them.',
+            cause: 'Caught by the crown fire', dodgeStat: 'intelligence', dodgeAlt: 'willpower', sanity: 6, terrains: ['forest', 'open', 'highland'],
+        },
+        {
+            id: 'proc-boreal-crown-run', oncePerRun: true, weight: 0.3,
+            text: 'The fire in {zone} leaves the ground and goes into the tops, and a crown fire in black spruce travels faster than anything on two legs.',
+            escapeText: '{tribute} gets into the lake at {zone} up to the neck with a wet coat over their head and lets it go over.',
+            cause: 'Overrun by the crown fire', dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 8, damage: 54, burned: true, terrains: ['forest', 'wetland', 'open'], zoneWide: true, startsZoneEffect: 'burning', witnesses: true, severesRoute: true,
+        },
+        {
+            text: 'The mosquitoes in {zone} are a sound before they are anything else, and {tribute} has no net and no smoke.',
+            escapeText: '{tribute} gets a smudge fire of damp moss going in {zone} and buys themselves an evening.',
+            cause: 'Bled white by the flies', dodgeStat: 'endurance', dodgeAlt: 'intelligence', damage: 16, sanity: 18, fatigue: 16, terrains: ['wetland', 'forest', 'water'], zoneWide: true, startsZoneEffect: 'swarming',
+        },
+        {
+            text: 'The muskeg in {zone} is moss on top of water and holds a person for about four steps at a time.',
+            escapeText: '{tribute} crosses the muskeg in {zone} on the tussock heads, one to the next, and stays dry to the knee.',
+            cause: 'Through the muskeg', dodgeStat: 'agility', dodgeAlt: 'endurance', damage: 18, fatigue: 26, terrains: ['wetland'],
+        },
+        {
+            text: 'The deadfall in {zone} is three trees deep in every direction and every one of them is at shin height.',
+            escapeText: '{tribute} goes round the deadfall in {zone} along the esker, which is twice as far and half the cost.',
+            cause: 'Broke a leg in the deadfall', dodgeStat: 'agility', dodgeAlt: 'endurance', damage: 26, bleeding: true, fatigue: 22, terrains: ['forest'],
+        },
+        {
+            text: 'The black spruce in {zone} all look the same and go on for a day in every direction, and {tribute} has been turning left.',
+            escapeText: '{tribute} blazes the spruce behind them across {zone} and can find their own camp again.',
+            cause: 'Lost in the spruce', dodgeStat: 'intelligence', dodgeAlt: 'willpower', fatigue: 24, hunger: 14, sanity: 14, terrains: ['forest'],
+        },
+        {
+            text: 'There is a bear in the blueberry flats at {zone} and it has been there longer than {tribute} has and considers the matter settled.',
+            escapeText: '{tribute} backs out of the blueberry flats at {zone} talking steadily, and the bear lets them.',
+            cause: 'Killed in the berry flats', dodgeStat: 'willpower', dodgeAlt: 'stealth', dodgeDifficulty: 7, damage: 44, bleeding: true, feed: 20, terrains: ['open', 'forest'],
+        },
+        {
+            text: 'The lake at {zone} is snow-melt cold and the far shore is four hundred metres away and the long way round is eleven kilometres.',
+            escapeText: '{tribute} builds a raft of deadfall and rope at {zone} and goes across dry, slowly.',
+            cause: 'Cold shock in the lake', dodgeStat: 'endurance', dodgeAlt: 'strength', dodgeDifficulty: 7, damage: 40, frostbitten: true, terrains: ['water'],
+        },
+        {
+            text: 'It has rained in {zone} for two days and everything that could burn is inside a tree, and {tribute} does not have a dry knife.',
+            escapeText: '{tribute} splits into the heartwood of a standing dead spruce in {zone} and gets fire out of a wet forest.',
+            cause: 'Died of the wet cold', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 22, frostbitten: true, fatigue: 16, requires: { storm: true, time: 'night' }, terrains: ['forest', 'wetland', 'open'],
+        },
+        {
+            text: 'A wolf pack has been on {tribute}\'s back trail through {zone} since morning, not closing, just present.',
+            escapeText: '{tribute} gets a fire and a rock wall behind them in {zone} and the pack loses interest by midnight.',
+            cause: 'Run down by the pack', dodgeStat: 'willpower', dodgeAlt: 'stealth', damage: 38, bleeding: true, sanity: 16, requires: { alone: true }, terrains: ['forest', 'open', 'highland'],
+        },
+        {
+            text: 'The moss floor in {zone} is a metre deep and there are things under it — rocks, holes, and one old trap.',
+            escapeText: '{tribute} works across the moss in {zone} with a staff and finds the trap before the trap finds them.',
+            cause: 'Caught in an old trap', dodgeStat: 'intelligence', dodgeAlt: 'agility', damage: 32, bleeding: true, terrains: ['forest'],
+        },
+        {
+            text: 'The trapper\'s cabin at {zone} has a door that opens outward, a stove, and a smell in it that is not old.',
+            escapeText: '{tribute} circles the trapper\'s cabin at {zone} twice before going in, and finds the stove and no owner.',
+            cause: 'Killed in the cabin', dodgeStat: 'stealth', dodgeAlt: 'intelligence', damage: 30, bleeding: true, heal: 10, grantItem: 'matches', terrains: ['ruins'], witnesses: true,
+        },
+        {
+            text: 'The portage at {zone} is the only way between two waters and everything that has come through here has come through here.',
+            escapeText: '{tribute} takes the portage at {zone} at first light, fast, and is through before anybody is watching it.',
+            cause: 'Ambushed on the portage', dodgeStat: 'stealth', dodgeAlt: 'agility', damage: 32, bleeding: true, requires: { elevationOrChoke: true }, terrains: ['water', 'open'], witnesses: true,
+        },
+        {
+            text: 'The beaver flowage at {zone} has raised the water two metres and drowned a hundred trees, and every one of them is still standing up under the surface.',
+            escapeText: '{tribute} poles round the drowned timber in the flowage at {zone} and finds the old channel.',
+            cause: 'Caught in the drowned timber', dodgeStat: 'agility', dodgeAlt: 'endurance', damage: 34, terrains: ['water', 'wetland'],
+        },
+        {
+            text: 'Everything in {zone} is wet and has been for six days, and {tribute}\'s feet have not been out of their boots for four of them.',
+            escapeText: '{tribute} gets their boots off and their feet dry over a fire in {zone} and keeps their toes.',
+            cause: 'Trench foot', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 18, infected: true, fatigue: 14, requires: { daysAbove: 5 }, terrains: ['wetland', 'forest', 'water'],
+        },
+        {
+            text: 'There is a blowdown across {zone} a kilometre wide where the wind laid every tree down in the same direction, and all of it is dry.',
+            escapeText: '{tribute} works the edge of the blowdown at {zone} rather than the middle and gets firewood without going in.',
+            cause: 'Trapped in the blowdown', dodgeStat: 'agility', dodgeAlt: 'strength', damage: 26, bleeding: true, fatigue: 24, terrains: ['forest', 'open'],
+        },
+        {
+            text: 'The fire tower on the hill at {zone} still has three of its four legs braced and a cab at the top of it.',
+            escapeText: '{tribute} goes up the fire tower at {zone} on the good legs and sees the whole arena from it.',
+            cause: 'Down with the fire tower', dodgeStat: 'agility', dodgeAlt: 'intelligence', damage: 46, bleeding: true, requires: { elevationOrChoke: true, loadBearing: true }, terrains: ['highland', 'ruins'], special: 'collapse',
+        },
+        {
+            text: 'The mushrooms at the foot of the birches in {zone} are the best food in the zone and about a fifth of them are the other kind.',
+            escapeText: '{tribute} takes only the mushrooms at {zone} they can name twice and eats properly on it.',
+            cause: 'Ate the wrong mushroom', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 30, poisoned: true, feed: 28, requires: { hungerAbove: 50 }, terrains: ['forest'],
+        },
+        {
+            text: 'The loons on the lake at {zone} have been calling all night and {tribute} has not been able to stop listening to it.',
+            escapeText: '{tribute} sleeps through the loons at {zone}, which after nine days is its own kind of achievement.',
+            cause: 'Never slept in the spruce', dodgeStat: 'willpower', dodgeAlt: 'endurance', fatigue: 26, sanity: 16, requires: { time: 'night' }, terrains: ['water', 'forest'],
+        },
+        {
+            text: 'The sawmill at {zone} is half in the water and the blade is still on the arbour, and the floor around it is not.',
+            escapeText: '{tribute} takes what they need off the sawmill floor at {zone} from the doorway with a hooked pole.',
+            cause: 'Through the sawmill floor', dodgeStat: 'agility', dodgeAlt: 'intelligence', damage: 34, bleeding: true, grantItem: 'axe', requires: { loadBearing: true }, terrains: ['ruins'],
+        },
+        {
+            text: 'The tea-coloured river at {zone} looks shallow the whole way across because the bottom is invisible at any depth.',
+            escapeText: '{tribute} reads the tea water at {zone} off the speed of the surface and finds the bar.',
+            cause: 'Drowned in the tea water', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 38, terrains: ['water'],
+        },
+        {
+            text: 'A moose is standing in the meadow at {zone} between {tribute} and the only way out of it, and it has a calf.',
+            escapeText: '{tribute} goes back the way they came out of the meadow at {zone} without ever turning their back on it.',
+            cause: 'Trampled by a moose', dodgeStat: 'agility', dodgeAlt: 'willpower', damage: 42, bleeding: true, terrains: ['open', 'wetland'],
+        },
+        {
+            text: 'The cold snap that comes through {zone} on the eighth night takes twenty degrees out of the air in four hours.',
+            escapeText: '{tribute} reads the clear sky over {zone} at dusk and triples their wood before dark.',
+            cause: 'Caught by the cold snap', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 28, frostbitten: true, requires: { time: 'night', daysAbove: 6 }, terrains: ['forest', 'open', 'wetland', 'highland'], zoneWide: true, startsZoneEffect: 'frozen',
+        },
+        {
+            text: 'The granite dome at {zone} is bare, wet, and sloped at exactly the angle where boots stop working.',
+            escapeText: '{tribute} takes the granite dome at {zone} barefoot, which is cold and correct.',
+            cause: 'Off the granite', dodgeStat: 'agility', dodgeAlt: 'intelligence', damage: 36, bleeding: true, requires: { storm: true, elevationOrChoke: true }, terrains: ['highland'],
+        },
     ],
     badlands: [
         {
@@ -1636,6 +2499,129 @@ export const PROCEDURAL_BIOME_EVENTS: Record<string, ArenaEventDef[]> = {
             text: 'The clay of {zone} after rain is grease. {tribute}, in a hurry, finds the edge.',
             escapeText: '{tribute} slides on the clay of {zone} and stops with their boots over nothing.',
             cause: 'Fell from the clay edge', dodgeStat: 'agility', dodgeAlt: 'endurance', damage: 32, bleeding: true, requires: { storm: true, stance: ['Hunting', 'Aggressive', 'Desperate'] }, terrains: ['highland', 'open'],
+        },
+        // ---- AUDIT-8 §9.5: twenty-four more, to the 32 target ----
+        {
+            id: 'proc-badlands-rain-upstream', chain: 'proc-badlands-slot-fills',
+            text: 'It is raining somewhere north of {zone}, and the slot canyon {tribute} is standing in drains about four hundred square kilometres of somewhere north of here.',
+            escapeText: '{tribute} sees the sky north of {zone} and is out of the slot and up on the bench inside ten minutes.',
+            cause: 'Caught in the slot', dodgeStat: 'intelligence', dodgeAlt: 'willpower', sanity: 6, terrains: ['highland', 'water', 'open'],
+        },
+        {
+            id: 'proc-badlands-slot-fills', oncePerRun: true, weight: 0.25,
+            text: 'The slot at {zone} fills from wall to wall in under a minute, and there is nothing to climb for three hundred metres in either direction.',
+            escapeText: '{tribute} chimneys up the slot wall at {zone} and sits on a ledge while the canyon becomes a river underneath them.',
+            cause: 'Drowned in the slot canyon', dodgeStat: 'agility', dodgeAlt: 'strength', dodgeDifficulty: 8, damage: 54, terrains: ['highland', 'water'], witnesses: true, severesRoute: true,
+        },
+        {
+            text: 'Every gully out of {zone} looks like the gully {tribute} came in by, and two of them are, and they lead different places.',
+            escapeText: '{tribute} cairns the mouth of the right gully out of {zone} and finds it again on the way back.',
+            cause: 'Lost in the gullies', dodgeStat: 'intelligence', dodgeAlt: 'willpower', fatigue: 24, thirst: 20, sanity: 12, terrains: ['highland', 'open'],
+        },
+        {
+            text: 'The bentonite in {zone} is rock when it is dry and grease when it is wet, and it rained last night.',
+            escapeText: '{tribute} waits out the morning on the gravel at {zone} until the bentonite has given the water back.',
+            cause: 'Off the greasy ground', dodgeStat: 'agility', dodgeAlt: 'endurance', damage: 28, bleeding: true, fatigue: 16, terrains: ['open', 'highland'],
+        },
+        {
+            text: 'The layer-cake wall above {zone} sheds a course of rock every few years and there is fresh rubble at the bottom of it.',
+            escapeText: '{tribute} reads the fresh rubble under the wall at {zone} and camps out from under it.',
+            cause: 'Under the wall when it shed', dodgeStat: 'intelligence', dodgeAlt: 'agility', damage: 40, bleeding: true, requires: { elevationOrChoke: true }, terrains: ['highland'], special: 'collapse',
+        },
+        {
+            text: 'The seep spring at {zone} comes out of the rock at the rate of a cup an hour, and {tribute} has a day\'s walk behind them.',
+            escapeText: '{tribute} dams the seep at {zone} with clay and comes back to a full basin in the morning.',
+            cause: 'Died waiting at the seep', dodgeStat: 'willpower', dodgeAlt: 'intelligence', thirst: 22, fatigue: 18, quench: 18, requires: { thirstAbove: 65 }, terrains: ['water', 'wetland'],
+        },
+        {
+            text: 'The quicksand at the ford at {zone} is not quick and is not sand, and it has {tribute} to the thigh.',
+            escapeText: '{tribute} goes onto their back in the ford at {zone} and swims out of the silt the slow way.',
+            cause: 'Taken by the silt', dodgeStat: 'endurance', dodgeAlt: 'intelligence', damage: 30, fatigue: 26, terrains: ['water'],
+        },
+        {
+            text: 'A rattlesnake is under the ledge at {zone} where the shade is, and {tribute} is putting a hand on the ledge.',
+            escapeText: '{tribute} looks under the ledge at {zone} before putting a hand on it, which is what the ledges here are for.',
+            cause: 'Bitten reaching for the shade', dodgeStat: 'intelligence', dodgeAlt: 'agility', damage: 22, poisoned: true, requires: { time: 'day' }, terrains: ['highland', 'open', 'ruins'],
+        },
+        {
+            text: 'The hoodoo {tribute} is sheltering behind at {zone} is a column of mud with a stone on top and has been eroding for ten thousand years.',
+            escapeText: '{tribute} taps the hoodoo at {zone}, hears what it is made of, and shelters behind a different one.',
+            cause: 'Under the hoodoo', dodgeStat: 'intelligence', dodgeAlt: 'agility', damage: 38, bleeding: true, terrains: ['highland'],
+        },
+        {
+            text: 'The heat coming off the rock walls at {zone} after sunset is worse than the sun was, and it goes on until midnight.',
+            escapeText: '{tribute} gets up out of the canyon at {zone} onto the bench where the air moves and sleeps.',
+            cause: 'Cooked in the canyon', dodgeStat: 'endurance', dodgeAlt: 'intelligence', damage: 24, thirst: 22, fatigue: 16, requires: { time: 'night' }, terrains: ['highland', 'open'],
+        },
+        {
+            text: 'The adit at {zone} goes into the hill and the timbering in it was cut from cottonwood, which does not last.',
+            escapeText: '{tribute} works the adit at {zone} as far as the first set of timbers and no further.',
+            cause: 'Buried in the adit', dodgeStat: 'intelligence', dodgeAlt: 'agility', damage: 44, bleeding: true, grantItem: 'lantern', requires: { loadBearing: true }, terrains: ['ruins'], special: 'collapse',
+        },
+        {
+            text: 'The bone diggings at {zone} are full of things that were alive long before Panem and one hole that was dug last week.',
+            escapeText: '{tribute} reads the fresh hole in the diggings at {zone} and is watching it from cover when its owner comes back.',
+            cause: 'Killed at the diggings', dodgeStat: 'stealth', dodgeAlt: 'intelligence', damage: 30, bleeding: true, terrains: ['ruins'], witnesses: true,
+        },
+        {
+            text: 'The dry reservoir at {zone} still has its clay lining and about a hand\'s depth of green water in the deepest corner.',
+            escapeText: '{tribute} digs a seep pit beside the reservoir at {zone} and lets the clay filter it for them.',
+            cause: 'Drank the reservoir', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 20, infected: true, quench: 28, requires: { thirstAbove: 55 }, terrains: ['ruins', 'water'],
+        },
+        {
+            text: 'A dust storm comes up the valley at {zone} and turns the middle of the afternoon into something with no horizon in it.',
+            escapeText: '{tribute} gets into the lee of the cutbank at {zone} with a cloth over their face and waits it out.',
+            cause: 'Lost in the dust', dodgeStat: 'endurance', dodgeAlt: 'intelligence', damage: 18, thirst: 18, sanity: 12, requires: { storm: true }, terrains: ['open', 'highland'], zoneWide: true, startsZoneEffect: 'fogbound',
+        },
+        {
+            text: 'The cutbank at {zone} is undercut by two metres and {tribute} has been walking along the top of it.',
+            escapeText: '{tribute} sees the undercut at {zone} from the far bank and walks the gravel instead.',
+            cause: 'Down with the cutbank', dodgeStat: 'intelligence', dodgeAlt: 'agility', damage: 34, bleeding: true, terrains: ['water', 'open'],
+        },
+        {
+            text: 'The chokecherries in the draw at {zone} are ripe, and the stones in them are not a thing to chew.',
+            escapeText: '{tribute} eats the chokecherries at {zone} around the stones and is merely uncomfortable.',
+            cause: 'Poisoned on chokecherry', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 22, poisoned: true, feed: 22, requires: { hungerAbove: 55 }, terrains: ['forest'],
+        },
+        {
+            text: 'The petroglyph wall at {zone} has a hundred figures on it and {tribute} has been looking at it for a long time in bad light.',
+            escapeText: '{tribute} looks at the petroglyphs at {zone} for a while and then deliberately looks at something else.',
+            cause: 'Would not leave the wall', dodgeStat: 'willpower', dodgeAlt: 'intelligence', sanity: 22, fatigue: 12, requires: { sanityBand: 'frayed' }, terrains: ['ruins', 'highland'],
+        },
+        {
+            text: 'The knife ridge out of {zone} is a metre wide with a hundred metres on either side and a wind across it.',
+            escapeText: '{tribute} takes the knife ridge out of {zone} on all fours, which is slow and undignified and works.',
+            cause: 'Off the knife ridge', dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 7, damage: 50, bleeding: true, requires: { elevationOrChoke: true }, terrains: ['highland'],
+        },
+        {
+            text: 'There is no shade anywhere in {zone} between ten and four except under the one cutbank, and something is already under it.',
+            escapeText: '{tribute} digs a scrape under the sage at {zone} and puts their coat over it, and that is the shade.',
+            cause: 'Killed over the shade', dodgeStat: 'stealth', dodgeAlt: 'willpower', damage: 28, bleeding: true, thirst: 16, requires: { time: 'day' }, terrains: ['open', 'highland'], witnesses: true,
+        },
+        {
+            text: 'The stage station at {zone} has a well in the yard with a stone cover on it that two people could lift.',
+            escapeText: '{tribute} levers the well cover at the stage station in {zone} with a beam and finds water under it.',
+            cause: 'Down the station well', dodgeStat: 'strength', dodgeAlt: 'agility', damage: 36, bleeding: true, quench: 40, terrains: ['ruins'],
+        },
+        {
+            text: 'The gravel pan at {zone} reflects the light straight back up and {tribute} is burning on the underside of their chin.',
+            escapeText: '{tribute} works out where the light in {zone} is actually coming from and covers accordingly.',
+            cause: 'Burned from below', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 16, burned: true, thirst: 14, requires: { time: 'day' }, terrains: ['open'],
+        },
+        {
+            text: 'The wash bottom at {zone} is the fastest travel in the badlands and it is also a trench with two walls and one way out.',
+            escapeText: '{tribute} takes the bench above the wash at {zone}, which is slower and has sightlines.',
+            cause: 'Trapped in the wash', dodgeStat: 'intelligence', dodgeAlt: 'agility', damage: 32, bleeding: true, requires: { elevationOrChoke: true }, terrains: ['water', 'open'], witnesses: true,
+        },
+        {
+            text: 'Day eight in {zone}, and every wall {tribute} has looked at has the same seven stripes in it, in the same order, at every scale.',
+            escapeText: '{tribute} starts counting the stripes in {zone} out loud and turns it into a joke, which holds.',
+            cause: 'Came apart in the layers', dodgeStat: 'willpower', dodgeAlt: 'intelligence', sanity: 26, fatigue: 12, requires: { daysAbove: 7, alone: true }, terrains: ['highland', 'open', 'ruins'],
+        },
+        {
+            text: 'The cottonwood at the crossing at {zone} is the only tree and the only shade and the only firewood, and it is green.',
+            escapeText: '{tribute} takes the dead limb off the high side of the cottonwood at {zone} and gets a fire out of it.',
+            cause: 'Went without a fire', dodgeStat: 'intelligence', dodgeAlt: 'endurance', damage: 18, frostbitten: true, requires: { time: 'night' }, terrains: ['forest', 'water'],
         },
     ],
 };
@@ -1691,48 +2677,72 @@ export const PROCEDURAL_BIOME_AMBIENT: Record<string, string[]> = {
         'The wind has been blowing from the same quarter for four days and nobody has found the lee of it.',
         'A herd of something crosses the far horizon, a mile long and moving.',
         'The Gamemakers drop the temperature another notch and the ice on the lake talks about it all night.',
+        'A crack runs the length of the lake in one long note and stops, and nothing has changed.',
+        'The cold has taken the smell out of the air. There is nothing to breathe but cold.',
+        'Frost flowers grow on the new ice overnight, a field of them, and the first sun takes them all.',
     ],
     dunes: [
         'The dunes have moved in the night. The map every tribute carries in their head is wrong now.',
         'Heat shimmer turns the far edge of the arena into water that is not there.',
         'A single cloud crosses the arena and every tribute walks in its shadow for as long as it lasts.',
         'Sand gets into everything: the food, the wounds, the last of the water.',
+        'The dunes move a hand\'s breadth in the night and the arena is a slightly different shape by morning.',
+        'The heat comes off the pan in sheets you can see through, and everything past a hundred metres swims.',
+        'A wind gets up at dusk, carries for an hour, and drops, and the silence afterwards is total.',
     ],
     bayou: [
         'Frogs, a million of them, all at once, and then none.',
         'Something big rolls in the black water and the ripples take a full minute to reach the bank.',
         'The mist lies in the low ground after dark and does not lift till the sun is high.',
         'A cypress lets go of a limb into the water with a crack like a cannon, and half the arena flinches.',
+        'Something big turns over in the channel and the ripples reach both banks before anything else moves.',
+        'The frogs stop. All of them. Then, after a while, one starts again.',
+        'Mist comes off the black water at dawn and does not lift until the sun is well up.',
     ],
     ruinlands: [
         'A wall that stood for a century picks tonight to come down, with nobody near it.',
         'Wind through a thousand empty windows sounds like a crowd that is not there.',
         'A door bangs somewhere in the dead city, and keeps banging.',
         'The Gamemakers light one tower at the far edge of the arena and leave it lit all night.',
+        'A window falls out of something twenty storeys up and takes four seconds to arrive.',
+        'The wind finds an open stairwell and makes a note out of it that goes on for a minute.',
+        'Pigeons come off a roofline all at once, which in this arena is the closest thing there is to an alarm.',
     ],
     steppe: [
         'The grass moves in waves to the horizon and there is nowhere in it to hide from anything.',
         'A dust column stands on the far edge of the arena for an hour and walks off.',
         'The herd the Gamemakers put here is somewhere out there. The ground tells you when it moves.',
         'Lightning walks along the horizon all night without ever coming closer.',
+        'The grass moves in one direction for as far as anybody can see, which is very far indeed.',
+        'A storm walks across the horizon all afternoon without ever coming closer.',
+        'The sky is four-fifths of everything here, and it does not have anything in it.',
     ],
     saltmarsh: [
         'The tide comes in through a hundred channels at once and the arena is half the size it was at noon.',
         'Salt crusts on every wound, every strap, every lip.',
         'Birds by the thousand lift off the flats at once, for a reason nobody on the ground can see.',
         'The fog off the flats tastes of the sea, and there is no sea.',
+        'The water goes out, and a square mile of arena that was sea this morning is mud by noon.',
+        'Curlews call over the flats in the dark, which sounds a great deal like somebody being hurt a long way off.',
+        'The wrack line shifts up the shore by a metre, and everybody who is paying attention adjusts their camp.',
     ],
     boreal: [
         'The howling starts at dusk, a long way off, and by midnight it is not a long way off.',
         'Snow falls off a spruce with a sound like a body dropping, and everybody within earshot stops.',
         'Smoke from somebody\'s fire hangs in the trees for a mile, which is the same as a flag.',
         'The cold tonight is the dry, quiet kind that does not feel like anything until morning.',
+        'The spruce stand so close together that the wind in them is one continuous sound with no gaps.',
+        'A loon calls on the lake, gets an answer, and the two of them go on for an hour.',
+        'The flies lift off the muskeg in a sheet when anything crosses it, and settle again behind.',
     ],
     badlands: [
         'The rock spires throw shadows at dusk like a city that was never built.',
         'A dry wash on the far side of the arena runs for ten minutes and is dry again.',
         'Heat stands in the gullies like water.',
         'Something screams once from a canyon, and the echo takes longer to die than the scream did.',
+        'The rock ticks as it cools, all down the canyon, for an hour after the sun leaves it.',
+        'A raven follows somebody along the rim for half a mile and then loses interest.',
+        'Wind through the hoodoos makes a low note that does not seem to come from anywhere in particular.',
     ],
 };
 
