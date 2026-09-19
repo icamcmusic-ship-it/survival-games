@@ -7,8 +7,9 @@ headings the request named and kept to them — no heading is folded into
 another, and nothing is answered by pointing at a different section.
 
 It was written on commit `3729510` (`Merge pull request #62`), on a clean
-checkout, with the repository's own check roster run to completion and six
-purpose-built probes on top of it. Every number below was measured on this
+checkout, with the repository's own check roster run to completion at **both**
+the run count CI uses and the run count its guards need — §1.1 turns on the
+difference — and six purpose-built probes on top of it. Every number below was measured on this
 commit. Where a number contradicts an earlier audit, the earlier number is
 named and the discrepancy explained rather than quietly replaced — three of
 the previous seven audits reported a false zero because the instrument was
@@ -79,14 +80,21 @@ test:zone-features      PASS    470/470 zones carry an authored interior
 test:decisions          PASS    55.6% best-stance, 66.0% best-destination
 test:ui-affordances     PASS    0 hover-only hints, 0 unnamed value hints
 test:ui                 PASS    52/52 steps, no console errors
+test:metrics (n=400)    PASS    all regression guards hold — but see below
 test:metrics (n=1,600)  ****    1 regression guard breached — see §1.1
 ```
 
-**`npm run test:metrics` fails on this commit**, at the run count CI uses.
-This is the headline of §1 and the reason this report opens with it: the
-`quiet` archetype's signature fires for 4.5% of its holders against a floor of
-29%, and `quiet` was added by AUDIT-7 §12.5. The check is in `ci.yml`, so
-`main` is red.
+**`npm run test:metrics` passes at the run count CI uses and fails at
+n=1,600.** `ci.yml` runs it with no `METRICS_RUNS`, i.e. at 400 runs, where
+**no archetype clears `GUARD_MIN_SAMPLE` (500 entrants)** — so the signature
+guard abstains entirely and the run ends "All regression guards hold." At
+n=1,600, where every archetype clears 500 and the guard actually votes, it
+reports `1 regression guard(s) breached`.
+
+`main` is therefore **green, and wrong**: the `quiet` archetype's signature
+fires for 4.5% of its holders against a floor of 29%, and the roster cannot
+see it. That is a worse state than a red build, and §1.1 is about both halves
+of it.
 
 ### The probes
 
@@ -108,6 +116,15 @@ guessing which fields survive to the epilogue):
 
 Probe sources were removed before the commit; every number they produced is
 reproducible from the description above.
+
+### One claim this report made and withdrew
+
+An earlier draft of §1.1 said `main` was red. It is not: CI runs
+`test:metrics` at 400 runs, where the guard in question abstains on every row
+for want of sample. The underlying defect is unchanged and the correction made
+it a larger finding, not a smaller one — five guards, not one, are vacuous on
+every pull request. Recorded here rather than silently fixed, on the same rule
+the rest of this report follows.
 
 ### Five things this report checked and did not find
 
@@ -141,7 +158,7 @@ unexamined.
 Thirteen findings. Six are proven defects with a measured consequence; the rest
 are integrity gaps that have not yet produced a visible failure.
 
-## 1.1 `test:metrics` is red on `main`: the `quiet` signature fires for 4.5% of its holders — *proven, CI-breaking*
+## 1.1 The `quiet` signature fires for 4.5% of its holders, and CI cannot see it — *proven*
 
 At `METRICS_RUNS=1600`:
 
@@ -159,12 +176,41 @@ archetype signature fire rate (share of entrants whose set piece fired):
 
 An independent 400-run probe measured 2.2% (n=135). The finding reproduces.
 
-`npm run test:metrics` is a step in `.github/workflows/ci.yml`, which triggers
-on `push: [main]` as well as on pull requests, so the default branch is failing
-its own roster. The archetype it names was added six weeks ago by AUDIT-7
-§12.5, whose stated new rule for that batch was *"every signature must be
-reachable by a soloist."* The Quiet Professional's is reachable by a soloist
-and by almost nobody else — including its own holders.
+**But the guard never votes in CI.** `.github/workflows/ci.yml` runs
+`npm run test:metrics` with no `METRICS_RUNS`, so it runs at the default 400.
+The guard is `const fired = rates.filter(r => r[2] >= GUARD_MIN_SAMPLE)`
+(`scripts/metrics.ts:1101`, `GUARD_MIN_SAMPLE = 500`), and at 400 runs the
+script itself reports:
+
+```
+Note: duellist, career, opportunist, ... archivist drew fewer than 500
+entrants; reported above, but not guarded
+
+All regression guards hold.
+```
+
+**All thirty-five archetypes are under-sampled at the run count CI uses**, so
+the signature floor is applied to an empty set and passes vacuously. The
+abstention is deliberate and correct in itself — AUDIT-6 added it because "a
+guard with an empty sample behind it now reports and does not vote", after
+adding six archetypes dropped every one of them under the threshold. What is
+missing is the other half: **a guard that abstains on every single row should
+say so loudly, and CI should run the sample size its guards need.**
+
+So this is two findings in one:
+
+1. The Quiet Professional's signature is broken (below).
+2. `GUARD_MIN_SAMPLE` currently silences the entire archetype half of
+   `metrics.ts` in CI. Four guarded rows — signature floor, archetype win
+   spread, worst archetype, best archetype — plus the reaping-trait spread
+   (`1 of 59 traits clear 500 entrants; the guarded row above abstains`) are
+   all vacuous on every pull request. **Five of the roster's guards are
+   switched off in CI and nothing says so.**
+
+The archetype it names was added by AUDIT-7 §12.5, whose stated new rule for
+that batch was *"every signature must be reachable by a soloist."* The Quiet
+Professional's is reachable by a soloist and by almost nobody else — including
+its own holders.
 
 **Why.** `quietWork` (`engine/archetypeHooks.ts:836`) gates on
 `unseenStreak >= ARCHETYPE_HOOKS.quietUnseenCycles` (4), and
@@ -222,6 +268,11 @@ produces.
 3. Whichever is taken, add the streak distribution to `metrics.ts` as a
    reported line, because three systems key off it and none of them was
    measuring it.
+4. **Separately, and more importantly than either: make CI run
+   `METRICS_RUNS=1600`, or fail the run when every row of a guard is
+   under-sampled.** A guard that cannot fire is worse than no guard, because
+   the green tick is read as evidence. The 1,600-run pass takes minutes and is
+   the only configuration in which five of this file's guards mean anything.
 
 ## 1.2 The Broker's fourth preferred trait does not exist — *proven*
 
@@ -2460,7 +2511,7 @@ before these.**
 
 1. **§1.2** — the Broker's phantom trait, and the reference check that would
    have caught it.
-2. **§1.1** — the `quiet` signature, which is a red CI check.
+2. **§1.1** — the `quiet` signature, and the sample size that hides it.
 3. **§1.4** — the 34 duplicate achievements, before §11.3's sixty land on top
    of them.
 4. **§1.11 / §3.5** — seven proficiencies with population means under 0.4,
@@ -2627,7 +2678,8 @@ If only a handful of things get done, this is the order.
 
 **Red, this week:**
 
-1. **§1.1** — `test:metrics` is failing on `main`. The `quiet` signature.
+1. **§1.1** — make CI run `METRICS_RUNS=1600` (five guards are vacuous at
+   400), then fix the `quiet` signature that the 1,600-run pass fails on.
 2. **§1.2** — the Broker's phantom trait. One character, plus §1.5's guard.
 3. **§1.3** — `pickIndex(4)` → `pickIndex(3)` in `rollBody`. One character,
    and it unbends the whole body distribution.
@@ -2673,7 +2725,8 @@ If only a handful of things get done, this is the order.
   entries. The social layer's problem is fire rate, not architecture.
 - **More balance knobs.** 2,364 across 133 groups, all referenced, with two
   checks guarding the discipline in both directions. That is enough.
-- **Rewriting the check roster.** Sixteen checks, fifteen green, one red for a
-  real reason. The gaps are §1.5 (no cross-table reference check), §1.4 (no
-  duplicate-predicate check) and a handful of ratchets with slack —
-  additions, not replacements.
+- **Rewriting the check roster.** Sixteen checks, all green as CI runs them,
+  one of which fails at the sample size its own guards need. The gaps are
+  §1.1 (five guards vacuous at CI's run count), §1.5 (no cross-table
+  reference check), §1.4 (no duplicate-predicate check) and a handful of
+  ratchets with slack — additions, not replacements.
