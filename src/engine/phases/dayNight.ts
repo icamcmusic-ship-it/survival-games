@@ -11,8 +11,8 @@ import { processSponsors } from '../sponsors';
 import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, severEdge, depleteZone, edgeKey, travelCost, applyEdgeToll, edgeTimeCost, hasForceField, zoneSightlines, zoneFeatures, tickHiddenEdges, tickGarrisons, tickOpeningEdges, restoreEdge } from '../map';
 import { enforceCapacity, giveItem } from '../items';
 import {
-    addZoneThreat, advanceCycle, checkIntelLies, cycleOf, decayMemories, decayRelationships, decaySuspicion, noteRivalSighting, noteSighting, shareScoutSighting, tickIntelSharing } from '../memory';
-import { decayAllianceRegard, driftReputation, getRel, decayTrust } from '../relationships';
+    addZoneThreat, advanceCycle, checkIntelLies, cycleOf, noteRivalSighting, noteSighting, shareScoutSighting, tickIntelSharing } from '../memory';
+import { driftReputation, getRel } from '../relationships';
 import { clampTribute } from '../vitals';
 import { clearBleeding, healInjury, openWound } from '../wounds';
 import { isNoticed } from '../stealth';
@@ -20,13 +20,13 @@ import { pickDestination } from '../movement';
 import { objectiveHolds, objectiveLabel, objectiveStep, updateObjective } from '../objectives';
 import { checkTraps, hasCamp, tickTraps } from '../fieldcraft';
 import { allianceRecords, areLovers, fractureBlocs, isHostileTo, leaderFor } from '../alliance';
-import { decayFear } from '../fear';
+
 import { decayNotoriety, reputationPriors, spreadNotoriety } from '../notoriety';
 import { updateStance } from '../stance';
 import { runStanceBeats } from '../stanceBeats';
 import { runArchetypeSignatures, tickGhosts, tickScholars } from '../archetypeHooks';
-import { isActive, isDowned, tickDowned } from '../downed';
-import { processSpoilage, processVitals } from '../survival';
+import { isActive, isDowned } from '../downed';
+import { decayUpkeep, postActionUpkeep, preActionUpkeep } from './upkeep';
 import {
     applyArenaEvent, fill, handleInsanity, idleAction, isBreakingDown,
     pendingChain, pickTerrainEvent, resolveMuttAttack, resolvePairEncounter,
@@ -192,8 +192,10 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     tickGarrisons(ctx);
 
     // 1-2. Spoilage, then vitals, exposure, wounds and supplies.
-    processSpoilage(ctx);
-    processVitals(ctx, time);
+    // AUDIT-9 B01: through the shared lifecycle, so the feast — which replaces
+    // this phase rather than adding one — runs the same upkeep rather than a
+    // copy of it that can drift. See `phases/upkeep.ts`.
+    preActionUpkeep(ctx, time);
 
     // 3. Crafting, situational awareness, stance and movement.
     // Resolution order is drawn fresh every cycle. Each tribute fully resolves
@@ -223,7 +225,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         // A §5: every rival in view is a small lesson in how dangerous they
         // are. `noteRivalSighting` existed for exactly this and had no caller,
         // so a read only ever improved by meeting, fighting or bleeding.
-        here.forEach(o => { if (o.id !== t.id && isHostileTo(t, o)) noteRivalSighting(t, o.id); });
+        // AUDIT-9 B11: seeing somebody is also learning where they are. The
+        // state/tribute arguments are what write that belief.
+        here.forEach(o => { if (o.id !== t.id && isHostileTo(t, o)) noteRivalSighting(t, o.id, ctx.state, o); });
         // §4.4/§5.9: if this is the group's scout, that sighting belongs to
         // everybody wearing the same colours.
         shareScoutSighting(ctx.state, t, t.zone, hostiles, depletionOf(ctx.state, t.zone));
@@ -298,7 +302,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // whole question it asks is who is standing in the zone by the end of the
     // cycle — the ally who got there in time, the enemy who got there first,
     // or nobody at all.
-    tickDowned(ctx);
+    postActionUpkeep(ctx);
 
     // 4a. Whether anyone has stopped wanting to win. Resolve drifts on what
     // this cycle actually did to them, then the ones who have run out act on it.
@@ -409,13 +413,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // and finds out. Tested before memories decay, while the invented threat
     // the liar planted is still there to be contradicted.
     checkIntelLies(ctx);
-    decayMemories(ctx.state);
-    decayRelationships(ctx.state);
-    // §4.2 (audit): stored trust heals on its own clock.
-    decayTrust(ctx.state);
-    decayAllianceRegard(ctx.state);
-    decayFear(ctx.state);
-    decaySuspicion(ctx.state);
+    // §4.2 (audit): stored trust heals on its own clock. AUDIT-9 B01: the
+    // whole decay block is the shared lifecycle's third stage.
+    decayUpkeep(ctx);
     // §3.5: the two contactless channels — the sky, and the zone next door —
     // then the decay, so a name nobody has heard again fades. Ordered after
     // `decayFear` for the same reason: this cycle's belief is built on top of

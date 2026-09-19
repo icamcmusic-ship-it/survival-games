@@ -23,6 +23,8 @@ import { hopsTo, severedEdgeSet } from '../map';
 import { pickNeededGift } from '../sponsors';
 import { isAggressiveStance, isEvasiveStance } from '../../data/stances';
 import { loseSanity } from '../sanityBands';
+import { isActive } from '../downed';
+import { decayUpkeep, postActionUpkeep, preActionUpkeep } from './upkeep';
 
 /**
  * The global attribute ceiling, borrowed as a normaliser: arrival order needs
@@ -196,8 +198,8 @@ function claimPacks(
         }
         const minted = themedGift(t);
         giveItem(t, minted);
-        t.vitals.hunger = Math.max(0, t.vitals.hunger - 40);
-        t.vitals.thirst = Math.max(0, t.vitals.thirst - 40);
+        // AUDIT-9 B13: only what the pack actually contained feeds them.
+        eatAtTable(ctx, t, [minted]);
 
         // §7: whoever tampered with the table is long gone; the pack is not.
         const tampering = (ctx.state.feastTampering ?? []).find(x => x.byId !== t.id);
@@ -258,6 +260,57 @@ function claimPacks(
     });
 }
 
+/**
+ * AUDIT-9 B13: recovery has to have a physical cause.
+ *
+ * Every branch of the feast used to hand out a flat `hunger -= 40; thirst -=
+ * 40` for having been at the table, whatever was on it. Reproduced: a
+ * weapons-only table — which the announcement explicitly describes as "not a
+ * crumb of food anywhere on it" — took hunger and thirst from 100 to 60 on
+ * every tribute who walked away with a sword. The feast was quietly the
+ * strongest food source in the game and the announced tradeoff was a lie.
+ *
+ * Nourishment now comes from provisions that actually exist: the food and
+ * water the table laid out (which is theme-dependent and can be nothing at
+ * all), plus whatever the tribute eats out of their own pack while they are
+ * standing somewhere safe enough to. A weapons table feeds nobody; a banquet
+ * feeds everybody; a district pack feeds you if the Gamemakers packed food in
+ * it, which is what `pickNeededGift` decides.
+ *
+ * Returns what was actually eaten and drunk, for the narration.
+ */
+function eatAtTable(ctx: SimContext, t: Tribute, provisions: Item[]): { ate: boolean; drank: boolean } {
+    let ate = false;
+    let drank = false;
+    const take = (kind: 'food' | 'water') => {
+        // The table first: a gift they have just been handed is right there.
+        const offered = provisions.find(i => i.type === kind);
+        if (offered) {
+            if (kind === 'food') t.vitals.hunger = Math.max(0, t.vitals.hunger - FEAST.mealHunger);
+            else t.vitals.thirst = Math.max(0, t.vitals.thirst - FEAST.mealThirst);
+            return true;
+        }
+        // Otherwise their own pack, which is a real cost: the ration is gone.
+        const own = consumeOne(t, i => i.type === kind);
+        if (!own) return false;
+        if (kind === 'food') t.vitals.hunger = Math.max(0, t.vitals.hunger - FEAST.packMealHunger);
+        else t.vitals.thirst = Math.max(0, t.vitals.thirst - FEAST.packMealThirst);
+        return true;
+    };
+    if (t.vitals.hunger > 0) ate = take('food');
+    if (t.vitals.thirst > 0) drank = take('water');
+    clampTribute(t);
+    return { ate, drank };
+}
+
+/** One line for what the table did or did not do for somebody's stomach. */
+function mealNote(fed: { ate: boolean; drank: boolean }): string {
+    if (fed.ate && fed.drank) return 'They eat and drink before they go.';
+    if (fed.ate) return 'They eat before they go.';
+    if (fed.drank) return 'They drink before they go.';
+    return 'There is nothing on the table to eat and nothing to drink.';
+}
+
 export function processFeast(ctx: SimContext) {
     // §4.6: the feast is the arena's own pressure point — everybody in one
     // place, wanting the same things — which makes it exactly where a triangle
@@ -271,6 +324,24 @@ export function processFeast(ctx: SimContext) {
     // day, at half rate relative to every other day in the run. The scheduled
     // day/night phases both advance it; so does this one.
     advanceCycle(ctx.state);
+    /*
+     * AUDIT-9 B01: a feast replaces the day's *action*, not the day.
+     *
+     * This phase advanced the cycle and then did none of the work a cycle
+     * costs. Reproduced: an isolated non-attendee came out of a feast day at
+     * exactly the same health, hunger and thirst it went in with, bleeding
+     * included; a downed tribute at zero health crossed the map and was still
+     * downed at the end. Scheduling a feast changed physiology for the whole
+     * arena, attendees and hermits alike, which is both unrealistic and — since
+     * the Gamemakers choose when to schedule one — a balance lever nobody
+     * declared.
+     *
+     * The same three-stage lifecycle the day phase runs, from the same module.
+     * Stage 1 here, before attendance is decided, so the body a tribute weighs
+     * the walk with is the one the elapsed time actually left them. A feast is
+     * held in daylight, so the day profile is the honest one.
+     */
+    preActionUpkeep(ctx, 'day');
     const alive = getAlive(ctx.state);
     // The same omission one field over. `daysSurvived` is written by the day
     // phase and by the bloodbath, and a feast *replaces* that day's day-phase —
@@ -292,6 +363,16 @@ export function processFeast(ctx: SimContext) {
     const theme = ctx.state.feastTheme ?? 'district-gifts';
     ctx.state.feastTheme = undefined;
     const tablePool = themedPool(theme);
+    /*
+     * AUDIT-9 B13: what is on this table that anybody can eat or drink.
+     *
+     * Sampled from the theme's own pool rather than asserted, so the answer
+     * tracks the announcement exactly: the banquet is full of it, the district
+     * packs may or may not hold any, and the weapons, medical, fieldcraft,
+     * token and empty tables hold none at all — which is what their
+     * announcements say and what the feed now reflects.
+     */
+    const tableProvisions = tablePool.filter(i => i.type === 'food' || i.type === 'water');
     /*
      * Audit 3 §5.4: two of the new themes are about there being nothing worth
      * taking, which is the feast's most interesting shape and the one it could
@@ -323,7 +404,22 @@ export function processFeast(ctx: SimContext) {
     const hopsOut = new Map<string, number>();
     const collapsed = ctx.state.collapsedZones ?? [];
     const severed = severedEdgeSet(ctx.state);
+    const incapable = [] as typeof alive;
     alive.forEach(t => {
+        /*
+         * AUDIT-9 B02: coming to the feast is an action, and a tribute on the
+         * ground cannot take one.
+         *
+         * Attendance selected from `alive`, not from *capable*, so a downed
+         * tribute at zero health walked across the arena under their own power
+         * and arrived at the Cornucopia still downed. `isActive` is the
+         * engine's existing answer to "can this person do a thing", and it is
+         * the same gate the day phase puts in front of crafting, stance,
+         * intention and movement. Somebody may still be carried out of the
+         * feast by an ally — the rescue window in stage 2 below owns that —
+         * but they do not travel to one on their own legs.
+         */
+        if (!isActive(t)) { incapable.push(t); return; }
         // The feast was announced a day ago and the journey was real: anyone
         // still more than two hops out did not make it, whatever they wanted.
         const hops = hopsTo(ctx.state.arena, t.zone, cornucopia, collapsed, severed);
@@ -358,6 +454,14 @@ export function processFeast(ctx: SimContext) {
     };
 
     announce(decliners, FEAST_TEXTS.decline, names => `${names} weigh the feast against the odds and stay exactly where they are.`);
+    if (incapable.length > 0) {
+        ctx.logEvent(
+            `${incapable.map(t => t.name).join(', ')} ${incapable.length > 1 ? 'are' : 'is'} in no condition to walk anywhere, `
+            + 'and the table is not brought to them.',
+            incapable.map(t => t.id),
+            { category: 'feast' }
+        );
+    }
     if (strandedFar.length > 0) {
         ctx.logEvent(
             `${strandedFar.map(t => t.name).join(', ')} ${strandedFar.length > 1 ? 'are' : 'is'} too far out to reach the Cornucopia before the table is withdrawn.`,
@@ -452,11 +556,10 @@ export function processFeast(ctx: SimContext) {
                 [t1.id, t2.id],
                 { zone: cornucopia, category: 'alliance' }
             );
-            [t1, t2].forEach(t => {
-                t.vitals.hunger = Math.max(0, t.vitals.hunger - 40);
-                t.vitals.thirst = Math.max(0, t.vitals.thirst - 40);
-                clampTribute(t);
-            });
+            // AUDIT-9 B13: what covering each other buys them is an unhurried
+            // few minutes at the table — which feeds them only if there is
+            // anything on it, and otherwise only from their own packs.
+            [t1, t2].forEach(t => eatAtTable(ctx, t, tableProvisions));
             continue;
         }
 
@@ -512,10 +615,13 @@ export function processFeast(ctx: SimContext) {
             if (barrenTable) return;
             const minted = themedGift(t);
             giveItem(t, minted);
-            t.vitals.hunger = Math.max(0, t.vitals.hunger - 40);
-            t.vitals.thirst = Math.max(0, t.vitals.thirst - 40);
-            clampTribute(t);
-            ctx.logEvent(`${t.name} leaves the feast with the District ${t.district} pack — ${itemPhrase(minted)} — and a full stomach.`, [t.id], { zone: cornucopia, category: 'feast' });
+            // AUDIT-9 B13: "and a full stomach" was printed over a weapons
+            // table. The line now reports what the pack actually held.
+            const fed = eatAtTable(ctx, t, [minted]);
+            ctx.logEvent(
+                `${t.name} leaves the feast with the District ${t.district} pack — ${itemPhrase(minted)}. ${mealNote(fed)}`,
+                [t.id], { zone: cornucopia, category: 'feast' },
+            );
         });
     }
 
@@ -537,9 +643,13 @@ export function processFeast(ctx: SimContext) {
         const item2 = themedGift(winner);
         if (claimed.has(winner.id)) giveItem(winner, item1);
         else giveItem(winner, item1, item2);
-        winner.health = Math.min(100, winner.health + 50);
-        winner.vitals.hunger = 0;
-        winner.vitals.thirst = 0;
+        // AUDIT-9 B13: winning the ground is not a meal. The health is the
+        // Capitol's medical package, which every table carries; the stomach is
+        // whatever was actually laid out, eaten twice over because they have
+        // the whole table and all the time in the world.
+        winner.health = Math.min(100, winner.health + FEAST.winnerHeal);
+        eatAtTable(ctx, winner, [item1, item2]);
+        eatAtTable(ctx, winner, [item1, item2]);
         clampTribute(winner);
         ctx.logEvent(
             fill(ctx.pickText(FEAST_TEXTS.claim), { tribute: winner.name, items: `${item1.name} and ${item2.name}` }),
@@ -548,6 +658,14 @@ export function processFeast(ctx: SimContext) {
         );
         }
     }
+    // AUDIT-9 B01: lifecycle stages 2 and 3. The rescue window resolves after
+    // the fighting, exactly as it does in the day phase — which is also the
+    // only way somebody who was on the ground when the table was laid leaves
+    // this phase in a different state than they entered it — and then
+    // everything that fades on the cycle clock fades, because the cycle
+    // happened whatever the Gamemakers scheduled in it.
+    postActionUpkeep(ctx);
+    decayUpkeep(ctx);
     // §1.3: the feast is the one place everybody is in the same zone by
     // design, and the run-record differ never observed it.
     tickRunRecords(ctx);

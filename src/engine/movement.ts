@@ -1,9 +1,10 @@
 import { Tribute, Zone } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
-import { FEAR, MEMORY, MOVEMENT, NOTORIETY, DECISION_TRACE, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, RISK } from '../data/balance';
+import { CONFUSION, FEAR, MEMORY, MOVEMENT, NOTORIETY, DECISION_TRACE, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, RISK } from '../data/balance';
+import { confusionOf } from './confusion';
 import { SimContext } from './context';
 import { effectiveResources, zoneFeatures } from './map';
-import { ensureMemory, hasVengeanceAgainst, reckonsRegrown, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
+import { believedIn, ensureMemory, hasVengeanceAgainst, reckonsRegrown, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
 import { fearInZone } from './fear';
 import { notorietyInZone } from './notoriety';
 import { rumourPull } from './rumours';
@@ -66,8 +67,11 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
 
         // A vengeance target's last known position beats every other consideration.
         if (ensureMemory(t).vengeance.length > 0) {
+            // AUDIT-9 B11: the target's last *known* position, not their
+            // actual one. A sworn hunter walks to where they saw them, and
+            // arrives to find them gone — which is what a hunt is.
             const hunted = state.tributes.filter(o =>
-                o.status === 'alive' && hasVengeanceAgainst(t, o.id) && o.zone === z.name);
+                o.status === 'alive' && hasVengeanceAgainst(t, o.id) && believedIn(state, t, o.id, z.name));
             if (hunted.length > 0 && rivals > 0) score += 4;
         }
 
@@ -124,8 +128,10 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
         // A1: Shadowing follows one zone behind a specific person rather than
         // scoring the map at all.
         if (t.stance === 'Shadowing' && t.shadowing) {
+            // AUDIT-9 B11: a shadow follows the trail they have, not a live
+            // feed. Losing the quarry is a real outcome of shadowing now.
             const quarry = state.tributes.find(o => o.id === t.shadowing!.targetId);
-            if (quarry?.status === 'alive' && quarry.zone === z.name) score += MOVEMENT.shadowFollowWeight;
+            if (quarry?.status === 'alive' && believedIn(state, t, quarry.id, z.name)) score += MOVEMENT.shadowFollowWeight;
         }
 
         // A §7: a tribute with their legs opened does not pick the far zone.
@@ -156,13 +162,30 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
     // sharpen. A flat clamp gave every bad zone the same weight as every other
     // bad zone, and there are many more bad zones than good ones.
     const lowest = scored.reduce((lo, o) => Math.min(lo, o.score), Infinity);
+    /*
+     * §(requests): how decisively they are able to choose.
+     *
+     * The ranking above is the tribute's honest read of the map; this is
+     * whether they are in any condition to act on it. Exhausted, dehydrated,
+     * concussed, bleeding, coming apart, in the dark — the sharpness falls and
+     * the draw flattens toward "one of the ones that looked all right", which
+     * is what a bad decision made by a person rather than by a dice roll looks
+     * like. A rested, unhurt tribute in daylight sits at zero confusion and
+     * gets exactly the behaviour this scorer has always had.
+     */
+    const confusion = confusionOf(ctx, t);
+    const sharpness = Math.max(
+        MOVEMENT.destinationSharpness - confusion * CONFUSION.destinationFlattening,
+        MOVEMENT.destinationSharpness - CONFUSION.destinationFlattening,
+    );
     const weighted = scored.map(o => ({
         o,
-        w: Math.pow(o.score - lowest + MOVEMENT.destinationFloor, MOVEMENT.destinationSharpness),
+        w: Math.pow(o.score - lowest + MOVEMENT.destinationFloor, sharpness),
     }));
 
     // A §1: the top few destinations, for the tribute sheet's trace.
     if (t.decisionTrace) {
+        t.decisionTrace.confusion = Math.round(confusion * 100) / 100;
         t.decisionTrace.destinations = [...scored]
             .sort((a, b) => b.score - a.score)
             .slice(0, DECISION_TRACE.topN)

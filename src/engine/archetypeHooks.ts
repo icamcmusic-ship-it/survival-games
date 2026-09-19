@@ -419,7 +419,23 @@ export const SIGNATURES: Record<string, Signature> = {
 
     /** Captor: the weakest person in the sector is offered a deal they cannot refuse. */
     captorLeverage: (ctx, t) => {
-        const here = others(ctx, t).filter(o => o.zone === t.zone && o.health < t.health && !o.allianceId);
+        /*
+         * AUDIT-9: leverage needs somebody *isolated*, not somebody friendless.
+         *
+         * The filter required the mark to have no alliance at all, and that
+         * was always slightly the wrong question — it is the reason this set
+         * piece sat near its firing floor, and it fell under it the moment
+         * floor pacts started putting most of the field in an alliance before
+         * the gong. A tribute with three allies two zones away is exactly as
+         * extortable as one with none, and considerably more interesting,
+         * because they have something to get back to.
+         *
+         * What actually protects somebody is an ally standing next to them.
+         * That is the test now.
+         */
+        const alliesPresent = (o: Tribute) => o.allianceId !== undefined
+            && getAlive(ctx.state).some(a => a.id !== o.id && a.zone === o.zone && a.allianceId === o.allianceId);
+        const here = others(ctx, t).filter(o => o.zone === t.zone && o.health < t.health && !alliesPresent(o));
         if (here.length === 0) return false;
         const mark = here.sort((a, b) => a.health - b.health)[0];
         grantTruce(ctx, t, mark, ARCHETYPE_HOOKS.brokeredTruceCycles, 'extortion');
@@ -699,7 +715,27 @@ export const SIGNATURES: Record<string, Signature> = {
          * standing here who is worse off than the broker on that axis — and the
          * `goods` check below already proves the broker has something to trade.
          */
-        const need = (o: Tribute) => Math.max(o.vitals.hunger, o.vitals.thirst);
+        /*
+         * AUDIT-9: a wound is a need, and it was the one this filter could not
+         * see.
+         *
+         * `need` read hunger and thirst only, so the single most broker-ish
+         * client in the arena — somebody bleeding, with nothing to dress it,
+         * standing next to a person holding a kit — did not register as a
+         * client at all unless they also happened to be hungry. That mattered
+         * more once looting stopped being automatic: smaller inventories all
+         * round means fewer clients qualify on the inventory-count clause, and
+         * this set piece slipped under its firing floor as a result. Injury is
+         * scored on the same 0-100 scale as the vitals so the sort still
+         * compares like with like.
+         */
+        const need = (o: Tribute) => Math.max(
+            o.vitals.hunger,
+            o.vitals.thirst,
+            o.injuries.bleeding || o.injuries.infected || o.injuries.poisoned
+                ? ARCHETYPE_HOOKS.brokerWoundNeed
+                : 0,
+        );
         /*
          * AUDIT-7 §8.2: ...and the client pool excluded the people a broker
          * actually stands next to.

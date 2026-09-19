@@ -205,7 +205,24 @@ export function enforceCharters(ctx: SimContext) {
             // clause instead of only fallout. The group closes the loophole
             // the offender just walked through.
             if (ctx.rng.chance(CHARTER.renegotiateChance)) {
-                const pool: CharterRule[] = ['share-food', 'no-fighting', 'hold-the-camp', 'no-hunting-alone'];
+                /*
+                 * AUDIT-9: the group can close any loophole, not four of them.
+                 *
+                 * This pool held four of the seven clauses `rollCharter` can
+                 * write, so a group that had just watched somebody strip a
+                 * body could not respond by writing the rule against stripping
+                 * bodies — the one clause the breach was actually about. It
+                 * also capped how deep a charter could get: an initial charter
+                 * is at most three clauses and the pool could only ever add
+                 * the ones it listed, which is why `deepestCharter >= 5` sat
+                 * right at the edge of reachable and fell off it as soon as
+                 * breaches got rarer. Every clause the group can agree at
+                 * formation, they can agree after a breach.
+                 */
+                const pool: CharterRule[] = [
+                    'share-food', 'no-fighting', 'hold-the-camp', 'no-hunting-alone',
+                    'no-looting-the-fallen', 'share-intel', 'leader-decides-targets',
+                ];
                 const missing = pool.filter(r => !record.charter!.includes(r));
                 if (missing.length > 0) {
                     const added = ctx.rng.pick(missing);

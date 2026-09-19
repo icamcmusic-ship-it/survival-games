@@ -36,7 +36,24 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
                 className="panel p-6 max-w-lg w-full space-y-5 my-8"
                 onClick={e => e.stopPropagation()}
             >
-                <div className="flex justify-between items-start gap-4">
+                {/*
+                  * AUDIT-9: the close control does not scroll away.
+                  *
+                  * The panel is taller than a short viewport and the overlay
+                  * is what scrolls, so once anybody had scrolled down to a
+                  * setting near the bottom the only labelled way out of the
+                  * dialog was above the fold — a modal you have to scroll back
+                  * up to leave. Escape still worked, which is exactly the kind
+                  * of "works if you know" that an affordance check is for; the
+                  * browser harness found it as soon as two settings were added
+                  * and it could no longer reach the button at all.
+                  *
+                  * Sticky rather than fixed so it stays inside the panel's own
+                  * padding and dark mode, and `-mx-6 px-6 -mt-6 pt-6` so the
+                  * background it paints covers the panel's full width as it
+                  * passes under the content.
+                  */}
+                <div className="sticky top-0 z-10 -mx-6 px-6 -mt-6 pt-6 pb-3 bg-[var(--paper-panel)] flex justify-between items-start gap-4">
                     <h2 className="display-title text-2xl">Settings</h2>
                     <button onClick={onClose} className="btn btn-sm btn-ghost" aria-label="Close settings">
                         <X className="w-4 h-4" /> Close
@@ -212,6 +229,48 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
                         <span className="block text-xs text-[var(--color-ink-500)]">
                             Hides death and kill text and the odds board until the epilogue, so a shared run can be watched
                             by somebody seeing it for the first time.
+                        </span>
+                    </span>
+                </label>
+
+                {/* §(requests): "add a stripped down mode that only shows raw
+                    facts without prose". A rendering register, not an engine
+                    mode — the same seed is the same Games either way, and
+                    switching mid-run does not make it a different run. */}
+                <div className="space-y-1.5">
+                    <span className="eyebrow">Chronicle</span>
+                    <div className="seg w-fit">
+                        {([['broadcast', 'Broadcast'], ['facts', 'Facts only']] as const).map(([id, label]) => (
+                            <button
+                                key={id}
+                                onClick={() => setPrefs({ chronicleStyle: id })}
+                                aria-pressed={prefs.chronicleStyle === id}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                    <span className="block text-xs text-[var(--color-ink-500)]">
+                        Facts only reports the run as a record rather than as Capitol coverage: every event that changed
+                        the state, in order, with its cast and its place, and no sentence around it.
+                    </span>
+                </div>
+
+                {/* §(requests): "remove internal sanity reasoning, but still
+                    track it. Only show very important sanity changes." */}
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input
+                        type="checkbox"
+                        checked={prefs.quietSanity}
+                        onChange={e => setPrefs({ quietSanity: e.target.checked })}
+                        className="mt-1"
+                    />
+                    <span>
+                        <span className="block text-sm">Quiet the running commentary on sanity</span>
+                        <span className="block text-xs text-[var(--color-ink-500)]">
+                            Keeps the breakdowns, the hallucinations and the oaths; drops the line-by-line narration of
+                            everybody's state of mind. Nothing about how sanity works changes — it is still tracked, still
+                            drains, and still decides the endgame.
                         </span>
                     </span>
                 </label>

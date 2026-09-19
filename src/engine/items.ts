@@ -1,3 +1,5 @@
+import { craftOf } from '../data/districts';
+import { ITEM_AFFINITY } from '../data/balance';
 import { GameState, Item, ItemQuality, Tribute } from '../models/types';
 import { arenaHasLaw } from './gamesProfile';
 import { INVENTORY, ITEM_CONDITION, PHYSIQUE, QUALITY, SITUATIONAL_KIT } from '../data/balance';
@@ -306,4 +308,40 @@ export function consumeOne(t: Tribute, predicate: (i: Item) => boolean): Item | 
         return item;
     }
     return t.inventory.splice(idx, 1)[0];
+}
+
+/**
+ * §(requests): what a tribute reaches for.
+ *
+ * District craft decided how *well* somebody fought with a weapon and nothing
+ * decided what they picked up, so the trident was a District 4 statistic
+ * rather than a District 4 identity: the girl from 4 came up from the horn
+ * holding a mace as often as anybody else, fought worse with it than she would
+ * have with the trident, and the broadcast never got the shot it exists for.
+ *
+ * This biases a draw toward the tribute's own trade without guaranteeing it.
+ * The signature weapon is weighted hardest, the rest of the district's
+ * affinity list next, its weapon classes after that — so a District 7 tribute
+ * usually finds an axe, sometimes finds a billhook, and occasionally finds
+ * whatever was actually lying there, which is what makes the usual case worth
+ * watching. Nothing here creates an item that is not already in the pool: an
+ * arena that has no tridents in it does not grow one for District 4.
+ */
+export function pickForDistrict(rng: RNG, t: Tribute, pool: Item[]): Item {
+    if (pool.length === 0) throw new Error('pickForDistrict: empty pool');
+    const craft = craftOf(t.district);
+    const weight = (i: Item) => {
+        if (i.id === craft.signatureWeapon) return ITEM_AFFINITY.signatureWeight;
+        if (craft.affinityItems.includes(i.id)) return ITEM_AFFINITY.affinityWeight;
+        if (i.weaponClass !== undefined && craft.affinityClasses.includes(i.weaponClass)) {
+            return ITEM_AFFINITY.classWeight;
+        }
+        return 1;
+    };
+    let roll = rng.nextFloat() * pool.reduce((sum, i) => sum + weight(i), 0);
+    for (const item of pool) {
+        roll -= weight(item);
+        if (roll <= 0) return item;
+    }
+    return pool[pool.length - 1];
 }

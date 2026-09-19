@@ -1,3 +1,4 @@
+import { factLineOf, isAtmosphere, isInternalSanity } from '../ui/chronicleFacts';
 import { PRE_ARENA_PHASE_SET, dayPhaseLabel } from '../ui/phaseLabels';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTransientFlag } from '../ui/useTransientFlag';
@@ -313,6 +314,41 @@ export function FeedLine({ log, showTag = true, animate = true, cast, onSelectTr
 }) {
     const meta = categoryMeta(log.category);
     const spoilerSafe = useStore(prefsStore, p => p.spoilerSafe);
+    /*
+     * §(requests): the stripped-down chronicle, and the quiet mind.
+     *
+     * Both are rendering decisions over an unchanged event stream — the same
+     * seed produces the same Games in either register, and switching mid-run
+     * does not make it a different run. `facts` reports the record rather than
+     * the broadcast; `quietSanity` drops the running commentary on a tribute's
+     * state of mind while leaving every marked moment (a breakdown, a
+     * hallucination, an oath) and the whole of the underlying simulation
+     * exactly where they were.
+     */
+    const chronicleStyle = useStore(prefsStore, p => p.chronicleStyle);
+    const quietSanity = useStore(prefsStore, p => p.quietSanity);
+    const facts = chronicleStyle === 'facts';
+
+    if (quietSanity && isInternalSanity(log)) return null;
+    if (facts && isAtmosphere(log)) return null;
+
+    if (facts) {
+        const byId = new Map((cast ?? []).map(t => [t.id, t]));
+        return (
+            <div
+                data-log-id={log.id}
+                className={`feed-item feed-item-facts ${log.important ? 'is-important' : ''}`}
+                style={{ ['--cat' as string]: meta.color }}
+            >
+                {log.clock && <span className="feed-clock">{log.clock}</span>}
+                <span className="font-mono text-[13px]">
+                    {spoilerSafe && !revealed && (log.category === 'death' || log.category === 'kill')
+                        ? 'DEATH · withheld while spoiler-safe viewing is on'
+                        : factLineOf(log, byId)}
+                </span>
+            </div>
+        );
+    }
 
     // §2.5: watching, rather than replaying. A death is still an event on the
     // timeline — hiding it entirely would leave the feed making no sense — but

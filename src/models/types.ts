@@ -1358,6 +1358,16 @@ export interface DecisionTrace {
      * `percentile` is the pick's score position across all options (1 = best).
      */
     destinationPick?: { zone: string; rank: number; of: number; percentile: number };
+    /**
+     * §(requests): how clearly this tribute was thinking when they chose,
+     * 0 (rested and lucid) to `CONFUSION.max`.
+     *
+     * Recorded so an odd-looking decision has a visible cause on the tribute
+     * sheet — "they were on their fourth night without sleep, concussed and in
+     * the dark" — rather than reading as the simulation misbehaving. See
+     * `engine/confusion.ts`.
+     */
+    confusion?: number;
 }
 
 /** A §3: a goal held behind the errand queue. */
@@ -1604,6 +1614,22 @@ export interface RivalRecord {
      * blend the visible-power guess toward the truth for known opponents.
      */
     read?: number;
+    /**
+     * AUDIT-9 B11: where this tribute last *saw* that person, and when.
+     *
+     * The decision layer used to read the rival's live `zone` — gated on
+     * recent contact, which made it look like a belief and is not one. Moving
+     * an unseen rival moved the observer's dread with them: 80 points of fear
+     * relocated from the old zone to the new one the instant the rival walked,
+     * with no observation in between. A belief has to be able to be *wrong*,
+     * which means it has to be stored at the moment it was formed.
+     *
+     * Written by `noteContact` and `noteRivalSighting` (the two places an
+     * observation actually happens) and read through `rememberedPlaceOf`,
+     * which expires it on the same clock as every other sighting.
+     */
+    lastSeenZone?: string;
+    lastSeenCycle?: number;
 }
 
 /**
@@ -2339,6 +2365,31 @@ export interface GameState {
      * uninterrupted run would have.
      */
     lastPickedText?: Record<string, string>;
+    /**
+     * AUDIT-9 B12: the narration stream's own draw counter.
+     *
+     * `pickText` used to draw off `ctx.rng` — the same stream every mechanical
+     * decision in the phase draws from — so the *number of lines in a flavour
+     * pool* decided what the next combat roll was. A one-entry pool consumed
+     * nothing; adding a second sentence to it consumed a draw and shifted every
+     * subsequent outcome in the run. Editing prose was a balance change.
+     *
+     * Narration now runs on its own stream, derived per draw from
+     * `seed-prose-<n>` where `n` is this counter. It lives on the state rather
+     * than on the context so a resumed run continues the same narration
+     * sequence, exactly as `lastPickedText` does.
+     */
+    proseDraws?: number;
+    /**
+     * §(requests): which lines of each flavour pool this run has already used.
+     *
+     * `lastPickedText` remembered one line deep, so a pool of eight produced
+     * four sentences on rotation across a whole Games. This is the full used
+     * set per pool: nothing repeats until everything else has been said. Reset
+     * when a pool is exhausted. Keyed by the pool's first line, like
+     * `lastPickedText`, and serialised with the save for the same reason.
+     */
+    usedText?: Record<string, string[]>;
     /** Zone name -> fraction of its printed yield currently stripped out (0-1). */
     zoneDepletion?: Record<string, number>;
     /** Zone name -> whatever is currently happening to it beyond depletion. */
@@ -2361,6 +2412,39 @@ export interface GameState {
      * this is the run-local exception list layered on top of it.
      */
     severedEdges?: string[];
+    /**
+     * AUDIT-9 B06: the record book this run was played under, snapshotted at
+     * creation.
+     *
+     * The engine used to read the player's persistent history straight out of
+     * storage during the reaping, so a shared seed did not describe a run: the
+     * same link produced different opening sponsor trust for two players, and
+     * for the same player after a few more Games. Snapshotting it here makes
+     * the campaign an *input* to the simulation like every other input —
+     * carried by the save, exportable with a share link, and omittable on
+     * purpose when the player wants the seed rather than the run.
+     *
+     * Undefined means no history, which is what every headless harness and
+     * every first run gets. See `engine/campaign.ts`.
+     */
+    campaign?: CampaignSnapshot;
+    /**
+     * AUDIT-9 §5: how many structures have come down this Games.
+     *
+     * Per-run rather than per-tribute. `Tribute.collapsesSurvived` answers
+     * "was this person under one"; this answers "is the arena coming apart",
+     * which is a different question and the one nothing could ask.
+     */
+    structuresCollapsed?: number;
+    /**
+     * AUDIT-9 (audit B20): who dealt the most recent tribute-dealt kill.
+     *
+     * `firstBloodId` has existed since the side-bet book needed it and there
+     * was no counterpart, so "First and Last" — a title the audit lists as
+     * shared by two different achievements — could only ever be tested as
+     * "first blood, plus some other number", which is not what it says.
+     */
+    lastKillerId?: string;
     /** Monotonic day/night cycle counter, used for memory and decay timings. */
     cycle?: number;
     /**
@@ -2732,6 +2816,14 @@ export interface GameState {
     oddsHistory?: Record<number, Record<string, number>>;
     /** §6.7: per-event Gamemaker usage, for cooldowns, escalating cost and overuse. */
     gamemakerUse?: Record<string, { lastCycle: number; uses: number }>;
+    /**
+     * AUDIT-9 B05: how many manual/scheduled interventions this run has fired.
+     *
+     * Interventions do not enter through a phase, so they have no (seed,
+     * phase, day) to reseed from; this counter is what makes their stream
+     * reproducible across a save and resume. See `triggerGamemakerEvent`.
+     */
+    gamemakerCommands?: number;
     /** §6.6: tribute id -> cycle a player parachute last reached them. Blocs read it as "covered". */
     playerGiftCycle?: Record<string, number>;
     /** §7.6: tribute id -> cycle their mentor pointedly withheld a gift. */
@@ -2761,12 +2853,25 @@ export interface EventLog {
     important: boolean;
     zone?: string;
     category: EventCategory;
+    /**
+     * §(requests): the same event, stated as a fact.
+     *
+     * The stripped-down chronicle renders this instead of `text`. Supplied at
+     * the sites where the prose is hiding something the record should state
+     * outright — who killed whom with what, what was taken, who joined what —
+     * and derived from the entry's own fields everywhere else. Optional by
+     * design: an event with no `fact` is one whose category, cast and zone
+     * already say everything the record needs.
+     */
+    fact?: string;
 }
 
 export interface LogOptions {
     important?: boolean;
     zone?: string;
     category?: EventCategory;
+    /** §(requests): the factual restatement for the stripped-down chronicle. */
+    fact?: string;
 }
 
 export interface EpilogueQA {
@@ -2818,4 +2923,33 @@ export interface HallOfFameEntry {
     winnerTraits?: string[];
     winnerEndHealth?: number;
     tributeSummaries?: TributeHoFSummary[];
+}
+
+/**
+ * AUDIT-9 B06: everything a career of Games contributes to a run.
+ *
+ * Declared here rather than in the engine so the model layer stays the one
+ * place a `GameState` field is defined; `engine/campaign.ts` holds the
+ * behaviour and the rationale. The shape is deliberately structural — it
+ * mirrors the subset of the stored record book the simulation reads, and
+ * nothing in the engine may import the storage layer.
+ */
+export interface CampaignSnapshot {
+    runs: number;
+    victors: number;
+    patronDistrict?: number;
+    patronWins?: number;
+    victorDistrictStreak?: number;
+    lastVictorDistrict?: number;
+    districtCrowns?: Record<number, { victories: number }>;
+    gamemakerRecords?: Record<string, { games: number; victors: number; deaths: number; totalDays?: number }>;
+    recentRuns?: Array<{ victorDistrict?: number }>;
+    /** The incumbent Head Gamemaker and how many Games they have run. */
+    headGamemakerTerm?: { name: string; runsServed: number };
+    /** §6.2: districts the player is paying to patronise this run. */
+    patronDistricts?: number[];
+    /** §9: districts whose last victor is alive to sit in the mentor's chair. */
+    victorMentors?: Record<number, { name: string; archetype: string; run: number }>;
+    /** §10.4: a keepsake an earlier tribute of that district did not bring home. */
+    heirlooms?: Record<number, { token: string; quirk?: string; fromName: string; run: number }>;
 }

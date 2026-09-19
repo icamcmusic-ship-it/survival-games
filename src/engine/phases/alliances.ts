@@ -9,7 +9,8 @@ import { applyDamage, checkDeath } from '../combat';
 import { clampTribute } from '../vitals';
 import { ALLIANCE_TEXTS, BETRAYAL_AFTERMATH_TEXTS, PROTECTOR_BOND_TEXTS, ROMANCE_BOND_TEXTS, ROMANCE_TEXTS } from '../../data/flavorText';
 import { adjustRel, getRel, trustOf } from '../relationships';
-import { cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, noteContact, raiseSuspicion, sharedHistoryOf, suspicionOf } from '../memory';
+import { cycleOf, cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, hasVengeanceAgainst, noteContact, raiseSuspicion, sharedHistoryOf, suspicionOf } from '../memory';
+import { fearOf } from '../fear';
 import { respectOf } from '../relationships';
 import { careerSocialFactor, sniffPerformances, isStarCrossed } from '../alliance';
 import { allianceOf, areLovers, cacheValue, contributeToCache, isPerforming, maintainPerformance, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance, shownRegard } from '../alliance';
@@ -705,16 +706,64 @@ function findFaction(members: Tribute[]): Tribute[] | undefined {
     return faction;
 }
 
+/**
+ * §(requests): is there anything to split *over*?
+ *
+ * A schism used to be a periodic roll, so a pack came apart for no reason a
+ * viewer could name. A coalition that breaks needs a grievance across the
+ * line it breaks along — somebody the other camp suspects, dreads, has sworn
+ * against, or has already been betrayed by. This is what turns the split from
+ * a dice throw into the last beat of something the audience has been watching
+ * build, and it is the "smarter about splitting off" half of the request: the
+ * pack now has to have a reason, not merely an opportunity.
+ */
+function hasGrievanceAcross(faction: Tribute[], remainder: Tribute[]): boolean {
+    return faction.some(f => remainder.some(r =>
+        hasVengeanceAgainst(f, r.id)
+        || hasVengeanceAgainst(r, f.id)
+        || ensureMemory(f).betrayedBy.includes(r.id)
+        || ensureMemory(r).betrayedBy.includes(f.id)
+        || suspicionOf(f, r.id) >= ALLIANCES.schismGrievanceSuspicion
+        || suspicionOf(r, f.id) >= ALLIANCES.schismGrievanceSuspicion
+        || fearOf(f, r.id) >= ALLIANCES.schismGrievanceFear
+        // Two people who have come to actively dislike each other need no
+        // separate incident: the falling-out is the grievance.
+        || Math.min(getRel(f, r.id), getRel(r, f.id)) <= ALLIANCES.schismGrievanceRegard));
+}
+
 function schismAlliances(ctx: SimContext, alliances: Map<string, Tribute[]>) {
+    const cycle = cycleOf(ctx.state);
+    const aliveNow = getAlive(ctx.state).length;
+    const fieldShare = aliveNow / Math.max(1, ctx.state.tributes.length);
     alliances.forEach((members, id) => {
         if (members.length < ALLIANCES.schismMinSize) return;
         // A lovers' bond is a pair by definition and has nothing to split.
         if (id.startsWith('lovers-')) return;
-        if (!ctx.rng.chance(ALLIANCES.schismChance)) return;
+
+        /*
+         * §(requests): the three gates. See `ALLIANCES.schismEarliestCycle`.
+         *
+         * The Career pack is four to six people and `schismMinSize` is four,
+         * so this roll was aimed at the one alliance in the game that is meant
+         * to hold — and at a flat 0.4 a cycle from day one it came apart in
+         * the opening cycles of most runs, before it had done the thing it
+         * exists to do. The pack now gets a later clock and a heavy discount
+         * on the roll on top of the gates everybody else gets.
+         */
+        const careerPack = members.every(m => m.isCareer);
+        const earliest = careerPack ? ALLIANCES.careerSchismEarliestCycle : ALLIANCES.schismEarliestCycle;
+        if (cycle < earliest) return;
+        // While most of the field is still out there, the rest of the arena is
+        // a better enemy than the person next to you.
+        if (fieldShare > ALLIANCES.schismFieldShare) return;
+        const chance = ALLIANCES.schismChance * (careerPack ? ALLIANCES.careerSchismFactor : 1);
+        if (!ctx.rng.chance(chance)) return;
 
         const faction = findFaction(members);
         if (!faction) return;
         const remainder = members.filter(m => !faction.some(f => f.id === m.id));
+        // ...and something to split over.
+        if (!hasGrievanceAcross(faction, remainder)) return;
 
         // The splinter becomes a standing alliance of its own rather than a
         // handful of loners — that is the whole point of modelling it as a

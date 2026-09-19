@@ -1639,6 +1639,44 @@ export const ITEMS: Item[] = [
     { id: 'antivenom', name: 'Antivenom Ampoule', type: 'medical', value: 65 },
     { id: 'splint', name: 'Field Splint', type: 'medical', value: 35 },
     { id: 'willowbark', name: 'Willowbark Tea', type: 'medical', value: 24, stack: 3 },
+
+    /*
+     * §(requests): the armoury, widened — blades first.
+     *
+     * The Cornucopia is the most-looked-at object in the format and it held
+     * twelve weapons, four of which were interchangeable mid-weight melee. A
+     * tribute who came up holding "a machete" and a tribute who came up
+     * holding "a sickle" were, mechanically and narratively, having the same
+     * morning. The additions below are chosen so that each one is a *different
+     * fight*: reach against speed, weight against recovery, a blade that
+     * rewards a practised hand against one that does not care.
+     *
+     * Every entry has a kill-template pool of its own (`WEAPON_KILL_TEMPLATES`)
+     * — an item the death narrator does not know about is a reskin with a
+     * different noun — and most are the designated weapon of a district, so
+     * the roster has somebody who grew up holding it. See `DISTRICT_CRAFT`.
+     */
+    // Blades. The light end is fast and forgiving and does not finish people
+    // quickly; the heavy end is the opposite of all three.
+    { id: 'dagger', name: 'Hunting Dagger', type: 'weapon', value: 28, durability: 60, weaponClass: 'melee', damage: 3 },
+    { id: 'kukri', name: 'Heavy Kukri', type: 'weapon', value: 42, durability: 85, weaponClass: 'melee', damage: 5 },
+    { id: 'cleaver', name: 'Butcher\'s Cleaver', type: 'weapon', value: 38, durability: 75, weaponClass: 'melee', damage: 5 },
+    { id: 'falchion', name: 'Capitol Falchion', type: 'weapon', value: 55, durability: 95, weaponClass: 'melee', damage: 6 },
+    { id: 'rapier', name: 'Duelling Rapier', type: 'weapon', value: 48, durability: 55, weaponClass: 'melee', damage: 5 },
+    { id: 'billhook', name: 'Orchard Billhook', type: 'weapon', value: 36, durability: 80, weaponClass: 'melee', damage: 4 },
+    // Reach and weight. Slow, and nobody walks through them.
+    { id: 'halberd', name: 'Halberd', type: 'weapon', value: 62, durability: 95, weaponClass: 'melee', damage: 7 },
+    { id: 'warhammer', name: 'War Hammer', type: 'weapon', value: 58, durability: 100, weaponClass: 'melee', damage: 7 },
+    { id: 'boarspear', name: 'Boar Spear', type: 'weapon', value: 46, durability: 85, weaponClass: 'melee', damage: 6 },
+    { id: 'gaff', name: 'Rigging Gaff', type: 'weapon', value: 34, durability: 80, weaponClass: 'melee', damage: 4 },
+    // Thrown and ranged. The bow had no competition and the thrown tree had
+    // two entries, one of which was the knives everybody already had.
+    { id: 'javelin', name: 'Javelins', type: 'weapon', value: 44, durability: 60, weaponClass: 'thrown', damage: 5 },
+    { id: 'throwing-axes', name: 'Throwing Axes', type: 'weapon', value: 42, durability: 70, weaponClass: 'thrown', damage: 4 },
+    { id: 'harpoon', name: 'Harpoon', type: 'weapon', value: 52, durability: 85, weaponClass: 'thrown', damage: 6 },
+    { id: 'crossbow', name: 'Crossbow', type: 'weapon', value: 64, durability: 70, weaponClass: 'ranged', damage: 6 },
+    { id: 'bolas', name: 'Bolas', type: 'weapon', value: 24, durability: 45, weaponClass: 'thrown', damage: 2 },
+    { id: 'whip', name: 'Weighted Whip', type: 'weapon', value: 30, durability: 65, weaponClass: 'melee', damage: 3 },
 ];
 
 /**
@@ -1668,4 +1706,27 @@ export const IMPROVISED_ITEMS: Item[] = [
     { id: 'sling', name: 'Leather Sling', type: 'weapon', value: 7, durability: 25, weaponClass: 'ranged', damage: 2 },
     /** A cudgel and a night at a fire. The upgrade path out of tier one. */
     { id: 'stake', name: 'Fire-Hardened Stake', type: 'weapon', value: 11, durability: 40, weaponClass: 'melee', damage: 3 },
+
+    /*
+     * §(requests): more of what the ground gives, so an unarmed tribute has a
+     * recognisable *local* answer rather than the same cudgel in every arena.
+     *
+     * Same design constraint as the tier-one entries above: every one of these
+     * is worse than every weapon in `ITEMS`. What they buy is not power, it is
+     * a scene — a tribute in the glassworks arena holding a wrapped shard is a
+     * different picture from one holding a rock, and the death narrator knows
+     * the difference.
+     */
+    /** Ruins and anywhere with a broken window. Wrapped in cloth at the grip. */
+    { id: 'glass-shiv', name: 'Glass Shiv', type: 'weapon', value: 7, durability: 15, weaponClass: 'melee', damage: 2 },
+    /** Anywhere anything has died. Split, ground on stone, and lashed. */
+    { id: 'bone-knife', name: 'Bone Knife', type: 'weapon', value: 8, durability: 30, weaponClass: 'melee', damage: 2 },
+    /** Highland and quarry ground: a stone head, a green branch, wet cord. */
+    { id: 'rock-maul', name: 'Rock Maul', type: 'weapon', value: 12, durability: 45, weaponClass: 'melee', damage: 3 },
+    /** Forest and highland. The tine is the point; the rest is a handle. */
+    { id: 'antler-pick', name: 'Antler Pick', type: 'weapon', value: 10, durability: 35, weaponClass: 'melee', damage: 3 },
+    /** Ruins again, and the one thing a derelict building is always full of. */
+    { id: 'nail-board', name: 'Nailed Board', type: 'weapon', value: 9, durability: 30, weaponClass: 'melee', damage: 2 },
+    /** Costs a fire and carries one. Terrible weapon; nothing else is light. */
+    { id: 'brand', name: 'Burning Brand', type: 'weapon', value: 9, durability: 20, weaponClass: 'melee', damage: 2, light: true },
 ];

@@ -1,4 +1,5 @@
 import { SimContext, getAlive } from './context';
+import { RNG } from '../utils/rng';
 import { ExposureProfile, applyExposure } from './exposure';
 import { depleteZone, getZone } from './map';
 import { clampTribute } from './vitals';
@@ -146,6 +147,47 @@ export function triggerGamemakerEvent(ctx: SimContext, type: GamemakerEventType,
         ctx.state.gamemakerUse[type] = { lastCycle: cycle, uses: (prior?.uses ?? 0) + 1 };
     }
     const record = ctx.state.gamemakerUse?.[type] ?? { lastCycle: cycle, uses: 0 };
+
+    /*
+     * AUDIT-9 B05: an intervention gets its own deterministic stream.
+     *
+     * Every scheduled phase entry point reseeds `ctx.rng` from (seed, phase,
+     * day) before it draws, so a resumed run replays a phase exactly. A manual
+     * command does not enter through a phase: it drew from wherever the shared
+     * stream happened to be standing. That position is not part of the save —
+     * the constructor builds a fresh `RNG` — so the same checkpoint plus the
+     * same command produced a different result after a resume. Measured over
+     * ten seeds it diverged in all ten: one run's rain came back as damaging
+     * heat.
+     *
+     * The stream is derived instead from the run seed, the cycle, the command
+     * type and a persisted per-run command counter, so the Nth command of a
+     * given type on a given cycle always draws the same numbers whether the
+     * run was interrupted or not. The counter is the only new piece of state
+     * and it is serialised with everything else.
+     *
+     * `ctx.rng` is restored afterwards so a command fired mid-phase (the
+     * Capitol's own calendar does exactly this) cannot displace the phase's
+     * stream either.
+     */
+    const commandIndex = (ctx.state.gamemakerCommands ?? 0) + 1;
+    ctx.state.gamemakerCommands = commandIndex;
+    const ambient = ctx.rng;
+    ctx.rng = new RNG(`${ctx.state.seed}-gm-${cycle}-${type}-${commandIndex}`);
+    try {
+        runGamemakerEvent(ctx, type, targetId, capitolSchedule, record);
+    } finally {
+        ctx.rng = ambient;
+    }
+}
+
+function runGamemakerEvent(
+    ctx: SimContext,
+    type: GamemakerEventType,
+    targetId: string | undefined,
+    capitolSchedule: boolean,
+    record: { lastCycle: number; uses: number },
+) {
 
     // §6.7: audience reaction to overuse. The crowd came for the tributes,
     // not for the booth playing the same card over and over.

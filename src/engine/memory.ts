@@ -314,6 +314,45 @@ export function noteContact(state: GameState, a: Tribute, b: Tribute) {
     // A §5: a meeting is a lesson about the other person, both ways.
     improveRead(a, b.id, RIVAL_READ.perMeeting);
     improveRead(b, a.id, RIVAL_READ.perMeeting);
+    // AUDIT-9 B11: and it is the moment each of them learns where the other
+    // one *is*. Recorded here, once, so the belief can go stale.
+    noteRivalPlace(state, a, b);
+    noteRivalPlace(state, b, a);
+}
+
+/**
+ * AUDIT-9 B11: `t` has just seen `other`, here, now.
+ *
+ * The one write site for person-specific location belief. Everything that
+ * decides where somebody goes reads this through `rememberedPlaceOf` rather
+ * than reading the rival's live position, so an unobserved move is genuinely
+ * unobserved: the observer keeps acting on the last place they actually saw
+ * them until either they see them again or the memory expires.
+ */
+export function noteRivalPlace(state: GameState, t: Tribute, other: Tribute) {
+    if (t.id === other.id) return;
+    const record = rivalRecord(t, other.id);
+    record.lastSeenZone = other.zone;
+    record.lastSeenCycle = cycleOf(state);
+}
+
+/**
+ * Where `t` believes `otherId` is, or undefined if they have no live belief.
+ *
+ * Expires on `MEMORY.sightingLifetime`, the same clock every other sighting
+ * decays on — a tribute does not go on believing somebody is standing where
+ * they saw them four cycles ago.
+ */
+export function rememberedPlaceOf(state: GameState, t: Tribute, otherId: string): string | undefined {
+    const record = ensureMemory(t).rivals[otherId];
+    if (!record?.lastSeenZone || record.lastSeenCycle === undefined) return undefined;
+    if (cycleOf(state) - record.lastSeenCycle > MEMORY.sightingLifetime) return undefined;
+    return record.lastSeenZone;
+}
+
+/** True when `t` believes `otherId` is standing in `zoneName`. */
+export function believedIn(state: GameState, t: Tribute, otherId: string, zoneName: string): boolean {
+    return rememberedPlaceOf(state, t, otherId) === zoneName;
 }
 
 /**
@@ -336,8 +375,12 @@ export function improveRead(t: Tribute, otherId: string, amount: number) {
 }
 
 /** A §5: a sighting across a zone is the weakest lesson, but it is one. */
-export function noteRivalSighting(t: Tribute, otherId: string) {
+export function noteRivalSighting(t: Tribute, otherId: string, state?: GameState, other?: Tribute) {
     improveRead(t, otherId, RIVAL_READ.perSighting);
+    // AUDIT-9 B11: a sighting is also the observation that fixes where they
+    // are. Optional arguments so the older two-argument call shape (which
+    // only ever meant "improve the read") still compiles.
+    if (state && other) noteRivalPlace(state, t, other);
 }
 
 /** Cycles since these two last shared a scene, or Infinity if never. */

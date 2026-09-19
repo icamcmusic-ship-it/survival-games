@@ -6,7 +6,7 @@ import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
 import { dissolveBrokeredTruces, effectiveCaution } from './archetypeHooks';
-import { ARCHETYPE_HOOKS, ARENA_DEATH_BUDGET, BLEEDING, RELATIONSHIPS as REL_KNOBS, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, NOTORIETY, INJURY_BEHAVIOUR, PROFICIENCY, QUALITY, RISK, SHOCK, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH, SOCIAL_AXES, UNIVERSAL_DEATHS, ARENA_LAWS } from '../data/balance';
+import { ARCHETYPE_HOOKS, ARENA_DEATH_BUDGET, BLEEDING, RELATIONSHIPS as REL_KNOBS, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, LOOTING, MEMORY, NOTORIETY, INJURY_BEHAVIOUR, PROFICIENCY, QUALITY, RISK, SHOCK, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH, SOCIAL_AXES, UNIVERSAL_DEATHS, ARENA_LAWS } from '../data/balance';
 import { goDown, isActive, isDowned } from './downed';
 import { clampTribute } from './vitals';
 import { enforceCapacity, giveItem } from './items';
@@ -720,6 +720,21 @@ function dropBrokenWeapons(t: Tribute) {
 }
 
 /** Applies one landed hit, including venom, wounds and the grudge it earns. */
+/**
+ * §(requests): how lethal this particular thing is in a hand.
+ *
+ * Centred so the average weapon in the table is neutral; the spread is the
+ * point. Bare hands are below everything that can be picked up, and the cap
+ * keeps the heavy end from turning every exchange into one blow.
+ */
+function weaponLethality(weapon?: Item): number {
+    if (!weapon) return COMBAT.unarmedLethality;
+    return Math.min(
+        COMBAT.weaponLethalityCap,
+        COMBAT.weaponLethalityBase + effectiveDamage(weapon) * COMBAT.weaponLethalityPerDamage,
+    );
+}
+
 function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: number, weapon?: Item, multiplier = 1) {
     // §3.2: a landed blow is a swing that taught them something about this
     // particular weapon. Recorded here rather than at the pick-up so carrying
@@ -742,10 +757,14 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
     // them, in both directions.
     witnessReputation(defender, attacker);
     witnessReputation(attacker, defender);
-    const raw = (COMBAT.baseHitDamage + edge * COMBAT.damagePerPowerPoint + ctx.rng.nextInt(-3, 4)) * multiplier;
+    // §(requests): the weapon decides how hard the blow lands, not only who
+    // lands it. See `COMBAT.weaponLethalityBase` for why — in short, a
+    // slingshot used to finish people at a trident's rate.
+    const weight = multiplier * weaponLethality(weapon);
+    const raw = (COMBAT.baseHitDamage + edge * COMBAT.damagePerPowerPoint + ctx.rng.nextInt(-3, 4)) * weight;
     // Both bounds scale with the multiplier, or a sub-1 multiplier puts the
     // floor above the ceiling.
-    const damage = Math.round(Math.max(COMBAT.minRoundDamage * multiplier, Math.min(COMBAT.maxRoundDamage * multiplier, raw)));
+    const damage = Math.round(Math.max(COMBAT.minRoundDamage * weight, Math.min(COMBAT.maxRoundDamage * weight, raw)));
 
     applyDamage(ctx, defender, damage, {
         cause: weapon ? `Killed by ${attacker.name} (${weapon.name})` : `Killed by ${attacker.name}`,
@@ -1581,6 +1600,9 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         // §6.8: the first tribute-dealt kill of the Games — the side-bet book
         // settles 'first blood' off this.
         if (ctx.state.firstBloodId === undefined) ctx.state.firstBloodId = killer.id;
+        // AUDIT-9 (audit B20): and the other end of the same thread. Written
+        // unconditionally, so at the epilogue it names whoever killed last.
+        ctx.state.lastKillerId = killer.id;
         victim.causeOfDeath = cause
             || (weapon ? `Killed by ${killer.name} (${weapon.name})` : `Killed by ${killer.name}`);
 
@@ -1643,7 +1665,54 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
 
             clampTribute(killer);
 
-            if (victim.inventory.length > 0) {
+            /*
+             * §(requests): going through a body is a decision, not a reflex.
+             *
+             * Every kill stripped the corpse, automatically, every time — so a
+             * wounded tribute who had just fought for their life in an open
+             * zone with two other people converging on it calmly knelt and
+             * inventoried a pack, and the feed reported it. Two things were
+             * missing: whether they had the *time*, and whether they had the
+             * stomach.
+             *
+             * Time is the arena's own answer — other living tributes in the
+             * zone, or bleeding badly enough that standing still is the worse
+             * option. Stomach is disposition: an archetype's aggression, the
+             * `scavenge` trait modifier, and how badly they need something.
+             * A tribute with nothing and a corpse with a pack takes the risk;
+             * a well-supplied Career with a rival in the treeline does not
+             * bother, and the kit stays where it fell for whoever comes next —
+             * which is what the abandoned-camp layer is for.
+             */
+            const onlookers = ctx.state.tributes.filter(o =>
+                o.status === 'alive' && o.id !== killer.id && o.id !== victim.id
+                && o.zone === victim.zone && o.allianceId !== killer.allianceId).length;
+            const desperate = killer.inventory.length === 0
+                || killer.vitals.hunger > LOOTING.desperateHunger
+                || killer.vitals.thirst > LOOTING.desperateThirst;
+            let lootChance = LOOTING.baseChance
+                + ARCHETYPES[killer.archetype].aggression * LOOTING.perAggression
+                + traitMod(killer, 'scavenge')
+                + (desperate ? LOOTING.desperateBonus : 0)
+                - onlookers * LOOTING.perOnlooker
+                - (killer.injuries.bleeding ? LOOTING.bleedingPenalty : 0);
+            // Their own district partner is not a body to be gone through,
+            // whatever else the arena has made of them.
+            if (killer.district === victim.district) lootChance -= LOOTING.districtPartnerPenalty;
+            const loots = ctx.rng.chance(Math.max(0, Math.min(1, lootChance)));
+
+            if (victim.inventory.length > 0 && !loots) {
+                if (!silent) {
+                    ctx.logEvent(
+                        `${text} ${killer.name} does not stay to go through what ${victim.name} was carrying — `
+                        + (onlookers > 0
+                            ? 'there is somebody else in the zone, and the pack is not worth being found over.'
+                            : 'they take one look at the pack, and then at their own hands, and walk.'),
+                        [killer.id, victim.id],
+                        { important: true, category: 'kill' },
+                    );
+                }
+            } else if (victim.inventory.length > 0) {
                 const spoils = victim.inventory;
                 victim.inventory = [];
                 // §8.9: stripping the fallen, done often enough, becomes who
@@ -1660,16 +1729,34 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
                     ctx.logEvent(
                         `${opener} ${killer.name} takes what they can carry — ${lootNames || 'nothing they can use'} — and leaves ${dropped.map(i => i.name).join(', ')} in the dirt.`,
                         [killer.id, victim.id],
-                        { important: !silent, category: silent ? 'loot' : 'kill' }
+                        {
+                            important: !silent, category: silent ? 'loot' : 'kill',
+                            // §(requests): the record states the method and
+                            // the goods; the prose above states the scene.
+                            fact: `${killer.name} killed ${victim.name} (${weapon?.name ?? 'unarmed'}); took ${lootNames || 'nothing'}, left ${dropped.map(i => i.name).join(', ')}`,
+                        }
                     );
                 } else {
-                    ctx.logEvent(`${opener} ${killer.name} strips the body: ${lootNames}.`, [killer.id, victim.id], { important: !silent, category: silent ? 'loot' : 'kill' });
+                    ctx.logEvent(
+                        `${opener} ${killer.name} strips the body: ${lootNames}.`,
+                        [killer.id, victim.id],
+                        {
+                            important: !silent, category: silent ? 'loot' : 'kill',
+                            fact: `${killer.name} killed ${victim.name} (${weapon?.name ?? 'unarmed'}); took ${lootNames}`,
+                        },
+                    );
                 }
             } else if (!silent) {
-                ctx.logEvent(text, [killer.id, victim.id], { important: true, category: 'kill' });
+                ctx.logEvent(text, [killer.id, victim.id], {
+                    important: true, category: 'kill',
+                    fact: `${killer.name} killed ${victim.name} (${weapon?.name ?? 'unarmed'})`,
+                });
             }
         } else if (!silent) {
-            ctx.logEvent(text, [killer.id, victim.id], { important: true, category: 'kill' });
+            ctx.logEvent(text, [killer.id, victim.id], {
+                important: true, category: 'kill',
+                fact: `${killer.name} killed ${victim.name} (${weapon?.name ?? 'unarmed'})`,
+            });
         }
     } else {
         victim.causeOfDeath = cause || victim.lastDamage?.cause || 'Died to environment';
@@ -1683,7 +1770,15 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             .split('{cause}').join(victim.causeOfDeath)
             .split('{age}').join(String(victim.age))
             .split('{witness}').join(witness?.name ?? 'someone nearby');
-        if (!silent) ctx.logEvent(text, witness ? [victim.id, witness.id] : [victim.id], { important: true, category: 'death' });
+        if (!silent) {
+            ctx.logEvent(text, witness ? [victim.id, witness.id] : [victim.id], {
+                important: true, category: 'death',
+                // §(requests): the record carries the cause code, not the
+                // sentence that dressed it. `causeOfDeath` is the same string
+                // the obituary and every measurement already read.
+                fact: `${victim.name} died — ${victim.causeOfDeath}`,
+            });
+        }
     }
 
     // §6.9: the district token goes home with the body. The cameras do not

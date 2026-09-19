@@ -12,14 +12,12 @@
  *
  *   npm run test:metrics
  */
-import { generateTributes } from '../src/engine/generator';
-import { resolveArenaForRun } from '../src/engine/arenaSetup';
 import { Simulator } from '../src/engine/simulator';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { GameConfig, GameState, Stance, Tribute } from '../src/models/types';
 import { STANCES } from '../src/data/stances';
-import { configForProfile, gamesProfileFor } from '../src/engine/gamesProfile';
 import { legacyOf } from '../src/data/districts';
+import { coverageCells, coverageReport, initialRunState } from './runInit';
 import { TRAIT_DEFS } from '../src/data/traits';
 import { ARCHETYPES } from '../src/data/archetypes';
 
@@ -36,20 +34,15 @@ const configs: GameConfig[] = [
     { ...DEFAULT_GAME_CONFIG, districtCount: 8, betrayalRate: 1.5 },
 ];
 
-function start(seed: string, arenaId: string, config: GameConfig): GameState {
-    // REPLAY-01: measure the game the player actually gets, which is their
-    // config multiplied through this year's announced temperament.
-    const gamesProfile = gamesProfileFor(seed);
-    // AUDIT-6 §1.3: off-season skins are balance-affecting and were reachable
-    // from no check at all. This is the store's own resolver.
-    const arena = resolveArenaForRun(seed, arenaId, gamesProfile);
-    const resolved = configForProfile(config, gamesProfile);
-    const tributes = generateTributes(seed, resolved, arena.zones[0].name, gamesProfile.castShape);
-    return {
-        seed, arena, tributes, phase: 'setup', day: 0, log: [], gamemakerMode: false,
-        config: resolved, baseConfig: config, gamesProfile, logCounter: 0, feastsHeld: 0, cycle: 0,
-    };
-}
+/**
+ * AUDIT-9 B19: production's own initialisation, not a hand-written copy.
+ *
+ * This function used to build the state inline and omitted the `quell`
+ * argument to `generateTributes`, so every Quell-specific starting loadout in
+ * the game was unmeasured by the metrics batch. See `scripts/runInit.ts`.
+ */
+const start = (seed: string, arenaId: string, config: GameConfig): GameState =>
+    initialRunState({ seed, arenaId, config });
 
 /**
  * Buckets a cause-of-death string. `killTribute` writes "Killed by <name>" for
@@ -72,6 +65,8 @@ function bucketOf(cause: string | undefined): string {
 }
 
 const deathsByCause: Record<string, number> = {};
+/** §(requests): weapon name -> kills credited to it across the sweep. */
+const killsByWeapon: Record<string, number> = {};
 let deaths = 0;
 let victors = 0, victorKills = 0, victorZeroKills = 0, victorHealth = 0;
 let wipeouts = 0, careerVictors = 0;
@@ -188,9 +183,22 @@ let scoredElite = 0;
 let careerScores = 0;
 let careerCount = 0;
 
+/*
+ * AUDIT-9 B19: the explicit arena x config product.
+ *
+ * `arenaIds[i % 46]` with `configs[i % 4]` visits 92 of 184 cells and does so
+ * however many runs are added, because 46 and 4 share a factor. Every arena
+ * saw exactly two of the four configurations, chosen by list order. The cells
+ * are enumerated now and the budget is spent inside them; the seed carries the
+ * cell so repeats of a cell are different Games rather than the same one.
+ */
+const cells = coverageCells(arenaIds, configs.length, RUNS);
+console.log(coverageReport(cells, arenaIds, configs.length));
+
 for (let i = 0; i < RUNS; i++) {
+    const cell = cells[i];
     const seed = `METRIC${i}`;
-    const sim = new Simulator(start(seed, arenaIds[i % arenaIds.length], configs[i % configs.length]));
+    const sim = new Simulator(start(seed, cell.arenaId, configs[cell.configIndex]));
     let guard = 3000;
     let state = sim.getState();
     // §8d: the reaping-assigned set, snapshotted before a cycle has run.
@@ -262,6 +270,24 @@ for (let i = 0; i < RUNS; i++) {
             deaths++;
             const bucket = bucketOf(t.causeOfDeath);
             deathsByCause[bucket] = (deathsByCause[bucket] || 0) + 1;
+            /*
+             * §(requests): which weapon actually finished people.
+             *
+             * `killTribute` writes "Killed by <name> (<Weapon>)" for every
+             * armed kill, so the parenthetical is the weapon by construction
+             * rather than by heuristic. This table is the only way to see the
+             * thing the request describes — deaths concentrated in the weakest
+             * weapons in the armoury — and it was not measured at all, which
+             * is why it went unnoticed for so long.
+             */
+            // Gated on the tribute bucket: other cause strings end in a
+            // parenthetical too (a zone name, mostly), and counting those as
+            // weapons put "Jungle" and "Breakwater" in the armoury table.
+            if (bucket === 'tribute') {
+                const named = /\(([^)]+)\)\s*$/.exec(t.causeOfDeath ?? '');
+                const weapon = named ? named[1] : '(bare hands)';
+                killsByWeapon[weapon] = (killsByWeapon[weapon] ?? 0) + 1;
+            }
         }
     });
     state.tributes.forEach(t => {
@@ -1330,5 +1356,22 @@ if (underSampled.length) {
 }
 // AUDIT-7 §8.2: counted alongside the indicator guards rather than beside them.
 failed += signatureFailures;
+/*
+ * §(requests): the armoury's share of the killing, sorted.
+ *
+ * Reported rather than guarded for now: the right shape is "the heavy end of
+ * the table finishes more people than the light end", and that is a claim
+ * about ordering across ~30 weapons rather than a single threshold. Printing
+ * it is what makes the ordering checkable at all.
+ */
+const weaponKills = Object.entries(killsByWeapon).sort((a, b) => b[1] - a[1]);
+const weaponKillTotal = weaponKills.reduce((sum, [, n]) => sum + n, 0);
+if (weaponKillTotal > 0) {
+    console.log('\nkills by weapon (share of all tribute-dealt deaths):');
+    weaponKills.forEach(([name, n]) => {
+        console.log(`  ${name.padEnd(24)} ${(100 * n / weaponKillTotal).toFixed(1).padStart(5)}%  (${n})`);
+    });
+}
+
 console.log(failed ? `\n${failed} regression guard(s) breached.` : '\nAll regression guards hold.');
 if (failed) process.exit(1);

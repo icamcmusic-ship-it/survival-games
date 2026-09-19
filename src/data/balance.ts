@@ -2548,6 +2548,33 @@ export const COMBAT = {
     limbPowerPenaltyPerGrade: 1.25,
     minRoundDamage: 5,
     maxRoundDamage: 42,
+    /*
+     * §(requests): how much of a blow is the weapon.
+     *
+     * A landed hit's magnitude used to depend only on the power differential,
+     * and the weapon entered that differential through `combatPower`. So a
+     * weapon decided who *won* the exchange and contributed nothing to how
+     * hard the winning blow landed: once a tribute had the edge, a slingshot
+     * killed exactly as readily as a trident, and the feed filled up with
+     * people being beaten to death by pebbles. Measured across the run, the
+     * bottom of the armoury was producing deaths at close to the rate of the
+     * top of it, which is neither realistic nor the balance the item table
+     * plainly intends.
+     *
+     * The multiplier is centred so the *average* weapon is unchanged — mean
+     * effective damage across the table is ~4.5, and 0.60 + 4.5 * 0.09 ≈ 1.0 —
+     * and the spread does the work: a slingshot or a sharpened stone lands at
+     * roughly three-quarters weight, a halberd at the cap. Bare hands sit
+     * below everything, which they should.
+     *
+     * Applied to the floor and the ceiling as well as the roll, or the floor
+     * simply undoes it on exactly the small-weapon hits this is about.
+     */
+    weaponLethalityBase: 0.6,
+    weaponLethalityPerDamage: 0.09,
+    weaponLethalityCap: 1.2,
+    /** Bare hands. Deliberately below the worst thing anybody could pick up. */
+    unarmedLethality: 0.55,
     /**
      * What a kill costs the killer, in sanity, before their traits scale it.
      * A Career has been prepared for this since they were ten; nobody else has.
@@ -3351,6 +3378,15 @@ export const LOAD_BEARING = {
     perOccupantCycle: 0.05,
     /** Load added by a fight resolving inside one. Violence is loud. */
     perCombat: 0.14,
+    /**
+     * AUDIT-9 §5: load a neighbouring structure inherits when one comes down.
+     *
+     * A building does not fail in isolation; the one that shared a street or a
+     * footing with it is worse off afterwards. Sized well below `collapseAt`
+     * so one failure never simply knocks the next one over — it brings it
+     * closer, and occupation does the rest.
+     */
+    adjacentLoadOnCollapse: 0.2,
     /** Fatigue at which the collapse beat becomes eligible at all. */
     liveAt: 0.55,
     /** Recovery per empty cycle, and the floor it never settles back below. */
@@ -4385,6 +4421,18 @@ export const RELATIONSHIPS = {
      * only on this roll, and everyone else's grief stays grief.
      */
     vengeanceDistantChance: 0.18,
+    /**
+     * §(requests): the chance somebody one zone away works out who did it.
+     *
+     * Every mourner in the arena used to be handed the killer's name the
+     * instant the cannon fired, whatever they could possibly have seen — so
+     * tributes knew how other tributes died without being there, and swore
+     * vengeance over it. The anthem shows the faces of the dead; it does not
+     * name who killed them. This is the only channel short of witnessing it,
+     * it is the same adjacency the fear layer already uses, and an arena that
+     * swallows its cannon closes it entirely.
+     */
+    killerIdentifiedNearby: 0.35,
     /** Sanity cost scales with how strong the lost bond was. */
     griefSanityMax: 45,
     griefSanityMin: 8,
@@ -4891,8 +4939,21 @@ export const ROMANCE = {
     bondBeatChance: 0.65,
     /** Excitement a bonded pair earns for playing one of those days on camera. */
     bondBeatExcitement: 6,
-    /** Cycles of recent contact required, tracked as a streak. */
-    sustainedCycles: 4,
+    /**
+     * Cycles of recent contact required, tracked as a streak.
+     *
+     * §(requests)/AUDIT-9: 4 -> 5. Floor pacts are real alliances now, so a
+     * pair can be walking together from the gong rather than from whenever the
+     * day-phase formation roll happened to put them in the same zone — which
+     * meant the streak started earlier for far more of the cast and pushed
+     * star-crossed runs from 17% to 22.3% at n=400, through the 22% bound.
+     *
+     * Raised rather than compensated elsewhere, because it is the clause that
+     * says what the streak is *for*: romance should be about a relationship
+     * that developed, not about having signed the same agreement on the
+     * training floor. One more cycle keeps it that.
+     */
+    sustainedCycles: 5,
     /** Contact this stale breaks the streak. */
     contactWindow: 2,
     /**
@@ -5008,6 +5069,58 @@ export const ALLIANCES = {
     /** Within a faction, regard has to be genuinely better than across it, by this much. */
     schismCohesionGap: 12,
     schismChance: 0.4,
+    /*
+     * §(requests): a pack splits late, for a reason, and the Careers split
+     * latest of all.
+     *
+     * `schismMinSize` is 4 and a Career pack is four to six, so the schism
+     * roll was aimed squarely at the one alliance in the game that is supposed
+     * to hold: a flat 0.4 per cycle from the first day meant the pack came
+     * apart in the opening two cycles most runs, before it had done the one
+     * thing it exists to do. Worse, it came apart on a periodic roll — the
+     * split had no cause a viewer could point at, which is the difference
+     * between a betrayal and a dice throw.
+     *
+     * Three gates, all of which have to be open:
+     *
+     *  1. `schismEarliestCycle` — nobody splits in the opening days. An
+     *     alliance formed yesterday is not a coalition with factions in it.
+     *  2. `schismFieldShare` — while most of the field is still alive, the
+     *     rest of the arena is a better enemy than the person next to you.
+     *     Below the share, the group *is* the competition, which is exactly
+     *     when a pack should start eyeing itself.
+     *  3. a grievance — see `schismNeedsGrievance`. Somebody across the line
+     *     has to be suspected, feared, sworn against or have broken the
+     *     charter. Without one there is nothing to split over.
+     *
+     * The Careers then get their own, later clock and a heavy multiplier on
+     * the roll, because "the pack holds until it doesn't" is the single most
+     * load-bearing structure in the format.
+     */
+    /**
+     * §(requests): regard two tributes walk off the plates on after three days
+     * of agreeing on the training floor.
+     *
+     * Below the Career pack's 45 on purpose: an academy childhood is worth
+     * more than a handshake at the knot-tying station. Above nothing, because
+     * a coalition that starts at zero regard dissolves before it has done
+     * anything. See `initializePactAlliances`.
+     */
+    floorPactRegard: 32,
+    schismEarliestCycle: 4,
+    schismFieldShare: 0.7,
+    careerSchismEarliestCycle: 9,
+    careerSchismFactor: 0.3,
+    /** Suspicion/fear across the faction line that counts as a real grievance. */
+    schismGrievanceSuspicion: 22,
+    schismGrievanceFear: 18,
+    /**
+     * Cross-line regard at or below which the falling-out is itself the
+     * grievance. `findFaction` already requires the two camps not to get on;
+     * this is the stronger case where they have come to actively dislike each
+     * other, which needs no separate incident to explain it.
+     */
+    schismGrievanceRegard: 0,
     /**
      * Leadership coup: the two dials that decide whether the pack's internal
      * drama actually happens. The challenger needs this much more collective
@@ -5673,6 +5786,21 @@ export const FEAST = {
     thinnedOutShare: 0.4,
     thinnedOutFloor: 4,
     callChance: 0.6,
+    /**
+     * AUDIT-9 B13: a feast feeds people from food, not from attendance.
+     *
+     * The old flat `-40` to both hunger and thirst fired on every branch
+     * whatever the table held, so a weapons-only feast was also the best meal
+     * in the game. These are the real numbers: a Capitol ration off the table
+     * is a generous meal, and a ration out of your own pack eaten in the open
+     * is a smaller one you have also just spent.
+     */
+    mealHunger: 40,
+    mealThirst: 40,
+    packMealHunger: 25,
+    packMealThirst: 25,
+    /** The medical package every table carries, for whoever holds the ground. */
+    winnerHeal: 50,
 } as const;
 
 /** Tribute generation. */
@@ -6128,7 +6256,26 @@ export const TRAINING = {
      * own district partner is still unspoken for. Not a block — the Careers
      * cross district lines by definition — but home is tried first.
      */
-    crossBeforePartner: 0.3,
+    /*
+     * §(requests): cross-district agreement was too rare to be a feature.
+     *
+     * Two multipliers were stacked against it — this one (a tribute whose own
+     * district partner is still unpartnered is not out looking yet) and the
+     * day-two eligibility gate — on top of a base `pactChance` of 0.3. The
+     * result was a floor where almost every agreement was a district pair, so
+     * the coalition that forms *across* district lines, which is the whole
+     * counterweight to the Career pack and the most interesting social object
+     * in the format, showed up in a small minority of runs.
+     *
+     * 0.3 -> 0.55 keeps "home comes first" as a real preference rather than a
+     * near-prohibition, and `crossDistrictDraw` adds the other half: two
+     * tributes from different districts who have already decided they get on
+     * are *more* interesting to each other than the partner they were issued,
+     * not less.
+     */
+    crossBeforePartner: 0.55,
+    /** How much more readily a cross-district pair strikes an agreement at all. */
+    crossDistrictDraw: 1.45,
     affinityNeighbour: 1.5,    // districts that work next to each other
     affinityYoung: 2,          // both at the bottom of the age band
     affinityRated: 1.7,        // one of them rated the other in the observation pass
@@ -6311,8 +6458,23 @@ export const TRAINING_SCORE = {
      */
     careerVolunteerFloor: 8,
     careerVolunteerFloorChance: 0.92,
-    /** Base odds of clearing the first gate (an 8 becoming a 9). */
-    eliteGateBase: 0.34,
+    /**
+     * Base odds of clearing the first gate (an 8 becoming a 9).
+     *
+     * §(requests)/AUDIT-9: 0.34 -> 0.30. Careers no longer conceal — the
+     * branch is closed to them outright, which is the requested behaviour and
+     * the right one — and a concealing Career was the main thing holding the
+     * top of the score board down: they were suppressing their own score by
+     * choice, and about a quarter of the field is Career. With that gone the
+     * share of the cast scoring 9 or better went 23.1% -> 25.0%, through the
+     * regression bound of 24% and further from the 12-18% design goal.
+     *
+     * Corrected here rather than by reintroducing sandbagging, because this is
+     * the lever that acts on exactly the measured quantity: who reaches 8 is a
+     * statement about the cast, and how often an 8 becomes a 9 is a statement
+     * about how the Gamemakers score. The second is what drifted.
+     */
+    eliteGateBase: 0.3,
     /**
      * §7.5: 0.3/0.42 measured out to 11s at 0.59% and 12s at 0.03% of all
      * scores — "unprecedented" had drifted into "unseen". 0.36/0.52 keeps the
@@ -6424,7 +6586,17 @@ export const TRAINING_FLOOR = {
     proficiencyStep: 0.35,
 
     /** Strategy pick: how visible to be, before any of it is scored. */
-    careerShowcase: 0.4,
+    /*
+     * §(requests): Careers never conceal at all now — the branch is closed to
+     * them in `pickStrategy` rather than nudged. This weight was calibrated on
+     * top of a world where they sometimes did, so leaving it at 0.4 pushed the
+     * elite end of the score board from inside its guard band to 25.0%
+     * (ceiling 24%): every Career showcasing *and* a heavy thumb on the
+     * showcase/balanced split is the same pressure applied twice. Lowered so
+     * the rule does the work and the weight only decides which of the two
+     * honest strategies they take.
+     */
+    careerShowcase: 0.22,
     careerConceal: -0.18,
     schemerConceal: 0.25,
     underdogConceal: 0.15,
@@ -7678,6 +7850,13 @@ export const ARCHETYPE_HOOKS = {
      */
     brokerNeedGap: 15,
     /**
+     * AUDIT-9: what an untreated wound is worth on the need scale.
+     *
+     * High, because it is: somebody bleeding with nothing to dress it is the
+     * most broker-ish client in the arena, and `need` could not see them.
+     */
+    brokerWoundNeed: 70,
+    /**
      * AUDIT-7 §8.2: how many weapons a broker keeps before they will trade one.
      *
      * One. Measured both ways at n=1,600: keeping two spares dropped the set
@@ -8082,4 +8261,85 @@ export const ENDGAME_POSITIONING = {
     pullWeight: 3,
     /** Edge above which the horn is the place to be; below it, high ground. */
     hornEdge: 0,
+} as const;
+
+/**
+ * §(requests): how hard a district's trade pulls on what its tributes find.
+ *
+ * Weights on a draw, not guarantees. A District 4 tribute at the mouth of the
+ * horn should usually come up with the trident — that is the shot the format
+ * exists for — and should occasionally come up with whatever was actually
+ * lying there, or the usual case stops being worth watching. See
+ * `pickForDistrict`.
+ */
+export const ITEM_AFFINITY = {
+    /** The one weapon the district is known for. */
+    signatureWeight: 9,
+    /** The rest of what they grew up handling. */
+    affinityWeight: 4,
+    /** A class they are comfortable with, without a specific history. */
+    classWeight: 2,
+} as const;
+
+/**
+ * §(requests): whether the killer actually goes through the body.
+ *
+ * Stripping the fallen used to be automatic on every kill, which made it both
+ * unrealistic — nobody inventories a pack with a rival walking into the zone —
+ * and narratively flat, since "X strips the body" followed every single death
+ * in the feed. These are the two questions the decision actually turns on:
+ * do they have the time, and do they want to.
+ *
+ * Tuned so a tribute who needs something usually takes it and a comfortable
+ * one in a contested zone usually does not, which also leaves more kit lying
+ * where it fell for the abandoned-camp layer to hand to whoever arrives next.
+ */
+export const LOOTING = {
+    baseChance: 0.55,
+    /** Aggression is most of the appetite for it. */
+    perAggression: 0.35,
+    /** Each unfriendly living body still standing in the zone. */
+    perOnlooker: 0.3,
+    /** Bleeding out is not the moment to kneel down. */
+    bleedingPenalty: 0.25,
+    /** Nothing in the pack, or genuinely hungry or thirsty. */
+    desperateBonus: 0.3,
+    desperateHunger: 60,
+    desperateThirst: 60,
+    /** The person from home is not a body to be gone through. */
+    districtPartnerPenalty: 0.45,
+} as const;
+
+/**
+ * §(requests): "most of the time, they act very optimally".
+ *
+ * The decision layer's *inputs* degrade under pressure — memory distorts,
+ * sightings expire, beliefs go stale — and the act of choosing did not, so a
+ * concussed tribute on their fourth sleepless night in the dark weighed the
+ * map exactly as carefully as a rested one. These weights compose the missing
+ * term. They flatten the selection rather than biasing it: the ranking stays
+ * honest and the pick off it gets noisier, which is what being unable to
+ * think straight looks like from outside.
+ *
+ * `max` is deliberately short of 1. Even the worst-off tribute in the arena
+ * still avoids the zone they watched three people die in; confusion is a
+ * degradation of judgement, not its abolition.
+ */
+export const CONFUSION = {
+    max: 0.75,
+    fatigueFloor: 45,
+    fatigueWeight: 0.35,
+    sanityCeiling: 60,
+    sanityWeight: 0.3,
+    thirstFloor: 60,
+    thirstWeight: 0.2,
+    headInjuryPerGrade: 0.12,
+    bleeding: 0.1,
+    afterDark: 0.12,
+    /**
+     * How far confusion flattens the destination draw. At full confusion the
+     * sharpness exponent falls by this much, which turns a decisive pick into
+     * something much closer to "one of the ones that looked all right".
+     */
+    destinationFlattening: 0.9,
 } as const;

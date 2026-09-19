@@ -8,6 +8,8 @@ import { SimContext } from './context';
 import { carryCapacity, giveItem } from './items';
 import { clampTribute } from './vitals';
 import { cyclesSinceContact, ensureMemory, hasStoodBy, raiseSuspicion, rattle, swearVengeance, noteContact } from './memory';
+import { getZone } from './map';
+import { arenaIsSilent } from './gamesProfile';
 import { areLovers } from './alliance';
 import { GRIEF_TEXTS, VENGEANCE_TEXTS, RELIEF_TEXTS, BETRAYAL_WITNESS_TEXTS } from '../data/flavorText';
 import { resolveLoansOnDeath } from './debts';
@@ -303,7 +305,43 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
             rattle(other, HUNTING.rattledPerGrief);
             clampTribute(other);
 
-            if (killer && killer.id !== other.id) {
+            /*
+             * §(requests): grief is public. *Who did it* is not.
+             *
+             * The anthem shows the faces of the dead; it does not name who
+             * killed them. But every mourner in the arena was handed the
+             * killer's identity the instant the cannon fired — so a tribute
+             * two zones away hated a specific person for something they had
+             * no way of knowing they had done, and swore vengeance on them
+             * (measured: far too many oaths, most of them over a face in the
+             * sky). Tributes knowing how other tributes died, without having
+             * been there, was the single most-noticed fidelity problem in the
+             * feed.
+             *
+             * Knowledge has to come from somewhere:
+             *
+             *  - standing in the zone when it happened, which is seeing it;
+             *  - being close enough to piece it together, which is the
+             *    adjacent-zone draw the fear layer already models (and which
+             *    is also where misattribution comes from — see
+             *    `broadcastDeath`);
+             *  - and nowhere else. An arena that swallows its cannon
+             *    (`arenaIsSilent`) gives up even that.
+             *
+             * Somebody who does not know still grieves, still loses sanity,
+             * still goes to pieces. They simply do not have a name to put it
+             * on — until the rumour layer hands them one, which is what makes
+             * a rumour worth anything.
+             */
+            const sawItHappen = other.zone === victim.zone;
+            const witnessed = killer !== undefined && sawItHappen;
+            const killZone = getZone(state.arena, victim.zone);
+            const nearby = killer !== undefined && !witnessed && !arenaIsSilent(state)
+                && (killZone?.adjacent.includes(other.zone) ?? false)
+                && ctx.rng.chance(RELATIONSHIPS.killerIdentifiedNearby);
+            const knowsKiller = witnessed || nearby;
+
+            if (killer && killer.id !== other.id && knowsKiller) {
                 const hatred = RELATIONSHIPS.griefTowardKiller * intensity
                     + (wereAllied ? RELATIONSHIPS.griefTowardKillerAllyBonus : 0);
                 const now = adjustRel(other, killer.id, -hatred);
@@ -324,7 +362,11 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
                 // reflex — and most of those were sworn over a name in the
                 // sky. A mourner who watched it happen swears; one who heard
                 // the cannon from two zones away mostly grieves instead.
-                const sworn = other.zone === victim.zone || isLover || isPartner
+                // Knowing who did it is now the precondition rather than one
+                // of several ways in, so this is only about *whether it takes*:
+                // a witness or somebody who loved them swears; somebody who
+                // merely worked it out from the next zone over usually does not.
+                const sworn = witnessed || isLover || isPartner
                     || ctx.rng.chance(RELATIONSHIPS.vengeanceDistantChance);
                 if (sworn && (personal || now <= RELATIONSHIPS.vengeanceThreshold)) {
                     swearVengeance(other, killer.id);
@@ -362,8 +404,7 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
             // from 15 to 45, because the grief hit immediately above this line
             // takes almost every mourner under all of them. It would have been
             // a knob that reads as a gate and is not one.
-            const witnessed = other.zone === victim.zone;
-            if ((isLover || (wereAllied && witnessed && bond >= RELATIONSHIPS.hauntedBond))
+            if ((isLover || (wereAllied && sawItHappen && bond >= RELATIONSHIPS.hauntedBond))
                 && intensity > RELATIONSHIPS.hauntedIntensity) {
                 earnTrait(ctx, other, 'Haunted');
             }

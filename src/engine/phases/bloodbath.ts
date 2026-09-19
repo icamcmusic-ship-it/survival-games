@@ -1,3 +1,4 @@
+import { ARENA_REVEALS } from '../../data/arenaReveals';
 import { dreadOf } from '../intent';
 import { targetDrawOf } from '../targeting';
 import { SimContext, getAlive } from '../context';
@@ -13,7 +14,7 @@ import { resolveCombat, resolveGroupCombat, selfInflictedDeath } from '../combat
 import { BLOODBATH_TEXTS,
     PEDESTAL_ARENA_SHOTS, PEDESTAL_REACTIONS, EARLY_STEP_OFF, GONG_DECISIONS,
 } from '../../data/flavorText';
-import { giveItem, itemPhrase, mintItem, itemPoolFor } from '../items';
+import { giveItem, itemPhrase, mintItem, itemPoolFor, pickForDistrict } from '../items';
 import { personaThreat } from './alliances';
 import { getRel, setRel } from '../relationships';
 import { noteContact, noteSighting, ensureMemory } from '../memory';
@@ -27,6 +28,8 @@ export function startGames(ctx: SimContext) {
     ctx.state.phase = 'bloodbath';
     ctx.state.day = 1;
     initializeCareerAlliance(ctx);
+    // §(requests): ...and everybody else's, which used to evaporate at the gong.
+    initializePactAlliances(ctx);
 }
 
 function initializeCareerAlliance(ctx: SimContext) {
@@ -85,6 +88,76 @@ function initializeCareerAlliance(ctx: SimContext) {
 }
 
 /**
+ * §(requests): the packs the floor built, made real at the gong.
+ *
+ * Three days of training produced `trainingPact` — a flat list of
+ * pre-agreements — and at the gong precisely one of them mattered: the Career
+ * pack, which `initializeCareerAlliance` builds separately. Everybody else's
+ * agreement bought a warmer bloodbath line and nothing else, then had to be
+ * re-discovered from scratch by the day-phase formation roll, which only ever
+ * pairs two alliance-free tributes. So the only group of three or more in the
+ * arena at first light was the Careers, and the arena's most interesting
+ * counterweight — the outer-district coalition that forms *because* the pack
+ * exists — could not be there to meet them.
+ *
+ * The pact graph already describes those groups: two tributes who agreed on
+ * the floor are an edge, and a connected component is a pack. They are
+ * assembled here, capped at the same `maxSize` every other alliance obeys, and
+ * seeded with the regard three days of agreeing is worth.
+ *
+ * Careers are excluded outright — their pack is built above, and a pact
+ * between a Career and an outer-district tribute is a recruitment, which the
+ * alliance layer already owns.
+ */
+function initializePactAlliances(ctx: SimContext) {
+    const alive = getAlive(ctx.state).filter(t => !t.isCareer && t.allianceId === undefined);
+    const byId = new Map(alive.map(t => [t.id, t]));
+    const seen = new Set<string>();
+
+    alive.forEach(seed => {
+        if (seen.has(seed.id)) return;
+        // Breadth-first across the pact graph: everybody this tribute agreed
+        // with, everybody *they* agreed with, and so on. That is what makes a
+        // five-person coalition possible from a handful of two-way handshakes,
+        // which is exactly how one forms on a real training floor.
+        const group: Tribute[] = [];
+        const queue = [seed];
+        while (queue.length > 0 && group.length < ALLIANCES.maxSize) {
+            const t = queue.shift()!;
+            if (seen.has(t.id)) continue;
+            seen.add(t.id);
+            group.push(t);
+            (t.trainingPact ?? []).forEach(id => {
+                const other = byId.get(id);
+                if (other && !seen.has(other.id)) queue.push(other);
+            });
+        }
+        if (group.length < 2) return;
+
+        const allianceId = `floor-pact-${seed.id}`;
+        group.forEach(t => {
+            t.allianceId = allianceId;
+            group.forEach(other => {
+                if (t.id === other.id) return;
+                // Agreeing on the floor is worth less than an academy
+                // childhood — the Career floor is 45 — but it is not nothing,
+                // and it is what they are walking off the plates on.
+                setRel(t, other.id, Math.max(ALLIANCES.floorPactRegard, getRel(t, other.id)));
+            });
+        });
+        registerAlliance(ctx, allianceId, group);
+        ctx.logEvent(
+            group.length > 2
+                ? `${group.map(t => `${t.name} (D${t.district})`).join(', ')} come off the plates together. `
+                    + 'Nobody trained them to do this. They agreed to it on the floor, in front of everybody, and they meant it.'
+                : `${group[0].name} and ${group[1].name} find each other in the first seconds and stay found.`,
+            group.map(t => t.id),
+            { important: true, category: 'alliance' },
+        );
+    });
+}
+
+/**
  * The scramble: sixty seconds on the plates, and then the run.
  *
  * Who reaches the mouth of the horn is not a coin flip. It is where the plate
@@ -139,6 +212,30 @@ function hornWeaponsPool(ctx: SimContext): Item[] {
  */
 function pedestalMinute(ctx: SimContext, alive: Tribute[]) {
     const horn = ctx.state.arena.zones[0]?.name ?? 'the Cornucopia';
+    /*
+     * §(requests): the long shot, before anything else happens.
+     *
+     * `PEDESTAL_ARENA_SHOTS` below is a generic opener — it works for any
+     * arena, which is exactly what is wrong with it as the *only* thing said
+     * about this one. `Arena.description` is a catalogue line written to sit
+     * in a list on the setup screen, one or two sentences, and it was carrying
+     * the whole burden of telling a player where they are. So the single most
+     * visual moment in the format was being summarised in eleven words.
+     *
+     * The reveal is a paragraph per arena, specific to the zones that exist,
+     * the law that governs it and the thing that will kill people there.
+     * A hidden-arena run does not get it — naming the place is precisely what
+     * that setting exists to withhold — and a procedural arena has no entry,
+     * which is correct: it has no authored identity to reveal, and the
+     * generator narrates its own.
+     */
+    const reveal = ctx.state.arenaHidden ? undefined : ARENA_REVEALS[ctx.state.arena.id];
+    if (reveal) {
+        ctx.logEvent(reveal, [], {
+            important: true, category: 'arena',
+            fact: `Arena revealed: ${ctx.state.arena.name} — ${ctx.state.arena.zones.length} zones`,
+        });
+    }
     ctx.logEvent(
         ctx.pickText(PEDESTAL_ARENA_SHOTS)
             .split('{arena}').join(ctx.state.arena.name)
@@ -421,7 +518,12 @@ export function processBloodbath(ctx: SimContext) {
         if (!ctx.rng.chance(first ? BLOODBATH.armedAtHornChance : BLOODBATH.armedAtHornChance * 0.5)) return;
         // The good steel is stacked at the mouth of the horn; the outer ring is
         // backpacks and whatever was scattered on the grass.
-        const base = first ? ctx.rng.pick(hornWeaponsPool(ctx)) : ctx.rng.pick(lootPool(ctx));
+        // §(requests): they reach for what they know. The girl from District 4
+        // does not come up from the mouth of the horn holding a mace as often
+        // as she comes up holding the trident — see `pickForDistrict`.
+        const base = first
+            ? pickForDistrict(ctx.rng, t, hornWeaponsPool(ctx))
+            : pickForDistrict(ctx.rng, t, lootPool(ctx));
         const item = mintItem(ctx.rng, base, first ? QUALITY_BIAS.hornMouth : QUALITY_BIAS.hornScatter);
         giveItem(t, item);
         ctx.logEvent(
@@ -443,8 +545,21 @@ export function processBloodbath(ctx: SimContext) {
         if (!ctx.rng.chance(caught)) return;
         const hunter = ctx.rng.pickOrUndefined(hunters.filter(h => h.status === 'alive' && h.id !== t.id));
         if (!hunter) return;
+        /*
+         * §(requests): say what they were caught *with*.
+         *
+         * "runs them down" named the pursuit and nothing else, and the
+         * exchange that follows may or may not produce its own line, so a
+         * share of bloodbath deaths read as somebody being generically killed
+         * by a named tribute with no method attached. The hunter is selected
+         * out of `hunters`, which is by definition everybody who came up from
+         * the horn holding something, so the weapon is always known here —
+         * it simply was not being said.
+         */
+        const held = hunter.inventory.find(i => i.type === 'weapon');
         ctx.logEvent(
-            `${t.name} turns for the treeline and does not get there. ${hunter.name} runs them down before they clear the ring of plates.`,
+            `${t.name} turns for the treeline and does not get there. ${hunter.name} runs them down before they clear `
+            + `the ring of plates, ${held ? `${itemPhrase(held)} already in hand` : 'with nothing but their hands'}.`,
             [hunter.id, t.id],
             { important: true, category: 'combat' }
         );
@@ -535,7 +650,7 @@ export function processBloodbath(ctx: SimContext) {
             { category: 'combat' }
         );
         pool.splice(1).forEach(t => {
-            const item = mintItem(ctx.rng, ctx.rng.pick(lootPool(ctx)), QUALITY_BIAS.hornScatter);
+            const item = mintItem(ctx.rng, pickForDistrict(ctx.rng, t, lootPool(ctx)), QUALITY_BIAS.hornScatter);
             giveItem(t, item);
             ctx.logEvent(`${t.name} grabs ${itemPhrase(item)} on the way out.`, [t.id], { category: 'loot' });
         });
@@ -543,8 +658,8 @@ export function processBloodbath(ctx: SimContext) {
 
     else if (pool.length === 1) {
         const winner = pool[0];
-        const item1 = mintItem(ctx.rng, ctx.rng.pick(lootPool(ctx)), QUALITY_BIAS.hornMouth);
-        const item2 = mintItem(ctx.rng, ctx.rng.pick(lootPool(ctx)), QUALITY_BIAS.hornMouth);
+        const item1 = mintItem(ctx.rng, pickForDistrict(ctx.rng, winner, lootPool(ctx)), QUALITY_BIAS.hornMouth);
+        const item2 = mintItem(ctx.rng, pickForDistrict(ctx.rng, winner, lootPool(ctx)), QUALITY_BIAS.hornMouth);
         giveItem(winner, item1, item2);
         ctx.logEvent(
             fill(ctx.pickText(BLOODBATH_TEXTS.survive), { tribute: winner.name, items: `${item1.name} and ${item2.name}` }),
