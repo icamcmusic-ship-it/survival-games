@@ -908,7 +908,167 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         info: 'Does fiddly work under pressure. Dressings hold and snares sit where they were put.',
         mods: { medicine: 0.08, trapSkill: 0.05 },
     },
+
+    /*
+     * ======================= AUDIT-8 §12.3 ==================================
+     *
+     * Thirty, weighted deliberately toward the modifier keys almost nothing
+     * carried.
+     *
+     * `TraitMod` has 59 keys and every one is read somewhere — the check at
+     * `test:flavor` holds that line at a ceiling of zero unwritten keys. But
+     * *carried* is a different question from *read*, and the census was
+     * lopsided: `allianceAffinity` sat on 35 traits, `resolveDrift` and
+     * `retreat` on 30 each, while nine keys were carried by three rows or
+     * fewer — `rumourCredibility` by two, and `executeDrive`,
+     * `hornCommitment`, `intimidation`, `leadership`, `charterHold`,
+     * `suspicionResist`, `debtHonour` and `haggle` by three apiece. A
+     * modifier carried by two traits out of 149 is a modifier the player will
+     * essentially never meet, however diligently the engine reads it.
+     *
+     * Eighteen of the thirty below exist to fix that specifically. The rest
+     * fill the body and deprivation axes and the earned set, which is 25
+     * against 124 rollable and is the half a player actually notices arriving.
+     *
+     * The file's founding rule is unchanged and is why this is a data-only
+     * change: a new trait costs a row and no read site at all.
+     */
+
+    // ---- the social keys almost nothing carried ----------------------------
+    'Straight Dealer': {
+        info: 'Says what the terms are and then keeps to them. Pays what they owe; gets a worse price for being predictable about it.',
+        mods: { debtHonour: 0.15, haggle: 0.1, treachery: -0.1 },
+    },
+    'Known Liar': {
+        info: 'Has been caught at it. Nothing they say is taken at face value again, which is occasionally useful and mostly not.',
+        mods: { rumourCredibility: -0.4, haggle: 0.15, suspicionResist: -0.1 },
+    },
+    'Takes The Floor': {
+        info: 'Speaks to a room rather than to a person. Groups form around them and arguments end where they say they do.',
+        mods: { leadership: 0.2, persuasion: 0.05, excitement: 0.1 },
+    },
+    'Clause-Minded': {
+        info: 'Treats an agreement as a list of things that were agreed. Keeps charters to the letter and expects the same.',
+        mods: { charterHold: 0.2, debtHonour: 0.1, allianceAffinity: 0.1 },
+    },
+    'Slow To Doubt': {
+        info: 'Needs to see it twice before believing it of somebody. Suspicion slides off them, and so does the first warning.',
+        mods: { suspicionResist: 0.25, betrayalResist: -0.1 },
+    },
+    'Trusted Voice': {
+        info: 'Somehow believed. What they repeat gets repeated, whether or not it was true when they got it.',
+        mods: { rumourCredibility: 0.3, persuasion: 0.05 },
+    },
+    'Hard Look': {
+        info: 'Frightens people without doing anything. Useful at a standoff and a liability everywhere the field can see them.',
+        mods: { intimidation: 0.2, targetDraw: 0.5, rapport: -0.1 },
+    },
+    'Settles Up': {
+        info: 'Does not like owing. Pays debts early, carries what is needed to be able to, and is short of space for anything else.',
+        mods: { debtHonour: 0.2, capacity: 1, treachery: -0.05 },
+    },
+    'Pack Sense': {
+        info: 'Knows where everyone in the group is without looking. Leads by being where the gap was.',
+        mods: { leadership: 0.15, defended: 0.1 },
+    },
+    'Never Renegotiates': {
+        info: 'The first price is the price. Sworn terms hold with them long after the reason for them has gone.',
+        mods: { haggle: -0.2, charterHold: 0.25 },
+    },
+    'Reads The Sky': {
+        info: 'Pays attention to the anthem and the cannon and puts it together faster than most. What they tell you about the field is usually right.',
+        mods: { rumourCredibility: 0.2, awareness: 0.2 },
+    },
+    'Owes The Room': {
+        info: 'Carries a debt to everybody who has ever helped them and behaves accordingly. Slow to run out on anyone.',
+        mods: { debtHonour: 0.3, allianceAffinity: 0.2, retreat: 0.05 },
+    },
+
+    // ---- the combat keys almost nothing carried ---------------------------
+    'First Through': {
+        info: 'Goes at the horn without deciding to. The sixty seconds on the plate are the easiest of their Games.',
+        mods: { hornCommitment: 0.25, combatPower: 1 },
+    },
+    'Hangs Back': {
+        info: 'Lets the first wave go and watches what it costs them. Never at the front, and harder to find.',
+        mods: { hornCommitment: -0.3, concealment: 0.15 },
+    },
+    'Finishes It': {
+        info: 'Does not leave somebody on the ground. Closes every fight they win, and carries all of them afterwards.',
+        mods: { executeDrive: 0.25, killSanity: 0.2 },
+    },
+    'Cannot Finish It': {
+        info: 'Wins the exchange and then stops. Leaves people alive who were not going to return the favour.',
+        mods: { executeDrive: -0.35, griefResist: -0.15 },
+    },
+    'Grips Hard': {
+        info: 'Gets hold and does not let go. Dangerous with nothing in their hands and hard to shake off.',
+        mods: { wrestle: 0.2, unarmedPower: 1.5 },
+    },
+    'Fights Wounded': {
+        info: 'Does not fight worse for bleeding. Everybody who reads them as finished is wrong once.',
+        mods: { bleedResist: 0.2, retreat: -0.15 },
+    },
+
+    // ---- the body and the ground ------------------------------------------
+    'Long Wind': {
+        info: 'Goes all day at the same pace. Not fast, and still walking when the fast ones have stopped.',
+        mods: { fatigueDay: -3, water: 0.2 },
+    },
+    'Heat-Bred': {
+        info: 'Raised somewhere the sun means it. Works through the afternoon and is useless after dark.',
+        mods: { heatResist: 0.3, coldResist: -0.2 },
+    },
+    'Runs Cold': {
+        info: 'Comfortable in weather that has everybody else shaking, and finished by an hour of real sun.',
+        mods: { coldResist: 0.3, heatResist: -0.2 },
+    },
+    'Eats Late': {
+        info: 'Can go a long time on very little and then needs it all at once. Poor at finding food; excellent at not needing it yet.',
+        mods: { hungerDrain: -4, forage: -0.04 },
+    },
+    'Thin Sleeper': {
+        info: 'Never fully under. Gets less out of a night than they should and hears everything that happens in one.',
+        mods: { fatigueNight: -2, awarenessNight: 0.4 },
+    },
+    'Heavy Bones': {
+        info: 'Dense through the frame. Very hard to move and very hard to hide behind anything.',
+        mods: { wrestle: 0.15, concealment: -0.1 },
+    },
+
+    // ---- earned in the arena ----------------------------------------------
+    'Unbroken': {
+        info: 'Never went under. Eight days in the arena and the near-death line is a thing that happened to other people.',
+        earned: true,
+        mods: { resolveDrift: 0.5, sponsorTrust: 0.3, odds: 0.4 },
+    },
+    'Sleepless Week': {
+        info: 'Took the watch four nights running. Sees what is coming and is nearly out on their feet.',
+        earned: true,
+        mods: { awarenessNight: 0.5, fatigueDay: 3 },
+    },
+    'Trapline': {
+        info: 'Has built enough of them to stop thinking about it. The ground around them stops being neutral.',
+        earned: true,
+        mods: { trapSkill: 0.12, campSkill: 0.05 },
+    },
+    'Mapmaker': {
+        info: 'Has found two ways through this arena that were not on anybody\'s plan, and is looking for a third.',
+        earned: true,
+        mods: { highland: 0.5, awareness: 0.3, concealment: 0.05 },
+    },
+    'Kept The Peace': {
+        info: 'Three truces run to term. The field has worked out that a deal with them is worth something.',
+        earned: true,
+        mods: { persuasion: 0.08, rumourCredibility: 0.25, targetDraw: -0.5 },
+    },
+    'Outlived The Pack': {
+        info: 'The last of a group of four or more. Everyone they trained with is in the sky and they are still walking.',
+        earned: true,
+        mods: { resolveDrift: -0.3, griefResist: 0.3, treachery: 0.15, odds: 0.3 },
+    },
 };
+
 
 /** Everything the reaping can roll. Earned traits are excluded by definition. */
 export const ROLLABLE_TRAITS = Object.keys(TRAIT_DEFS).filter(name => !TRAIT_DEFS[name].earned);

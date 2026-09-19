@@ -6,7 +6,7 @@ import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
 import { dissolveBrokeredTruces, effectiveCaution } from './archetypeHooks';
-import { ARENA_DEATH_BUDGET, BLEEDING, RELATIONSHIPS as REL_KNOBS, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, NOTORIETY, INJURY_BEHAVIOUR, PROFICIENCY, QUALITY, RISK, SHOCK, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH, SOCIAL_AXES, UNIVERSAL_DEATHS, ARENA_LAWS } from '../data/balance';
+import { ARCHETYPE_HOOKS, ARENA_DEATH_BUDGET, BLEEDING, RELATIONSHIPS as REL_KNOBS, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, NOTORIETY, INJURY_BEHAVIOUR, PROFICIENCY, QUALITY, RISK, SHOCK, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH, SOCIAL_AXES, UNIVERSAL_DEATHS, ARENA_LAWS } from '../data/balance';
 import { goDown, isActive, isDowned } from './downed';
 import { clampTribute } from './vitals';
 import { enforceCapacity, giveItem } from './items';
@@ -16,7 +16,7 @@ import { loadFromViolence } from './loadBearing';
 import { bloodOnTheBlade } from './legendaryItems';
 import { noteFightOpened } from './runRecords';
 import { displayName } from './epithets';
-import { addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound, rattle } from './memory';
+import { readOf, addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound, rattle } from './memory';
 import { incurDebt } from './debts';
 import { adjustRel, adjustTrust, getRel, propagateDeathFallout } from './relationships';
 import { injure, injuryGrade, openWound } from './wounds';
@@ -588,6 +588,27 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
     if (opponent && traitMod(t, 'vengeanceEdge') !== 0
         && (hasVengeanceAgainst(t, opponent.id) || getRel(t, opponent.id) <= COMBAT.vengefulHatredRegard)) {
         power += traitMod(t, 'vengeanceEdge');
+    }
+
+    /*
+     * AUDIT-8 §8.1: the Archivist, converting.
+     *
+     * Its set piece fires for 59% of holders and it still finished bottom of
+     * the win table at 2.16%, with the lowest average kills in the roster
+     * (0.38). Giving the beat a payoff in `RivalRecord.read` — everything it
+     * has been keeping a tally of, turned into a measure of everyone still
+     * standing — helped it *avoid* fights, because `read` is consumed by the
+     * threat estimate. Avoiding fights does not win a Games; the field has to
+     * empty, and an archetype that contributes nothing to that has no path.
+     *
+     * Knowing exactly how somebody fights is a fighting advantage, and this
+     * is the one archetype whose whole premise is knowing. Scaled by the read
+     * itself, so it is worth nothing against a stranger and most against the
+     * person they have been writing down all week — which is also what makes
+     * it a `late-blooming` curve rather than a flat bonus.
+     */
+    if (opponent && t.archetype === 'archivist') {
+        power += readOf(t, opponent.id) * ARCHETYPE_HOOKS.archivistReadPower;
     }
 
     return power;

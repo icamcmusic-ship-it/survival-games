@@ -1488,6 +1488,53 @@ export const INCOMPATIBLE_TRAITS: Array<[string, string]> = [
     ['Night Ear', 'Sun-Blind'],
     ['Steady Hand', 'Clumsy'],
     ['Steady Hand', 'Rope-Handed'],
+
+    /*
+     * AUDIT-8 §12.3: the thirty new traits, and the contradictions among them.
+     *
+     * A trait pair that says opposite things about the same tribute is the
+     * one thing `traitFits` exists to prevent, and a new batch is where they
+     * get introduced. Every pair below is either a direct contradiction
+     * between two of the new rows or between a new row and something the
+     * table already carried.
+     */
+    ['Straight Dealer', 'Known Liar'],
+    ['Straight Dealer', 'Fabulist'],
+    ['Trusted Voice', 'Known Liar'],
+    ['Known Liar', 'Straight Story'],
+    ['Slow To Doubt', 'Paranoid'],
+    ['Slow To Doubt', 'Tallyman'],
+    ['Never Renegotiates', 'Hard Bargain'],
+    ['Never Renegotiates', 'Horse Trader'],
+    ['Clause-Minded', 'Contrarian'],
+    ['Owes The Room', 'Owes Nobody'],
+    ['Settles Up', 'Hoarder'],
+    ['Takes The Floor', 'Unremarkable'],
+    ['Takes The Floor', 'Quiet Room'],
+    ['Hard Look', 'Unremarkable'],
+    ['Pack Sense', 'Prickly'],
+    ['First Through', 'Hangs Back'],
+    ['First Through', 'First Off The Plate'],
+    ['Hangs Back', 'Cold Opener'],
+    ['Finishes It', 'Cannot Finish It'],
+    ['Finishes It', 'Merciful'],
+    ['Cannot Finish It', 'Finisher'],
+    ['Cannot Finish It', 'Ruthless'],
+    ['Fights Wounded', 'Thin-Skinned'],
+    ['Fights Wounded', 'Fragile'],
+    ['Grips Hard', 'Clumsy'],
+    ['Heat-Bred', 'Runs Cold'],
+    ['Heat-Bred', 'Sunburnt'],
+    ['Heat-Bred', 'Frost-Born'],
+    ['Runs Cold', 'Sun-Hardened'],
+    ['Runs Cold', 'Thin-Blooded'],
+    ['Thin Sleeper', 'Light Sleeper'],
+    ['Thin Sleeper', 'Hollow Leg'],
+    ['Heavy Bones', 'Lightfooted'],
+    ['Heavy Bones', 'Nimble'],
+    ['Heavy Bones', 'Fleet'],
+    ['Long Wind', 'Fragile'],
+    ['Eats Late', 'Hollow Leg'],
 ];
 
 export function traitsConflict(a: string, b: string): boolean {

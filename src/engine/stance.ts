@@ -168,6 +168,15 @@ export interface StanceSignals {
     occupants: Tribute[];
     /** Traps this tribute has set in the zone they are standing in. */
     ownTrapsHere: number;
+    /**
+     * AUDIT-8 §3.4: traps this tribute has set on the ways *into* this zone.
+     *
+     * `Baiting` read `ownTrapsHere` alone, which is the one square a rival is
+     * least likely to walk into unannounced — and with §6.1 placing traplines
+     * on the approaches rather than underfoot, the stance could not see its own
+     * work at all. A trapline is a shape around a position, not a tile.
+     */
+    ownTrapsAdjacent: number;
     /** True when the ground itself rewards holding it. */
     chokepoint: boolean;
     elevation: boolean;
@@ -228,6 +237,8 @@ function buildSignals(ctx: SimContext, t: Tribute, occupants: Tribute[]): Stance
         aliveCount: ctx.state.tributes.filter(o => o.status === 'alive').length,
         occupants,
         ownTrapsHere: trapsIn(ctx, t.zone).filter(tr => tr.ownerId === t.id).length,
+        ownTrapsAdjacent: (getZone(ctx.state.arena, t.zone)?.adjacent ?? [])
+            .reduce((n, name) => n + trapsIn(ctx, name).filter(tr => tr.ownerId === t.id).length, 0),
         chokepoint: !!features?.chokepoint,
         elevation: !!features?.elevation,
         cannonNearby,
@@ -407,8 +418,18 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
      */
     Baiting: (_ctx, t, sig) => {
         if (sig.wounded) return false;
-        // `sig.ownTrapsHere` is already computed for the Fortified row.
-        return sig.ownTrapsHere > 0 || sig.chokepoint;
+        /*
+         * AUDIT-8 §3.4: the line, not the tile.
+         *
+         * This asked for a trap in the tribute's own zone or a chokepoint
+         * underfoot, and measured 1.9% of stance-time while the trap
+         * conversion rate it was written to move did not move at all (72.7%
+         * untriggered before, 71.9% after). Two reasons, now both addressed:
+         * traps are laid on the approaches rather than underfoot (§6.1), so
+         * the old gate could not see the work; and baiting is only a plan if
+         * there is somebody to bait, which nothing checked.
+         */
+        return sig.ownTrapsHere > 0 || sig.ownTrapsAdjacent > 0 || sig.chokepoint;
     },
 };
 
@@ -624,6 +645,11 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
     Baiting: (_ctx, t, sig) => {
         let s = STANCE_MODES.baiting.base;
         s += sig.ownTrapsHere * STANCE_MODES.baiting.perOwnTrap;
+        // AUDIT-8 §3.4: a trap on the way in is worth most of one underfoot —
+        // it is, after all, where the trapper meant to put it.
+        s += sig.ownTrapsAdjacent * STANCE_MODES.baiting.perApproachTrap;
+        // ...and a line with nobody walking toward it is a line, not a plan.
+        if (sig.hostile > 0 || sig.cannonNearby) s += STANCE_MODES.baiting.quarryBonus;
         if (sig.chokepoint) s += STANCE_MODES.baiting.chokepointBonus;
         if (sig.wounded) s -= STANCE_MODES.baiting.woundedPenalty;
         s += sig.arch.aggression * STANCE.archetypeWeight * STANCE_MODES.conditionalArchetypeWeight;

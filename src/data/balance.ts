@@ -2068,6 +2068,31 @@ export const EARNED_TRAIT_RULES = {
      */
     hardenedMuttSurvivals: 2,
 
+    /*
+     * AUDIT-8 §12.3: the six new earned traits, and where each is earned.
+     *
+     * The earned set was 31 against 148 rollable, and it is the half a player
+     * actually notices arriving — a reaped trait is who somebody was on day
+     * zero, an earned one is the arena changing them on camera. Each threshold
+     * below is set against a thing the engine already counts, at a level the
+     * measured distribution actually reaches.
+     */
+    /** Days survived without ever crossing the near-death line, for 'Unbroken'. */
+    unbrokenDays: 8,
+    /** Consecutive nights on the watch, for 'Sleepless Week'. */
+    sleeplessWatches: 4,
+    /** Traps built before it stops being a decision, for 'Trapline'. */
+    /* AUDIT-8: 5 -> 3: 1,151 traps are built across 400 runs by ~7,600 tributes, so five is several times what any one of them lays. */
+    traplineTraps: 3,
+    /** Hidden edges personally found, for 'Mapmaker'. */
+    /* AUDIT-8: 2 -> 1: `check-achievements`'s ceiling guard already proved no victor in 500 runs reaches two, and hidden edges are found in 14.8% of runs at all. */
+    mapmakerEdges: 1,
+    /** Truces run to their full term, for 'Kept The Peace'. */
+    /* AUDIT-8: 3 -> 2: 182 truces run their full term across 400 runs, spread over the whole field. */
+    keptPeaceTruces: 2,
+    /** Original size of a group you are now the last of, for 'Outlived The Pack'. */
+    outlivedPackSize: 4,
+
     /**
      * §3.2: traits stop being one-way.
      *
@@ -3657,6 +3682,12 @@ export const TRAPS = {
     // an 18% ceiling. The placement signal is the point, not the volume.
     buildChokepointBonus: 0.10,
     buildPerTraffic: 0.015,
+    /**
+     * AUDIT-8 §6.1: how much busier an approach has to be before a trapper
+     * walks over and sets it there instead of here. Small but non-zero, so a
+     * tribute in a genuinely busy zone still traps their own ground.
+     */
+    approachTrafficEdge: 2,
     buildTrafficCap: 0.08,
     /*
      * §6.3: a stake needed a venom gland AND no blade at all, which is why six
@@ -4090,6 +4121,19 @@ export const STANCE_MODES = {
         base: 4.6,
         /** Per trap of the tribute's own in this sector. */
         perOwnTrap: 1.5,
+        /**
+         * AUDIT-8 §3.4: per trap of their own on a way *into* this sector.
+         * Slightly under `perOwnTrap` only because a trap underfoot is also a
+         * trap they are standing on top of; the approach is where a trapper
+         * actually means the line to be, so it is worth nearly as much.
+         */
+        perApproachTrap: 1.2,
+        /**
+         * AUDIT-8 §3.4: somebody to bait. Baiting with nobody within reach is
+         * standing in the open for no reason, and the stance scored the same
+         * either way — which is part of why it sat at 1.9% of stance-time.
+         */
+        quarryBonus: 1.8,
         /** Holding a chokepoint is its own kind of prepared ground. */
         chokepointBonus: 1.2,
         /** Being hurt makes drawing a crowd a worse idea. */
@@ -7707,7 +7751,13 @@ export const ARCHETYPE_HOOKS = {
      * survivor. Deliberately most of the way to `RIVAL_READ.max` (1): the
      * point of the archetype is that by the time it speaks, it knows the room.
      */
-    archivistReadGain: 0.6,
+    archivistReadGain: 0.85,
+    /**
+     * AUDIT-8 §8.1: combat power per point of read, for the Archivist only.
+     * On the ~20-point power scale, so a full read is worth about as much as a
+     * decent weapon — against one specific person they have studied.
+     */
+    archivistReadPower: 3.5,
     quietNamelessDay: 3,
     /** Mean notoriety the rest of the field may hold about them and still not know them. */
     quietNamelessNotoriety: 8,

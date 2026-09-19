@@ -209,16 +209,53 @@ export function setTrap(ctx: SimContext, t: Tribute) {
     // `materialIdx` is never shifted by the splice above.
     if (spendsLine) t.inventory.splice(materialIdx, 1);
     ctx.state.traps = ctx.state.traps ?? [];
+    /*
+     * AUDIT-8 §6.1: a trapline goes on the approaches, not under your feet.
+     *
+     * Every trap in the game was placed in the zone the builder happened to be
+     * standing in, and 71.9% of them were never triggered — 1,151 built, 323
+     * sprung, across 400 runs. That is not a construction problem, which is
+     * what `Baiting` was written to address and did not move; it is a
+     * placement problem. A trap is a bet on somebody else's movement, and the
+     * builder was betting exclusively on the one square they were already
+     * occupying, which is the square a rival is least likely to walk into
+     * unannounced.
+     *
+     * `zoneTraffic` is already tracked, already decayed, and already read two
+     * dozen lines above to decide whether the trap gets built at all. Reading
+     * it once more to decide *where* is the whole fix: a tribute who has spent
+     * the hour picks the busiest way in rather than their own doorstep, and
+     * only when the difference is worth the walk. They still know where it is
+     * — `ownerId` is unchanged — so nothing about springing your own trap
+     * changes.
+     */
+    let placement = t.zone;
+    if (zone) {
+        const trafficOf = (name: string) => Object.entries(ctx.state.zoneTraffic ?? {})
+            .filter(([key]) => key.split('|').includes(name))
+            .reduce((a, [, n]) => a + n, 0);
+        const here = trafficOf(t.zone);
+        const approaches = zone.adjacent
+            .filter(n => !(ctx.state.collapsedZones ?? []).includes(n))
+            .map(n => [n, trafficOf(n)] as const)
+            .sort((a, b) => b[1] - a[1]);
+        const best = approaches[0];
+        if (best && best[1] > here + TRAPS.approachTrafficEdge) placement = best[0];
+    }
     ctx.state.traps.push({
         id: `trap-${t.id}-${cycleOf(ctx.state)}-${ctx.state.traps.length}`,
         kind,
-        zone: t.zone,
+        zone: placement,
         ownerId: t.id,
         concealment: concealmentFor(ctx, t),
         setCycle: cycleOf(ctx.state),
         treated,
     });
     t.trapsSet = (t.trapsSet ?? 0) + 1;
+    // AUDIT-8 §12.3: enough of them that the ground around them stops being
+    // neutral. `trapsSet` was already counted and read by nothing but the
+    // achievement table.
+    if (t.trapsSet >= EARNED_TRAIT_RULES.traplineTraps) earnTrait(ctx, t, 'Trapline');
     // AUDIT-7 §3.5: a trap is read *and* built. Tracking is choosing where it
     // goes; carpentry is making it hold. The second half was not being trained.
     trainProficiency(t, 'tracking');

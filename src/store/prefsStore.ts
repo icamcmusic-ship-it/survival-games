@@ -20,6 +20,14 @@ export type Units = 'imperial' | 'metric';
  * the glyph to carry it. See the `data-palette` blocks in index.css.
  */
 export type Palette = 'default' | 'colourblind' | 'contrast';
+/**
+ * AUDIT-8 §2.2: the reading size, as a stamp rather than a stylesheet edit.
+ *
+ * Open since AUDIT-7 §2.3. Everything in the interface is sized in `rem`, so
+ * one multiplier on the root font size moves all of it; see the `data-scale`
+ * block in index.css for why it stops at 1.3.
+ */
+export type TextScale = 'small' | 'normal' | 'large' | 'larger';
 /** §2: light or dark chrome. 'system' follows `prefers-color-scheme`. */
 export type Theme = 'system' | 'light' | 'dark';
 
@@ -30,6 +38,16 @@ export interface Prefs {
     palette: Palette;
     /** §2: dark mode. Independent of the category palette. */
     theme: Theme;
+    /** AUDIT-8 §2.2: reading size. Applied as `data-scale` on <html>. */
+    textScale: TextScale;
+    /**
+     * AUDIT-8 §2.1: rebound keyboard shortcuts, `ShortcutId` -> key.
+     *
+     * Sparse on purpose: only what the player actually changed, so the
+     * defaults in `data/shortcuts.ts` stay the single source of truth and a
+     * default that moves later moves for everybody who never touched it.
+     */
+    shortcutOverrides: Record<string, string>;
     /**
      * §2.5: spoiler-safe viewing. Suppresses death and kill log text and the
      * odds board until the epilogue, so a shared seed can be watched by
@@ -88,6 +106,8 @@ export const DEFAULT_PREFS: Prefs = {
     units: 'imperial',
     palette: 'default',
     theme: 'system',
+    textScale: 'normal',
+    shortcutOverrides: {},
     spoilerSafe: false,
     seenCoachMarks: [],
     muteAudio: false,
@@ -147,10 +167,18 @@ export const PREFS_SPEC: StorageSpec<Prefs> = {
         const units = asStr(r.units, DEFAULT_PREFS.units);
         const palette = asStr(r.palette, DEFAULT_PREFS.palette);
         const theme = asStr(r.theme, DEFAULT_PREFS.theme);
+        const textScale = asStr(r.textScale, DEFAULT_PREFS.textScale);
         return {
             units: units === 'metric' ? 'metric' : 'imperial',
             palette: palette === 'colourblind' || palette === 'contrast' ? palette : 'default',
             theme: theme === 'light' || theme === 'dark' ? theme : 'system',
+            textScale: textScale === 'small' || textScale === 'large' || textScale === 'larger' ? textScale : 'normal',
+            // Values are keys, so anything non-string is dropped rather than
+            // trusted — this is read straight off localStorage.
+            shortcutOverrides: Object.fromEntries(
+                Object.entries(asRecord(r.shortcutOverrides) ?? {})
+                    .filter(([, v]) => typeof v === 'string' && (v as string).length > 0 && (v as string).length <= 12),
+            ) as Record<string, string>,
             spoilerSafe: asBool(r.spoilerSafe, DEFAULT_PREFS.spoilerSafe),
             seenCoachMarks: asStrArray(r.seenCoachMarks),
             muteAudio: asBool(r.muteAudio, DEFAULT_PREFS.muteAudio),
@@ -178,6 +206,7 @@ export function setPrefs(patch: Partial<Prefs>): void {
     writeStored(PREFS_SPEC, prefsStore.getState());
     if ('palette' in patch) applyPalette(prefsStore.getState().palette);
     if ('theme' in patch) applyTheme(prefsStore.getState().theme);
+    if ('textScale' in patch) applyTextScale(prefsStore.getState().textScale);
 }
 
 /**
@@ -188,6 +217,16 @@ export function applyTheme(theme: Theme): void {
     if (typeof document === 'undefined') return;
     if (theme === 'system') document.documentElement.removeAttribute('data-theme');
     else document.documentElement.setAttribute('data-theme', theme);
+}
+
+/**
+ * AUDIT-8 §2.2: the reading size, same mechanism. 'normal' removes the stamp
+ * so the `:root` default applies and nothing has to know it is the default.
+ */
+export function applyTextScale(scale: TextScale): void {
+    if (typeof document === 'undefined') return;
+    if (scale === 'normal') document.documentElement.removeAttribute('data-scale');
+    else document.documentElement.setAttribute('data-scale', scale);
 }
 
 /**
@@ -212,4 +251,5 @@ export function resetPrefs(): void {
     writeStored(PREFS_SPEC, prefsStore.getState());
     applyPalette(DEFAULT_PREFS.palette);
     applyTheme(DEFAULT_PREFS.theme);
+    applyTextScale(DEFAULT_PREFS.textScale);
 }

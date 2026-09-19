@@ -1,12 +1,13 @@
 import { Tribute } from '../models/types';
 import { witnessKindness } from './rapport';
-import { WATCH_ROTATION } from '../data/balance';
+import { EARNED_TRAIT_RULES, WATCH_ROTATION } from '../data/balance';
 import { SimContext } from './context';
 import { allianceRecords, membersOf } from './alliance';
 import { awareness } from './stealth';
 import { traitMod } from '../data/traits';
 import { cycleOf } from './memory';
 import { clampTribute } from './vitals';
+import { earnTrait } from './earnedTraits';
 
 /**
  * A §6: the night's watch.
@@ -76,6 +77,19 @@ export function postWatches(ctx: SimContext) {
             // it guards was read out every night of the run.
             const already = record.lastWatch?.watcherId === watcher.id && record.lastWatch?.zone === zone;
             record.watch = { cycle, zone, watcherId: watcher.id, sleeperIds: sleepers.map(m => m.id) };
+            /*
+             * AUDIT-8 §12.3: consecutive nights on the watch. `already` above
+             * is the same-post test; this is the count, which nothing kept.
+             * Reset when somebody else takes it, so it is a streak rather than
+             * a tally.
+             */
+            watcher.watchStreak = record.lastWatch?.watcherId === watcher.id
+                ? (watcher.watchStreak ?? 0) + 1
+                : 1;
+            sleepers.forEach(m => { m.watchStreak = 0; });
+            if (watcher.watchStreak >= EARNED_TRAIT_RULES.sleeplessWatches) {
+                earnTrait(ctx, watcher, 'Sleepless Week');
+            }
             record.lastWatch = { zone, watcherId: watcher.id };
             if (!already) {
                 // §22: "the others" are on the line's own cast list and were
