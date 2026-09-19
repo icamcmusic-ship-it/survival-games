@@ -2548,6 +2548,33 @@ export const COMBAT = {
     limbPowerPenaltyPerGrade: 1.25,
     minRoundDamage: 5,
     maxRoundDamage: 42,
+    /*
+     * §(requests): how much of a blow is the weapon.
+     *
+     * A landed hit's magnitude used to depend only on the power differential,
+     * and the weapon entered that differential through `combatPower`. So a
+     * weapon decided who *won* the exchange and contributed nothing to how
+     * hard the winning blow landed: once a tribute had the edge, a slingshot
+     * killed exactly as readily as a trident, and the feed filled up with
+     * people being beaten to death by pebbles. Measured across the run, the
+     * bottom of the armoury was producing deaths at close to the rate of the
+     * top of it, which is neither realistic nor the balance the item table
+     * plainly intends.
+     *
+     * The multiplier is centred so the *average* weapon is unchanged — mean
+     * effective damage across the table is ~4.5, and 0.60 + 4.5 * 0.09 ≈ 1.0 —
+     * and the spread does the work: a slingshot or a sharpened stone lands at
+     * roughly three-quarters weight, a halberd at the cap. Bare hands sit
+     * below everything, which they should.
+     *
+     * Applied to the floor and the ceiling as well as the roll, or the floor
+     * simply undoes it on exactly the small-weapon hits this is about.
+     */
+    weaponLethalityBase: 0.6,
+    weaponLethalityPerDamage: 0.09,
+    weaponLethalityCap: 1.2,
+    /** Bare hands. Deliberately below the worst thing anybody could pick up. */
+    unarmedLethality: 0.55,
     /**
      * What a kill costs the killer, in sanity, before their traits scale it.
      * A Career has been prepared for this since they were ten; nobody else has.
@@ -8097,4 +8124,22 @@ export const ENDGAME_POSITIONING = {
     pullWeight: 3,
     /** Edge above which the horn is the place to be; below it, high ground. */
     hornEdge: 0,
+} as const;
+
+/**
+ * §(requests): how hard a district's trade pulls on what its tributes find.
+ *
+ * Weights on a draw, not guarantees. A District 4 tribute at the mouth of the
+ * horn should usually come up with the trident — that is the shot the format
+ * exists for — and should occasionally come up with whatever was actually
+ * lying there, or the usual case stops being worth watching. See
+ * `pickForDistrict`.
+ */
+export const ITEM_AFFINITY = {
+    /** The one weapon the district is known for. */
+    signatureWeight: 9,
+    /** The rest of what they grew up handling. */
+    affinityWeight: 4,
+    /** A class they are comfortable with, without a specific history. */
+    classWeight: 2,
 } as const;

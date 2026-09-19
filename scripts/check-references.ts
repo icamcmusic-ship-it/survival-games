@@ -34,6 +34,7 @@ import { TRAIT_DEFS } from '../src/data/traits';
 import { QUIRKS, QUIRK_MODS } from '../src/data/quirks';
 import { ARENAS, INCOMPATIBLE_TRAITS, ITEMS, IMPROVISED_ITEMS } from '../src/data/constants';
 import { ARENA_MUTTS } from '../src/data/mutts';
+import { DISTRICT_CRAFT } from '../src/data/districts';
 import { ARENA_EVENT_PACKS } from '../src/data/arenaEventPacks';
 import { STANCE_PROFILES } from '../src/data/stances';
 import { ArchetypeId } from '../src/models/types';
@@ -88,6 +89,28 @@ refs('QUIRK_MODS keys -> QUIRKS',
 // ---- 6. arena -> item (restock bias) ------------------------------------
 refs('Arena.restockBias -> ITEMS',
     ARENAS.flatMap(a => (a.restockBias ?? []).map(id => [`${a.id}.restockBias`, id] as [string, string])),
+    itemIds);
+
+// ---- 6b. district craft -> item -----------------------------------------
+/*
+ * §(requests)/AUDIT-9: `DISTRICT_CRAFT` names item ids in two places and
+ * neither was asserted. District 16 listed `gaff` as an affinity item for
+ * several audits and there was no such item — so the one weapon the deepwater
+ * district was supposed to have grown up holding conferred nothing at all, and
+ * nothing anywhere said so. A signature weapon that does not exist is worse:
+ * it is a gravitational pull toward nothing.
+ *
+ * Both pools are checked, and the improvised table counts — a district may
+ * legitimately be known for something it has to make rather than find.
+ */
+refs('DISTRICT_CRAFT.affinityItems -> ITEMS',
+    Object.entries(DISTRICT_CRAFT).flatMap(([d, c]) =>
+        c.affinityItems.map(id => [`D${d}.affinityItems`, id] as [string, string])),
+    itemIds);
+refs('DISTRICT_CRAFT.signatureWeapon -> ITEMS',
+    Object.entries(DISTRICT_CRAFT)
+        .filter(([, c]) => c.signatureWeapon !== undefined)
+        .map(([d, c]) => [`D${d}.signatureWeapon`, c.signatureWeapon!] as [string, string]),
     itemIds);
 
 // ---- 7. arena -> its own zone (law scoping) -----------------------------

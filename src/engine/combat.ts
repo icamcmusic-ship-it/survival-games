@@ -720,6 +720,21 @@ function dropBrokenWeapons(t: Tribute) {
 }
 
 /** Applies one landed hit, including venom, wounds and the grudge it earns. */
+/**
+ * §(requests): how lethal this particular thing is in a hand.
+ *
+ * Centred so the average weapon in the table is neutral; the spread is the
+ * point. Bare hands are below everything that can be picked up, and the cap
+ * keeps the heavy end from turning every exchange into one blow.
+ */
+function weaponLethality(weapon?: Item): number {
+    if (!weapon) return COMBAT.unarmedLethality;
+    return Math.min(
+        COMBAT.weaponLethalityCap,
+        COMBAT.weaponLethalityBase + effectiveDamage(weapon) * COMBAT.weaponLethalityPerDamage,
+    );
+}
+
 function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: number, weapon?: Item, multiplier = 1) {
     // §3.2: a landed blow is a swing that taught them something about this
     // particular weapon. Recorded here rather than at the pick-up so carrying
@@ -742,10 +757,14 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
     // them, in both directions.
     witnessReputation(defender, attacker);
     witnessReputation(attacker, defender);
-    const raw = (COMBAT.baseHitDamage + edge * COMBAT.damagePerPowerPoint + ctx.rng.nextInt(-3, 4)) * multiplier;
+    // §(requests): the weapon decides how hard the blow lands, not only who
+    // lands it. See `COMBAT.weaponLethalityBase` for why — in short, a
+    // slingshot used to finish people at a trident's rate.
+    const weight = multiplier * weaponLethality(weapon);
+    const raw = (COMBAT.baseHitDamage + edge * COMBAT.damagePerPowerPoint + ctx.rng.nextInt(-3, 4)) * weight;
     // Both bounds scale with the multiplier, or a sub-1 multiplier puts the
     // floor above the ceiling.
-    const damage = Math.round(Math.max(COMBAT.minRoundDamage * multiplier, Math.min(COMBAT.maxRoundDamage * multiplier, raw)));
+    const damage = Math.round(Math.max(COMBAT.minRoundDamage * weight, Math.min(COMBAT.maxRoundDamage * weight, raw)));
 
     applyDamage(ctx, defender, damage, {
         cause: weapon ? `Killed by ${attacker.name} (${weapon.name})` : `Killed by ${attacker.name}`,

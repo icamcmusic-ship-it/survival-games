@@ -65,6 +65,8 @@ function bucketOf(cause: string | undefined): string {
 }
 
 const deathsByCause: Record<string, number> = {};
+/** §(requests): weapon name -> kills credited to it across the sweep. */
+const killsByWeapon: Record<string, number> = {};
 let deaths = 0;
 let victors = 0, victorKills = 0, victorZeroKills = 0, victorHealth = 0;
 let wipeouts = 0, careerVictors = 0;
@@ -268,6 +270,24 @@ for (let i = 0; i < RUNS; i++) {
             deaths++;
             const bucket = bucketOf(t.causeOfDeath);
             deathsByCause[bucket] = (deathsByCause[bucket] || 0) + 1;
+            /*
+             * §(requests): which weapon actually finished people.
+             *
+             * `killTribute` writes "Killed by <name> (<Weapon>)" for every
+             * armed kill, so the parenthetical is the weapon by construction
+             * rather than by heuristic. This table is the only way to see the
+             * thing the request describes — deaths concentrated in the weakest
+             * weapons in the armoury — and it was not measured at all, which
+             * is why it went unnoticed for so long.
+             */
+            // Gated on the tribute bucket: other cause strings end in a
+            // parenthetical too (a zone name, mostly), and counting those as
+            // weapons put "Jungle" and "Breakwater" in the armoury table.
+            if (bucket === 'tribute') {
+                const named = /\(([^)]+)\)\s*$/.exec(t.causeOfDeath ?? '');
+                const weapon = named ? named[1] : '(bare hands)';
+                killsByWeapon[weapon] = (killsByWeapon[weapon] ?? 0) + 1;
+            }
         }
     });
     state.tributes.forEach(t => {
@@ -1336,5 +1356,22 @@ if (underSampled.length) {
 }
 // AUDIT-7 §8.2: counted alongside the indicator guards rather than beside them.
 failed += signatureFailures;
+/*
+ * §(requests): the armoury's share of the killing, sorted.
+ *
+ * Reported rather than guarded for now: the right shape is "the heavy end of
+ * the table finishes more people than the light end", and that is a claim
+ * about ordering across ~30 weapons rather than a single threshold. Printing
+ * it is what makes the ordering checkable at all.
+ */
+const weaponKills = Object.entries(killsByWeapon).sort((a, b) => b[1] - a[1]);
+const weaponKillTotal = weaponKills.reduce((sum, [, n]) => sum + n, 0);
+if (weaponKillTotal > 0) {
+    console.log('\nkills by weapon (share of all tribute-dealt deaths):');
+    weaponKills.forEach(([name, n]) => {
+        console.log(`  ${name.padEnd(24)} ${(100 * n / weaponKillTotal).toFixed(1).padStart(5)}%  (${n})`);
+    });
+}
+
 console.log(failed ? `\n${failed} regression guard(s) breached.` : '\nAll regression guards hold.');
 if (failed) process.exit(1);

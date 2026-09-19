@@ -13,7 +13,7 @@ import { resolveCombat, resolveGroupCombat, selfInflictedDeath } from '../combat
 import { BLOODBATH_TEXTS,
     PEDESTAL_ARENA_SHOTS, PEDESTAL_REACTIONS, EARLY_STEP_OFF, GONG_DECISIONS,
 } from '../../data/flavorText';
-import { giveItem, itemPhrase, mintItem, itemPoolFor } from '../items';
+import { giveItem, itemPhrase, mintItem, itemPoolFor, pickForDistrict } from '../items';
 import { personaThreat } from './alliances';
 import { getRel, setRel } from '../relationships';
 import { noteContact, noteSighting, ensureMemory } from '../memory';
@@ -421,7 +421,12 @@ export function processBloodbath(ctx: SimContext) {
         if (!ctx.rng.chance(first ? BLOODBATH.armedAtHornChance : BLOODBATH.armedAtHornChance * 0.5)) return;
         // The good steel is stacked at the mouth of the horn; the outer ring is
         // backpacks and whatever was scattered on the grass.
-        const base = first ? ctx.rng.pick(hornWeaponsPool(ctx)) : ctx.rng.pick(lootPool(ctx));
+        // §(requests): they reach for what they know. The girl from District 4
+        // does not come up from the mouth of the horn holding a mace as often
+        // as she comes up holding the trident — see `pickForDistrict`.
+        const base = first
+            ? pickForDistrict(ctx.rng, t, hornWeaponsPool(ctx))
+            : pickForDistrict(ctx.rng, t, lootPool(ctx));
         const item = mintItem(ctx.rng, base, first ? QUALITY_BIAS.hornMouth : QUALITY_BIAS.hornScatter);
         giveItem(t, item);
         ctx.logEvent(
@@ -535,7 +540,7 @@ export function processBloodbath(ctx: SimContext) {
             { category: 'combat' }
         );
         pool.splice(1).forEach(t => {
-            const item = mintItem(ctx.rng, ctx.rng.pick(lootPool(ctx)), QUALITY_BIAS.hornScatter);
+            const item = mintItem(ctx.rng, pickForDistrict(ctx.rng, t, lootPool(ctx)), QUALITY_BIAS.hornScatter);
             giveItem(t, item);
             ctx.logEvent(`${t.name} grabs ${itemPhrase(item)} on the way out.`, [t.id], { category: 'loot' });
         });
@@ -543,8 +548,8 @@ export function processBloodbath(ctx: SimContext) {
 
     else if (pool.length === 1) {
         const winner = pool[0];
-        const item1 = mintItem(ctx.rng, ctx.rng.pick(lootPool(ctx)), QUALITY_BIAS.hornMouth);
-        const item2 = mintItem(ctx.rng, ctx.rng.pick(lootPool(ctx)), QUALITY_BIAS.hornMouth);
+        const item1 = mintItem(ctx.rng, pickForDistrict(ctx.rng, winner, lootPool(ctx)), QUALITY_BIAS.hornMouth);
+        const item2 = mintItem(ctx.rng, pickForDistrict(ctx.rng, winner, lootPool(ctx)), QUALITY_BIAS.hornMouth);
         giveItem(winner, item1, item2);
         ctx.logEvent(
             fill(ctx.pickText(BLOODBATH_TEXTS.survive), { tribute: winner.name, items: `${item1.name} and ${item2.name}` }),
