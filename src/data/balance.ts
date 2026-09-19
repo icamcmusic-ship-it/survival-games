@@ -3682,6 +3682,12 @@ export const TRAPS = {
     // an 18% ceiling. The placement signal is the point, not the volume.
     buildChokepointBonus: 0.10,
     buildPerTraffic: 0.015,
+    /**
+     * AUDIT-8 §6.1: how much busier an approach has to be before a trapper
+     * walks over and sets it there instead of here. Small but non-zero, so a
+     * tribute in a genuinely busy zone still traps their own ground.
+     */
+    approachTrafficEdge: 2,
     buildTrafficCap: 0.08,
     /*
      * §6.3: a stake needed a venom gland AND no blade at all, which is why six
@@ -4115,6 +4121,19 @@ export const STANCE_MODES = {
         base: 4.6,
         /** Per trap of the tribute's own in this sector. */
         perOwnTrap: 1.5,
+        /**
+         * AUDIT-8 §3.4: per trap of their own on a way *into* this sector.
+         * Slightly under `perOwnTrap` only because a trap underfoot is also a
+         * trap they are standing on top of; the approach is where a trapper
+         * actually means the line to be, so it is worth nearly as much.
+         */
+        perApproachTrap: 1.2,
+        /**
+         * AUDIT-8 §3.4: somebody to bait. Baiting with nobody within reach is
+         * standing in the open for no reason, and the stance scored the same
+         * either way — which is part of why it sat at 1.9% of stance-time.
+         */
+        quarryBonus: 1.8,
         /** Holding a chokepoint is its own kind of prepared ground. */
         chokepointBonus: 1.2,
         /** Being hurt makes drawing a crowd a worse idea. */
