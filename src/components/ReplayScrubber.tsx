@@ -38,11 +38,34 @@ function reconstruct(tributes: Tribute[], log: EventLog[], day: number): Snapsho
 
     for (const entry of log) {
         if (entry.day > day) break;
+        /*
+         * AUDIT-9 B18: being named in an event is not being at it.
+         *
+         * This assigned the entry's zone to every involved tribute, so an
+         * announcement about the people who stayed away from the feast placed
+         * them at the Cornucopia. `absentIds` is the engine saying, at the
+         * sites that talk about people elsewhere, which of the names are not
+         * here — so the reconstruction stops inferring a position from a
+         * mention.
+         */
         if (entry.zone) {
-            entry.tributesInvolved.forEach(id => zoneById.set(id, entry.zone as string));
+            const absent = new Set(entry.absentIds ?? []);
+            entry.tributesInvolved.forEach(id => {
+                if (!absent.has(id)) zoneById.set(id, entry.zone as string);
+            });
         }
+        /*
+         * AUDIT-9 B18: kill credit from an explicit id where there is one.
+         *
+         * `tributesInvolved[0]` killed `[1]` is a convention the kill sites
+         * happen to follow, not a fact the entry carries. `actorId` is the
+         * fact; the positional read stays as the fallback for entries written
+         * before it existed, and for any site that has not been given one.
+         */
         if (entry.category === 'kill' && entry.tributesInvolved.length >= 2) {
-            killPairs.add(`${entry.tributesInvolved[0]}>${entry.tributesInvolved[1]}`);
+            const killer = entry.actorId ?? entry.tributesInvolved[0];
+            const victim = entry.tributesInvolved.find(id => id !== killer) ?? entry.tributesInvolved[1];
+            killPairs.add(`${killer}>${victim}`);
         }
     }
 

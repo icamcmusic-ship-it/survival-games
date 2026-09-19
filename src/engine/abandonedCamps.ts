@@ -22,13 +22,24 @@ import { cycleOf, noteSighting } from './memory';
  * salvage.
  */
 
-/**
- * Where each tribute was standing at the end of last cycle, so a departure can
- * be noticed without threading a hook through the six places that assign
- * `t.zone` (multi-cycle crossings, group moves, border collapse and the
- * ordinary wander all write it, and only some of them know why).
+/*
+ * AUDIT-9 B04: where each tribute was standing at the end of last cycle.
+ *
+ * Kept so a departure can be noticed without threading a hook through the six
+ * places that assign `t.zone` (multi-cycle crossings, group moves, border
+ * collapse and the ordinary wander all write it, and only some of them know
+ * why). That reasoning is still right; the *storage* was not.
+ *
+ * This was a module-level `WeakMap`, which is process memory rather than run
+ * state, so it did not survive a save. Reproduced: after a cloned save
+ * resumed, the same flee transition created no abandoned camp and left the old
+ * camp standing, where uninterrupted play created one and removed the old
+ * camp. Two players with the same seed got different arenas depending on
+ * whether one of them had reloaded — which is the same class of defect as the
+ * intervention-RNG divergence, one subsystem over.
+ *
+ * It lives on the tribute now, so it serialises with everything else.
  */
-const LAST_ZONE = new WeakMap<Tribute, string>();
 
 /**
  * Per-cycle: notice who left a camp behind, then let anybody standing in a
@@ -38,12 +49,12 @@ const LAST_ZONE = new WeakMap<Tribute, string>();
 export function tickAbandonedCamps(ctx: SimContext) {
     ctx.state.tributes.forEach(t => {
         if (t.status !== 'alive') return;
-        const was = LAST_ZONE.get(t);
+        const was = t.lastZone;
         // Left somewhere they were dug into, while trying to get out of it.
         if (was !== undefined && was !== t.zone && t.objective?.kind === 'flee' && t.objective.from === was) {
             abandonCamp(ctx, t, was);
         }
-        LAST_ZONE.set(t, t.zone);
+        t.lastZone = t.zone;
     });
     ctx.state.tributes.forEach(t => {
         if (t.status === 'alive') checkAbandonedCamps(ctx, t);

@@ -440,20 +440,30 @@ export function processFeast(ctx: SimContext) {
 
     // One line per tribute turned the feed into a wall of near-identical
     // sentences; past a couple of names these are summarised instead.
-    const announce = (group: typeof alive, pool: string[], summary: (names: string) => string) => {
+    const announce = (group: typeof alive, pool: string[], summary: (names: string) => string, absent = false) => {
         if (group.length === 0) return;
+        /*
+         * AUDIT-9 B18: these lines are filed under the Cornucopia because
+         * that is what they are *about*, and some of them name people who are
+         * deliberately nowhere near it. `absent` marks those, so the replay
+         * scrubber stops reading a mention as a position.
+         */
         if (group.length <= 2) {
             group.forEach(t => ctx.logEvent(
                 fill(ctx.pickText(pool), { tribute: t.name }),
                 [t.id],
-                { zone: cornucopia, category: 'feast' }
+                { zone: cornucopia, category: 'feast', absentIds: absent ? [t.id] : undefined }
             ));
         } else {
-            ctx.logEvent(summary(group.map(t => t.name).join(', ')), group.map(t => t.id), { zone: cornucopia, category: 'feast' });
+            ctx.logEvent(
+                summary(group.map(t => t.name).join(', ')),
+                group.map(t => t.id),
+                { zone: cornucopia, category: 'feast', absentIds: absent ? group.map(t => t.id) : undefined },
+            );
         }
     };
 
-    announce(decliners, FEAST_TEXTS.decline, names => `${names} weigh the feast against the odds and stay exactly where they are.`);
+    announce(decliners, FEAST_TEXTS.decline, names => `${names} weigh the feast against the odds and stay exactly where they are.`, true);
     if (incapable.length > 0) {
         ctx.logEvent(
             `${incapable.map(t => t.name).join(', ')} ${incapable.length > 1 ? 'are' : 'is'} in no condition to walk anywhere, `

@@ -21,9 +21,20 @@ import { earnTrait } from './earnedTraits';
  * the small exported helpers below.
  */
 
-/** Per-tribute scratch from last cycle, so a change can be noticed. */
-interface Watch { health: number; zone: string; frontZone?: string }
-const WATCH = new WeakMap<Tribute, Watch>();
+/*
+ * AUDIT-9 B04: per-tribute scratch from last cycle, so a change can be noticed.
+ *
+ * Found by the sweep the audit asked for after the abandoned-camp `WeakMap`:
+ * "review other persistent caches, module state and singleton references for
+ * the same resume risk". This is the same defect. A module-level `WeakMap` is
+ * process memory, so a resumed run started with an empty one — the first cycle
+ * after a reload could not see a health change and so could not count a
+ * recovery off the near-death line, and the weather-front tracking reset with
+ * it. `lowHealthRecoveries` feeds 'Hairsbreadth' and 'Unbroken', so a reload
+ * quietly changed which achievements a run could produce.
+ *
+ * On the tribute, where it serialises.
+ */
 
 export function tickRunRecords(ctx: SimContext) {
     const state = ctx.state;
@@ -31,7 +42,7 @@ export function tickRunRecords(ctx: SimContext) {
 
     state.tributes.forEach(t => {
         if (t.status !== 'alive') return;
-        const last = WATCH.get(t);
+        const last = t.recordWatch;
 
         // Reaped trait count, captured the first time we see them, so a trait
         // shed by an arc later is visible as a change rather than invisible.
@@ -93,7 +104,7 @@ export function tickRunRecords(ctx: SimContext) {
             t.metAnybodyAfterBloodbath = true;
         }
 
-        WATCH.set(t, { health: t.health, zone: t.zone, frontZone: front?.zone });
+        t.recordWatch = { health: t.health, zone: t.zone, frontZone: front?.zone };
     });
 
     /*

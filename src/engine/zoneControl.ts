@@ -50,9 +50,36 @@ export function tickZoneControl(ctx: SimContext) {
     const contenders = [...counts.entries()]
         .filter(([, members]) => members.length >= ZONE_CONTROL.minHolders)
         .sort((a, b) => b[1].length - a[1].length);
+    const previous = ctx.state.cornucopiaHolder;
+
+    /*
+     * AUDIT-9 B09: an equal force does not concede to roster order.
+     *
+     * `contenders[0]` after a stable sort hands the horn to whichever alliance
+     * happened to be inserted first when two are standing on it in equal
+     * numbers — which is an artefact of iteration order presented to the
+     * player as a fact about the arena. Two opposing groups of two on the same
+     * ground is the most contested the Cornucopia ever gets, and the honest
+     * answer is that nobody is holding it.
+     */
+    const contested = contenders.length > 1 && contenders[0][1].length === contenders[1][1].length;
+    if (contested) {
+        if (previous !== undefined) {
+            ctx.logEvent(
+                `${zone} is held by nobody and wanted by everybody: `
+                + `${contenders.filter(c => c[1].length === contenders[0][1].length).map(c => c[1].map(m => m.name).join(' and ')).join(' against ')}. `
+                + 'Neither side can turn their back on the other long enough to eat.',
+                contenders.flatMap(c => c[1]).map(m => m.id),
+                { important: true, zone, category: 'alliance' },
+            );
+        }
+        ctx.state.cornucopiaHolder = undefined;
+        ctx.state.cornucopiaHeldSince = undefined;
+        ctx.state.cornucopiaPaidAt = undefined;
+        return;
+    }
 
     const holder = contenders[0];
-    const previous = ctx.state.cornucopiaHolder;
 
     if (!holder) {
         if (previous) {
@@ -100,21 +127,39 @@ export function tickZoneControl(ctx: SimContext) {
     if (cycle - (ctx.state.cornucopiaPaidAt ?? cycle) < ZONE_CONTROL.payoutEveryCycles) return;
     ctx.state.cornucopiaPaidAt = cycle;
 
+    /*
+     * AUDIT-9 B09: supplies feed the people standing in the supplies.
+     *
+     * The payout used to relieve hunger and thirst across the alliance's whole
+     * roster — `membersOf`, not the members actually on the ground — so a
+     * tribute two zones away, who had never been near the horn, ate from it.
+     * Reproduced: the absent member of the holding alliance went 80 -> 65 on
+     * both counters without moving.
+     *
+     * What is at the Cornucopia is at the Cornucopia. The excitement is a
+     * broadcast fact and still reaches the whole group — the country is
+     * watching their colours hold the horn, wherever they personally are —
+     * but nothing anybody eats is delivered by television.
+     */
     const record = allianceOf(ctx.state, id);
     const roster = record ? membersOf(ctx.state, id) : members;
+    const absent = roster.filter(m => !members.some(p => p.id === m.id));
     const beneficiary = ctx.rng.pick(members);
     const pool = ITEMS.filter(i => i.value >= ZONE_CONTROL.minItemValue);
     const spoils = mintItem(ctx.rng, ctx.rng.pick(pool.length > 0 ? pool : ITEMS), QUALITY_BIAS.feast);
     giveItem(beneficiary, spoils);
-    roster.forEach(m => {
-        addExcitement(m, ZONE_CONTROL.excitement);
+    roster.forEach(m => addExcitement(m, ZONE_CONTROL.excitement));
+    members.forEach(m => {
         m.vitals.hunger = Math.max(0, m.vitals.hunger - ZONE_CONTROL.supplyRelief);
         m.vitals.thirst = Math.max(0, m.vitals.thirst - ZONE_CONTROL.supplyRelief);
         clampTribute(m);
     });
     ctx.logEvent(
         `Holding ${zone} pays: the Gamemakers restock the horn and ${beneficiary.name} takes ${itemPhrase(spoils)} straight off the top. `
-        + `Nobody else in the arena gets near it.`,
+        + `Nobody else in the arena gets near it.`
+        + (absent.length > 0
+            ? ` ${absent.map(m => m.name).join(', ')} ${absent.length === 1 ? 'is' : 'are'} somewhere else and ${absent.length === 1 ? 'eats' : 'eat'} none of it.`
+            : ''),
         roster.map(m => m.id),
         { important: true, zone, category: 'loot' }
     );

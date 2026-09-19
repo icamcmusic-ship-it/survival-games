@@ -20,7 +20,7 @@ const TRUCE_LEDGER = emptyTruceLedger();
 import { generateTributes, strengthCapForAge } from '../src/engine/generator';
 import { generateArena } from '../src/engine/arenaGenerator';
 import { Simulator } from '../src/engine/simulator';
-import { ARENAS, DEFAULT_GAME_CONFIG, traitsConflict } from '../src/data/constants';
+import { ARENAS, DEFAULT_GAME_CONFIG, ITEMS, traitsConflict } from '../src/data/constants';
 import { ARENA_FLAVOR, DERIVED_ID_COLLISIONS, UNIVERSAL_EVENTS } from '../src/data/arenaFlavor';
 /**
  * Audit 4 §1.5: **per-run** reach, not sweep reach.
@@ -52,11 +52,52 @@ import { ALLIANCES, FEAR, GENERATION, HUNTING, NOTORIETY, PROFICIENCY, RELATIONS
 import { carryCapacity } from '../src/engine/items';
 import { emptyPickCount } from '../src/utils/rng';
 import { oddsScore, tributeOdds } from '../src/engine/odds';
-import { GameConfig, GameState, Stance } from '../src/models/types';
+import { GameConfig, GameState, Item, Stance, Tribute } from '../src/models/types';
+import { giveItem } from '../src/engine/items';
 import { configForProfile, gamesProfileFor } from '../src/engine/gamesProfile';
 
 const problems: string[] = [];
 const note = (m: string) => { if (!problems.includes(m)) problems.push(m); };
+
+/*
+ * AUDIT-9 B08: stacks conserve quantity, asserted rather than assumed.
+ *
+ * `giveItem` silently destroyed stack overflow for a long time — six units of
+ * bread became four, and nothing anywhere recorded it — because the only thing
+ * watching item movement was whether anybody noticed a missing loaf in a log
+ * line. The audit's repair condition was explicit: "assert input quantity =
+ * retained + explicitly dropped/consumed quantity."
+ *
+ * This is that assertion, at the one function every acquisition funnels
+ * through. It runs over the real runs the soak is already doing rather than as
+ * a unit test, so it also covers the shapes only a live run produces: a full
+ * pack, a tribute who has just lost their backpack, a stack landing on a
+ * partial stack of the same thing.
+ */
+function checkStackConservation() {
+    const units = (items: Item[]) => items.reduce((sum, i) => sum + (i.stack ?? 1), 0);
+    const holder = (): Tribute => ({
+        id: 'conservation-probe', traits: [], quirks: [], inventory: [],
+        attributes: { strength: 5, agility: 5, intelligence: 5, endurance: 5, charisma: 5 },
+    } as unknown as Tribute);
+    const stackable = ITEMS.filter(i => i.stack !== undefined);
+    stackable.forEach(base => {
+        for (let seed = 1; seed <= base.stack! + 2; seed++) {
+            for (let incoming = 1; incoming <= base.stack! + 2; incoming++) {
+                const t = holder();
+                t.inventory.push({ ...base, stack: seed });
+                const before = units(t.inventory) + incoming;
+                const dropped = giveItem(t, { ...base, stack: incoming });
+                const after = units(t.inventory) + units(dropped);
+                if (after !== before) {
+                    note(`giveItem loses quantity: ${base.id} ${seed}+${incoming} -> kept+dropped ${after}, expected ${before}`);
+                    return;
+                }
+            }
+        }
+    });
+}
+checkStackConservation();
 
 const arenaIds = [...ARENAS.map(a => a.id), 'procedural'];
 /** Phases in which the arena exists and a tribute's behaviour means something. */

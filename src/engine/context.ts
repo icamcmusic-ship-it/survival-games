@@ -223,6 +223,10 @@ export function createContext(state: GameState, rng: RNG): SimContext {
                 // line, where the caller knows something the prose does not
                 // say outright. Derived from the entry elsewhere.
                 fact: opts.fact,
+                // AUDIT-9 B18: presence and mention are different facts, and
+                // so are acting and being listed first.
+                absentIds: opts.absentIds,
+                actorId: opts.actorId,
             });
         }
     };

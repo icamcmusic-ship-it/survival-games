@@ -217,14 +217,53 @@ export function giveItem(t: Tribute, ...items: Item[]): Item[] {
     // §10.1: 'Nothing but Hands' needs to know whether a weapon ever passed
     // through these hands — set once, here, where every acquisition funnels.
     if (items.some(i => i.type === 'weapon')) t.everCarriedWeapon = true;
-    // Stackable consumables merge rather than each taking a slot — three loaves
-    // of bread is one thing you are carrying, not three.
+    /*
+     * Stackable consumables merge rather than each taking a slot — three loaves
+     * of bread is one thing you are carrying, not three.
+     *
+     * AUDIT-9 B08: and the overflow goes somewhere.
+     *
+     * The merge used to be `min(maxStack, existing + incoming)`, which silently
+     * destroyed whatever did not fit: adding three bread to a stack of three
+     * against a maximum of four left four and returned no dropped items, so six
+     * units became four and nothing anywhere recorded the loss. That is a
+     * conservation hole in the one function every acquisition in the game
+     * funnels through — sponsor gifts, feast packs, looting, trades, debt
+     * repayment and the shared cache all land here.
+     *
+     * Now: fill every partial stack of the same item first, then open new
+     * stacks for the remainder, and let `enforceCapacity` rule on the result.
+     * Anything that genuinely does not fit is *dropped*, which is returned to
+     * the caller and narrated, rather than deleted.
+     */
     items.forEach(item => {
         if (item.stack === undefined) { t.inventory.push(item); return; }
-        const existing = t.inventory.find(i =>
-            i.id === item.id && i.stack !== undefined && i.stack < INVENTORY.maxStack);
-        if (existing) existing.stack = Math.min(INVENTORY.maxStack, (existing.stack ?? 1) + (item.stack ?? 1));
-        else t.inventory.push(item);
+        let remaining = item.stack;
+        // Top up existing partial stacks.
+        for (const existing of t.inventory) {
+            if (remaining <= 0) break;
+            if (existing.id !== item.id || existing.stack === undefined) continue;
+            const room = INVENTORY.maxStack - existing.stack;
+            if (room <= 0) continue;
+            const moved = Math.min(room, remaining);
+            existing.stack += moved;
+            remaining -= moved;
+        }
+        // The object itself goes in where nothing was merged into, so identity
+        // — quality, condition, contamination, provenance — survives the
+        // common case exactly as it did before.
+        if (remaining === item.stack) {
+            item.stack = Math.min(INVENTORY.maxStack, remaining);
+            remaining -= item.stack;
+            t.inventory.push(item);
+        }
+        // Anything still left opens further stacks, carrying the same
+        // properties as the thing it was split off.
+        while (remaining > 0) {
+            const take = Math.min(INVENTORY.maxStack, remaining);
+            t.inventory.push({ ...item, stack: take });
+            remaining -= take;
+        }
     });
     return enforceCapacity(t);
 }

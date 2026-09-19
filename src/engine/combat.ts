@@ -1517,6 +1517,16 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
     enforceCapacity(victim);
     victim.health = 0;
     victim.dayOfDeath = ctx.state.day;
+    /*
+     * AUDIT-9 B16: the elimination *order*, which nothing recorded.
+     *
+     * `killTribute` is the one funnel every death goes through — combat,
+     * hazards, the border, starvation, the downed window and self-inflicted
+     * deaths all arrive here — so this is the only place the sequence can be
+     * captured without threading a counter through a dozen subsystems.
+     */
+    ctx.state.eliminations = (ctx.state.eliminations ?? 0) + 1;
+    victim.eliminationIndex = ctx.state.eliminations;
 
     // §9.1: the obituary and the damage record have to agree, and one path
     // could not make them agree on its own.
@@ -1731,6 +1741,9 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
                         [killer.id, victim.id],
                         {
                             important: !silent, category: silent ? 'loot' : 'kill',
+                            // AUDIT-9 B18: kill credit from an id, not from
+                            // list position.
+                            actorId: killer.id,
                             // §(requests): the record states the method and
                             // the goods; the prose above states the scene.
                             fact: `${killer.name} killed ${victim.name} (${weapon?.name ?? 'unarmed'}); took ${lootNames || 'nothing'}, left ${dropped.map(i => i.name).join(', ')}`,
@@ -1742,19 +1755,22 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
                         [killer.id, victim.id],
                         {
                             important: !silent, category: silent ? 'loot' : 'kill',
+                            // AUDIT-9 B18: kill credit from an id, not from
+                            // list position.
+                            actorId: killer.id,
                             fact: `${killer.name} killed ${victim.name} (${weapon?.name ?? 'unarmed'}); took ${lootNames}`,
                         },
                     );
                 }
             } else if (!silent) {
                 ctx.logEvent(text, [killer.id, victim.id], {
-                    important: true, category: 'kill',
+                    important: true, category: 'kill', actorId: killer.id,
                     fact: `${killer.name} killed ${victim.name} (${weapon?.name ?? 'unarmed'})`,
                 });
             }
         } else if (!silent) {
             ctx.logEvent(text, [killer.id, victim.id], {
-                important: true, category: 'kill',
+                important: true, category: 'kill', actorId: killer.id,
                 fact: `${killer.name} killed ${victim.name} (${weapon?.name ?? 'unarmed'})`,
             });
         }

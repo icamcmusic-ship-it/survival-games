@@ -1064,6 +1064,37 @@ export interface Tribute {
     succeededAsHeir?: boolean;
     /** §11: structural collapses walked out of. */
     collapsesSurvived?: number;
+    /**
+     * AUDIT-9 B16: where in the run's elimination order this tribute fell.
+     *
+     * 1 is the first tribute out. Undefined for anyone still standing. The
+     * side-bet book used to settle "among the last three standing" on
+     * day-of-death ties, so seven tributes who died on the same day plus one
+     * survivor all settled as top three — eight winners on a three-place
+     * market. Deaths inside a cycle are ordered by the sequence the engine
+     * resolved them in, which is deterministic for a seed; "simultaneous" is
+     * not a state the simulation actually has.
+     */
+    eliminationIndex?: number;
+    /**
+     * AUDIT-9 B04: the zone this tribute was standing in at the end of last
+     * cycle, so `tickAbandonedCamps` can notice a departure.
+     *
+     * Was a module-level `WeakMap`, which is process memory and does not
+     * survive a save — a resumed run created no abandoned camp on a flee
+     * transition that uninterrupted play created one for.
+     */
+    lastZone?: string;
+    /**
+     * AUDIT-9 B04: last cycle's health, zone and weather-front position, for
+     * `tickRunRecords` to diff against.
+     *
+     * Same defect as `lastZone`, found by the sweep the audit asked for: a
+     * resumed run could not see the first cycle's change, so a recovery off
+     * the near-death line went uncounted and 'Hairsbreadth' and 'Unbroken'
+     * became reload-dependent.
+     */
+    recordWatch?: { health: number; zone: string; frontZone?: string };
     /** §11: forages that turned something up. */
     forageSuccesses?: number;
     /** §11: an infection treated back down from its terminal grade. */
@@ -2445,6 +2476,14 @@ export interface GameState {
      * "first blood, plus some other number", which is not what it says.
      */
     lastKillerId?: string;
+    /**
+     * AUDIT-9 B16: how many tributes have been eliminated so far.
+     *
+     * The counter behind `Tribute.eliminationIndex`. Elimination is a
+     * *sequence*, and nothing recorded it — only the day, which is far too
+     * coarse to settle a last-three-standing market on.
+     */
+    eliminations?: number;
     /** Monotonic day/night cycle counter, used for memory and decay timings. */
     cycle?: number;
     /**
@@ -2864,6 +2903,27 @@ export interface EventLog {
      * already say everything the record needs.
      */
     fact?: string;
+    /**
+     * AUDIT-9 B18: involved tributes who are *not* at this entry's zone.
+     *
+     * Being named in an event and being present at it are different things,
+     * and the replay reconstruction could not tell them apart — it assigned
+     * `entry.zone` to everybody in `tributesInvolved`, so a feast announcement
+     * naming the tributes who *declined* to come teleported them to the
+     * Cornucopia on the scrubber.
+     *
+     * Most events do imply presence, so this names the exception rather than
+     * the rule: a site that talks about people somewhere else says so.
+     */
+    absentIds?: string[];
+    /**
+     * AUDIT-9 B18: who acted, where the reconstruction would otherwise infer
+     * it from list position.
+     *
+     * Kill credit was read as `tributesInvolved[0]` killed `[1]`, which is a
+     * convention rather than a fact. Set explicitly on the kill path.
+     */
+    actorId?: string;
 }
 
 export interface LogOptions {
@@ -2872,6 +2932,10 @@ export interface LogOptions {
     category?: EventCategory;
     /** §(requests): the factual restatement for the stripped-down chronicle. */
     fact?: string;
+    /** AUDIT-9 B18: involved tributes who are not at `zone`. */
+    absentIds?: string[];
+    /** AUDIT-9 B18: who acted, for kill credit that does not guess from order. */
+    actorId?: string;
 }
 
 export interface EpilogueQA {

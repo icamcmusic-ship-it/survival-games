@@ -93,6 +93,21 @@ export interface TributeOdds {
 }
 
 export function tributeOdds(t: Tribute, field: Tribute[]): TributeOdds {
+    /*
+     * AUDIT-9 B15: an impossible outcome is priced at zero, before any floor.
+     *
+     * The display floor below (`Math.max(1, ...)`) exists so a long shot reads
+     * as 1% rather than 0%, and it was being applied to tributes who cannot
+     * win because they are dead — so a corpse quoted at 1% and paid 25x, and
+     * `cashOutBet` multiplied a live stake by that. The dossier happens to
+     * hide its cash-out control for the dead, which is why this never became a
+     * demonstrated click-exploit, but a settlement value that depends on a
+     * display-rounding rule is wrong whether or not a button reaches it.
+     *
+     * Rounding decides how a number is shown. It does not decide what a
+     * contract is worth.
+     */
+    if (t.status !== 'alive') return { pct: 0, mult: 0 };
     // Only the living compete for the crown; a dead field member is not a rival.
     const contenders = field.filter(o => o.status === 'alive');
     const pool = contenders.length > 0 ? contenders : field;

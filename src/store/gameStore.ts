@@ -1,7 +1,7 @@
 import { InterviewPersona, GameState, GameConfig, HallOfFameEntry, CampaignSnapshot } from '../models/types';
 import { Bet, REWIND_PERSIST, SAVED_RUN_SPEC, SAVE_SLOT_SPECS, SavedRun, SideBet, SideBetKind, packRewind } from '../utils/saveMigrations';
 import { SIDE_BETS } from '../data/balance';
-import { SideBetTarget, SideQuote, priceSideBet, quoteSideMarkets, settleSideBet } from '../engine/sideMarkets';
+import { SideBetTarget, SideQuote, priceSideBet, quoteSideMarkets, settleSideBet, sideBettingOpen, marketRulesOf } from '../engine/sideMarkets';
 import { STARTING_COINS, readCoins, writeCoins } from '../utils/prefsStorage';
 import { clearAllStoredData } from '../utils/storage';
 import { readHallOfFame, writeHallOfFame } from '../utils/hofStorage';
@@ -557,12 +557,23 @@ export const gameActions = {
      */
     placeSideBet(kind: SideBetKind, stake: number, targetId?: string, target: SideBetTarget = {}): boolean {
         const { gameState, coins, sideBets } = gameStore.getState();
-        if (!gameState || (gameState.phase !== 'reaping' && gameState.phase !== 'setup')) return false;
+        // AUDIT-9 B14: one predicate, shared with the roster screen. This
+        // used to name `setup` and `reaping` only — the two phases that
+        // existed before the pre-Games were split into stages — so every
+        // button the UI drew in between returned false and the click ignored
+        // it.
+        if (!gameState || !sideBettingOpen(gameState.phase)) return false;
         if (stake <= 0 || coins < stake) return false;
         // §6.1: the price comes off the live board, not a fixed table — an
         // unpriceable wager (first blood on nobody, a district with no
         // tributes left) is simply refused.
-        const quote = priceSideBet(kind, gameState.tributes, { ...target, targetId: targetId ?? target.targetId });
+        const quote = priceSideBet(
+            kind, gameState.tributes,
+            { ...target, targetId: targetId ?? target.targetId },
+            // AUDIT-9 B17: and an ineligible contract is refused at purchase,
+            // not merely hidden — the board is a view, the price is the gate.
+            marketRulesOf(gameState),
+        );
         if (!quote) return false;
         gameActions.setCoins(coins - stake);
         gameStore.setState({
@@ -578,7 +589,9 @@ export const gameActions = {
     /** §6.1: the live proposition board, for a UI that wants to show what is on offer. */
     sideMarketBoard(): SideQuote[] {
         const { gameState } = gameStore.getState();
-        return gameState ? quoteSideMarkets(gameState.tributes) : [];
+        // AUDIT-9 B17: the board is priced against the rules this run is
+        // executing, so a contract it cannot settle is never offered.
+        return gameState ? quoteSideMarkets(gameState.tributes, marketRulesOf(gameState)) : [];
     },
 
     /**
@@ -592,6 +605,11 @@ export const gameActions = {
         if (!gameState || !bet || betsResolved || !engine || gameState.phase === 'ended') return 0;
         const tribute = gameState.tributes.find(t => t.id === tributeId);
         if (!tribute) return 0;
+        // AUDIT-9 B15: the store refuses an invalid cash-out on its own
+        // authority rather than trusting the odds engine to have floored the
+        // price at something harmless. A dead contestant's wager is lost, not
+        // tradeable, and that has to be true even if a quote says otherwise.
+        if (tribute.status !== 'alive') return 0;
         const live = engine.tributeOdds(tribute, gameState.tributes);
         const value = Math.floor(bet.stake * bet.mult * (live.pct / 100) * SIDE_BETS.cashOutMargin);
         const rest = { ...bets };
