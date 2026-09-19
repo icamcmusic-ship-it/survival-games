@@ -17,6 +17,7 @@ import { bloodOnTheBlade } from './legendaryItems';
 import { noteFightOpened } from './runRecords';
 import { displayName } from './epithets';
 import { readOf, addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound, rattle } from './memory';
+import { classifyCause } from './causes';
 import { incurDebt } from './debts';
 import { adjustRel, adjustTrust, getRel, propagateDeathFallout } from './relationships';
 import { injure, injuryGrade, openWound } from './wounds';
@@ -1796,6 +1797,19 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             });
         }
     }
+
+    /*
+     * AUDIT-9: the structured cause, recorded once, here.
+     *
+     * Placed after both branches above have settled `causeOfDeath`, so it
+     * classifies the obituary the run actually wrote rather than an
+     * intermediate value. Everything that measures deaths — the metrics death
+     * table, the soak's attribution invariant, a dozen achievements, the
+     * epilogue and the notables — reads this instead of re-deriving it from
+     * the prose with a regex of its own.
+     */
+    victim.causeCode = classifyCause(victim.causeOfDeath, victim.lastDamage?.kind);
+    if (victim.lastDamage?.code) victim.causeCode = victim.lastDamage.code;
 
     // §6.9: the district token goes home with the body. The cameras do not
     // always find it, but when they do it is the shot of the night. Selection

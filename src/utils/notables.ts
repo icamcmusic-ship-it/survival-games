@@ -1,3 +1,4 @@
+import { CAUSE_FAMILY, deathCodeOf } from '../engine/causes';
 import { GameState, Tribute } from '../models/types';
 import { PanemRecords } from './panemStorage';
 import { isStarCrossed } from '../engine/alliance';
@@ -122,13 +123,24 @@ export function runNotables(state: GameState, records: PanemRecords): Notable[] 
     // --- How people actually died. A tribute-dealt death is "Killed by" or a
     // wound somebody opened; everything else is the arena's. ---
     const arenaDeaths = dead.filter(t => {
-        const c = t.causeOfDeath ?? '';
-        return !c.startsWith('Killed by') && !/wound \S+ opened/.test(c);
+        // AUDIT-9: "the arena killed them" is a cause family, not a pair of
+        // string tests. The old version also had to special-case "a wound X
+        // opened" by hand, because a tribute-attributed bleed does not start
+        // with "Killed by" — exactly the kind of exception a taxonomy exists
+        // to stop everybody re-deriving.
+        const code = deathCodeOf(t);
+        return CAUSE_FAMILY[code] === 'arena' || CAUSE_FAMILY[code] === 'body';
     }).length;
     if (dead.length >= 6 && arenaDeaths >= Math.ceil(dead.length * 0.5)) {
         notables.push({ weight: 6, text: `${arenaDeaths} of the ${dead.length} dead were killed by the arena rather than by each other. This was a Games about supplies.` });
     }
-    const nightlock = dead.filter(t => /nightlock|rather than keep playing/i.test(t.causeOfDeath ?? '')).length;
+    // AUDIT-9: both chosen endings, by code. `nightlock` and `self-inflicted`
+    // are separate codes because they are separate beats, and this line is
+    // about the choice rather than about the berry.
+    const nightlock = dead.filter(t => {
+        const code = deathCodeOf(t);
+        return code === 'nightlock' || code === 'self-inflicted';
+    }).length;
     if (nightlock > 0) {
         notables.push({ weight: 11, text: `${nightlock === 1 ? 'One tribute' : `${nightlock} tributes`} chose to end it rather than keep playing. The Capitol cut away and had to cut back.` });
     }

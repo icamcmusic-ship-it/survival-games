@@ -564,9 +564,51 @@ export interface TributeMemory {
 }
 
 /** Where a tribute's most recent wound actually came from. */
+/**
+ * AUDIT-9 (audit §"robustness"): what killed somebody, as a code rather than a
+ * sentence.
+ *
+ * The audit asked for "structured event types and cause codes, then render
+ * prose from them", because "several measurements currently depend on matching
+ * English text; that makes writing changes capable of breaking telemetry".
+ * Measured: the engine produces 373 distinct cause-of-death strings across 200
+ * runs, and six files each grep them with their own regexes.
+ *
+ * This is the closed set those readers use instead. See `engine/causes.ts` for
+ * how a death gets one and `scripts/check-cause-codes.ts` for the guard that
+ * keeps the taxonomy complete as the prose changes.
+ */
+export type DeathCauseCode =
+    // Another tribute, by any route the combat layer owns.
+    | 'tribute'
+    // The body giving out, in roughly the order the injury layer escalates.
+    | 'bleeding' | 'infection' | 'sepsis' | 'poison' | 'shock'
+    | 'dehydration' | 'starvation' | 'exhaustion'
+    | 'hypothermia' | 'heatstroke' | 'burns' | 'asphyxiation' | 'exposure'
+    /** A status effect the prose did not name more precisely. */
+    | 'status'
+    // Chosen endings. Distinct from the physiology that would otherwise claim
+    // them, because who decided is the whole point of the beat.
+    | 'nightlock' | 'self-inflicted'
+    // The arena itself.
+    | 'drowning' | 'fall' | 'collapse' | 'border' | 'trap' | 'machinery' | 'hazard'
+    // The things the Capitol put in it.
+    | 'mutt' | 'gamemaker'
+    /** Nothing claimed it. `check-cause-codes` fails the build on this. */
+    | 'unknown';
+
 export interface DamageRecord {
     /** Human-readable cause, used verbatim as cause of death. */
     cause: string;
+    /**
+     * AUDIT-9: the structured counterpart to `cause`, set at the damage site.
+     *
+     * Optional because the taxonomy was introduced across a hundred-odd
+     * existing sites: where it is absent `classifyCause` derives one from the
+     * prose, in one place rather than in every reader. A site that sets it
+     * explicitly is not guessed at, which is the direction this moves in.
+     */
+    code?: DeathCauseCode;
     /** Set when another tribute dealt it. */
     sourceId?: string;
     /** Broad bucket, for tone and epilogue copy. */
@@ -1076,6 +1118,16 @@ export interface Tribute {
      * not a state the simulation actually has.
      */
     eliminationIndex?: number;
+    /**
+     * AUDIT-9: what killed them, as a code.
+     *
+     * `causeOfDeath` stays exactly as it was — it is the obituary, and it is
+     * what a reader reads. This is what the *measurements* read, so rewording
+     * an obituary stops being able to break a metric, an achievement or an
+     * invariant. Written at `killTribute`, the one funnel every death goes
+     * through. See `engine/causes.ts`.
+     */
+    causeCode?: DeathCauseCode;
     /**
      * AUDIT-9 B04: the zone this tribute was standing in at the end of last
      * cycle, so `tickAbandonedCamps` can notice a departure.

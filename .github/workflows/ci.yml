@@ -74,6 +74,9 @@ jobs:
       - run: npm run test:sim
       - run: npm run test:metrics
       - run: npm run test:decisions
+      # AUDIT-9: the cause-code taxonomy has to stay complete as the prose
+      # moves, or the measurements that key off it go quietly blind.
+      - run: npm run test:causes
 
       # Content and structure.
       - run: npm run test:arenas

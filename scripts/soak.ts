@@ -54,6 +54,7 @@ import { emptyPickCount } from '../src/utils/rng';
 import { oddsScore, tributeOdds } from '../src/engine/odds';
 import { GameConfig, GameState, Item, Stance, Tribute } from '../src/models/types';
 import { giveItem } from '../src/engine/items';
+import { deathCodeOf } from '../src/engine/causes';
 import { configForProfile, gamesProfileFor } from '../src/engine/gamesProfile';
 
 const problems: string[] = [];
@@ -879,7 +880,15 @@ for (let i = 0; i < 400; i++) {
       if (t.allianceId) note('dead tribute still in an alliance');
       if (t.dayOfDeath === undefined) note('dead tribute without dayOfDeath');
       if (!t.causeOfDeath) note('dead tribute without cause of death');
-      if (/Died of sepsis/.test(t.causeOfDeath ?? '')) sepsisDeaths++;
+      // AUDIT-9: counted off the code, not off the sentence. This was
+      // `/Died of sepsis/` against a space of 373 distinct cause strings, so
+      // rewording the obituary would have taken the counter to zero silently.
+      if (deathCodeOf(t) === 'sepsis') sepsisDeaths++;
+      // AUDIT-9: and the taxonomy is complete, which is the property
+      // `check-cause-codes` asserts in full. Asserted here too because the
+      // soak sweeps configurations that check does not, and an `unknown` is
+      // the one outcome that means a measurement has gone blind.
+      if (deathCodeOf(t) === 'unknown') note(`death with no cause code: "${t.causeOfDeath}"`);
       if (t.health !== 0) note(`dead tribute health ${t.health}`);
 
       // --- Cause of death must name the real source, not a guessed one. ---
@@ -892,6 +901,13 @@ for (let i = 0; i < 400; i++) {
           if (!killer) note('killing blow attributed to a tribute who does not exist');
           else if (!t.causeOfDeath?.includes(killer.name)) {
             note(`cause of death "${t.causeOfDeath}" does not name the killer ${killer.name}`);
+          }
+          // AUDIT-9: the structured half of the same assertion. The prose
+          // check above is about the obituary naming the right person; this
+          // is about the code agreeing that a person did it at all, which is
+          // what every downstream measurement now keys off.
+          if (deathCodeOf(t) !== 'tribute') {
+            note(`tribute-dealt death coded as "${deathCodeOf(t)}": "${t.causeOfDeath}"`);
           }
         } else if (t.lastDamage.cause !== t.causeOfDeath) {
           note(`cause of death "${t.causeOfDeath}" does not match last damage "${t.lastDamage.cause}"`);
