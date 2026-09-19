@@ -2905,7 +2905,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // different claim — the map-reader usually dies of the reading.
         hint: 'Crown a victor who personally stood in every zone the arena has.',
         category: 'arena',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (state, v) => {
             if (!v) return false;
             const all = state.arena.zones.map(z => z.name);
@@ -3461,7 +3461,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Walked It All',
         hint: 'Crown a victor who set foot in every sector of the arena.',
         category: 'arena',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (state, v) => !!v && state.arena.zones.every(z => (v.visitedZones ?? []).includes(z.name)),
         nearMiss: (state, v) => {
             if (!v) return undefined;
@@ -3789,7 +3789,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Two Ways To Catch Somebody',
         hint: 'See two different kinds of trap still set when the Games end.',
         category: 'oddity',
-        rarity: 'possible',
+        rarity: 'legendary',
         /*
          * §11.4: `state.traps` is what is still standing at the end, not what
          * was ever built — most runs finish with none at all. Five kinds was
@@ -4344,12 +4344,22 @@ export const ACHIEVEMENTS: Achievement[] = [
     },
     {
         id: 'a7-three-frostbites',
-        name: 'Three Times Cold',
-        hint: 'Crown a victor who took frostbite in three separate cycles.',
+        name: 'Twice Cold',
+        hint: 'Crown a victor who took frostbite in two separate cycles.',
         category: 'survival',
         rarity: 'legendary',
-        test: (_s, v) => !!v && (v.frostbitesTaken ?? 0) >= 3,
-        nearMiss: (_s, v) => ((v?.frostbitesTaken ?? 0) === 2 ? 'the victor was frostbitten twice' : undefined),
+        /*
+         * AUDIT-8 §12.6: three was above the ceiling the engine produces.
+         *
+         * `Withdrawing` takes a cycle off long crossings, so fewer tributes
+         * spend a third cycle in the cold on the way somewhere — and the
+         * reachability check caught it immediately. Three was never measured
+         * as reachable so much as assumed; two is what the engine has
+         * actually produced, and the name and hint move with the number
+         * rather than leaving a card that reads for a thing nobody can do.
+         */
+        test: (_s, v) => !!v && (v.frostbitesTaken ?? 0) >= 2,
+        nearMiss: (_s, v) => ((v?.frostbitesTaken ?? 0) === 1 ? 'the victor was frostbitten once' : undefined),
     },
     {
         id: 'a7-five-health',
@@ -4943,7 +4953,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'a8-off-the-floor-twice',
         name: 'Off the Floor Twice',
         hint: 'Crown a victor who came back off the near-death line twice without taking a life.',
-        category: 'survival', rarity: 'possible',
+        category: 'survival', rarity: 'legendary',
         // AUDIT-8: the duplicate guard from §1.4 caught this as identical to
         // 'came-back-thrice' on its first run — which is the guard doing its job on the
         // very next batch written. Re-aimed at a question nothing else asks.

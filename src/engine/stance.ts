@@ -416,6 +416,38 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
      * missing — and it is deliberately only available where the work is already
      * done, so it is a payoff for trapping rather than a substitute for it.
      */
+    /*
+     * AUDIT-8 §12.6: leaving, as distinct from hiding.
+     *
+     * Available when there is a reason to be going: already mid-crossing,
+     * holding a `flee` objective, or standing somewhere the numbers are
+     * against them. Deliberately *not* gated on being unhurt — a tribute who
+     * is hurt is the likeliest person in the arena to want to be elsewhere.
+     */
+    Withdrawing: (_ctx, t, sig) => {
+        if (t.transit) return true;
+        if (t.objective?.kind === 'flee') return true;
+        return sig.hostile > 0 && sig.ratio > STANCE.outmatchedRatio;
+    },
+
+    /*
+     * AUDIT-8 §12.6: having decided the next move is a conversation.
+     *
+     * Three gates, and all three are the character: somebody here who is not
+     * currently trying to kill them, something in the pack worth wanting, and
+     * enough of a read on people to open with an offer rather than a mistake.
+     * The third is `readingPeople`'s second read site, which is what §12.4
+     * said a new axis needs before it is worth having.
+     */
+    Bartering: (ctx, t, sig) => {
+        if (profOf(t, 'readingPeople') < STANCE_MODES.bartering.readingFloor) return false;
+        if (inventoryValue(t) <= 0) return false;
+        return sig.occupants.some(o => o.id !== t.id && o.status === 'alive'
+            && (o.allianceId !== undefined && o.allianceId === t.allianceId
+                || hasTruce(ctx.state, t, o.id)
+                || getRel(t, o.id) >= STANCE.parleyableRegard));
+    },
+
     Baiting: (_ctx, t, sig) => {
         if (sig.wounded) return false;
         /*
@@ -639,6 +671,31 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
         if (sig.ratio > STANCE.outmatchedRatio) s -= STANCE_MODES.tending.contestedPenalty;
         s += sig.arch.caution * STANCE.archetypeWeight * STANCE_MODES.conditionalArchetypeWeight;
         s += sig.arch.stanceBias?.Tending ?? 0;
+        return s;
+    },
+
+    Withdrawing: (_ctx, t, sig) => {
+        let s = STANCE_MODES.withdrawing.base;
+        s += profOf(t, 'pacing') * STANCE_MODES.withdrawing.perPacingPoint;
+        if (t.transit) s += STANCE_MODES.withdrawing.inTransitBonus;
+        if (t.objective?.kind === 'flee') s += STANCE_MODES.withdrawing.fleeingBonus;
+        if (sig.ratio > STANCE.outmatchedRatio) {
+            s += (sig.ratio - STANCE.outmatchedRatio) * STANCE_MODES.withdrawing.outmatchedWeight;
+        }
+        s += sig.arch.caution * STANCE.archetypeWeight * STANCE_MODES.conditionalArchetypeWeight;
+        s += sig.arch.stanceBias?.Withdrawing ?? 0;
+        return s;
+    },
+
+    Bartering: (_ctx, t, sig) => {
+        let s = STANCE_MODES.bartering.base;
+        s += profOf(t, 'readingPeople') * STANCE_MODES.bartering.perReadingPoint;
+        s += sig.occupants.filter(o => o.id !== t.id).length * STANCE_MODES.bartering.perAudience;
+        s += sig.kit * STANCE_MODES.bartering.kitWeight;
+        // Somebody armed and hostile in the sector is not a counterparty.
+        if (sig.ratio > STANCE.outmatchedRatio) s -= STANCE_MODES.nursing.contestedPenalty;
+        s += sig.arch.allianceAffinity * STANCE.archetypeWeight * STANCE_MODES.conditionalArchetypeWeight;
+        s += sig.arch.stanceBias?.Bartering ?? 0;
         return s;
     },
 

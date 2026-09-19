@@ -600,7 +600,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         allianceAffinity: -0.25,
         treachery: 0.0,
         caution: 0.35,
-        stanceBias: { Evasive: 0.8, Shadowing: 0.9, Aggressive: -1.0 },
+        stanceBias: { Withdrawing: 0.35, Evasive: 0.8, Shadowing: 0.9, Aggressive: -1.0 },
         // Audit 3 §3.3: the archetype with a 0.9 Shadowing stance bias had no
         // stalk objective bias at all — the stance and the intention it exists
         // to express were not connected.
@@ -700,7 +700,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         allianceAffinity: 0.3,
         treachery: -0.05,
         caution: 0.25,
-        stanceBias: { Fortified: 0.7, Defensive: 0.5, Scavenging: 0.6, Aggressive: -0.7 },
+        stanceBias: { Bartering: 0.3, Fortified: 0.7, Defensive: 0.5, Scavenging: 0.6, Aggressive: -0.7 },
         objectiveBias: { survive: 0.4, hold: 0.3 },
         targetPreference: 'richest',
         riskCurve: 'escalating',
@@ -1029,7 +1029,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         allianceAffinity: 0.2,
         treachery: 0.2,
         caution: 0.15,
-        stanceBias: { Evasive: 0.6, Scavenging: 0.5, Shadowing: 0.3 },
+        stanceBias: { Bartering: 0.5, Evasive: 0.6, Scavenging: 0.5, Shadowing: 0.3 },
         objectiveBias: { reach: 0.5, protect: 0.35 },
         // What somebody is carrying is what they can be charged.
         targetPreference: 'richest',
@@ -1086,7 +1086,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         allianceAffinity: 0.3,
         treachery: -0.1,
         caution: 0.05,
-        stanceBias: { Defensive: 0.4, Nursing: 0.5, Aggressive: -0.2 },
+        stanceBias: { Bartering: 0.35, Defensive: 0.4, Nursing: 0.5, Aggressive: -0.2 },
         objectiveBias: { protect: 0.6, flee: -0.2 },
         targetPreference: 'strongest',
         riskCurve: 'front-loaded',
@@ -1316,7 +1316,10 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         allianceAffinity: 0.05,
         treachery: 0.15,
         caution: 0.3,
-        stanceBias: { Evasive: 0.5, Baiting: 0.3, Shadowing: 0.2 },
+        // §12.6: and the constituency `Withdrawing` needs. An archetype whose
+        // top objective bias is `flee` is the one tribute in the table for whom
+        // leaving is a plan rather than a failure.
+        stanceBias: { Withdrawing: 0.55, Evasive: 0.3, Baiting: 0.3, Shadowing: 0.2 },
         // The only archetype that picks the biggest threat in the field and
         // then runs away from it on purpose. `flee` was nobody's top bias.
         objectiveBias: { flee: 0.6, stalk: 0.2 },
@@ -1366,7 +1369,10 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         // `Patrolling` was the top bias of exactly one archetype and 0.9% of
         // stance-time, which is the definition of an authored stance nobody
         // is for.
-        stanceBias: { Patrolling: 0.55, Defensive: 0.2, Scavenging: 0.2 },
+        // §12.6: `Bartering` deliberately under `Patrolling` — the Factor is
+        // the perimeter archetype first, and giving it an equal pull toward
+        // the new stance cannibalised the constituency it was created for.
+        stanceBias: { Patrolling: 0.55, Bartering: 0.25, Defensive: 0.2, Scavenging: 0.2 },
         objectiveBias: { wait: 0.5, hold: 0.2 },
         targetPreference: 'richest',
         riskCurve: 'escalating',

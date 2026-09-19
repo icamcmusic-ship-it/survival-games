@@ -4068,6 +4068,13 @@ export const STANCE = {
     /** A genuine emergency overrides the hold. */
     emergencyHealthFactor: 0.6,
     emergencyRatioFactor: 1.6,
+    /**
+     * AUDIT-8 §12.6: regard at or above which somebody is a counterparty
+     * rather than a threat. Below `friendRegardThreshold`, deliberately —
+     * you do not have to like somebody to trade with them, and the whole
+     * point of `Bartering` is the deal struck between people who do not.
+     */
+    parleyableRegard: -10,
 } as const;
 
 /**
@@ -4100,7 +4107,15 @@ export const STANCE_MODES = {
         // AUDIT-6 §3.1: two people holding a chokepoint is a picket. At three
         // this was half of why Patrolling held 0.5% of tribute-cycles.
         packMin: 2,
-        base: 3.6,
+        /*
+         * AUDIT-8 §12.6: 3.6 -> 4.3. `Bartering` lands in the same defensive
+         * pool and took the share from the wrong neighbour: at 3.6 the
+         * perimeter fell to 1.0% of stance-time, exactly on its guard, having
+         * been lifted off 0.5% by AUDIT-6 §3.1 in the first place. The new
+         * stance is supposed to take from `Defensive` (37.0%), which is a
+         * pool that can afford it; the rarest stance in the game is not.
+         */
+        base: 4.3,
         perExtraMember: 0.3,
         perTrackingPoint: 0.25,
         cannonBonus: 0.8,
@@ -4176,6 +4191,47 @@ export const STANCE_MODES = {
          * Fortified's, because days of tending should beat one afternoon.
          */
         trapTriggerMultiplier: 1.25,
+    },
+    /*
+     * AUDIT-8 §12.6: the two that take share from a named pool.
+     *
+     * `Evasive` holds 25.7% of stance-time doing two jobs — hiding, and
+     * leaving — and `Defensive` holds 37.0% covering everything that is not
+     * one of the other ten. Both numbers are why these two were chosen: §3.4
+     * measured that a conditional stance which does not take from a pool
+     * above 25% lands at about 1.5% and cannot be told from noise.
+     */
+    withdrawing: {
+        base: 5.2,
+        /** Per point of `pacing`: this stance is that skill's whole argument. */
+        perPacingPoint: 0.4,
+        /** Already mid-crossing. The stance that reads `transit`, which nothing did. */
+        inTransitBonus: 3.2,
+        /** Holding a `flee` objective is the intention this stance is the verb for. */
+        fleeingBonus: 2.6,
+        /** Per point of the zone's hostile ratio over the outmatched line. */
+        outmatchedWeight: 1.4,
+        /** Share taken off the remaining cycles of a crossing. Rounded down, minimum one. */
+        crossingRelief: 1,
+        /** Moving fast in the open. The cost that makes the speed a trade. */
+        concealmentCost: 0.3,
+        /** Extra fatigue per cycle, because this is a forced march. */
+        fatigueCost: 4,
+    },
+    bartering: {
+        base: 4.8,
+        /** Per point of `readingPeople`: the floor and the payoff are the same skill. */
+        perReadingPoint: 0.55,
+        /** `readingPeople` below this and they have no business opening with an offer. */
+        readingFloor: 1,
+        /** Per non-hostile standing here — somebody to make the offer to. */
+        perAudience: 1.1,
+        /** Carrying something worth wanting, scaled by what it is worth. */
+        kitWeight: 0.12,
+        /** Chance per cycle the conversation actually happens. */
+        openingChance: 0.55,
+        /** Cycles of truce a barter buys when it lands. */
+        truceCycles: 3,
     },
     /** How much of the archetype's temperament a conditional stance inherits. */
     conditionalArchetypeWeight: 0.5,

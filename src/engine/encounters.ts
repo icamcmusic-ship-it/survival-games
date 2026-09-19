@@ -16,7 +16,7 @@ import { tradeRumours } from './rumours';
 import { sleepForagePenalty } from './survival';
 import { cycleOf, addZoneThreat, hasVengeanceAgainst, noteContact, noteSighting, raiseSuspicion } from './memory';
 import { adjustMutual, adjustRel, getRel } from './relationships';
-import { hasTruce, tryParley } from './parley';
+import { grantTruce, hasTruce, tryParley } from './parley';
 import { areLovers, maintainPerformance } from './alliance';
 import { incurDebt } from './debts';
 import { DEBTS } from '../data/balance';
@@ -1029,6 +1029,49 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
         getAlive(ctx.state)
             .filter(o => o.id !== t.id && o.zone !== t.zone)
             .forEach(o => noteSighting(ctx.state, o, t.zone, 1, depletionOf(ctx.state, t.zone)));
+        return;
+    }
+
+    /*
+     * AUDIT-8 §12.6: leaving. The turn is the ground behind them.
+     *
+     * The move itself happens in the movement phase — this is what the cycle
+     * *reads as* while it does, which is the thing `Evasive` could not say:
+     * "hides" printed for a tribute whose whole plan was to be somewhere
+     * else. The payoffs are elsewhere and are real — a cycle off a long
+     * crossing (`dayNight.ts`) against concealment (`stealth.ts`) — so this
+     * pass is narration plus the one thing distance is actually for.
+     */
+    if (t.stance === 'Withdrawing') {
+        say('withdraw');
+        // Ground you have decided to leave stops being ground you remember
+        // as worth anything, which is what makes this a decision with a
+        // consequence rather than a change of pace.
+        addZoneThreat(ctx.state, t, t.zone, MEMORY.hazardThreat);
+        trainProficiency(t, 'pacing');
+        return;
+    }
+
+    /*
+     * AUDIT-8 §12.6: opening with an offer.
+     *
+     * The parley layer produces 452 truces and 62 payments per 400 Games off
+     * encounters that happen *to* a tribute. This is the first time wanting
+     * one is a position somebody can take, and the payoff is the one thing a
+     * negotiation buys that a fight cannot: time.
+     */
+    if (t.stance === 'Bartering') {
+        say('barter');
+        const counterpart = getAlive(ctx.state)
+            .filter(o => o.id !== t.id && o.zone === t.zone)
+            .sort((a, b) => getRel(t, b.id) - getRel(t, a.id))[0];
+        if (counterpart && ctx.rng.chance(STANCE_MODES.bartering.openingChance)) {
+            grantTruce(ctx, t, counterpart, STANCE_MODES.bartering.truceCycles, 'brokered');
+            adjustRel(t, counterpart.id, STANCE_MODES.bartering.perAudience);
+            adjustRel(counterpart, t.id, STANCE_MODES.bartering.perAudience);
+            trainProficiency(t, 'persuasion');
+        }
+        trainProficiency(t, 'readingPeople');
         return;
     }
 

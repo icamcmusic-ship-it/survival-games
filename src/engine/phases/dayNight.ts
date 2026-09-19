@@ -1471,7 +1471,23 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
         } else {
             const from = t.zone;
             const dest = t.transit.to;
-            const remaining = t.transit.remaining;
+            let remaining = t.transit.remaining;
+            /*
+             * AUDIT-8 §12.6: the payoff for `Withdrawing`, and the first time
+             * any stance has read `transit` at all.
+             *
+             * `transit` is set on every crossing that costs more than a cycle
+             * and has been, until now, a thing that happens *to* a tribute:
+             * nothing they could decide made a long crossing shorter. A
+             * tribute who has committed to leaving covers the ground faster
+             * and pays for it in fatigue and in being visible the whole way
+             * (see `stealth.ts`).
+             */
+            if (t.stance === 'Withdrawing' && remaining > 1) {
+                remaining = Math.max(1, remaining - STANCE_MODES.withdrawing.crossingRelief);
+                t.transit.remaining = remaining;
+                t.vitals.fatigue = Math.min(100, t.vitals.fatigue + STANCE_MODES.withdrawing.fatigueCost);
+            }
             if (remaining - 1 > 0) {
                 t.transit.remaining = remaining - 1;
                 return;

@@ -75,6 +75,16 @@ export function concealment(
     // ...and Tending is standing still with both hands busy, which is the
     // opposite trade and roughly the same size.
     if (t.stance === 'Tending') value += STANCE_MODES.tending.concealmentBonus;
+    /*
+     * AUDIT-8 §12.6: and `Withdrawing` is the other half of `Evasive`.
+     *
+     * The two have spent the whole project sharing one row, which is why the
+     * pool needed splitting: hiding makes you harder to find and leaving
+     * makes you easier, and a stance table that scores them identically
+     * cannot express either. Somebody crossing open ground at speed is the
+     * most findable thing in an arena, and that is the price of the speed.
+     */
+    if (t.stance === 'Withdrawing') value -= STANCE_MODES.withdrawing.concealmentCost;
 
     // A fire is warmth, hot food and a beacon. Camouflage is the reverse trade.
     if (camp?.fire) value -= CRAFTING.fireConcealmentPenalty;

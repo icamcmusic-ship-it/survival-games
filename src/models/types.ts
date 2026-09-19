@@ -64,7 +64,27 @@ export type Stance =
     | 'Baiting'
     // Audit 5 §12: two more conditional stances — tending an ally, and walking a pack's perimeter.
     | 'Nursing'
-    | 'Patrolling';
+    | 'Patrolling'
+    /*
+     * AUDIT-8 §12.6. Same rule as the last batch, and §3.4 measured why it
+     * matters: a new conditional stance that does not take share from a named
+     * pool lands at about 1.5% of cycles and is indistinguishable from noise.
+     * These two each take from a pool above 25%.
+     *
+     *  - `Withdrawing` takes from `Evasive` (25.7%), which has been doing two
+     *    jobs — *hiding* and *leaving* — since there was a stance roster. This
+     *    is the second, with a real cost and a real payoff: the crossing is
+     *    faster and they are much easier to find while making it. It is also
+     *    the only stance that survives `transit`, which is a field every slow
+     *    crossing sets and no stance has ever read.
+     *  - `Bartering` takes from `Defensive` (37.0%, the largest pool). The
+     *    parley layer produces 452 truces and 62 payments per 400 Games and
+     *    has no stance of its own, so a tribute who has decided their next
+     *    move is a *negotiation* was indistinguishable from one who had
+     *    decided to stand their ground.
+     */
+    | 'Withdrawing'
+    | 'Bartering';
 
 export type ArchetypeId =
     | 'career' | 'strategist' | 'survivalist' | 'protector' | 'trickster' | 'wildcard' | 'underdog'

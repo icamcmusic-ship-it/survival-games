@@ -173,6 +173,9 @@ export interface ArenaActions {
     /** AUDIT-7 §12.6: working on yourself, and making yourself worth finding. */
     tend?: string[];
     bait?: string[];
+    /** AUDIT-8 §12.6: leaving rather than hiding, and opening with an offer. */
+    withdraw?: string[];
+    barter?: string[];
 }
 
 /** The keys `actionPool` will fall back on. */
@@ -342,6 +345,41 @@ const GENERIC_ACTIONS: ArenaActions = {
         '{tribute} drops a canteen in {zone} where it will catch the light, and withdraws to the place they chose.',
         '{tribute} lights a fire in {zone}, banks it, and settles in above the deadfall with a clear view of both.',
         'In {zone}, {tribute} makes themselves the most interesting thing for a sector in every direction, and means it.',
+    ],
+    /*
+     * AUDIT-8 §12.6. `withdraw` is the half of `Evasive` that was never
+     * hiding — 25.7% of stance-time covered both and the chronicle said
+     * "hides" for a tribute who had decided to be somewhere else. `barter`
+     * is the 452 truces and 62 payments per 400 Games that had no stance and
+     * therefore no voice of their own.
+     */
+    withdraw: [
+        '{tribute} does not look for cover in {zone}. {tribute} looks for the fastest line out of it, and takes it.',
+        'Whatever {tribute} came to {zone} for, they have decided it is not worth the walk back, and they are already moving.',
+        '{tribute} crosses {zone} at a pace nobody can hold for long, and holds it anyway.',
+        'In {zone}, {tribute} stops pretending to be somewhere else and starts simply not being there.',
+        '{tribute} leaves {zone} without covering their tracks, because covering them would cost time they have decided not to spend.',
+        '{tribute} goes through {zone} rather than around it, which is faster and is the reason people see them do it.',
+        'There is a version of this where {tribute} hides in {zone}. {tribute} has run the numbers on it and is walking instead.',
+        '{tribute} puts {zone} behind them at a jog, breathing badly, not stopping to fix it.',
+        'In {zone}, {tribute} makes the only decision that is entirely theirs to make, which is to be elsewhere.',
+        '{tribute} does not so much leave {zone} as abandon it, and does not look back at what they are leaving.',
+        'Somebody watching {zone} could follow {tribute} without trying. {tribute} knows, and keeps going.',
+        '{tribute} crosses the open in {zone} instead of the edge of it, and saves an hour, and spends something else.',
+    ],
+    barter: [
+        'In {zone}, {tribute} puts something down where it can be seen and takes two steps back from it, which is an offer.',
+        '{tribute} starts talking in {zone} before anybody reaches for anything, which is a skill and is not an accident.',
+        '"You need that more than I do," {tribute} says in {zone}, about something they need too.',
+        '{tribute} counts out what they are carrying in {zone}, out loud, and lets the other person hear the number.',
+        'In {zone}, {tribute} finds out what somebody wants by asking them, which nobody else in this arena has tried.',
+        '{tribute} does not raise the knife in {zone}. {tribute} raises the canteen, which is a different conversation.',
+        'There is a trade being discussed in {zone} and neither party is pretending it is friendship.',
+        '{tribute} names a price in {zone}. It is a fair one, which is itself a kind of move.',
+        'In {zone}, {tribute} works out what the person in front of them is short of, and then mentions that they have some.',
+        '{tribute} lets the silence in {zone} do the work, and waits to be offered something.',
+        '{tribute} trades in {zone} the way people trade at home: slowly, and about three things at once.',
+        'Nothing is decided in {zone}, but nobody drew on anybody either, and {tribute} arranged that.',
     ],
     patrol: [
         '{tribute} walks the edge of {zone} once, slowly, and comes back with a report the pack did not ask for.',

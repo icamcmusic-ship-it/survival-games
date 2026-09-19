@@ -112,6 +112,23 @@ export const STANCE_PROFILES: Record<Stance, StanceProfile> = {
         conditional: true, minHold: 2,
         blurb: 'Deliberately visible, on ground they prepared. Wants to be found, in the one place being found is survivable.',
     },
+    /*
+     * AUDIT-8 §12.6: two more, each taking share from a named pool above 25%
+     * rather than hoping for 1.5%. See the note on the `Stance` union.
+     */
+    Withdrawing: {
+        id: 'Withdrawing', label: 'Withdrawing', family: 'evasive',
+        // minHold 1: leaving is the one stance it is never wrong to abandon
+        // the moment you have arrived, and a two-cycle floor would hold a
+        // tribute in it standing still on the far bank.
+        conditional: true, minHold: 1,
+        blurb: 'Not hiding — going. Covers ground faster than anyone should and is easy to follow while doing it.',
+    },
+    Bartering: {
+        id: 'Bartering', label: 'Bartering', family: 'defensive',
+        conditional: true, minHold: 2,
+        blurb: 'Has decided the next move is a conversation. Carrying something somebody wants, and willing to find out what it is worth.',
+    },
 };
 
 /** Every stance, in display order. The single source of truth for iteration. */
