@@ -59,8 +59,30 @@ const CATEGORY_LABEL: Record<EventLog['category'], string> = {
  * `names` is the cast lookup — a record needs "Rue (D11)", not an id, and the
  * feed already has the roster to hand.
  */
+/**
+ * AUDIT-9: the specific beat, where the event carries one.
+ *
+ * `EventCategory` is the channel — `combat` covers an ambush, a group fight
+ * and a duel alike — and the record wants the specific thing when it is
+ * known. This is the same `EventType` the harnesses count off, which means
+ * the facts register and the telemetry agree on what happened by
+ * construction rather than by two people writing similar regexes.
+ */
+const TYPE_LABEL: Record<NonNullable<EventLog['type']>, string> = {
+    'vengeance-sworn': 'VENGEANCE',
+    'group-fight': 'GROUP FIGHT',
+    ambush: 'AMBUSH',
+    betrayal: 'BETRAYAL',
+    truce: 'TRUCE',
+    standoff: 'STANDOFF',
+    romance: 'ROMANCE',
+    bond: 'BOND',
+    'border-warning': 'BORDER WARNING',
+    'border-collapse': 'BORDER COLLAPSE',
+};
+
 export function factLineOf(entry: EventLog, byId: Map<string, Tribute>): string {
-    const label = CATEGORY_LABEL[entry.category] ?? 'NOTE';
+    const label = (entry.type && TYPE_LABEL[entry.type]) ?? CATEGORY_LABEL[entry.category] ?? 'NOTE';
     const cast = entry.tributesInvolved
         .map(id => byId.get(id))
         .filter((t): t is Tribute => t !== undefined)

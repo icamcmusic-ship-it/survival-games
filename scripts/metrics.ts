@@ -271,7 +271,8 @@ for (let i = 0; i < RUNS; i++) {
         runsWithLovers++;
         if (loversLine) { loverDaySum += loversLine.day; loverRuns++; }
     }
-    vengeanceSworn += state.log.filter(l => l.text.startsWith('VENGEANCE:')).length;
+    // AUDIT-9: off the structured kind, not off a prefix in the prose.
+    vengeanceSworn += state.log.filter(l => l.type === 'vengeance-sworn').length;
     betrayals += state.log.filter(l => l.category === 'betrayal').length;
 
     runs++;

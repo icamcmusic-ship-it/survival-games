@@ -543,9 +543,19 @@ for (let i = 0; i < 400; i++) {
     // narrated twice, and the first of the two named the trait in brackets.
     // The `{...}` test above cannot see it: brackets, not braces.
     if (/\[[A-Za-z][A-Za-z -]*\]\s*$/.test(l.text.trim())) note(`bracketed id in feed text: ${l.text.slice(-60)}`);
-    if (l.text.startsWith('VENGEANCE:')) vengeanceSworn++;
-    if (l.text.startsWith('GROUP FIGHT:')) groupFights++;
-    if (l.text.startsWith('AMBUSH:')) ambushes++;
+    /*
+     * AUDIT-9: counted off the structured kind rather than off a prefix in
+     * the prose.
+     *
+     * These three read the event's *type* out of the first word of its own
+     * sentence — `'VENGEANCE: {mourner} learns that...'` — which is a field
+     * stored as a substring and stops existing the moment anybody rewrites
+     * the line. `EventType` is the field. The prefixes are still in the
+     * wording, because they read well; nothing depends on them any more.
+     */
+    if (l.type === 'vengeance-sworn') vengeanceSworn++;
+    if (l.type === 'group-fight') groupFights++;
+    if (l.type === 'ambush') ambushes++;
     // Prose-matched, so kept deliberately broad: these must survive new
     // flavour lines being added to the same pools.
     if (prose(/breaks off|disengages and runs|back away from each other|is gone into the cover|breaks contact|throws everything they are carrying|does not follow far|go opposite ways out of|simply stop, ten feet apart/, l.text)) retreats++;

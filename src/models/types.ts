@@ -2976,6 +2976,13 @@ export interface EventLog {
      * convention rather than a fact. Set explicitly on the kill path.
      */
     actorId?: string;
+    /**
+     * AUDIT-9: the structured kind, for the beats something measures.
+     *
+     * See `EventType`. Absent on the great majority of lines, which nothing
+     * counts and which therefore do not need one.
+     */
+    type?: EventType;
 }
 
 export interface LogOptions {
@@ -2988,7 +2995,41 @@ export interface LogOptions {
     absentIds?: string[];
     /** AUDIT-9 B18: who acted, for kill credit that does not guess from order. */
     actorId?: string;
+    /** AUDIT-9: the structured kind. See `EventType`. */
+    type?: EventType;
 }
+
+/**
+ * AUDIT-9 (audit §"robustness"): what kind of thing happened, as a value.
+ *
+ * `EventCategory` is the *channel* a line goes out on — it drives colour,
+ * filtering and the feed's glyphs, and it is deliberately coarse: `combat`
+ * covers an ambush, a group fight and a standoff alike.
+ *
+ * This is the other axis: the specific beat. It exists because the engine has
+ * been encoding exactly this information as an English prefix inside the prose
+ * — `'VENGEANCE: {mourner} learns that {killer} killed {victim}.'` — and both
+ * harnesses read it back out with `text.startsWith('VENGEANCE:')`. That is a
+ * structured field stored as a substring of a sentence, and it breaks the
+ * moment anybody rewrites the sentence. `soak.ts` documents two probes that
+ * did exactly that and read zero for several commits.
+ *
+ * Only the beats something actually measures are typed. This is not an
+ * attempt to enumerate every line in the game; it is the set where a number
+ * somewhere depends on recognising the event, which is precisely the set that
+ * must not depend on its wording.
+ */
+export type EventType =
+    | 'vengeance-sworn'
+    | 'group-fight'
+    | 'ambush'
+    | 'betrayal'
+    | 'truce'
+    | 'standoff'
+    | 'romance'
+    | 'bond'
+    | 'border-warning'
+    | 'border-collapse';
 
 export interface EpilogueQA {
     question: string;
