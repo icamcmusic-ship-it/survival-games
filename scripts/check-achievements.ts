@@ -63,6 +63,17 @@ function start(seed: string, arenaId: string, config: GameConfig, gamemaker = fa
 }
 
 const unlocks: Record<string, number> = {};
+/**
+ * AUDIT-8 §1.4: which runs each entry fired on, not just how many.
+ *
+ * The count alone cannot tell two achievements apart: `the-token` and
+ * `a7-token-to-the-end` both read 60.6% because they were the same predicate,
+ * and a count-based report shows that as two independent near-automatic
+ * entries rather than as one duplicated one. The *set* is what distinguishes
+ * "two hard things that happen at similar rates" from "one thing counted
+ * twice".
+ */
+const unlockedIn: Record<string, Set<number>> = {};
 const errors: string[] = [];
 let completed = 0;
 
@@ -149,7 +160,10 @@ for (let i = 0; i < RUNS; i++) {
     seeFields(victorCeiling, state as unknown as Record<string, unknown>);
     ACHIEVEMENTS.forEach(a => {
         try {
-            if (a.test(state, victor)) unlocks[a.id] = (unlocks[a.id] ?? 0) + 1;
+            if (a.test(state, victor)) {
+                unlocks[a.id] = (unlocks[a.id] ?? 0) + 1;
+                (unlockedIn[a.id] ??= new Set()).add(completed);
+            }
         } catch (e) {
             errors.push(`${a.id}: ${(e as Error).message}`);
         }
@@ -393,6 +407,73 @@ const duplicates = ACHIEVEMENTS.filter(a => ids.size === ids.add(a.id).size);
 if (duplicates.length > 0) {
     console.log(`\nFAIL: duplicate achievement id(s): ${duplicates.map(a => a.id).join(', ')}`);
     failed = true;
+}
+
+/*
+ * AUDIT-8 §1.4: two entries may not be the same achievement.
+ *
+ * Sixteen groups covering 34 of 336 entries — thirteen pairs and three
+ * triples — shipped with byte-identical `test` bodies. Every one of them
+ * unlocked together, so the player was handed two or three cards at the same
+ * moment, under different names and sometimes in different categories, for one
+ * boolean. `the-token` and `a7-token-to-the-end` were the same predicate, the
+ * same 60.6% rate, and both appeared in the near-automatic report as two
+ * separate problems. Seven of the thirty-four came from one batch, which is
+ * what happens when a roster grows past the point where an author can hold it
+ * in their head and nothing checks.
+ *
+ * Two properties, because either alone has a hole:
+ *
+ *  1. **Source identity** catches the copy-paste at rest, before a run — it
+ *     does not need the sample and it names the offender exactly.
+ *  2. **Identical unlock sets** catches the ones that are worded differently
+ *     and still ask the same question. Only asserted for entries that actually
+ *     fired: two achievements that never unlock have trivially equal (empty)
+ *     sets and that is §9.4's problem, not this one.
+ */
+{
+    const bySource = new Map<string, string[]>();
+    ACHIEVEMENTS.forEach(a => {
+        const key = a.test.toString().replace(/\s+/g, ' ');
+        bySource.set(key, [...(bySource.get(key) ?? []), a.id]);
+    });
+    const sourceDupes = [...bySource.values()].filter(ids => ids.length > 1);
+    if (sourceDupes.length > 0) {
+        const n = sourceDupes.reduce((sum, ids) => sum + ids.length, 0);
+        console.log(`\nFAIL: ${sourceDupes.length} group(s) of achievements share an identical predicate `
+            + `(${n} entries). Two cards for one condition always unlock together:`);
+        sourceDupes.forEach(ids => console.log(`  ${ids.join(' == ')}`));
+        failed = true;
+    }
+
+    /*
+     * The behavioural half needs a floor under it, or it reports coincidences.
+     * Two genuinely rare entries that each fired on the same single run have
+     * identical unlock sets and are not the same achievement; two entries that
+     * fired on the same forty runs out of five hundred are. The floor is the
+     * larger of five observations and 2% of the sample, so it scales with the
+     * run count rather than going quietly permissive when somebody lowers it.
+     */
+    const DUPE_MIN_SHARED = Math.max(5, Math.ceil(completed * 0.02));
+    const byUnlockSet = new Map<string, string[]>();
+    ACHIEVEMENTS.forEach(a => {
+        const runs = unlockedIn[a.id];
+        // Never fired anywhere: that is the reachability report's business.
+        if (!runs || runs.size < DUPE_MIN_SHARED) return;
+        const key = [...runs].sort((x, y) => x - y).join(',');
+        byUnlockSet.set(key, [...(byUnlockSet.get(key) ?? []), a.id]);
+    });
+    const behaviourDupes = [...byUnlockSet.values()].filter(ids => ids.length > 1);
+    if (behaviourDupes.length > 0) {
+        console.log(`\nFAIL: ${behaviourDupes.length} group(s) of achievements unlocked on exactly the same runs `
+            + `across the whole sample (>= ${DUPE_MIN_SHARED} observations each, so not a coincidence). `
+            + `Differently worded, same question:`);
+        behaviourDupes.forEach(ids => console.log(`  ${ids.join(' == ')}`));
+        failed = true;
+    }
+    if (sourceDupes.length === 0 && behaviourDupes.length === 0) {
+        console.log(`\nno two achievements share a predicate, and none unlocked on exactly the same set of runs.`);
+    }
 }
 
 if (process.env.ACHIEVEMENT_EMIT_RARITY === '1') {

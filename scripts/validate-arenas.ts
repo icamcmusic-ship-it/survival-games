@@ -599,7 +599,24 @@ console.log(ARENAS.map(a => `  ${a.id.padEnd(12)} ${a.zones.length} zones  ${a.n
         ['restockBias', a => a.restockBias !== undefined && a.restockBias.length > 0],
         ['cornucopiaLayout', a => a.cornucopiaLayout !== undefined],
         ['off-season skins', a => (OFF_SEASON_SKINS[a.id]?.length ?? 0) > 0],
-        ['a water source', a => a.zones.some(z => z.features?.waterSource !== undefined)],
+        /*
+         * AUDIT-8 §1.6: resolve it, do not read the raw field.
+         *
+         * This tested `z.features?.waterSource !== undefined` — whether a zone
+         * *declares* the field — and `zoneFeatures()` derives it from terrain
+         * and name when absent. So the census named `frozen` and `silkwood`,
+         * both of which resolve water sources perfectly well (Frozen Lake, The
+         * Meltwater Channel, The Sink), and said nothing about the thirteen
+         * arenas where the hydration layer genuinely finds nothing drinkable.
+         * An audit read the old line at face value and nearly "fixed" two
+         * arenas that were not broken.
+         *
+         * Thirteen dry arenas is not a fault — 48 zones across 26 arenas
+         * declare `waterSource: false` and every one is right to: sea water,
+         * brine pans, coolant vats, sea ice. The scarcity is the design. But
+         * the number the roster reports should be the one the engine reads.
+         */
+        ['a water source', a => a.zones.some(z => zoneFeatures(z).waterSource === true)],
     ];
     notes.push('authored-layer coverage across ' + ARENAS.length + ' arenas:');
     /*

@@ -316,6 +316,21 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
         return 'truce';
     }
 
+    /*
+     * AUDIT-8 §3.5: `readingPeople` had exactly one training site — the bluff
+     * below, which happens 166 times per 400 Games against a field of ~19 a
+     * run. 88.3% of tributes never trained it, so the see-through-it roll it
+     * was added to own was reading zero for almost everybody, and §6.3's
+     * standoffs stayed invisible.
+     *
+     * Sitting across from somebody who may or may not be about to kill you is
+     * the occasion. It does not need a bluff in it to be one — telling a
+     * threat from a negotiation is the skill, and this is every instance of
+     * the question being asked.
+     */
+    trainProficiency(t, 'readingPeople', undefined, PROFICIENCY.readingParleyShare);
+    trainProficiency(other, 'readingPeople', undefined, PROFICIENCY.readingParleyShare);
+
     const tArmed = t.inventory.some(i => i.type === 'weapon');
     const otherArmed = other.inventory.some(i => i.type === 'weapon');
     // How each of them reads the matchup, using the same estimate the stance

@@ -1,5 +1,121 @@
 # Changelog
 
+## AUDIT-8 fix pass (this branch)
+
+`AUDIT-8.md` is the eighth full audit. This is the answer to its §1 — every
+proven defect — plus the two §4/§8 items it costed at a data edit. Every number
+below was measured on this branch by the repository's own roster, at
+`METRICS_RUNS=1600` wherever an archetype is being judged.
+
+### `main` was red, and is not any more
+
+The `balance` job in `ci.yml` runs `METRICS_RUNS=1600` and had been failing on
+`3729510` and `638a726`: the **Quiet Professional's signature fired for 4.5% of
+its holders against a 29% floor**. It is **40.6%** now, and "every
+adequately-sampled signature clears the 29% floor (35 of 35)".
+
+The gate was reading the wrong quantity. `unseenStreak` resets on any cycle a
+non-ally shares the zone, and a measured Quiet Professional is alone on **17.7%**
+of their cycles — they are in company four cycles in five. Widening the
+threshold from four cycles to three, and then adding an alone-right-now path,
+moved it 4.5% -> 11.5% -> 15.7% and never reached the floor, because the
+threshold was never the constraint. The archetype is about the field having no
+model of them, and the engine already models exactly that: `notoriety`. The beat
+now fires when the arena has been running long enough for reputations to exist
+and this tribute has none, with the old streak kept as a fast path.
+
+One thing tried and reverted, recorded because it looked obviously right and
+was not: swapping `quiet`'s `stalk` objective bias for `wait` — on the theory
+that following a named person resets the streak — took the archetype from 5.84%
+to **2.83%**, the worst in the table, and moved the signature rate by nothing.
+
+### The balance job now runs on pull requests
+
+It was `if: github.event_name == 'push'`. At 400 runs **not one of the 35
+archetypes reaches `GUARD_MIN_SAMPLE`**, so every archetype guard abstains on a
+PR and the 1,600-run pass that catches them ran only after the merge. That is
+one merge too late, and is the exact failure `ci.yml`'s own header says the file
+exists to prevent.
+
+### Bugs (§1)
+
+- **The Broker's fourth preferred trait did not exist.** `'HardBargain'`
+  against a trait named `'Hard Bargain'`. 174 tributes per 1,600 Games carried
+  an inert string that summed no modifiers, granted no proficiency floor, and
+  rendered to the player as **"No recorded effect."** It survived eight audits
+  while `test:metrics` printed both rows in the same table.
+- **`npm run test:references`**, so it cannot happen again. Eleven cross-table
+  references asserted — archetype→trait, archetype→archetype,
+  archetype→stance, trait pairs, quirk mods, arena→item, arena→zone,
+  arena→event pack, mutt→zone, zone→zone, archetype→signature. Verified to
+  fail on the original typo before being wired in.
+- **The condition axis's rare extreme was the modal roll.** `rollBody` read
+  `pickIndex(4)` where its own comment said "Lean .. Bulky"; `pickIndex` is
+  inclusive, so the base range ran to `Hulking` and the promotion meant to make
+  the top rung rare added a *second* path to a rung already drawn one time in
+  five. Measured: `Hulking` **24.3%**, the commonest starting condition, with
+  `Bulky` beneath it the rarest at 16.8%, and five of the eleven `Build` rungs
+  between rare and unreachable.
+- **`signalling` could only be trained by succeeding at the thing it gates.**
+  Its one training site sat below the success roll behind a floor that, with
+  the skill at 0, reduced to `tracking >= 3.0` — against a measured `tracking`
+  population mean of 1.24. **99.6% of tributes never trained it**; the
+  population mean was 0.01. The floor comes down, the attempt teaches, and
+  reading somebody else's false trail teaches too.
+- **Thirty-four achievements were sixteen achievements.** Byte-identical
+  predicates in 13 pairs and 3 triples, always unlocking together — the player
+  handed two or three cards for one boolean. `check-achievements` now asserts
+  two properties: no two entries share a predicate source, and no two unlock on
+  exactly the same set of runs (with a floor under the sample so coincidences
+  do not fail the build). The behavioural half found **16 more groups the
+  source comparison cannot see**, including a third `named-blade`. 25 were
+  re-gated to a harder rung of the same ladder; 9 with no reachable harder rung
+  were deleted. Deleting is safe — the record book only queries ids it knows.
+- **Four of the ten zone-effect kinds** could not be produced by any procedural
+  arena: `blooming`, `irradiated`, `quaking`, `swarming` — the four added
+  *because* the original six were all punishments and all temporary. Now in the
+  draw, weighted, because `irradiated` is permanent and creeps.
+- **Two of thirty-six procedural signature combinations were inert.**
+  `spawnMutt` and `revealPositions` crossed with the `emptiestZone` selector
+  produced no output at all, not even a log line. A payload that needs an
+  audience and finds an empty room now goes where the room is full.
+- **Every procedural signature death carried the same sentence.** Twelve
+  biomes, twelve `effectVocab` tables that already rename the effect primitives
+  per biome, and one obituary: "Caught by the arena in <zone>". Six effects
+  across twelve biomes is **72 distinct obituaries** for one expression.
+
+### Three dead proficiencies, repaired (§3.5)
+
+`intimidation` (91.7% untrained), `oratory` (91.0%) and `readingPeople` (88.3%)
+each had one or two low-frequency training sites against a skill that starts at
+0 and caps at 6. Each gains one high-frequency partial-share site — the shape
+that worked for `navigation`: every point of fear inflicted, every charter
+sworn and every hearing convened, every parley attended. Field-wide best
+proficiency **3.15 -> 4.04**.
+
+### Balance (§4.6, §8.1)
+
+- **The antipathy graph was half-empty.** Fourteen of thirty-five archetypes
+  were disliked by nobody and three disliked nobody; the graph covered the
+  original fifteen densely and every one of the twenty added since barely. 47
+  edges to **71**, and no archetype is now isolated in either direction.
+- **The Archivist's set piece fired and bought nothing.** 57% fire rate, 0.35
+  average kills — the lowest in the roster — and bottom of the win table at
+  2.51%, which put both the spread guard and the worst-archetype guard over
+  their bounds. Its signature now pays in the thing the archetype *is*: a read
+  on everybody still standing. 2.51% -> **2.69%**, spread 3.45x -> **3.18x**.
+
+### One audit finding withdrawn (§1.6)
+
+AUDIT-8 §1.6 claimed `frozen`, `warren` and `silkwood` had no water source,
+reading `test:arenas`'s note at face value. The note tests whether a zone
+*declares* `waterSource`; `zoneFeatures()` derives it when absent, and two of
+those three resolve one fine. Resolved properly, **thirteen** arenas are dry —
+and that is deliberate: 48 zones across 26 arenas declare `waterSource: false`,
+every one of them sea water, brine, coolant or sea ice. No arena data changed.
+The census line in `validate-arenas.ts` now resolves rather than reads the raw
+field, so it reports the number the engine actually uses (33/45).
+
 ## AUDIT-6 fix pass (this branch)
 
 `AUDIT-6.md` is the sixth full audit, written to twelve headings the request

@@ -371,7 +371,30 @@ export function rollBody(pickIndex: (max: number) => number, strength: number, h
     // fed for a week in the Capitol. The bottom of the condition scale is
     // somewhere the run takes you, not somewhere you start — and the top is
     // rare for the same reason the top of the frame scale is.
-    let conditionIdx = Math.min(4, Math.max(0, pickIndex(4))) + 2;  // Lean .. Bulky
+    /*
+     * AUDIT-8 §1.3: this read `pickIndex(4)`, and `pickIndex` is inclusive.
+     *
+     * The comment said "Lean .. Bulky" — four rungs, indices 2-5 — and the
+     * code drew 0-4 and offset by 2, so the base range ran Lean..*Hulking*.
+     * The promotion on the next line, which exists to make the top rung rare
+     * exactly as the frame axis below makes 'Slender' and 'Massive' rare, was
+     * therefore adding a second path to a rung the base roll already reached
+     * one time in five. Measured over 7,640 tributes: `Hulking` 24.3% — the
+     * single most common starting condition, and `Bulky` directly beneath it
+     * the *least* common at 16.8%. The intended shape is a bell with rare
+     * ends; the produced shape was a ramp with an inverted notch.
+     *
+     * It propagated: `deriveBuild` sums the two axis orders, so the eleven-rung
+     * Build ladder came out `Slight` 0.09%, `Wiry` 0.56%, and `Frail` and
+     * `Skeletal` unreachable at the reaping — five of eleven rungs between rare
+     * and impossible, on a ladder widened precisely so those bodies would stop
+     * collapsing into one word. And `conditionStep` is read by seven functions
+     * in this file, so a quarter of the field walked in at the extreme of
+     * insulation, heat tolerance, water need, agility penalty, injury
+     * absorption and starvation buffer all at once — which collapses the half
+     * of the two-axis model that makes it worth having.
+     */
+    let conditionIdx = Math.min(3, Math.max(0, pickIndex(3))) + 2;  // Lean .. Bulky
     if (conditionIdx === 5 && pickIndex(4) === 0) conditionIdx = 6;
     const condition = CONDITIONS[conditionIdx];
     return { frame, condition, build: deriveBuild(frame, condition) };

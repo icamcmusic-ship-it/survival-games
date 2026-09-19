@@ -905,6 +905,30 @@ export const PROFICIENCY = {
     fieldcookeryExposureShare: 0.5,
     /** Being lied to, or lying. Both teach the same thing. */
     readingBluffShare: 0.7,
+    /*
+     * AUDIT-8 §1.11 / §3.5: the four axes that could not leave the floor.
+     *
+     * `signalling` was structurally untrainable (its one site trained only on
+     * success, behind a gate that needed `tracking` at 2.4x its population
+     * mean); the other three each had one or two low-frequency sites against a
+     * skill that starts at 0 and caps at 6. Measured shares of tributes who
+     * never trained the axis at all: signalling 99.6%, intimidation 91.7%,
+     * oratory 91.0%, readingPeople 88.3%.
+     *
+     * Every share below is a *partial* credit on a high-frequency occasion,
+     * which is the shape that worked for `navigation`: one common partial site
+     * moves a population where one rare full site cannot.
+     */
+    /** Laying a false trail at all, whether or not the lie takes. */
+    signallingAttemptShare: 0.45,
+    /** Reading somebody else's false trail — the other half of the same craft. */
+    signallingReadShare: 0.5,
+    /** Every point of fear put into somebody, not just the set-piece stare-down. */
+    intimidationPerFearShare: 0.3,
+    /** Speaking for a group at a hearing, a charter swearing or a bloc proposal. */
+    oratoryAddressShare: 0.5,
+    /** Sitting across from somebody at a parley, whether or not a bluff is thrown. */
+    readingParleyShare: 0.4,
     /**
      * Audit 4 §3.4: what a failed attempt is worth, as a share of a successful
      * one. Used by the wound-dressing path, which is the one skill in the game
@@ -2904,7 +2928,18 @@ export const PLANNING = {
     dreadCowedAt: 0.6,
     /** §3.2: what it takes to lay a trail that is not where you went. */
     falseTrailIntelligence: 6,
-    falseTrailSkill: 1.5,
+    /*
+     * AUDIT-8 §1.11: 1.5 -> 0.6.
+     *
+     * With `signalling` at 0 — which is where every tribute starts, and where
+     * 99.6% of them stayed — this floor reduced to `tracking >= 3.0` against a
+     * measured `tracking` population mean of 1.24. It was the entry condition
+     * for a tribute's *first* point of the skill, set above what most of the
+     * field ever reaches in the prerequisite. 0.6 puts the entry at
+     * `tracking >= 1.2`, i.e. at the population mean, so the skill has a
+     * doorway rather than a ceiling on its own doorstep.
+     */
+    falseTrailSkill: 0.6,
     falseTrailChance: 0.3,
     falseTrailTraffic: 3,
     /** Intelligence at which somebody reads the ground rather than the story. */
@@ -7654,7 +7689,28 @@ export const ARCHETYPE_HOOKS = {
     archivistMinFallen: 3,
     archivistSanityCost: 4,
     /** Cycles unseen before the arena's not having noticed becomes the beat. */
-    quietUnseenCycles: 4,
+    /*
+     * AUDIT-8 §1.1: 4 -> 3, with a second, shorter path beside it.
+     *
+     * `unseenStreak` resets on any cycle a non-ally shares the zone and the
+     * field's mean peak is 1.3 cycles, so four consecutive was well above what
+     * the movement layer produces — 4.5% of Quiet Professionals ever saw their
+     * own set piece, against a 29% floor. Three is still a real stretch of not
+     * being found, and it stays as the fast path. The real gate is the pair
+     * below: see `quietWork` for why physical solitude turned out to be the
+     * wrong currency for this beat altogether.
+     */
+    quietUnseenCycles: 3,
+    /** Days before the field is expected to have formed opinions at all. */
+    /**
+     * AUDIT-8 §8.1: what the Archivist's tally is worth, as a read on every
+     * survivor. Deliberately most of the way to `RIVAL_READ.max` (1): the
+     * point of the archetype is that by the time it speaks, it knows the room.
+     */
+    archivistReadGain: 0.6,
+    quietNamelessDay: 3,
+    /** Mean notoriety the rest of the field may hold about them and still not know them. */
+    quietNamelessNotoriety: 8,
     quietThreatShed: 0.15,
 } as const;
 

@@ -218,7 +218,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         // §8.2: the two archetypes who take without growing. A Survivalist
         // who has spent a week learning which roots are safe has a specific
         // contempt for whoever eats out of a dead tribute's pack.
-        hatesArchetypes: ['scavenger'],
+        hatesArchetypes: ['scavenger', 'career', 'forager'],
         tagline: 'Outlasts the arena.',
         // Audit 4 §8.3: Nobody is frightened of somebody who has never come for them.
         targetDraw: -0.5,
@@ -275,7 +275,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         targetDraw: 1.0,
         // §8.2: the Tracker is the one kind of tribute a trick does not work
         // on twice.
-        hatesArchetypes: ['tracker'],
+        hatesArchetypes: ['tracker', 'duellist'],
         tagline: 'Nobody sees them twice.',
         fearScale: 1.0,
     },
@@ -410,7 +410,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         targetPreference: 'strongest',
         riskCurve: 'flat',
         signature: 'zealotSermon',
-        hatesArchetypes: ['mercenary', 'ghost'],
+        hatesArchetypes: ['mercenary', 'ghost', 'medic'],
         fearScale: 0,
         tagline: 'It means something.',
         // Audit 4 §8.3: Loud, certain and unignorable. Nobody wants to be near it when it goes.
@@ -583,7 +583,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         signature: 'scholarReading',
         // §8.2: a Scholar reads the arena; a Saboteur edits it while they are
         // reading. Nothing is more annoying.
-        hatesArchetypes: ['saboteur'],
+        hatesArchetypes: ['saboteur', 'beast'],
         tagline: 'Reads the arena.',
         // Audit 4 §8.3: Reads as harmless, and is right up until the arena does what they said it would.
         targetDraw: -1.5,
@@ -613,7 +613,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         // little left to hide from.
         riskCurve: 'late-blooming',
         signature: 'ghostNaming',
-        hatesArchetypes: ['career'],
+        hatesArchetypes: ['career', 'warden'],
         tagline: 'Nobody has footage.',
         // Audit 4 §8.3: The whole archetype is not being on anybody's list.
         targetDraw: -2.5,
@@ -705,7 +705,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         targetPreference: 'richest',
         riskCurve: 'escalating',
         signature: 'quartermasterInventory',
-        hatesArchetypes: ['scavenger'],
+        hatesArchetypes: ['scavenger', 'debtor'],
         // §8.2: the one who counts the water is the one who knows exactly how
         // bad it is. Nobody is more frightened, and nobody hides it better.
         fearScale: 1.15,
@@ -741,7 +741,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         targetPreference: 'mostWounded',
         riskCurve: 'front-loaded',
         signature: 'martyrOffer',
-        hatesArchetypes: ['captor', 'mercenary'],
+        hatesArchetypes: ['captor', 'mercenary', 'understudy'],
         tagline: 'Not them.',
         targetDraw: -1,
         fearScale: 0.6,
@@ -787,7 +787,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         targetPreference: 'mostFamous',
         riskCurve: 'late-blooming',
         signature: 'trackerRead',
-        hatesArchetypes: ['ghost'],
+        hatesArchetypes: ['ghost', 'cartographer'],
         // §8.2: a Tracker knows precisely where everybody is, which is the
         // difference between dread and a map.
         fearScale: 0.8,
@@ -836,7 +836,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         // it is still standing at the end, so its caution has to come off then.
         riskCurve: 'late-blooming',
         signature: 'confessorPlea',
-        hatesArchetypes: ['zealot', 'beast'],
+        hatesArchetypes: ['zealot', 'beast', 'penitent'],
         tagline: 'Nobody wants to be the one who did it.',
         targetDraw: -1.5,
         fearScale: 0.8,
@@ -903,6 +903,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         objectiveBias: { wait: 0.5, reach: 0.45 },
         // They go where the story is, and the story is whoever the arena is
         // already talking about.
+        hatesArchetypes: ['quiet'],
         targetPreference: 'mostFamous',
         riskCurve: 'flat',
         signature: 'heraldCall',
@@ -934,7 +935,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         targetPreference: 'nearest',
         riskCurve: 'escalating',
         signature: 'penitentVow',
-        hatesArchetypes: ['beast', 'mercenary'],
+        hatesArchetypes: ['beast', 'mercenary', 'career'],
         // Nothing is dulled for them. That is rather the point.
         fearScale: 1.3,
         tagline: 'Not by my hand.',
@@ -959,6 +960,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         caution: 0.25,
         stanceBias: { Scavenging: 0.9, Nursing: 0.4, Defensive: 0.3 },
         objectiveBias: { hold: 0.5, survive: 0.4 },
+        hatesArchetypes: ['career', 'scavenger', 'survivalist'],
         targetPreference: 'weakest',
         riskCurve: 'escalating',
         signature: 'foragerTable',
@@ -998,7 +1000,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         // They are waiting for the field to be worth the fight.
         riskCurve: 'late-blooming',
         signature: 'duellistChallenge',
-        hatesArchetypes: ['career', 'opportunist'],
+        hatesArchetypes: ['career', 'opportunist', 'ghost', 'scholar'],
         tagline: 'One of us. Not four of you.',
         targetDraw: 2.5,
         fearScale: 0.7,
@@ -1022,7 +1024,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
          * owed money by somebody dangerous, and nobody hunts the banker first.
          */
         statBias: { charisma: 2, intelligence: 1, endurance: 1, strength: -1 },
-        preferredTraits: ['Barterer', 'HardBargain', 'Bookkeeper', 'Broker'],
+        preferredTraits: ['Barterer', 'Hard Bargain', 'Bookkeeper', 'Broker'],
         aggression: -0.05,
         allianceAffinity: 0.2,
         treachery: 0.2,
@@ -1067,7 +1069,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         targetPreference: 'nearest',
         riskCurve: 'escalating',
         signature: 'cartographerRoute',
-        hatesArchetypes: ['ghost'],
+        hatesArchetypes: ['ghost', 'saboteur'],
         tagline: 'It is only a maze if you have not walked it.',
         targetDraw: -1,
         fearScale: 1,
@@ -1089,7 +1091,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         targetPreference: 'strongest',
         riskCurve: 'front-loaded',
         signature: 'debtorReckoning',
-        hatesArchetypes: ['broker', 'opportunist'],
+        hatesArchetypes: ['broker', 'opportunist', 'quartermaster'],
         tagline: 'It comes due somewhere.',
         targetDraw: 0,
         fearScale: 0.95,
@@ -1111,7 +1113,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         targetPreference: 'weakest',
         riskCurve: 'late-blooming',
         signature: 'forecasterCall',
-        hatesArchetypes: ['wildcard'],
+        hatesArchetypes: ['wildcard', 'archivist'],
         tagline: 'It is coming from the west.',
         targetDraw: -1.5,
         fearScale: 1.05,
@@ -1133,7 +1135,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         targetPreference: 'nearest',
         riskCurve: 'late-blooming',
         signature: 'understudyReason',
-        hatesArchetypes: ['martyr'],
+        hatesArchetypes: ['martyr', 'bellwether'],
         tagline: 'Somebody else was supposed to be here.',
         targetDraw: -1,
         fearScale: 1.1,
@@ -1155,7 +1157,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         targetPreference: 'weakest',
         riskCurve: 'late-blooming',
         signature: 'archivistRoll',
-        hatesArchetypes: ['confessor', 'herald'],
+        hatesArchetypes: ['confessor', 'herald', 'wildcard', 'forecaster'],
         tagline: 'Fourteen. I will say them in order.',
         targetDraw: -1.5,
         fearScale: 1,
@@ -1173,14 +1175,38 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         treachery: 0.1,
         caution: 0.25,
         stanceBias: { Evasive: 0.5, Hunting: 0.3, Shadowing: 0.4 },
+        /*
+         * AUDIT-8 §1.1: this was briefly swapped to `wait`, on the theory that
+         * `stalk` — following a named person, which puts this tribute in that
+         * person's zone — was resetting the `unseenStreak` their own signature
+         * read. Measured at n=1,600 the swap took the archetype's win rate from
+         * 5.84% to 2.83%, making it the worst in the table, and moved the
+         * signature rate by nothing that mattered. The gate was the problem,
+         * not the bias; `stalk` stays, and `quietWork` stopped reading solitude.
+         */
         objectiveBias: { survive: 0.4, stalk: 0.4 },
+        hatesArchetypes: ['herald'],
         targetPreference: 'weakest',
         riskCurve: 'late-blooming',
         signature: 'quietWork',
-        // Declares no antipathy on purpose — it is the only archetype in the
-        // table that does not, and that is the character rather than a gap.
-        // `hatesArchetypes` is optional and §8.5 filled the last two genuine
-        // holes; this one is a statement.
+        /*
+         * AUDIT-8 §4.6: it now declares one, and the one it declares is the
+         * point.
+         *
+         * This used to carry no antipathy at all, on the argument that "it is
+         * the only archetype in the table that does not, and that is the
+         * character rather than a gap". Measured, it was not the only one —
+         * `herald` and `forager` also declared none, and **fourteen of
+         * thirty-five archetypes were disliked by nobody at all**. The
+         * antipathy graph covered the original fifteen densely and every one
+         * of the twenty added since barely, so each new batch shipped socially
+         * inert in both directions.
+         *
+         * A Quiet Professional despising a Herald is not a gap being filled to
+         * satisfy a checker: it is the whole of both characters. One of them
+         * performs for the cameras and one of them has arranged never to be
+         * looked at, and they are in the same arena.
+         */
         tagline: 'Nobody asked.',
         targetDraw: -2.5,
         fearScale: 0.9,
