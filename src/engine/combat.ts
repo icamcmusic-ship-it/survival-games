@@ -6,7 +6,7 @@ import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
 import { dissolveBrokeredTruces, effectiveCaution } from './archetypeHooks';
-import { ARCHETYPE_HOOKS, ARENA_DEATH_BUDGET, BLEEDING, RELATIONSHIPS as REL_KNOBS, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, MEMORY, NOTORIETY, INJURY_BEHAVIOUR, PROFICIENCY, QUALITY, RISK, SHOCK, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH, SOCIAL_AXES, UNIVERSAL_DEATHS, ARENA_LAWS } from '../data/balance';
+import { ARCHETYPE_HOOKS, ARENA_DEATH_BUDGET, BLEEDING, RELATIONSHIPS as REL_KNOBS, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, LOOTING, MEMORY, NOTORIETY, INJURY_BEHAVIOUR, PROFICIENCY, QUALITY, RISK, SHOCK, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH, SOCIAL_AXES, UNIVERSAL_DEATHS, ARENA_LAWS } from '../data/balance';
 import { goDown, isActive, isDowned } from './downed';
 import { clampTribute } from './vitals';
 import { enforceCapacity, giveItem } from './items';
@@ -1662,7 +1662,54 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
 
             clampTribute(killer);
 
-            if (victim.inventory.length > 0) {
+            /*
+             * §(requests): going through a body is a decision, not a reflex.
+             *
+             * Every kill stripped the corpse, automatically, every time — so a
+             * wounded tribute who had just fought for their life in an open
+             * zone with two other people converging on it calmly knelt and
+             * inventoried a pack, and the feed reported it. Two things were
+             * missing: whether they had the *time*, and whether they had the
+             * stomach.
+             *
+             * Time is the arena's own answer — other living tributes in the
+             * zone, or bleeding badly enough that standing still is the worse
+             * option. Stomach is disposition: an archetype's aggression, the
+             * `scavenge` trait modifier, and how badly they need something.
+             * A tribute with nothing and a corpse with a pack takes the risk;
+             * a well-supplied Career with a rival in the treeline does not
+             * bother, and the kit stays where it fell for whoever comes next —
+             * which is what the abandoned-camp layer is for.
+             */
+            const onlookers = ctx.state.tributes.filter(o =>
+                o.status === 'alive' && o.id !== killer.id && o.id !== victim.id
+                && o.zone === victim.zone && o.allianceId !== killer.allianceId).length;
+            const desperate = killer.inventory.length === 0
+                || killer.vitals.hunger > LOOTING.desperateHunger
+                || killer.vitals.thirst > LOOTING.desperateThirst;
+            let lootChance = LOOTING.baseChance
+                + ARCHETYPES[killer.archetype].aggression * LOOTING.perAggression
+                + traitMod(killer, 'scavenge')
+                + (desperate ? LOOTING.desperateBonus : 0)
+                - onlookers * LOOTING.perOnlooker
+                - (killer.injuries.bleeding ? LOOTING.bleedingPenalty : 0);
+            // Their own district partner is not a body to be gone through,
+            // whatever else the arena has made of them.
+            if (killer.district === victim.district) lootChance -= LOOTING.districtPartnerPenalty;
+            const loots = ctx.rng.chance(Math.max(0, Math.min(1, lootChance)));
+
+            if (victim.inventory.length > 0 && !loots) {
+                if (!silent) {
+                    ctx.logEvent(
+                        `${text} ${killer.name} does not stay to go through what ${victim.name} was carrying — `
+                        + (onlookers > 0
+                            ? 'there is somebody else in the zone, and the pack is not worth being found over.'
+                            : 'they take one look at the pack, and then at their own hands, and walk.'),
+                        [killer.id, victim.id],
+                        { important: true, category: 'kill' },
+                    );
+                }
+            } else if (victim.inventory.length > 0) {
                 const spoils = victim.inventory;
                 victim.inventory = [];
                 // §8.9: stripping the fallen, done often enough, becomes who

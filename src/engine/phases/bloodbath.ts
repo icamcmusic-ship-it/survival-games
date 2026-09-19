@@ -520,8 +520,21 @@ export function processBloodbath(ctx: SimContext) {
         if (!ctx.rng.chance(caught)) return;
         const hunter = ctx.rng.pickOrUndefined(hunters.filter(h => h.status === 'alive' && h.id !== t.id));
         if (!hunter) return;
+        /*
+         * §(requests): say what they were caught *with*.
+         *
+         * "runs them down" named the pursuit and nothing else, and the
+         * exchange that follows may or may not produce its own line, so a
+         * share of bloodbath deaths read as somebody being generically killed
+         * by a named tribute with no method attached. The hunter is selected
+         * out of `hunters`, which is by definition everybody who came up from
+         * the horn holding something, so the weapon is always known here —
+         * it simply was not being said.
+         */
+        const held = hunter.inventory.find(i => i.type === 'weapon');
         ctx.logEvent(
-            `${t.name} turns for the treeline and does not get there. ${hunter.name} runs them down before they clear the ring of plates.`,
+            `${t.name} turns for the treeline and does not get there. ${hunter.name} runs them down before they clear `
+            + `the ring of plates, ${held ? `${itemPhrase(held)} already in hand` : 'with nothing but their hands'}.`,
             [hunter.id, t.id],
             { important: true, category: 'combat' }
         );

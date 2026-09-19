@@ -4412,6 +4412,18 @@ export const RELATIONSHIPS = {
      * only on this roll, and everyone else's grief stays grief.
      */
     vengeanceDistantChance: 0.18,
+    /**
+     * §(requests): the chance somebody one zone away works out who did it.
+     *
+     * Every mourner in the arena used to be handed the killer's name the
+     * instant the cannon fired, whatever they could possibly have seen — so
+     * tributes knew how other tributes died without being there, and swore
+     * vengeance over it. The anthem shows the faces of the dead; it does not
+     * name who killed them. This is the only channel short of witnessing it,
+     * it is the same adjacency the fear layer already uses, and an arena that
+     * swallows its cannon closes it entirely.
+     */
+    killerIdentifiedNearby: 0.35,
     /** Sanity cost scales with how strong the lost bond was. */
     griefSanityMax: 45,
     griefSanityMin: 8,
@@ -8213,4 +8225,33 @@ export const ITEM_AFFINITY = {
     affinityWeight: 4,
     /** A class they are comfortable with, without a specific history. */
     classWeight: 2,
+} as const;
+
+/**
+ * §(requests): whether the killer actually goes through the body.
+ *
+ * Stripping the fallen used to be automatic on every kill, which made it both
+ * unrealistic — nobody inventories a pack with a rival walking into the zone —
+ * and narratively flat, since "X strips the body" followed every single death
+ * in the feed. These are the two questions the decision actually turns on:
+ * do they have the time, and do they want to.
+ *
+ * Tuned so a tribute who needs something usually takes it and a comfortable
+ * one in a contested zone usually does not, which also leaves more kit lying
+ * where it fell for the abandoned-camp layer to hand to whoever arrives next.
+ */
+export const LOOTING = {
+    baseChance: 0.55,
+    /** Aggression is most of the appetite for it. */
+    perAggression: 0.35,
+    /** Each unfriendly living body still standing in the zone. */
+    perOnlooker: 0.3,
+    /** Bleeding out is not the moment to kneel down. */
+    bleedingPenalty: 0.25,
+    /** Nothing in the pack, or genuinely hungry or thirsty. */
+    desperateBonus: 0.3,
+    desperateHunger: 60,
+    desperateThirst: 60,
+    /** The person from home is not a body to be gone through. */
+    districtPartnerPenalty: 0.45,
 } as const;
