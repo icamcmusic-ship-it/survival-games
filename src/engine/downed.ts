@@ -104,6 +104,9 @@ function finish(ctx: SimContext, t: Tribute, cause: string, killer?: Tribute, si
     t.lastDamage = {
         cause,
         kind: killer ? 'tribute' : (t.lastDamage?.kind ?? 'status'),
+        // A finished tribute is a tribute kill; an expired one keeps whatever
+        // the marker's own cause classifies as.
+        code: killer ? 'tribute' : t.lastDamage?.code,
         sourceId: killer?.id,
         cycle: cycleOf(ctx.state),
         amount: t.lastDamage?.amount ?? 0,

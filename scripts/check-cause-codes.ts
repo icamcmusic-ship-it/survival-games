@@ -21,8 +21,53 @@ import { ARENAS, DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { GameConfig, DeathCauseCode } from '../src/models/types';
 import { classifyCause, deathCodeOf, CAUSE_FAMILY } from '../src/engine/causes';
 import { coverageCells, coverageReport, initialRunState } from './runInit';
+import { readdirSync, readFileSync, statSync } from 'fs';
+import { join } from 'path';
 
 const RUNS = Number(process.env.CAUSE_RUNS ?? 200);
+
+/**
+ * The static half of the guarantee: every damage site declares its own code.
+ *
+ * Classifying the prose was the bridge, not the destination. A site knows what
+ * it is doing — the avalanche branch knows it buried somebody — while the
+ * classifier only knows the sentence, and the sentence can be edited by
+ * somebody who has never heard of the taxonomy. Two of the sites this pass
+ * was written for made that concrete: `Buried in a collapse in X` classified
+ * as a generic `hazard` and not as `collapse`, purely because the rule reads
+ * "buried in *the* collapse"; one indefinite article, and a collapse death
+ * stopped being one. Nothing failed. Nothing could have.
+ *
+ * So the words stop being load-bearing at the sites the engine controls. This
+ * walks the engine source and fails on any `applyDamage` call whose damage
+ * record does not carry a `code`, which is what stops the annotation being a
+ * one-off tidy-up that the next hazard quietly opts out of.
+ */
+function engineFiles(dir: string): string[] {
+    return readdirSync(dir).flatMap(name => {
+        const p = join(dir, name);
+        if (statSync(p).isDirectory()) return engineFiles(p);
+        return p.endsWith('.ts') ? [p] : [];
+    });
+}
+
+const uncoded: string[] = [];
+for (const file of engineFiles('src/engine')) {
+    const lines = readFileSync(file, 'utf8').split('\n');
+    lines.forEach((line, i) => {
+        if (!line.includes('applyDamage(') || line.includes('export function')) return;
+        // Gather the call: from here to the line that closes its parentheses.
+        let depth = 0;
+        const chunk: string[] = [];
+        for (let j = i; j < Math.min(i + 16, lines.length); j++) {
+            chunk.push(lines[j]);
+            depth += (lines[j].match(/\(/g) ?? []).length - (lines[j].match(/\)/g) ?? []).length;
+            if (depth <= 0) break;
+        }
+        // `code: 'fall'` or the shorthand `code` where a variable carries it.
+        if (!/\bcode\s*[:,}]/.test(chunk.join(' '))) uncoded.push(`${file}:${i + 1}`);
+    });
+}
 
 const arenaIds = [...ARENAS.map(a => a.id), 'procedural'];
 const configs: GameConfig[] = [
@@ -34,6 +79,9 @@ const configs: GameConfig[] = [
 
 const cells = coverageCells(arenaIds, configs.length, RUNS);
 console.log(coverageReport(cells, arenaIds, configs.length));
+
+/** Deaths whose code came from the site rather than from reading the prose. */
+let declared = 0;
 
 /** code -> deaths, and code -> one example string, for the report. */
 const byCode = new Map<DeathCauseCode, number>();
@@ -56,6 +104,7 @@ for (let i = 0; i < RUNS; i++) {
     sim.getState().tributes.forEach(t => {
         if (t.status !== 'dead') return;
         deaths++;
+        if (t.causeCode || t.lastDamage?.code) declared++;
         const code = deathCodeOf(t);
         byCode.set(code, (byCode.get(code) ?? 0) + 1);
         if (!example.has(code) && t.causeOfDeath) example.set(code, t.causeOfDeath);
@@ -108,10 +157,20 @@ if (unclassified.size > 0) {
         .forEach(([cause, n]) => console.log(`  ${String(n).padStart(5)}  ${cause}`));
     console.log('  (add a rule to engine/causes.ts, or a code at the damage site)');
 }
+if (uncoded.length > 0) {
+    failed++;
+    console.log(`\nFAIL: ${uncoded.length} applyDamage site(s) do not declare a cause code:`);
+    uncoded.slice(0, 25).forEach(site => console.log(`  ${site}`));
+    console.log("  (add `code: '<DeathCauseCode>'` to the damage record — the site knows, the words only imply)");
+}
 if (missingFamilies.length > 0) {
     failed++;
     console.log(`\nFAIL: no deaths at all in ${missingFamilies.length} required family/families: ${missingFamilies.join(', ')}`);
 }
+
+const declaredShare = (100 * declared / Math.max(1, deaths)).toFixed(1);
+console.log(`\n${declaredShare}% of deaths carry a code declared at the damage site (the rest classify from the prose);`
+    + ` ${uncoded.length} engine damage site(s) without one.`);
 
 console.log(failed ? '\ncause code checks failed.' : '\nEvery death the engine produces carries a cause code.');
 process.exit(failed ? 1 : 0);

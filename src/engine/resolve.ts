@@ -206,7 +206,7 @@ export function resolveBreakdowns(ctx: SimContext) {
                 [t.id],
                 { important: true, category: 'death' }
             );
-            selfInflictedDeath(ctx, t, 'Took the nightlock rather than keep playing', true);
+            selfInflictedDeath(ctx, t, 'Took the nightlock rather than keep playing', true, 'nightlock');
             return;
         }
 

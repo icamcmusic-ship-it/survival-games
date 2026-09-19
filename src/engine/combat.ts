@@ -1,6 +1,6 @@
 import { arenaHasLaw } from './gamesProfile';
 import { targetDrawOf } from './targeting';
-import { DamageRecord, Item, Tribute, attr } from '../models/types';
+import { DamageRecord, DeathCauseCode, Item, Tribute, attr } from '../models/types';
 import { forceStance } from './stance';
 import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
@@ -152,7 +152,7 @@ export function enterShock(ctx: SimContext, t: Tribute, cause: string) {
      * has nothing left to absorb it with is not how deep the cut was.
      */
     if (composureOf(t) <= UNIVERSAL_DEATHS.shockComposure && ctx.rng.chance(UNIVERSAL_DEATHS.shockChance)) {
-        applyDamage(ctx, t, UNIVERSAL_DEATHS.shockDamage, { cause: 'Went into shock', kind: 'status' });
+        applyDamage(ctx, t, UNIVERSAL_DEATHS.shockDamage, { cause: 'Went into shock', kind: 'status', code: 'shock' });
         if (t.status !== 'alive' || t.health <= 0) {
             ctx.logEvent(
                 `${t.name} sits down in ${t.zone} and stops. The wound is not the worst anybody has taken today. `
@@ -401,9 +401,9 @@ export function applyDamage(
  * clamp there exists to stop the arena wiping the field out, and a tribute
  * choosing to stop is not the arena.
  */
-export function selfInflictedDeath(ctx: SimContext, t: Tribute, cause: string, silent = false) {
+export function selfInflictedDeath(ctx: SimContext, t: Tribute, cause: string, silent = false, code: DeathCauseCode = 'self-inflicted') {
     if (t.status !== 'alive') return;
-    t.lastDamage = { cause, kind: 'status', cycle: cycleOf(ctx.state), amount: t.health };
+    t.lastDamage = { cause, code, kind: 'status', cycle: cycleOf(ctx.state), amount: t.health };
     t.health = 0;
     clampTribute(t);
     checkDeath(ctx, t, cause, silent);
@@ -770,7 +770,7 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
     applyDamage(ctx, defender, damage, {
         cause: weapon ? `Killed by ${attacker.name} (${weapon.name})` : `Killed by ${attacker.name}`,
         sourceId: attacker.id,
-        kind: 'tribute',
+        kind: 'tribute', code: 'tribute',
     });
 
     // A tribute who went down mid-round is out of the damage system, and the
@@ -978,7 +978,7 @@ export function resolveCombat(
             if (!isActive(fighter) || !isActive(other)) continue;
             if (fighter.vitals.fatigue < COMBAT.collapseFatigue || !ctx.rng.chance(COMBAT.collapseChance)) continue;
             const cause = `Collapsed from exhaustion fighting ${other.name}`;
-            applyDamage(ctx, fighter, COMBAT.collapseDamage, { cause, kind: 'tribute', sourceId: other.id });
+            applyDamage(ctx, fighter, COMBAT.collapseDamage, { cause, kind: 'tribute', code: 'tribute', sourceId: other.id });
             ctx.logEvent(
                 fighter.health <= 0
                     ? `${fighter.name}'s legs give out mid-swing in ${fighter.zone} and ${other.name} does not have to do much about it.`
@@ -1263,7 +1263,7 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
                 const stray = Math.round(COMBAT.friendlyFireDamage
                     * (ctx.state.timeOfDay === 'day' ? 1 : COMBAT.friendlyFireNightMultiplier));
                 const cause = `Struck by ${swinger.name} in the confusion of a group fight`;
-                applyDamage(ctx, hit, stray, { cause, kind: 'tribute', sourceId: swinger.id });
+                applyDamage(ctx, hit, stray, { cause, kind: 'tribute', code: 'tribute', sourceId: swinger.id });
                 adjustRel(hit, swinger.id, -COMBAT.friendlyFireRegard);
                 ctx.logEvent(
                     `${swinger.name} swings into the press and catches ${hit.name} instead. `
@@ -1553,6 +1553,7 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             cause: cause
                 || (weapon ? `Killed by ${killer.name} (${weapon.name})` : `Killed by ${killer.name}`),
             kind: 'tribute',
+            code: 'tribute',
             sourceId: killer.id,
             cycle: cycleOf(ctx.state),
             amount: victim.lastDamage?.amount ?? 0,

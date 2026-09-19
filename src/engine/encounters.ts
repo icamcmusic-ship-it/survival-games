@@ -195,7 +195,7 @@ function applyEventTo(ctx: SimContext, t: Tribute, event: ArenaEventDef, narrate
 
     if (rollEscape(ctx, t, event, isBoon)) return false;
 
-    if (event.damage) applyDamage(ctx, t, bracedDamage(t, event), { cause: event.cause, kind: 'hazard' });
+    if (event.damage) applyDamage(ctx, t, bracedDamage(t, event), { cause: event.cause, code: event.code, kind: 'hazard' });
     if (event.heal) t.health = Math.min(100, t.health + event.heal);
     if (event.bleeding) openWound(t, BLEEDING.hazardSeverity);
     if (event.poisoned) injure(t, 'poisoned');

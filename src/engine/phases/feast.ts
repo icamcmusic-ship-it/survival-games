@@ -208,8 +208,8 @@ function claimPacks(
             injure(t, 'poisoned');
             const cause = tamperer ? `Poisoned at the feast by ${tamperer.name}` : 'Poisoned at the feast';
             applyDamage(ctx, t, PRE_ARENA.feastTamperDamage, tamperer
-                ? { cause, sourceId: tamperer.id, kind: 'tribute' }
-                : { cause, kind: 'hazard' });
+                ? { cause, sourceId: tamperer.id, kind: 'tribute', code: 'tribute' }
+                : { cause, kind: 'hazard', code: 'poison' });
             ctx.logEvent(
                 `${t.name} eats out of the pack they just took off the table in ${cornucopia}, and something in it is wrong. They work out roughly when, and never work out who.`,
                 [t.id],
