@@ -384,6 +384,9 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
         roleCycles: asNum(r.roleCycles, 0),
         succeededAsHeir: asBool(r.succeededAsHeir, false),
         collapsesSurvived: asNum(r.collapsesSurvived, 0),
+        // AUDIT-9 B16: the elimination order, so a resumed or archived run
+        // settles its last-three-standing market the same way it would have.
+        eliminationIndex: Number.isFinite(asNum(r.eliminationIndex, NaN)) ? asNum(r.eliminationIndex, 0) : undefined,
         /*
          * AUDIT-9 B04: the two pieces of per-cycle scratch that used to live
          * in module-level WeakMaps and so did not survive a save at all.

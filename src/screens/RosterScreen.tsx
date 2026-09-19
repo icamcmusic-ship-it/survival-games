@@ -1,3 +1,5 @@
+import { useTransientFlag } from '../ui/useTransientFlag';
+import { sideBettingOpen } from '../engine/sideMarkets';
 import React, { useMemo, useState } from 'react';
 import { Tribute, Phase, attr } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
@@ -63,11 +65,33 @@ export function RosterPanel({
     // §(requests 5/7): betting used to be gated on the one phase the roster
     // page was reachable in. The page is gone; the parlour is open for as long
     // as the Games have not started, which is what it always meant.
-    const bettingOpen = !['bloodbath', 'day', 'night', 'feast', 'epilogue', 'ended'].includes(phase);
+    // AUDIT-9 B14: the same predicate the store enforces, rather than a second
+    // copy of the rule that disagreed with it.
+    const bettingOpen = sideBettingOpen(phase);
     const sideBets = useStore(gameStore, s => s.sideBets);
     // §6.1: the live proposition board. Eleven markets exist in the engine;
     // the roster hardcoded three at a fixed stake with no price shown.
     const [sideStake, setSideStake] = useState(50);
+    /*
+     * AUDIT-9 B14: a refused purchase says so.
+     *
+     * `placeSideBet` has always returned a boolean and every call site dropped
+     * it, so a wager the book would not take — wrong phase, unpriceable
+     * proposition, not enough coins — looked exactly like one that had been
+     * placed. The button is the only feedback loop the player has here.
+     */
+    const [sideBetError, setSideBetError] = useTransientFlag<string | null>(null, 4000);
+    const stake = (
+        kind: Parameters<typeof gameActions.placeSideBet>[0],
+        targetId?: string,
+        target?: { targetDistrict?: number; line?: number },
+    ) => {
+        if (!gameActions.placeSideBet(kind, sideStake, targetId, target ?? {})) {
+            setSideBetError(sideBettingOpen(phase)
+                ? 'The book will not take that wager.'
+                : 'The book closed when the gong went.');
+        }
+    };
     const board: SideQuote[] = useMemo(() => (bettingOpen ? gameActions.sideMarketBoard() : []), [bettingOpen, tributes, sideBets.length]);
     const sideKey = (q: { kind: string; targetId?: string; targetDistrict?: number }) => `${q.kind}|${q.targetId ?? ''}|${q.targetDistrict ?? ''}`;
     const placed = new Set(sideBets.map(sideKey));
@@ -161,6 +185,12 @@ export function RosterPanel({
                     · {tributes.filter(t => t.isCareer).length} careers
                     {!bettingOpen && ' · betting closed'}
                 </p>
+                {/* AUDIT-9 B14: the refusal, where the player is looking. Lives
+                    outside the `bettingOpen` block so a wager refused *because*
+                    the book has closed can still say so. */}
+                {sideBetError && (
+                    <p role="status" className="text-xs text-[var(--red)] mt-1">{sideBetError}</p>
+                )}
             </div>
 
             {bettingOpen && (
@@ -218,7 +248,7 @@ export function RosterPanel({
                                         className="btn btn-sm flex-none"
                                         disabled={coins < sideStake || placed.has(key)}
                                         aria-label={placed.has(key) ? 'Already placed' : `Stake ${sideStake} on this`}
-                                        onClick={() => gameActions.placeSideBet(q.kind, sideStake, q.targetId, { targetDistrict: q.targetDistrict, line: q.line })}
+                                        onClick={() => stake(q.kind, q.targetId, { targetDistrict: q.targetDistrict, line: q.line })}
                                     >
                                         {placed.has(key) ? 'Placed' : `Stake ${sideStake}`}
                                     </button>
@@ -429,7 +459,7 @@ export function RosterPanel({
                                             <button onClick={() => placeBet(t, 100)} disabled={coins < 100} className="btn btn-sm flex-1">+100</button>
                                             {/* §6.8: the named side bet. */}
                                             <button
-                                                onClick={() => gameActions.placeSideBet('first-blood', sideStake, t.id)}
+                                                onClick={() => stake('first-blood', t.id)}
                                                 disabled={coins < sideStake || sideBets.some(b => b.kind === 'first-blood')}
                                                 className="btn btn-sm"
                                                 aria-label={`1st blood — side bet that this tribute draws first blood (${sideStake} coins)`}
@@ -437,7 +467,7 @@ export function RosterPanel({
                                                 1st blood
                                             </button>
                                             <button
-                                                onClick={() => gameActions.placeSideBet('top-three', sideStake, t.id)}
+                                                onClick={() => stake('top-three', t.id)}
                                                 disabled={coins < sideStake || sideBets.some(b => b.kind === 'top-three' && b.targetId === t.id)}
                                                 className="btn btn-sm"
                                                 aria-label={`Top 3 — side bet that this tribute is among the last three standing (${sideStake} coins)`}

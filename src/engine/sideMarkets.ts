@@ -1,4 +1,4 @@
-import { GameState, Tribute } from '../models/types';
+import { GameState, Phase, Tribute } from '../models/types';
 import { ODDS, SIDE_MARKETS } from '../data/balance';
 import { tributeOdds } from './odds';
 
@@ -29,6 +29,31 @@ import { tributeOdds } from './odds';
  * Determinism is unaffected: pricing reads the field, never the RNG, so the
  * same seed prices the same board.
  */
+
+/**
+ * AUDIT-9 B14: when the book is open, in one place.
+ *
+ * The roster screen computed "not in the arena yet" and the store accepted
+ * only `setup` and `reaping`, so every side-bet button between the reaping
+ * square and the interviews looked live, returned false on click, and the
+ * click ignored the result. A purchase that silently does nothing is the
+ * worst version of this bug: the player has no way to tell it from a bet they
+ * placed.
+ *
+ * The store's list is the stale one. It predates the pre-Games being split
+ * into `square`, `train`, `parade`, the three training days and `scores` —
+ * the simulator took over that dispatch table and this guard was left behind
+ * naming the two phases that still existed. The rule the market actually
+ * wants is the one the UI was already drawing: the book closes at the gong,
+ * because every contract on it is about what happens in the arena.
+ */
+export const SIDE_BET_CLOSED_PHASES: ReadonlyArray<Phase> = [
+    'bloodbath', 'day', 'night', 'feast', 'epilogue', 'ended',
+];
+
+export function sideBettingOpen(phase: Phase): boolean {
+    return !SIDE_BET_CLOSED_PHASES.includes(phase);
+}
 
 export type SideBetKind =
     /** A named tribute draws the first blood of the Games. */
@@ -220,9 +245,64 @@ const named = (field: Tribute[], id?: string) => field.find(t => t.id === id);
  * Price one market against the current field. Returns undefined for a wager
  * that is not a wager — first blood on nobody, a district with no tributes.
  */
-export function priceSideBet(kind: SideBetKind, field: Tribute[], target: SideBetTarget = {}): SideQuote | undefined {
+/**
+ * AUDIT-9 B17: the rules the run is actually executing under.
+ *
+ * Pricing received the *field* and nothing else, so it quoted contracts on
+ * events the run had been configured to make impossible. Reproduced: with
+ * `enableFeast` false, "the Gamemakers calling a feast" was still offered at
+ * 75%, and there is no feast in that run to settle it against.
+ *
+ * Deliberately a narrow structural type rather than the whole `GameState`:
+ * the book needs to know what can still happen, not everything that has. It
+ * is optional so the many callers that only want a field — the roster
+ * preview, the checks — keep working, and an absent `rules` means "assume
+ * everything is possible", which is the old behaviour exactly.
+ */
+export interface MarketRules {
+    enableFeast: boolean;
+    /**
+     * The player's booth can call a feast by hand, so a run with the setting
+     * off but the booth open is still a run where a feast can happen. This is
+     * the intervention treatment the audit asked to be defined: an
+     * intervention the player controls keeps the market open, because they
+     * are the one who would be settling it.
+     */
+    gamemakerMode: boolean;
+    /** Feasts already held. A settled fact prices at certainty, not at a base rate. */
+    feastsHeld: number;
+}
+
+export function marketRulesOf(state: GameState): MarketRules {
+    return {
+        enableFeast: state.config.enableFeast,
+        gamemakerMode: state.gamemakerMode,
+        feastsHeld: state.feastsHeld ?? 0,
+    };
+}
+
+/** True when this contract can still resolve either way under the run's rules. */
+function contractEligible(kind: SideBetKind, rules: MarketRules | undefined): boolean {
+    if (!rules) return true;
+    if (kind === 'feast-held') {
+        // Already held: the question is answered, and a book does not take
+        // money on a settled fact.
+        if (rules.feastsHeld > 0) return false;
+        return rules.enableFeast || rules.gamemakerMode;
+    }
+    return true;
+}
+
+export function priceSideBet(
+    kind: SideBetKind,
+    field: Tribute[],
+    target: SideBetTarget = {},
+    rules?: MarketRules,
+): SideQuote | undefined {
     const pool = liveField(field);
     if (pool.length === 0) return undefined;
+    // AUDIT-9 B17: a contract the run cannot resolve is not offered at all.
+    if (!contractEligible(kind, rules)) return undefined;
 
     switch (kind) {
         case 'first-blood': {
@@ -296,21 +376,21 @@ export function priceSideBet(kind: SideBetKind, field: Tribute[], target: SideBe
 }
 
 /** The whole board, for a UI that wants to show what is on offer. */
-export function quoteSideMarkets(field: Tribute[]): SideQuote[] {
+export function quoteSideMarkets(field: Tribute[], rules?: MarketRules): SideQuote[] {
     const pool = liveField(field);
     const districts = [...new Set(pool.map(t => t.district))].sort((a, b) => a - b);
     const quotes: Array<SideQuote | undefined> = [
-        priceSideBet('career-victor', pool),
-        priceSideBet('no-victor', pool),
-        priceSideBet('bloodbath-over', pool),
-        priceSideBet('bloodbath-under', pool),
-        priceSideBet('long-games', pool),
-        priceSideBet('feast-held', pool),
-        priceSideBet('bloodless-victor', pool),
-        priceSideBet('wounded-victor', pool),
-        ...districts.map(d => priceSideBet('victor-district', pool, { targetDistrict: d })),
-        ...pool.map(t => priceSideBet('first-blood', pool, { targetId: t.id })),
-        ...pool.map(t => priceSideBet('top-three', pool, { targetId: t.id })),
+        priceSideBet('career-victor', pool, {}, rules),
+        priceSideBet('no-victor', pool, {}, rules),
+        priceSideBet('bloodbath-over', pool, {}, rules),
+        priceSideBet('bloodbath-under', pool, {}, rules),
+        priceSideBet('long-games', pool, {}, rules),
+        priceSideBet('feast-held', pool, {}, rules),
+        priceSideBet('bloodless-victor', pool, {}, rules),
+        priceSideBet('wounded-victor', pool, {}, rules),
+        ...districts.map(d => priceSideBet('victor-district', pool, { targetDistrict: d }, rules)),
+        ...pool.map(t => priceSideBet('first-blood', pool, { targetId: t.id }, rules)),
+        ...pool.map(t => priceSideBet('top-three', pool, { targetId: t.id }, rules)),
     ];
     return quotes.filter((q): q is SideQuote => q !== undefined);
 }
@@ -325,7 +405,31 @@ export function quoteSideMarkets(field: Tribute[]): SideQuote[] {
  * defensible one: the Capitol pays out on the plate it read on the night.
  */
 function outlivedBy(t: Tribute, field: Tribute[]): number {
-    const rank = (o: Tribute) => (o.status === 'alive' ? Number.POSITIVE_INFINITY : (o.dayOfDeath ?? 0));
+    /*
+     * AUDIT-9 B16: settled on the elimination order, not on the calendar.
+     *
+     * This ranked by day of death, and was lenient about ties on purpose —
+     * "a three-way tie for third all counts as third". That reads as
+     * generous and is in fact unbounded: reproduced with seven tributes dead
+     * on the same day plus one survivor, and the book paid out all eight on a
+     * three-place market. A day is far too coarse a unit to settle a
+     * last-three-standing contract on, because most of a Games' deaths happen
+     * on a handful of days.
+     *
+     * `eliminationIndex` is a total order over the run, written at the one
+     * funnel every death passes through, so "the last three standing" now
+     * means exactly that. Deaths within a cycle are ordered by the sequence
+     * the engine resolved them in, which is deterministic for a seed —
+     * "simultaneous" is not a state the simulation has.
+     *
+     * The day fallback is for archived runs saved before the index existed:
+     * they settle the way they always did rather than mis-settling.
+     */
+    const haveIndex = field.some(o => o.eliminationIndex !== undefined);
+    const rank = (o: Tribute) => {
+        if (o.status === 'alive') return Number.POSITIVE_INFINITY;
+        return haveIndex ? (o.eliminationIndex ?? 0) : (o.dayOfDeath ?? 0);
+    };
     const mine = rank(t);
     return field.filter(o => o.id !== t.id && rank(o) > mine).length;
 }
