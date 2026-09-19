@@ -36,7 +36,24 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
                 className="panel p-6 max-w-lg w-full space-y-5 my-8"
                 onClick={e => e.stopPropagation()}
             >
-                <div className="flex justify-between items-start gap-4">
+                {/*
+                  * AUDIT-9: the close control does not scroll away.
+                  *
+                  * The panel is taller than a short viewport and the overlay
+                  * is what scrolls, so once anybody had scrolled down to a
+                  * setting near the bottom the only labelled way out of the
+                  * dialog was above the fold — a modal you have to scroll back
+                  * up to leave. Escape still worked, which is exactly the kind
+                  * of "works if you know" that an affordance check is for; the
+                  * browser harness found it as soon as two settings were added
+                  * and it could no longer reach the button at all.
+                  *
+                  * Sticky rather than fixed so it stays inside the panel's own
+                  * padding and dark mode, and `-mx-6 px-6 -mt-6 pt-6` so the
+                  * background it paints covers the panel's full width as it
+                  * passes under the content.
+                  */}
+                <div className="sticky top-0 z-10 -mx-6 px-6 -mt-6 pt-6 pb-3 bg-[var(--paper-panel)] flex justify-between items-start gap-4">
                     <h2 className="display-title text-2xl">Settings</h2>
                     <button onClick={onClose} className="btn btn-sm btn-ghost" aria-label="Close settings">
                         <X className="w-4 h-4" /> Close
