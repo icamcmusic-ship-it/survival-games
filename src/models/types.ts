@@ -2428,6 +2428,14 @@ export interface GameState {
      * every first run gets. See `engine/campaign.ts`.
      */
     campaign?: CampaignSnapshot;
+    /**
+     * AUDIT-9 §5: how many structures have come down this Games.
+     *
+     * Per-run rather than per-tribute. `Tribute.collapsesSurvived` answers
+     * "was this person under one"; this answers "is the arena coming apart",
+     * which is a different question and the one nothing could ask.
+     */
+    structuresCollapsed?: number;
     /** Monotonic day/night cycle counter, used for memory and decay timings. */
     cycle?: number;
     /**

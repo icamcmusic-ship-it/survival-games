@@ -3378,6 +3378,15 @@ export const LOAD_BEARING = {
     perOccupantCycle: 0.05,
     /** Load added by a fight resolving inside one. Violence is loud. */
     perCombat: 0.14,
+    /**
+     * AUDIT-9 §5: load a neighbouring structure inherits when one comes down.
+     *
+     * A building does not fail in isolation; the one that shared a street or a
+     * footing with it is worse off afterwards. Sized well below `collapseAt`
+     * so one failure never simply knocks the next one over — it brings it
+     * closer, and occupation does the rest.
+     */
+    adjacentLoadOnCollapse: 0.2,
     /** Fatigue at which the collapse beat becomes eligible at all. */
     liveAt: 0.55,
     /** Recovery per empty cycle, and the floor it never settles back below. */
@@ -6436,8 +6445,23 @@ export const TRAINING_SCORE = {
      */
     careerVolunteerFloor: 8,
     careerVolunteerFloorChance: 0.92,
-    /** Base odds of clearing the first gate (an 8 becoming a 9). */
-    eliteGateBase: 0.34,
+    /**
+     * Base odds of clearing the first gate (an 8 becoming a 9).
+     *
+     * §(requests)/AUDIT-9: 0.34 -> 0.30. Careers no longer conceal — the
+     * branch is closed to them outright, which is the requested behaviour and
+     * the right one — and a concealing Career was the main thing holding the
+     * top of the score board down: they were suppressing their own score by
+     * choice, and about a quarter of the field is Career. With that gone the
+     * share of the cast scoring 9 or better went 23.1% -> 25.0%, through the
+     * regression bound of 24% and further from the 12-18% design goal.
+     *
+     * Corrected here rather than by reintroducing sandbagging, because this is
+     * the lever that acts on exactly the measured quantity: who reaches 8 is a
+     * statement about the cast, and how often an 8 becomes a 9 is a statement
+     * about how the Gamemakers score. The second is what drifted.
+     */
+    eliteGateBase: 0.3,
     /**
      * §7.5: 0.3/0.42 measured out to 11s at 0.59% and 12s at 0.03% of all
      * scores — "unprecedented" had drifted into "unseen". 0.36/0.52 keeps the
@@ -6549,7 +6573,17 @@ export const TRAINING_FLOOR = {
     proficiencyStep: 0.35,
 
     /** Strategy pick: how visible to be, before any of it is scored. */
-    careerShowcase: 0.4,
+    /*
+     * §(requests): Careers never conceal at all now — the branch is closed to
+     * them in `pickStrategy` rather than nudged. This weight was calibrated on
+     * top of a world where they sometimes did, so leaving it at 0.4 pushed the
+     * elite end of the score board from inside its guard band to 25.0%
+     * (ceiling 24%): every Career showcasing *and* a heavy thumb on the
+     * showcase/balanced split is the same pressure applied twice. Lowered so
+     * the rule does the work and the weight only decides which of the two
+     * honest strategies they take.
+     */
+    careerShowcase: 0.22,
     careerConceal: -0.18,
     schemerConceal: 0.25,
     underdogConceal: 0.15,
@@ -7802,6 +7836,13 @@ export const ARCHETYPE_HOOKS = {
      * to be to read as a client rather than as a rival supplier.
      */
     brokerNeedGap: 15,
+    /**
+     * AUDIT-9: what an untreated wound is worth on the need scale.
+     *
+     * High, because it is: somebody bleeding with nothing to dress it is the
+     * most broker-ish client in the arena, and `need` could not see them.
+     */
+    brokerWoundNeed: 70,
     /**
      * AUDIT-7 §8.2: how many weapons a broker keeps before they will trade one.
      *

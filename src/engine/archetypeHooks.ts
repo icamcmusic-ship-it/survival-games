@@ -699,7 +699,27 @@ export const SIGNATURES: Record<string, Signature> = {
          * standing here who is worse off than the broker on that axis — and the
          * `goods` check below already proves the broker has something to trade.
          */
-        const need = (o: Tribute) => Math.max(o.vitals.hunger, o.vitals.thirst);
+        /*
+         * AUDIT-9: a wound is a need, and it was the one this filter could not
+         * see.
+         *
+         * `need` read hunger and thirst only, so the single most broker-ish
+         * client in the arena — somebody bleeding, with nothing to dress it,
+         * standing next to a person holding a kit — did not register as a
+         * client at all unless they also happened to be hungry. That mattered
+         * more once looting stopped being automatic: smaller inventories all
+         * round means fewer clients qualify on the inventory-count clause, and
+         * this set piece slipped under its firing floor as a result. Injury is
+         * scored on the same 0-100 scale as the vitals so the sort still
+         * compares like with like.
+         */
+        const need = (o: Tribute) => Math.max(
+            o.vitals.hunger,
+            o.vitals.thirst,
+            o.injuries.bleeding || o.injuries.infected || o.injuries.poisoned
+                ? ARCHETYPE_HOOKS.brokerWoundNeed
+                : 0,
+        );
         /*
          * AUDIT-7 §8.2: ...and the client pool excluded the people a broker
          * actually stands next to.

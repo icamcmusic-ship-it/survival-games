@@ -98,6 +98,9 @@ export function tickStructuralFatigue(ctx: SimContext) {
 export function collapseStructure(ctx: SimContext, zoneName: string) {
     const state = ctx.state;
     const caught = state.tributes.filter(t => t.status === 'alive' && t.zone === zoneName);
+    // AUDIT-9 §5: the run-level count, for "is the arena coming apart" as
+    // distinct from "was this person under one".
+    state.structuresCollapsed = (state.structuresCollapsed ?? 0) + 1;
     ctx.logEvent(
         `Whatever was holding ${zoneName} up stops holding it up. The failure runs through the whole structure in about two seconds.`,
         caught.map(t => t.id),
@@ -113,4 +116,26 @@ export function collapseStructure(ctx: SimContext, zoneName: string) {
         if (t.status === 'alive') t.collapsesSurvived = (t.collapsesSurvived ?? 0) + 1;
     });
     if (state.structuralFatigue) state.structuralFatigue[zoneName] = 0;
+
+    /*
+     * AUDIT-9 §5: a building does not come down in isolation.
+     *
+     * The fatigue of the zone that failed is spent — the thing that was going
+     * to fall has fallen — and until now that was the whole of it, so a
+     * collapse was a terminal event for that corner of the map and nothing
+     * followed from it. A structure that shared walls, footings or a street
+     * with the one that just went is measurably worse off afterwards; the
+     * audit's own arena backlog asks for exactly this ("collapse blocks street
+     * below", "inspect load paths"), and it is the behaviour that makes a
+     * second collapse in one Games a thing that can happen rather than a tail
+     * that exists only on paper.
+     *
+     * `loadStructure` is already terrain-gated, so a collapse next to open
+     * ground or forest does nothing and a collapse in a district of ruins
+     * propagates — which is the correct shape.
+     */
+    const failed = getZone(state.arena, zoneName);
+    failed?.adjacent.forEach(neighbour => {
+        loadStructure(state, neighbour, LOAD_BEARING.adjacentLoadOnCollapse);
+    });
 }
