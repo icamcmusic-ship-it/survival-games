@@ -138,6 +138,8 @@ export type TrainingStrategy = 'showcase' | 'conceal' | 'balanced';
 function pickStrategy(ctx: SimContext, t: Tribute): TrainingStrategy {
     let conceal = TRAINING.concealChance;
     let showcase = TRAINING.showcaseChance;
+    // `careerConceal` is kept as the shove on the balanced/showcase split; the
+    // conceal branch itself is closed to Careers outright, below.
     if (t.isCareer) { showcase += TRAINING_FLOOR.careerShowcase; conceal += TRAINING_FLOOR.careerConceal; }
     if (t.archetype === 'trickster' || t.archetype === 'strategist') conceal += TRAINING_FLOOR.schemerConceal;
     if (t.archetype === 'underdog') conceal += TRAINING_FLOOR.underdogConceal;
@@ -146,8 +148,22 @@ function pickStrategy(ctx: SimContext, t: Tribute): TrainingStrategy {
     if (t.traits.includes('Unremarkable')) conceal += TRAINING_FLOOR.unremarkableConceal;
     if (t.fanFavourite) showcase += TRAINING_FLOOR.fanFavouriteShowcase;
 
+    /*
+     * §(requests): a Career never hides what they can do.
+     *
+     * The academy districts spend a decade building a reputation and then send
+     * it into the arena ahead of the tribute — the whole Career strategy is
+     * that everybody else already knows. Sandbagging is the opposite move, and
+     * it belongs to the underdog. `careerConceal` was a -0.18 nudge, which
+     * still left a clever Career (`cleverConceal`) or an Unremarkable one
+     * concealing often enough to see it happen, and a District 2 tribute
+     * quietly scoring a 4 reads as a bug to anybody watching.
+     *
+     * So it is a rule rather than a weight. A Career still chooses between
+     * showcasing and playing it straight; they do not choose to look weak.
+     */
     const roll = ctx.rng.nextFloat();
-    if (roll < Math.max(0, conceal)) return 'conceal';
+    if (!t.isCareer && roll < Math.max(0, conceal)) return 'conceal';
     if (roll < Math.max(0, conceal) + Math.max(0, showcase)) return 'showcase';
     return 'balanced';
 }
@@ -699,8 +715,12 @@ function runFloorSocial(
                         const partner = cast.find(o => o.id !== t.id && o.district === t.district && o.status === 'alive');
                         return !!partner && !t.trainingPact?.includes(partner.id);
                     });
+                // §(requests): a cross-district agreement is the interesting
+                // one, and it was the rare one. It gets the draw now, not
+                // only the penalty for not having gone home first.
                 const gate = TRAINING.pactChance * pactWillingness(a, b)
-                    * (shopping ? TRAINING.crossBeforePartner : 1);
+                    * (shopping ? TRAINING.crossBeforePartner : 1)
+                    * (samePartner ? 1 : TRAINING.crossDistrictDraw);
                 if (!ctx.rng.chance(gate)) continue;
 
                 strikePact(a, b, day + 1);

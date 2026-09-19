@@ -5035,6 +5035,58 @@ export const ALLIANCES = {
     /** Within a faction, regard has to be genuinely better than across it, by this much. */
     schismCohesionGap: 12,
     schismChance: 0.4,
+    /*
+     * §(requests): a pack splits late, for a reason, and the Careers split
+     * latest of all.
+     *
+     * `schismMinSize` is 4 and a Career pack is four to six, so the schism
+     * roll was aimed squarely at the one alliance in the game that is supposed
+     * to hold: a flat 0.4 per cycle from the first day meant the pack came
+     * apart in the opening two cycles most runs, before it had done the one
+     * thing it exists to do. Worse, it came apart on a periodic roll — the
+     * split had no cause a viewer could point at, which is the difference
+     * between a betrayal and a dice throw.
+     *
+     * Three gates, all of which have to be open:
+     *
+     *  1. `schismEarliestCycle` — nobody splits in the opening days. An
+     *     alliance formed yesterday is not a coalition with factions in it.
+     *  2. `schismFieldShare` — while most of the field is still alive, the
+     *     rest of the arena is a better enemy than the person next to you.
+     *     Below the share, the group *is* the competition, which is exactly
+     *     when a pack should start eyeing itself.
+     *  3. a grievance — see `schismNeedsGrievance`. Somebody across the line
+     *     has to be suspected, feared, sworn against or have broken the
+     *     charter. Without one there is nothing to split over.
+     *
+     * The Careers then get their own, later clock and a heavy multiplier on
+     * the roll, because "the pack holds until it doesn't" is the single most
+     * load-bearing structure in the format.
+     */
+    /**
+     * §(requests): regard two tributes walk off the plates on after three days
+     * of agreeing on the training floor.
+     *
+     * Below the Career pack's 45 on purpose: an academy childhood is worth
+     * more than a handshake at the knot-tying station. Above nothing, because
+     * a coalition that starts at zero regard dissolves before it has done
+     * anything. See `initializePactAlliances`.
+     */
+    floorPactRegard: 32,
+    schismEarliestCycle: 4,
+    schismFieldShare: 0.7,
+    careerSchismEarliestCycle: 9,
+    careerSchismFactor: 0.3,
+    /** Suspicion/fear across the faction line that counts as a real grievance. */
+    schismGrievanceSuspicion: 22,
+    schismGrievanceFear: 18,
+    /**
+     * Cross-line regard at or below which the falling-out is itself the
+     * grievance. `findFaction` already requires the two camps not to get on;
+     * this is the stronger case where they have come to actively dislike each
+     * other, which needs no separate incident to explain it.
+     */
+    schismGrievanceRegard: 0,
     /**
      * Leadership coup: the two dials that decide whether the pack's internal
      * drama actually happens. The challenger needs this much more collective
@@ -6170,7 +6222,26 @@ export const TRAINING = {
      * own district partner is still unspoken for. Not a block — the Careers
      * cross district lines by definition — but home is tried first.
      */
-    crossBeforePartner: 0.3,
+    /*
+     * §(requests): cross-district agreement was too rare to be a feature.
+     *
+     * Two multipliers were stacked against it — this one (a tribute whose own
+     * district partner is still unpartnered is not out looking yet) and the
+     * day-two eligibility gate — on top of a base `pactChance` of 0.3. The
+     * result was a floor where almost every agreement was a district pair, so
+     * the coalition that forms *across* district lines, which is the whole
+     * counterweight to the Career pack and the most interesting social object
+     * in the format, showed up in a small minority of runs.
+     *
+     * 0.3 -> 0.55 keeps "home comes first" as a real preference rather than a
+     * near-prohibition, and `crossDistrictDraw` adds the other half: two
+     * tributes from different districts who have already decided they get on
+     * are *more* interesting to each other than the partner they were issued,
+     * not less.
+     */
+    crossBeforePartner: 0.55,
+    /** How much more readily a cross-district pair strikes an agreement at all. */
+    crossDistrictDraw: 1.45,
     affinityNeighbour: 1.5,    // districts that work next to each other
     affinityYoung: 2,          // both at the bottom of the age band
     affinityRated: 1.7,        // one of them rated the other in the observation pass

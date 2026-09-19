@@ -27,6 +27,8 @@ export function startGames(ctx: SimContext) {
     ctx.state.phase = 'bloodbath';
     ctx.state.day = 1;
     initializeCareerAlliance(ctx);
+    // §(requests): ...and everybody else's, which used to evaporate at the gong.
+    initializePactAlliances(ctx);
 }
 
 function initializeCareerAlliance(ctx: SimContext) {
@@ -82,6 +84,76 @@ function initializeCareerAlliance(ctx: SimContext) {
         });
         registerAlliance(ctx, allianceId, careers);
     }
+}
+
+/**
+ * §(requests): the packs the floor built, made real at the gong.
+ *
+ * Three days of training produced `trainingPact` — a flat list of
+ * pre-agreements — and at the gong precisely one of them mattered: the Career
+ * pack, which `initializeCareerAlliance` builds separately. Everybody else's
+ * agreement bought a warmer bloodbath line and nothing else, then had to be
+ * re-discovered from scratch by the day-phase formation roll, which only ever
+ * pairs two alliance-free tributes. So the only group of three or more in the
+ * arena at first light was the Careers, and the arena's most interesting
+ * counterweight — the outer-district coalition that forms *because* the pack
+ * exists — could not be there to meet them.
+ *
+ * The pact graph already describes those groups: two tributes who agreed on
+ * the floor are an edge, and a connected component is a pack. They are
+ * assembled here, capped at the same `maxSize` every other alliance obeys, and
+ * seeded with the regard three days of agreeing is worth.
+ *
+ * Careers are excluded outright — their pack is built above, and a pact
+ * between a Career and an outer-district tribute is a recruitment, which the
+ * alliance layer already owns.
+ */
+function initializePactAlliances(ctx: SimContext) {
+    const alive = getAlive(ctx.state).filter(t => !t.isCareer && t.allianceId === undefined);
+    const byId = new Map(alive.map(t => [t.id, t]));
+    const seen = new Set<string>();
+
+    alive.forEach(seed => {
+        if (seen.has(seed.id)) return;
+        // Breadth-first across the pact graph: everybody this tribute agreed
+        // with, everybody *they* agreed with, and so on. That is what makes a
+        // five-person coalition possible from a handful of two-way handshakes,
+        // which is exactly how one forms on a real training floor.
+        const group: Tribute[] = [];
+        const queue = [seed];
+        while (queue.length > 0 && group.length < ALLIANCES.maxSize) {
+            const t = queue.shift()!;
+            if (seen.has(t.id)) continue;
+            seen.add(t.id);
+            group.push(t);
+            (t.trainingPact ?? []).forEach(id => {
+                const other = byId.get(id);
+                if (other && !seen.has(other.id)) queue.push(other);
+            });
+        }
+        if (group.length < 2) return;
+
+        const allianceId = `floor-pact-${seed.id}`;
+        group.forEach(t => {
+            t.allianceId = allianceId;
+            group.forEach(other => {
+                if (t.id === other.id) return;
+                // Agreeing on the floor is worth less than an academy
+                // childhood — the Career floor is 45 — but it is not nothing,
+                // and it is what they are walking off the plates on.
+                setRel(t, other.id, Math.max(ALLIANCES.floorPactRegard, getRel(t, other.id)));
+            });
+        });
+        registerAlliance(ctx, allianceId, group);
+        ctx.logEvent(
+            group.length > 2
+                ? `${group.map(t => `${t.name} (D${t.district})`).join(', ')} come off the plates together. `
+                    + 'Nobody trained them to do this. They agreed to it on the floor, in front of everybody, and they meant it.'
+                : `${group[0].name} and ${group[1].name} find each other in the first seconds and stay found.`,
+            group.map(t => t.id),
+            { important: true, category: 'alliance' },
+        );
+    });
 }
 
 /**
