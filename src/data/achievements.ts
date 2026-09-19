@@ -1,3 +1,4 @@
+import { deathCodeOf } from '../engine/causes';
 import { INTERVIEW_PERSONAS } from './personas';
 import { TRAIT_DEFS } from './traits';
 import { GameState, Tribute } from '../models/types';
@@ -137,6 +138,19 @@ const dead = (state: GameState) => state.tributes.filter(t => t.status === 'dead
  * decide who the country calls a Turncoat; the achievement table asks the same
  * question and should count the same way.
  */
+/**
+ * AUDIT-9: did `killer` kill `t`, as a fact rather than as a string match.
+ *
+ * Several predicates asked this by looking for the killer's *name* inside the
+ * victim's obituary. That is wrong twice over: a hazard line that happens to
+ * mention somebody matched, and any rewording of "Killed by X" stopped
+ * matching at all. `lastDamage.sourceId` is the recorded attribution, and the
+ * soak already asserts it agrees with the obituary.
+ */
+function killedBy(victim: Tribute, killerId: string): boolean {
+    return deathCodeOf(victim) === 'tribute' && victim.lastDamage?.sourceId === killerId;
+}
+
 function faithlessness(t: Tribute): number {
     return (t.betrayalsCommitted ?? 0) + (t.faithBroken ?? 0);
 }
@@ -315,13 +329,17 @@ export const ACHIEVEMENTS: Achievement[] = [
             && (v.formerAllies ?? []).length > 0
             && (v.formerAllies ?? []).every(id => {
                 const other = state.tributes.find(o => o.id === id);
-                return !other || other.causeOfDeath === undefined || !other.causeOfDeath.includes(v.name);
+                // AUDIT-9: "did the victor kill them" is a fact the death
+                // record already holds. Matching the victor's *name* inside
+                // the obituary also matched a hazard line that happened to
+                // mention them, and broke whenever the wording moved.
+                return !other || !killedBy(other, v.id);
             }),
         nearMiss: (state, v) => {
             if (!v || (v.formerAllies ?? []).length === 0) return undefined;
             const killed = (v.formerAllies ?? []).filter(id => {
                 const other = state.tributes.find(o => o.id === id);
-                return other?.causeOfDeath?.includes(v.name);
+                return other !== undefined && killedBy(other, v.id);
             }).length;
             return killed > 0
                 ? `${v.name} left ${(v.formerAllies ?? []).length} alliance${(v.formerAllies ?? []).length === 1 ? '' : 's'} and came back for ${killed} of them`
@@ -1040,7 +1058,8 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'games',
         rarity: 'common',
         test: state => {
-            const byTribute = dead(state).filter(t => t.causeOfDeath?.startsWith('Killed by')).length;
+            // AUDIT-9: by code, not by prefix.
+            const byTribute = dead(state).filter(t => deathCodeOf(t) === 'tribute').length;
             return dead(state).length > 0 && byTribute < dead(state).length / 2;
         },
     },
@@ -1155,7 +1174,9 @@ export const ACHIEVEMENTS: Achievement[] = [
         hint: 'See a tribute choose the nightlock rather than keep playing.',
         category: 'games',
         rarity: 'rare',
-        test: state => state.tributes.some(t => t.causeOfDeath?.includes('nightlock')),
+        // AUDIT-9: `nightlock` is its own cause code — a chosen ending, kept
+        // distinct from the poisoning that would otherwise claim it.
+        test: state => state.tributes.some(t => deathCodeOf(t) === 'nightlock'),
     },
     {
         id: 'wildfire',
@@ -1582,8 +1603,9 @@ export const ACHIEVEMENTS: Achievement[] = [
         hint: 'Watch the closing border take somebody.',
         category: 'arena',
         rarity: 'rare',
-        test: state => dead(state).some(t =>
-            /collapsing border|border closed/.test(t.causeOfDeath ?? '')),
+        // AUDIT-9: the border is a cause code; it had two spellings here and
+        // the engine writes at least three.
+        test: state => dead(state).some(t => deathCodeOf(t) === 'border'),
     },
     {
         id: 'held-the-horn',
@@ -1670,7 +1692,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'combat',
         rarity: 'rare',
         test: state => dead(state).some(t =>
-            t.poisonedByWeapon === true && /poison/i.test(t.causeOfDeath ?? '')),
+            t.poisonedByWeapon === true && deathCodeOf(t) === 'poison'),
     },
     {
         id: 'twelve-score',
@@ -2336,12 +2358,12 @@ export const ACHIEVEMENTS: Achievement[] = [
         rarity: 'legendary',
         test: state => {
             const dead = state.tributes.filter(t => t.status === 'dead');
-            const byHand = dead.filter(t => (t.causeOfDeath ?? '').startsWith('Killed by ')).length;
+            const byHand = dead.filter(t => deathCodeOf(t) === 'tribute').length;
             return dead.length >= 8 && byHand * 3 <= dead.length;
         },
         nearMiss: state => {
             const dead = state.tributes.filter(t => t.status === 'dead');
-            const byHand = dead.filter(t => (t.causeOfDeath ?? '').startsWith('Killed by ')).length;
+            const byHand = dead.filter(t => deathCodeOf(t) === 'tribute').length;
             return dead.length >= 8 && byHand * 3 > dead.length && byHand * 2 < dead.length
                 ? 'more died to the arena than to each other — Nothing but Sky wants two in three'
                 : undefined;
@@ -2713,11 +2735,11 @@ export const ACHIEVEMENTS: Achievement[] = [
         // and a run long enough to have tested it is the thing worth marking.
         test: state => state.arena.zones.filter(z => z.terrain === 'water').length >= 3
             && state.day >= 8
-            && !state.tributes.some(t => /drown|tide|undertow|rip ?tide/i.test(t.causeOfDeath ?? '')),
+            && !state.tributes.some(t => deathCodeOf(t) === 'drowning'),
         nearMiss: state => {
             const water = state.arena.zones.filter(z => z.terrain === 'water').length;
             if (water < 3) return undefined;
-            const lost = state.tributes.filter(t => /drown|tide|undertow|rip ?tide/i.test(t.causeOfDeath ?? '')).length;
+            const lost = state.tributes.filter(t => deathCodeOf(t) === 'drowning').length;
             if (lost > 0) return `${lost} went into the water in an arena mostly made of it`;
             return state.day >= 6 && state.day < 8
                 ? `a water arena came through clean, and ended on day ${state.day} — too short to count`

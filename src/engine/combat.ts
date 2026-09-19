@@ -17,6 +17,7 @@ import { bloodOnTheBlade } from './legendaryItems';
 import { noteFightOpened } from './runRecords';
 import { displayName } from './epithets';
 import { readOf, addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound, rattle } from './memory';
+import { classifyCause } from './causes';
 import { incurDebt } from './debts';
 import { adjustRel, adjustTrust, getRel, propagateDeathFallout } from './relationships';
 import { injure, injuryGrade, openWound } from './wounds';
@@ -915,7 +916,8 @@ export function resolveCombat(
         ctx.logEvent(
             fill(ctx.pickText(DUEL_TEXTS.ambush), { attacker: t1.name, victim: t2.name, zone: t1.zone }),
             [t1.id, t2.id],
-            { important: true, category: 'combat' }
+            // AUDIT-9: the 'AMBUSH:' prefix, as a field.
+            { important: true, category: 'combat', type: 'ambush', actorId: t1.id }
         );
         if (t2.health <= 0) {
             strikeDown(ctx, t2, t1, opener);
@@ -1181,7 +1183,9 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
     ctx.logEvent(
         fill(ctx.pickText(GROUP_COMBAT_TEXTS.open), { names: fighters.map(f => f.name).join(', '), zone }),
         fighters.map(f => f.id),
-        { important: true, category: 'combat' }
+        // AUDIT-9: the 'GROUP FIGHT:' prefix is a structured kind that was
+        // living inside the prose. This is the kind.
+        { important: true, category: 'combat', type: 'group-fight' }
     );
 
     // Side membership as drawn, for the post-fight bookkeeping — breakers are
@@ -1796,6 +1800,19 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             });
         }
     }
+
+    /*
+     * AUDIT-9: the structured cause, recorded once, here.
+     *
+     * Placed after both branches above have settled `causeOfDeath`, so it
+     * classifies the obituary the run actually wrote rather than an
+     * intermediate value. Everything that measures deaths — the metrics death
+     * table, the soak's attribution invariant, a dozen achievements, the
+     * epilogue and the notables — reads this instead of re-deriving it from
+     * the prose with a regex of its own.
+     */
+    victim.causeCode = classifyCause(victim.causeOfDeath, victim.lastDamage?.kind);
+    if (victim.lastDamage?.code) victim.causeCode = victim.lastDamage.code;
 
     // §6.9: the district token goes home with the body. The cameras do not
     // always find it, but when they do it is the shot of the night. Selection

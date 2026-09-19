@@ -25,6 +25,7 @@
     "test:references": "tsx scripts/check-references.ts",
     "test:zone-features": "tsx scripts/check-zone-features.ts",
     "test:decisions": "tsx scripts/check-decisions.ts",
+    "test:causes": "tsx scripts/check-cause-codes.ts",
     "test:ui-affordances": "tsx scripts/check-ui-affordances.ts",
     "fix:rarity": "ACHIEVEMENT_EMIT_RARITY=1 tsx scripts/check-achievements.ts",
     "audit": "npm audit --audit-level=high"

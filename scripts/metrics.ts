@@ -18,6 +18,7 @@ import { GameConfig, GameState, Stance, Tribute } from '../src/models/types';
 import { STANCES } from '../src/data/stances';
 import { legacyOf } from '../src/data/districts';
 import { coverageCells, coverageReport, initialRunState } from './runInit';
+import { deathCodeOf } from '../src/engine/causes';
 import { TRAIT_DEFS } from '../src/data/traits';
 import { ARCHETYPES } from '../src/data/archetypes';
 
@@ -45,23 +46,34 @@ const start = (seed: string, arenaId: string, config: GameConfig): GameState =>
     initialRunState({ seed, arenaId, config });
 
 /**
- * Buckets a cause-of-death string. `killTribute` writes "Killed by <name>" for
- * every tribute-dealt death, and the status causes come from `survival.ts`
- * verbatim, so matching on those prefixes is exact rather than heuristic.
+ * AUDIT-9: buckets a death by its cause *code*, not by its prose.
+ *
+ * This matched on string prefixes — `startsWith('Killed by ')`,
+ * `includes('Bled out')`, `includes('Froze')` — against a space of 373
+ * distinct cause strings, so every one of these buckets could silently empty
+ * out the moment somebody reworded an obituary, and the table would keep
+ * printing plausible-looking numbers. `deathCodeOf` is the one classifier now,
+ * and `check-cause-codes` fails the build if any string escapes it.
  */
-function bucketOf(cause: string | undefined): string {
-    if (!cause) return 'unknown';
-    if (cause.startsWith('Killed by ')) return 'tribute';
-    if (cause.includes('Bled out')) return 'bleeding';
-    if (cause.includes('dehydration')) return 'dehydration';
-    if (cause.includes('starvation')) return 'starvation';
-    if (cause.includes('infected')) return 'infection';
-    if (cause.includes('poison')) return 'poison';
-    if (cause.includes('Froze')) return 'frostbite';
-    if (cause.includes('burns')) return 'burns';
-    if (cause.includes('Torn apart')) return 'mutts';
-    if (cause.includes('collapsing border')) return 'border';
-    return 'arena/hazard';
+function bucketOf(t: Tribute): string {
+    const code = deathCodeOf(t);
+    // The table has always reported these families rather than all 26 codes;
+    // the mapping is explicit so a new code cannot quietly land in "other".
+    switch (code) {
+        case 'tribute': return 'tribute';
+        case 'bleeding': return 'bleeding';
+        case 'dehydration': return 'dehydration';
+        case 'starvation': return 'starvation';
+        case 'infection':
+        case 'sepsis': return 'infection';
+        case 'poison': return 'poison';
+        case 'hypothermia': return 'frostbite';
+        case 'burns': return 'burns';
+        case 'mutt': return 'mutts';
+        case 'border': return 'border';
+        case 'unknown': return 'unknown';
+        default: return 'arena/hazard';
+    }
 }
 
 const deathsByCause: Record<string, number> = {};
@@ -259,7 +271,8 @@ for (let i = 0; i < RUNS; i++) {
         runsWithLovers++;
         if (loversLine) { loverDaySum += loversLine.day; loverRuns++; }
     }
-    vengeanceSworn += state.log.filter(l => l.text.startsWith('VENGEANCE:')).length;
+    // AUDIT-9: off the structured kind, not off a prefix in the prose.
+    vengeanceSworn += state.log.filter(l => l.type === 'vengeance-sworn').length;
     betrayals += state.log.filter(l => l.category === 'betrayal').length;
 
     runs++;
@@ -268,7 +281,7 @@ for (let i = 0; i < RUNS; i++) {
     state.tributes.forEach(t => {
         if (t.status === 'dead') {
             deaths++;
-            const bucket = bucketOf(t.causeOfDeath);
+            const bucket = bucketOf(t);
             deathsByCause[bucket] = (deathsByCause[bucket] || 0) + 1;
             /*
              * §(requests): which weapon actually finished people.

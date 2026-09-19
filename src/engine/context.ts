@@ -227,6 +227,9 @@ export function createContext(state: GameState, rng: RNG): SimContext {
                 // so are acting and being listed first.
                 absentIds: opts.absentIds,
                 actorId: opts.actorId,
+                // AUDIT-9: the structured kind, where the beat is one
+                // something measures. See `EventType`.
+                type: opts.type,
             });
         }
     };

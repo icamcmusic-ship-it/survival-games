@@ -374,7 +374,9 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
                     ctx.logEvent(
                         fill(ctx.pickText(VENGEANCE_TEXTS), { mourner: other.name, victim: victim.name, killer: killer.name }),
                         [other.id, killer.id, victim.id],
-                        { important: true, category: 'sanity' }
+                        // AUDIT-9: typed, so the counters stop reading the
+                        // 'VENGEANCE:' prefix back out of the sentence.
+                        { important: true, category: 'sanity', type: 'vengeance-sworn', actorId: other.id }
                     );
                 }
             }

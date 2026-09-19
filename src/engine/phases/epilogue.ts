@@ -1,3 +1,4 @@
+import { deathCodeOf } from '../causes';
 import { SimContext, getAlive } from '../context';
 import { EpilogueQA, EventLog, Tribute } from '../../models/types';
 import { ensureMemory } from '../memory';
@@ -76,10 +77,23 @@ function gatherFacts(ctx: SimContext, winner: Tribute): RunFacts {
     let avenged: Tribute | undefined;
     let avengedFor: Tribute | undefined;
     mourned.forEach(lost => {
-        const killerName = lost.causeOfDeath?.match(/^Killed by ([^(]+)/)?.[1]?.trim();
-        if (!killerName) return;
-        const killer = ctx.state.tributes.find(t => t.name === killerName);
-        if (killer && killer.status === 'dead' && killer.causeOfDeath?.includes(winner.name)) {
+        /*
+         * AUDIT-9: both halves of this read the obituary as data.
+         *
+         * It parsed the killer's *name* out of "Killed by X (weapon)" with a
+         * regex and then looked that name up in the roster — which fails on a
+         * reworded line, on two tributes sharing a name, and on every
+         * tribute-dealt death whose obituary is not in that exact shape (a
+         * bleed-out reads "Bled out from a wound X opened"). The attribution
+         * is recorded: `lastDamage.sourceId` is who did it, and the soak
+         * already asserts it agrees with the prose.
+         */
+        if (deathCodeOf(lost) !== 'tribute') return;
+        const killerId = lost.lastDamage?.sourceId;
+        if (!killerId) return;
+        const killer = ctx.state.tributes.find(t => t.id === killerId);
+        if (killer && killer.status === 'dead'
+            && deathCodeOf(killer) === 'tribute' && killer.lastDamage?.sourceId === winner.id) {
             avenged = killer;
             avengedFor = lost;
         }
