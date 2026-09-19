@@ -3,7 +3,7 @@ import { ARCHETYPES } from '../data/archetypes';
 import { FEAR, MEMORY, MOVEMENT, NOTORIETY, DECISION_TRACE, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, RISK } from '../data/balance';
 import { SimContext } from './context';
 import { effectiveResources, zoneFeatures } from './map';
-import { ensureMemory, hasVengeanceAgainst, reckonsRegrown, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
+import { believedIn, ensureMemory, hasVengeanceAgainst, reckonsRegrown, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
 import { fearInZone } from './fear';
 import { notorietyInZone } from './notoriety';
 import { rumourPull } from './rumours';
@@ -66,8 +66,11 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
 
         // A vengeance target's last known position beats every other consideration.
         if (ensureMemory(t).vengeance.length > 0) {
+            // AUDIT-9 B11: the target's last *known* position, not their
+            // actual one. A sworn hunter walks to where they saw them, and
+            // arrives to find them gone — which is what a hunt is.
             const hunted = state.tributes.filter(o =>
-                o.status === 'alive' && hasVengeanceAgainst(t, o.id) && o.zone === z.name);
+                o.status === 'alive' && hasVengeanceAgainst(t, o.id) && believedIn(state, t, o.id, z.name));
             if (hunted.length > 0 && rivals > 0) score += 4;
         }
 
@@ -124,8 +127,10 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
         // A1: Shadowing follows one zone behind a specific person rather than
         // scoring the map at all.
         if (t.stance === 'Shadowing' && t.shadowing) {
+            // AUDIT-9 B11: a shadow follows the trail they have, not a live
+            // feed. Losing the quarry is a real outcome of shadowing now.
             const quarry = state.tributes.find(o => o.id === t.shadowing!.targetId);
-            if (quarry?.status === 'alive' && quarry.zone === z.name) score += MOVEMENT.shadowFollowWeight;
+            if (quarry?.status === 'alive' && believedIn(state, t, quarry.id, z.name)) score += MOVEMENT.shadowFollowWeight;
         }
 
         // A §7: a tribute with their legs opened does not pick the far zone.

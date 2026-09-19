@@ -5673,6 +5673,21 @@ export const FEAST = {
     thinnedOutShare: 0.4,
     thinnedOutFloor: 4,
     callChance: 0.6,
+    /**
+     * AUDIT-9 B13: a feast feeds people from food, not from attendance.
+     *
+     * The old flat `-40` to both hunger and thirst fired on every branch
+     * whatever the table held, so a weapons-only feast was also the best meal
+     * in the game. These are the real numbers: a Capitol ration off the table
+     * is a generous meal, and a ration out of your own pack eaten in the open
+     * is a smaller one you have also just spent.
+     */
+    mealHunger: 40,
+    mealThirst: 40,
+    packMealHunger: 25,
+    packMealThirst: 25,
+    /** The medical package every table carries, for whoever holds the ground. */
+    winnerHeal: 50,
 } as const;
 
 /** Tribute generation. */

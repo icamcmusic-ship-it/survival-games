@@ -1604,6 +1604,22 @@ export interface RivalRecord {
      * blend the visible-power guess toward the truth for known opponents.
      */
     read?: number;
+    /**
+     * AUDIT-9 B11: where this tribute last *saw* that person, and when.
+     *
+     * The decision layer used to read the rival's live `zone` — gated on
+     * recent contact, which made it look like a belief and is not one. Moving
+     * an unseen rival moved the observer's dread with them: 80 points of fear
+     * relocated from the old zone to the new one the instant the rival walked,
+     * with no observation in between. A belief has to be able to be *wrong*,
+     * which means it has to be stored at the moment it was formed.
+     *
+     * Written by `noteContact` and `noteRivalSighting` (the two places an
+     * observation actually happens) and read through `rememberedPlaceOf`,
+     * which expires it on the same clock as every other sighting.
+     */
+    lastSeenZone?: string;
+    lastSeenCycle?: number;
 }
 
 /**
@@ -2339,6 +2355,21 @@ export interface GameState {
      * uninterrupted run would have.
      */
     lastPickedText?: Record<string, string>;
+    /**
+     * AUDIT-9 B12: the narration stream's own draw counter.
+     *
+     * `pickText` used to draw off `ctx.rng` — the same stream every mechanical
+     * decision in the phase draws from — so the *number of lines in a flavour
+     * pool* decided what the next combat roll was. A one-entry pool consumed
+     * nothing; adding a second sentence to it consumed a draw and shifted every
+     * subsequent outcome in the run. Editing prose was a balance change.
+     *
+     * Narration now runs on its own stream, derived per draw from
+     * `seed-prose-<n>` where `n` is this counter. It lives on the state rather
+     * than on the context so a resumed run continues the same narration
+     * sequence, exactly as `lastPickedText` does.
+     */
+    proseDraws?: number;
     /** Zone name -> fraction of its printed yield currently stripped out (0-1). */
     zoneDepletion?: Record<string, number>;
     /** Zone name -> whatever is currently happening to it beyond depletion. */
@@ -2732,6 +2763,14 @@ export interface GameState {
     oddsHistory?: Record<number, Record<string, number>>;
     /** §6.7: per-event Gamemaker usage, for cooldowns, escalating cost and overuse. */
     gamemakerUse?: Record<string, { lastCycle: number; uses: number }>;
+    /**
+     * AUDIT-9 B05: how many manual/scheduled interventions this run has fired.
+     *
+     * Interventions do not enter through a phase, so they have no (seed,
+     * phase, day) to reseed from; this counter is what makes their stream
+     * reproducible across a save and resume. See `triggerGamemakerEvent`.
+     */
+    gamemakerCommands?: number;
     /** §6.6: tribute id -> cycle a player parachute last reached them. Blocs read it as "covered". */
     playerGiftCycle?: Record<string, number>;
     /** §7.6: tribute id -> cycle their mentor pointedly withheld a gift. */

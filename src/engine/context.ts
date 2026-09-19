@@ -145,7 +145,17 @@ export function createContext(state: GameState, rng: RNG): SimContext {
             const memory = state.lastPickedText ?? (state.lastPickedText = {});
             const previous = memory[pool[0]];
             const options = previous !== undefined ? pool.filter(p => p !== previous) : pool;
-            const chosen = ctx.rng.pick(options.length > 0 ? options : pool);
+            // AUDIT-9 B12: narration draws from its own stream, never from
+            // `ctx.rng`. On the shared stream the *size of a prose pool* was a
+            // mechanical input: a one-entry pool short-circuits above and
+            // consumes nothing, a two-entry pool consumes a draw, so adding a
+            // second sentence to a flavour list moved every roll after it and
+            // changed who lived. The per-draw seed keeps narration fully
+            // deterministic — same seed, same words — while making the
+            // mechanical stream blind to how much prose was written.
+            const draw = state.proseDraws ?? 0;
+            state.proseDraws = draw + 1;
+            const chosen = new RNG(`${state.seed}-prose-${draw}`).pick(options.length > 0 ? options : pool);
             memory[pool[0]] = chosen;
             return chosen;
         },

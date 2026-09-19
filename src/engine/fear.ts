@@ -2,7 +2,7 @@ import { profOf, trainProficiency } from './proficiency';
 import { ARCHETYPES } from '../data/archetypes';
 import { GameState, Tribute } from '../models/types';
 import { FEAR, MEMORY, PROFICIENCY } from '../data/balance';
-import { cyclesSinceContact, ensureMemory } from './memory';
+import { cyclesSinceContact, ensureMemory, rememberedPlaceOf } from './memory';
 import { traitMod } from '../data/traits';
 
 /**
@@ -84,12 +84,17 @@ export function fearInZone(state: GameState, t: Tribute, zoneName: string): numb
     let worst = 0;
     state.tributes.forEach(o => {
         if (o.status !== 'alive' || o.id === t.id) return;
-        // Only what they believe: a tribute's true position is not the test —
-        // dread of a *specific* person requires having actually crossed paths
-        // with them recently, not merely a stale "someone hostile was here"
-        // count for the zone that happens to still be true of whoever is
-        // standing here now.
-        if (o.zone !== zoneName) return;
+        // AUDIT-9 B11: only what they believe, and now actually only that.
+        //
+        // This used to test `o.zone` — the rival's *true* position — gated on
+        // recent contact, which reads like a belief and is not one: moving an
+        // unseen rival moved 80 points of dread from the zone the observer had
+        // last seen them in to the one they had just walked into, with no
+        // observation anywhere in between. The observer was tracking an unseen
+        // movement. `rememberedPlaceOf` is the sighting they actually made, so
+        // it can now be out of date — which is the entire point, and what makes
+        // a concealed route, a decoy or a stale report worth anything.
+        if (rememberedPlaceOf(state, t, o.id) !== zoneName) return;
         if (cyclesSinceContact(state, t, o.id) > MEMORY.sightingLifetime) return;
         worst = Math.max(worst, fearOf(t, o.id));
     });
