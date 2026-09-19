@@ -83,6 +83,12 @@ jobs:
       - run: npm run test:names
       - run: npm run test:achievements
       - run: npm run test:predicates
+      # AUDIT-8 §1.5: a string in one data table that is supposed to name a row
+      # in another. Unguarded until now, and `broker.preferredTraits` listed
+      # 'HardBargain' against a trait called 'Hard Bargain' for eight audits —
+      # issued to 174 tributes per 1,600 Games and rendered to the player as
+      # "No recorded effect." Runs in under a second; touches no simulation.
+      - run: npm run test:references
 
       # Saves written by an older build must still open.
       - run: npm run test:storage
@@ -99,11 +105,20 @@ jobs:
   # design targets are written against (archetype spread 2.36x, trait spread
   # 2.20x) only exist at 1,600.
   #
-  # So it runs on push to `main` only: a merge is where a balance regression
-  # needs catching, and a few minutes there costs nobody a review cycle. A
-  # pull request keeps the fast 400-run pass.
+  # AUDIT-8 §1.1: it runs on pull requests too now.
+  #
+  # It used to be `if: github.event_name == 'push'`, on the argument that "a
+  # merge is where a balance regression needs catching". A merge is where one
+  # gets *found*, which is a different thing and is one merge too late: the
+  # `quiet` signature shipped under a 29% floor at 4.5%, every PR that touched
+  # it went green because all thirty-five archetypes are under `GUARD_MIN_SAMPLE`
+  # at 400 runs, and `main` then sat red across two commits with the bad commit
+  # already in history — the precise failure this workflow's own header says it
+  # was created to prevent.
+  #
+  # The cost is a few minutes on a job that runs in parallel with `check` and
+  # blocks nothing else.
   balance:
-    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

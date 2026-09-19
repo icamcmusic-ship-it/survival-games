@@ -1,13 +1,14 @@
 import { traitMod } from '../data/traits';
 import { ARCHETYPES } from '../data/archetypes';
 import { Alliance, GameState, Item, Tribute } from '../models/types';
-import { ALLIANCES, RELATIONSHIPS, ROMANCE } from '../data/balance';
+import { ALLIANCES, PROFICIENCY, RELATIONSHIPS, ROMANCE } from '../data/balance';
 import { announceCharter, rollCharter } from './allianceCharter';
 import { SimContext, getAlive } from './context';
 import { cycleOf, noteFormerAllies, noteSharedCycle } from './memory';
 import { adjustRel, adjustTrust, getRel } from './relationships';
 import { pactOath, pactStrictness, rollPact } from './alliancePact';
 import { noteTookOverLead } from './runRecords';
+import { trainProficiency } from './proficiency';
 
 /**
  * Alliance structure.
@@ -360,6 +361,20 @@ export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]
     };
     records[id] = record;
     announceCharter(ctx, record, members);
+    /*
+     * AUDIT-8 §3.5: `oratory` is the skill for addressing a *group*, and it had
+     * three sites — the Herald's once-per-run signature and the two speakers at
+     * a bloc treaty (244 sworn per 400 runs). 91.0% of tributes never trained
+     * it, which is why §4.5's bloc-treaty renewal rate reads a skill nobody
+     * has: 77% of treaties ended only because one side died.
+     *
+     * Swearing a charter in front of the people it binds is the commonest
+     * occasion in the game for exactly this competence, and it was not a
+     * training site. The leader carries it; everyone else is being spoken to.
+     */
+    if (!isLoversBond && members.length >= 3) {
+        trainProficiency(leader, 'oratory', undefined, PROFICIENCY.oratoryAddressShare);
+    }
 
     // §4.4: the division of labour, said out loud. Only for groups big enough
     // for it to be a division rather than a description of a pair.

@@ -1,7 +1,7 @@
-import { profOf } from './proficiency';
+import { profOf, trainProficiency } from './proficiency';
 import { ARCHETYPES } from '../data/archetypes';
 import { GameState, Tribute } from '../models/types';
-import { FEAR, MEMORY } from '../data/balance';
+import { FEAR, MEMORY, PROFICIENCY } from '../data/balance';
 import { cyclesSinceContact, ensureMemory } from './memory';
 import { traitMod } from '../data/traits';
 
@@ -48,6 +48,19 @@ export function addFear(t: Tribute, otherId: string, amount: number, source?: Tr
     const mem = ensureMemory(t);
     if (!mem.fear) mem.fear = {};
     mem.fear[otherId] = Math.min(FEAR.max, Math.round((mem.fear[otherId] ?? 0) + amount));
+    /*
+     * AUDIT-8 §3.5: being frightening is a skill, and it had two training
+     * sites — a training-floor beat and the parley standoff (76 per 400 runs,
+     * against a field of ~19 a run). 91.7% of tributes never trained it, so
+     * the multiplier eleven lines above was reading zero for almost everybody.
+     *
+     * Fear is put into people constantly and by name: this is the occasion,
+     * and it was already here. Partial share, because frightening somebody who
+     * was already frightened of you is a smaller lesson than the first time.
+     */
+    if (source && source.id === otherId) {
+        trainProficiency(source, 'intimidation', undefined, PROFICIENCY.intimidationPerFearShare);
+    }
 }
 
 /**

@@ -1757,10 +1757,34 @@ function applySignaturePayload(ctx: SimContext, zones: string[], payload: Signat
                         ctx.logEvent(`${t.name} feels the arena shift in ${zone} and gets clear in time.`, [t.id], { zone, category: 'arena' });
                         return;
                     }
-                    applyDamage(ctx, t, damage, { cause: `Caught by the arena in ${zone}`, kind: 'arena' });
+                    /*
+                     * AUDIT-8 §1.9: the procedural path had one obituary.
+                     *
+                     * Twelve biomes, twelve `effectVocab` tables that already
+                     * rename the effect primitives per biome, six draw-able
+                     * effect kinds — and every death this produced read
+                     * "Caught by the arena in <zone>". A tundra arena's
+                     * signature death and a bayou arena's were the same
+                     * sentence with a different zone name in it, which is why
+                     * `test:arenas`'s cheerful "arenas that can produce a death
+                     * of their own: 45/45" is measuring the hand-authored
+                     * roster and not this.
+                     *
+                     * The data to say it properly was already here: the
+                     * biome's own word for the effect being applied. Six
+                     * effects across twelve biomes is 72 distinct obituaries
+                     * for one expression.
+                     */
+                    const named = payload.effect
+                        ? ctx.state.arena.effectVocab?.[payload.effect]?.label
+                        : undefined;
+                    const cause = named
+                        ? `Caught by the ${named} in ${zone}`
+                        : `Caught by the arena in ${zone}`;
+                    applyDamage(ctx, t, damage, { cause, kind: 'arena' });
                     addZoneThreat(ctx.state, t, zone, MEMORY.hazardThreat * 2);
                     clampTribute(t);
-                    checkDeath(ctx, t, `Caught by the arena in ${zone}`);
+                    checkDeath(ctx, t, cause);
                 });
                 if (payload.effect) startZoneEffect(ctx, zone, payload.effect, false);
             });
@@ -1809,10 +1833,37 @@ function applySignaturePayload(ctx: SimContext, zones: string[], payload: Signat
     }
 }
 
+/**
+ * AUDIT-8 §1.7: payloads that need somebody standing there.
+ *
+ * `rollSignatureRule` picks trigger, selector, payload and telegraph
+ * independently and uniformly with no compatibility filter, and three of the
+ * six payloads open with `const present = tributesIn(ctx, zone); if
+ * (present.length === 0) return;`. Crossed with the `emptiestZone` selector —
+ * which by construction picks the zone with the fewest people in it, and in a
+ * thinning field usually means nobody at all — `spawnMutt` and
+ * `revealPositions` produce **no observable output whatever**, not even a log
+ * line, and `drainVital` drains nobody.
+ *
+ * That is 2 of 36 (payload, selector) pairs completely silent and two more
+ * half-dead. A generated arena that draws one has a signature mechanic — the
+ * thing that is supposed to give it its identity — that the player can never
+ * see fire, in about 6% of generated arenas.
+ *
+ * Rather than filtering the draw (which would shift every existing seed's
+ * arena), the selection falls back: a payload that needs an audience and finds
+ * an empty room goes where the room is full. The arena still does its thing on
+ * its own schedule; it just does it somewhere it can be seen.
+ */
+const NEEDS_PEOPLE = new Set(['spawnMutt', 'revealPositions', 'drainVital']);
+
 export function runDeclarativeSignature(ctx: SimContext, rule: SignatureRule, cycle: number, rng: RNG) {
     if (!triggerFires(ctx, rule.trigger, cycle)) return;
     telegraphSignature(ctx, rule, cycle, rng);
-    const zones = selectSignatureZones(ctx, rule.selector, cycle);
+    let zones = selectSignatureZones(ctx, rule.selector, cycle);
+    if (NEEDS_PEOPLE.has(rule.payload.kind) && !zones.some(z => tributesIn(ctx, z).length > 0)) {
+        zones = selectSignatureZones(ctx, { kind: 'busiestZone' }, cycle);
+    }
     if (zones.length === 0) return;
     applySignaturePayload(ctx, zones, rule.payload, rng);
 }

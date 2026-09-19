@@ -114,6 +114,19 @@ dev server and a browser; run it locally.
   would have caught `nobodys-ally` (`metAnybodyAfterBloodbath === false` on a
   field only ever set `true`, so it could not fire — and the coverage report
   listed it alongside the genuinely hard entries, which hid it).
+- `npm run test:references` — cross-table reference integrity. Eleven tables in
+  `src/data` name rows in other tables by string — an archetype's
+  `preferredTraits`, its `hatesArchetypes` and `stanceBias`, the incompatible-
+  trait pairs, `QUIRK_MODS`, an arena's `restockBias`, `lawZone` and
+  `eventPack`, a siege mutt's `homeZone`, a zone's own `adjacent` list, and
+  every archetype's `signature` — and every one of them fails silently: the
+  lookup returns `undefined` and the feature simply stops happening. This is
+  the check that would have caught `broker.preferredTraits` listing
+  `'HardBargain'` against a trait named `'Hard Bargain'`, which survived eight
+  full audits while `test:metrics` printed both rows in the same table. 174
+  tributes per 1,600 Games carried a trait that summed no modifiers, granted no
+  proficiency floor, and rendered to the player as "No recorded effect."
+  Runs in under a second because it touches no simulation.
 - `npm run test:zone-features` — authored versus derived zone interiors.
   Acoustics, verticality and shelter are shared primitives every arena can use,
   and `zoneFeatures()` derives a value for any zone that does not author one —

@@ -5,6 +5,7 @@ import { ARCHETYPE_HOOKS, EARNED_TRAIT_RULES, HUNTING, MEMORY } from '../data/ba
 import { earnTrait } from './earnedTraits';
 import { SimContext, getAlive } from './context';
 import { notorietyOf } from './notoriety';
+import { improveRead } from './memory';
 import { getRel, adjustMutual, adjustRel } from './relationships';
 import { addFear } from './fear';
 import { addExcitement } from './audience';
@@ -139,7 +140,16 @@ function say(ctx: SimContext, t: Tribute, key: keyof typeof ARCHETYPE_SIGNATURE_
     ctx.logEvent(text, cast, { important: true, category: 'system' });
 }
 
-const SIGNATURES: Record<string, Signature> = {
+/**
+ * AUDIT-8 §1.5: exported so `check-references` can assert that every
+ * `ArchetypeDef.signature` resolves to one of these.
+ *
+ * `runArchetypeSignatures` does `const fn = SIGNATURES[key]; if (!fn) return;`,
+ * so renaming a function here removes an archetype's once-per-run set piece —
+ * the thing that makes it a character rather than four bias scalars — with no
+ * error anywhere and no test that would notice.
+ */
+export const SIGNATURES: Record<string, Signature> = {
     /** Career: the pack declares itself, out loud, at somebody's expense. */
     careerDeclaration: (ctx, t) => {
         // gated: needs a live pack and a mark
@@ -828,13 +838,87 @@ const SIGNATURES: Record<string, Signature> = {
             .filter(o => o.id !== t.id && o.zone === t.zone)
             .forEach(o => { o.vitals.sanity = Math.max(0, o.vitals.sanity - ARCHETYPE_HOOKS.archivistSanityCost); clampTribute(o); });
         trainProficiency(t, 'oratory', ctx);
+        /*
+         * AUDIT-8 §8.1: the Archivist's beat landed and bought nothing.
+         *
+         * It fired for 57% of its holders — a perfectly healthy rate — and the
+         * archetype still finished bottom of the win table at 2.51% with 0.35
+         * average kills, the lowest in the roster, which is what put both the
+         * spread guard and the worst-archetype guard over their bounds. A set
+         * piece that fires and converts into nothing is the diagnosis AUDIT-6
+         * wrote for the Saboteur and fixed by giving it a payoff that paid.
+         *
+         * The payoff is the thing the archetype *is*. An Archivist has been
+         * keeping the tally: who fell, when, and to what. That is a read on
+         * everybody still standing, and `RivalRecord.read` is exactly the axis
+         * the threat estimate blends toward the truth with — so somebody who
+         * has studied the whole year knows what they are walking into, which
+         * is worth surviving and is not worth anything else.
+         */
+        getAlive(ctx.state)
+            .filter(o => o.id !== t.id)
+            .forEach(o => improveRead(t, o.id, ARCHETYPE_HOOKS.archivistReadGain));
         addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
         return true;
     },
 
     /** Quiet Professional: the arena notices it has not noticed them. */
     quietWork: (ctx, t) => {
-        if ((t.unseenStreak ?? 0) < ARCHETYPE_HOOKS.quietUnseenCycles) return false;
+        /*
+         * AUDIT-8 §1.1: this fired for 4.5% of its holders against a floor of
+         * 29%, and it is the guard `test:metrics` breaches at n=1,600 — i.e.
+         * the reason CI's `balance` job has been failing on `main`.
+         *
+         * The cause was not the magnitude of the gate, it was the currency.
+         * `unseenStreak` resets at the end of any cycle in which a non-ally
+         * shares the tribute's zone, and the whole field's mean *peak* streak
+         * is 1.3 cycles. Asking for four consecutive ones, and then only
+         * offering the signature on a 25% roll, produced a beat almost nobody
+         * saw — and the Quiet Professional reached its own gate less often
+         * than the field average (9.3% against ~12%), because its objective
+         * bias pointed at `stalk`, which means following a named person, which
+         * puts you in their zone, which resets the streak by definition. The
+         * archetype's own character sheet was defeating its own set piece.
+         *
+         * Two changes. The bias moves off `stalk` (see `data/archetypes.ts`),
+         * and "un-looked-for" stops meaning *literally nobody has been near
+         * me for four cycles* and starts meaning what the archetype is about:
+         * a shorter unbroken stretch, or an evasive tribute standing in a zone
+         * with no hostile in it right now. The second clause is the one that
+         * matters — being unseen is a thing you are doing, not only a counter
+         * that survived.
+         */
+        const streak = t.unseenStreak ?? 0;
+        /*
+         * Measured, `unseenStreak` was the wrong currency for this beat
+         * entirely. A Quiet Professional stands in a zone with no hostile in it
+         * on **17.7%** of their cycles — they are in company four cycles in
+         * five — so every gate built on being physically alone tops out around
+         * 15% however the threshold is set. Widening it from four cycles to
+         * three, and then adding an alone-right-now path, moved the fire rate
+         * 4.5% -> 11.5% -> 15.7% and never reached the 29% floor, because the
+         * constraint was never the number.
+         *
+         * What the archetype is actually about is already modelled, by
+         * `notoriety`: what the rest of the field *believes* about a person,
+         * built from the nightly sky and from talk at every meeting, and
+         * explicitly separate from what anybody has seen. A tribute nobody can
+         * describe is the premise — "the field realises on about the fifth day
+         * that nobody has seen them and nobody can say what they are good at".
+         * So the gate is that the arena has been running long enough for
+         * reputations to exist, and this tribute has none.
+         *
+         * `unseenStreak` stays as the fast path: somebody genuinely unfound for
+         * a stretch qualifies immediately, whatever the field thinks.
+         */
+        const others = getAlive(ctx.state).filter(o => o.id !== t.id);
+        const known = others.length > 0
+            ? others.reduce((sum, o) => sum + notorietyOf(o, t.id), 0) / others.length
+            : 0;
+        const unlookedFor = streak >= ARCHETYPE_HOOKS.quietUnseenCycles
+            || ((ctx.state.day ?? 0) >= ARCHETYPE_HOOKS.quietNamelessDay
+                && known <= ARCHETYPE_HOOKS.quietNamelessNotoriety);
+        if (!unlookedFor) return false;
         say(ctx, t, 'quietWork', [t.id], { days: String(t.daysSurvived) });
         // Being un-looked-for is the whole of the advantage, and this is the
         // moment it becomes one: the field's model of them is empty.

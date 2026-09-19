@@ -1,5 +1,5 @@
 import { Objective, Tribute } from '../models/types';
-import { OBJECTIVES, PLANNING } from '../data/balance';
+import { OBJECTIVES, PLANNING, PROFICIENCY } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { cycleOf, ensureMemory, rememberedBarren } from './memory';
 import { getZone, reachableZones } from './map';
@@ -179,6 +179,28 @@ export function layFalseTrail(ctx: SimContext, t: Tribute) {
     if (t.attributes.intelligence < PLANNING.falseTrailIntelligence) return;
     const craft = profOf(t, 'signalling') + profOf(t, 'tracking') * PLANNING.falseTrailTrackingShare;
     if (craft < PLANNING.falseTrailSkill) return;
+    /*
+     * AUDIT-8 §1.11: the skill could only be learned by succeeding at the
+     * thing it gates.
+     *
+     * This was the only `trainProficiency(t, 'signalling')` call in the
+     * repository and it sat *below* the success roll, behind an entry floor of
+     * `falseTrailSkill` that — with `signalling` starting at 0 and carrying no
+     * `TRAIT_PROFICIENCY_FLOOR` head start — reduced to `tracking >= 3.0`.
+     * Measured `tracking` peaks at a population mean of 1.24, so the entry
+     * condition for a tribute's *first* point of signalling was 2.4x the mean
+     * of a different skill. Result: **99.6% of tributes never trained it and
+     * the population mean was 0.01**, which makes every gate reading it
+     * permanently closed and an authored axis of the proficiency system
+     * effectively absent from the game.
+     *
+     * Two changes, both the pattern AUDIT-6 used successfully on `navigation`
+     * in the same batch this axis was added in: the floor comes down to the
+     * population mean of the prerequisite, and the *attempt* teaches, at a
+     * partial share, rather than only the success. Laying a false trail badly
+     * is still how anybody learns to lay one well.
+     */
+    trainProficiency(t, 'signalling', undefined, PROFICIENCY.signallingAttemptShare);
     if (!ctx.rng.chance(PLANNING.falseTrailChance + profOf(t, 'signalling') * PLANNING.falseTrailPerSignalling)) return;
     trainProficiency(t, 'signalling');
 
@@ -193,7 +215,16 @@ export function layFalseTrail(ctx: SimContext, t: Tribute) {
     ctx.state.zoneTraffic[decoy] = (ctx.state.zoneTraffic[decoy] ?? 0) + PLANNING.falseTrailTraffic;
     getAlive(ctx.state).forEach(o => {
         if (o.id === t.id) return;
-        if (o.attributes.intelligence >= PLANNING.falseTrailSeeThrough) return;
+        if (o.attributes.intelligence >= PLANNING.falseTrailSeeThrough) {
+            /*
+             * AUDIT-8 §1.11: the other half of the craft. Reading a trail and
+             * seeing that somebody built it is the same competence as building
+             * one, and the tribute who is not fooled has just had the single
+             * best lesson in it available.
+             */
+            trainProficiency(o, 'signalling', undefined, PROFICIENCY.signallingReadShare);
+            return;
+        }
         const mem = ensureMemory(o);
         mem.zones[decoy] = mem.zones[decoy] ?? { seen: -99, threat: 0, rivals: 0, barren: 0 };
         mem.zones[decoy].rivals = Math.max(mem.zones[decoy].rivals, 1);

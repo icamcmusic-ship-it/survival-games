@@ -22,6 +22,7 @@
     "test:ui": "node scripts/ui-test.mjs",
     "test:achievements": "tsx scripts/check-achievements.ts",
     "test:predicates": "tsx scripts/check-predicates.ts",
+    "test:references": "tsx scripts/check-references.ts",
     "test:zone-features": "tsx scripts/check-zone-features.ts",
     "test:decisions": "tsx scripts/check-decisions.ts",
     "test:ui-affordances": "tsx scripts/check-ui-affordances.ts",

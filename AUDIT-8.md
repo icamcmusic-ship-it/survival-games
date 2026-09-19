@@ -80,21 +80,37 @@ test:zone-features      PASS    470/470 zones carry an authored interior
 test:decisions          PASS    55.6% best-stance, 66.0% best-destination
 test:ui-affordances     PASS    0 hover-only hints, 0 unnamed value hints
 test:ui                 PASS    52/52 steps, no console errors
-test:metrics (n=400)    PASS    all regression guards hold — but see below
-test:metrics (n=1,600)  ****    1 regression guard breached — see §1.1
+test:metrics (n=400)    PASS    all archetype guards abstain at this sample
+test:metrics (n=1,600)  FAIL    1 regression guard breached — see §1.1
 ```
 
-**`npm run test:metrics` passes at the run count CI uses and fails at
-n=1,600.** `ci.yml` runs it with no `METRICS_RUNS`, i.e. at 400 runs, where
-**no archetype clears `GUARD_MIN_SAMPLE` (500 entrants)** — so the signature
-guard abstains entirely and the run ends "All regression guards hold." At
-n=1,600, where every archetype clears 500 and the guard actually votes, it
-reports `1 regression guard(s) breached`.
+**`main` is red, and has been since before this audit started.**
 
-`main` is therefore **green, and wrong**: the `quiet` archetype's signature
-fires for 4.5% of its holders against a floor of 29%, and the roster cannot
-see it. That is a worse state than a red build, and §1.1 is about both halves
-of it.
+`ci.yml` has two jobs that run `test:metrics`. The `check` job runs it with no
+`METRICS_RUNS`, i.e. at 400 runs, where **no archetype clears
+`GUARD_MIN_SAMPLE` (500 entrants)** — so the archetype guards abstain entirely
+and that job passes. A second job, `balance`, runs `METRICS_RUNS=1600` and is
+gated `if: github.event_name == 'push'`, so it runs on merges to `main` and is
+skipped on pull requests.
+
+That job fails. On `638a726` and on `3729510` before it:
+
+```
+CI | 638a726 | completed | failure      check success | balance FAILURE | ui success
+CI | 3729510 | completed | failure      check success | balance FAILURE | ui success
+```
+
+The `quiet` archetype's signature fires for 4.5% of its holders against a floor
+of 29%, and `quiet` was added by AUDIT-7 §12.5.
+
+Two consequences, and the second is the one worth keeping:
+
+1. `main` is failing its own roster on merge, and has been for two commits.
+2. **A pull request cannot see it.** The 1,600-run pass is push-only, so every
+   archetype guard — the signature floor, the win spread, the worst and best
+   archetype rates — is vacuous on every PR. A regression in any of them
+   merges green and turns `main` red afterwards, which is the exact failure
+   mode `ci.yml`'s own header comment says the file was created to prevent.
 
 ### The probes
 
@@ -117,14 +133,21 @@ guessing which fields survive to the epilogue):
 Probe sources were removed before the commit; every number they produced is
 reproducible from the description above.
 
-### One claim this report made and withdrew
+### One claim this report withdrew, and then reinstated
 
-An earlier draft of §1.1 said `main` was red. It is not: CI runs
-`test:metrics` at 400 runs, where the guard in question abstains on every row
-for want of sample. The underlying defect is unchanged and the correction made
-it a larger finding, not a smaller one — five guards, not one, are vacuous on
-every pull request. Recorded here rather than silently fixed, on the same rule
-the rest of this report follows.
+Recorded in full because the round trip is the lesson, and because two of the
+previous seven audits shipped a false zero from a half-read instrument.
+
+The first draft of §1.1 said `main` was red. A second pass withdrew that: `ci.yml`
+runs `test:metrics` at 400 runs, the guard abstains for want of sample, and the
+job passes. **That withdrawal was wrong** — it was made after reading only the
+first job in the workflow file. There is a second job, `balance`, which runs
+`METRICS_RUNS=1600` on push to `main`, and it fails, on the audited commit and
+on the one after it. `main` is red.
+
+The finding in §1.1 is now the union of all three passes: the signature is
+broken, the job that catches it runs only after the merge, and a pull request
+therefore cannot see any archetype guard at all.
 
 ### Five things this report checked and did not find
 
@@ -158,7 +181,7 @@ unexamined.
 Thirteen findings. Six are proven defects with a measured consequence; the rest
 are integrity gaps that have not yet produced a visible failure.
 
-## 1.1 The `quiet` signature fires for 4.5% of its holders, and CI cannot see it — *proven*
+## 1.1 The `quiet` signature fires for 4.5% of its holders, and `main` is red because of it — *proven, CI-breaking*
 
 At `METRICS_RUNS=1600`:
 
@@ -176,11 +199,10 @@ archetype signature fire rate (share of entrants whose set piece fired):
 
 An independent 400-run probe measured 2.2% (n=135). The finding reproduces.
 
-**But the guard never votes in CI.** `.github/workflows/ci.yml` runs
-`npm run test:metrics` with no `METRICS_RUNS`, so it runs at the default 400.
-The guard is `const fired = rates.filter(r => r[2] >= GUARD_MIN_SAMPLE)`
-(`scripts/metrics.ts:1101`, `GUARD_MIN_SAMPLE = 500`), and at 400 runs the
-script itself reports:
+**The guard does not vote on a pull request.** The `check` job runs at 400
+runs, and the guard is `const fired = rates.filter(r => r[2] >=
+GUARD_MIN_SAMPLE)` (`scripts/metrics.ts:1101`, `GUARD_MIN_SAMPLE = 500`). At
+400 runs the script itself reports:
 
 ```
 Note: duellist, career, opportunist, ... archivist drew fewer than 500
@@ -189,23 +211,15 @@ entrants; reported above, but not guarded
 All regression guards hold.
 ```
 
-**All thirty-five archetypes are under-sampled at the run count CI uses**, so
+**All thirty-five archetypes are under-sampled at the run count a PR uses**, so
 the signature floor is applied to an empty set and passes vacuously. The
 abstention is deliberate and correct in itself — AUDIT-6 added it because "a
 guard with an empty sample behind it now reports and does not vote", after
-adding six archetypes dropped every one of them under the threshold. What is
-missing is the other half: **a guard that abstains on every single row should
-say so loudly, and CI should run the sample size its guards need.**
-
-So this is two findings in one:
-
-1. The Quiet Professional's signature is broken (below).
-2. `GUARD_MIN_SAMPLE` currently silences the entire archetype half of
-   `metrics.ts` in CI. Four guarded rows — signature floor, archetype win
-   spread, worst archetype, best archetype — plus the reaping-trait spread
-   (`1 of 59 traits clear 500 entrants; the guarded row above abstains`) are
-   all vacuous on every pull request. **Five of the roster's guards are
-   switched off in CI and nothing says so.**
+adding six archetypes dropped every one of them under the threshold. And the
+`balance` job exists precisely to cover that gap. What the arrangement does not
+do is cover it *before* the merge: the failure lands on `main` and blocks the
+Pages deploy with the bad commit already in history, which is what `ci.yml`'s
+header comment describes as the reason the file was written.
 
 The archetype it names was added by AUDIT-7 §12.5, whose stated new rule for
 that batch was *"every signature must be reachable by a soloist."* The Quiet
@@ -268,11 +282,10 @@ produces.
 3. Whichever is taken, add the streak distribution to `metrics.ts` as a
    reported line, because three systems key off it and none of them was
    measuring it.
-4. **Separately, and more importantly than either: make CI run
-   `METRICS_RUNS=1600`, or fail the run when every row of a guard is
-   under-sampled.** A guard that cannot fire is worse than no guard, because
-   the green tick is read as evidence. The 1,600-run pass takes minutes and is
-   the only configuration in which five of this file's guards mean anything.
+4. **Separately: move the `balance` job onto pull requests**, or fail the
+   400-run pass when every row of a guard is under-sampled. A guard that
+   cannot fire on a PR is a guard that reports regressions one merge too late,
+   and the green tick on the PR is read as evidence that it will not.
 
 ## 1.2 The Broker's fourth preferred trait does not exist — *proven*
 
@@ -450,6 +463,23 @@ inflated by the same 10%.
    The second would have caught all sixteen of these and would catch the next
    one written.
 
+**Addendum, from implementing it.** The source-identity half is the easy half
+and it is not the whole problem. Once the sixteen source-identical groups were
+re-gated, the behavioural half — same unlock set across a 500-run sample, with
+a floor under it so coincidences do not fail the build — surfaced **sixteen
+more groups the source comparison can never see**, among them a *third*
+`named-blade` whose predicate differs only in punctuation. So the true figure
+is not 16 groups and 34 entries but roughly **32 groups and 65 entries, a fifth
+of the roster**, and the cheaper of the two checks finds half of it. Both are
+needed, and the behavioural one is the one worth having.
+
+Nine of the thirty-two had no reachable harder rung to be re-gated onto — the
+ceiling guard proves it: `knownEdges >= 2` and `garrisonsFormed >= 2` are both
+above anything 500 runs produce, which is §5.2 showing up from the other end.
+Those are better deleted than re-gated into unreachability, and deletion is
+safe: the record book only queries ids it knows, so a stale id in a player's
+`unlocked` set is inert.
+
 ## 1.5 Nothing validates a cross-table reference anywhere in `data/`
 
 §1.2 is one instance of a general gap. The repository has 2,364 guarded
@@ -483,32 +513,53 @@ biases nothing, and a `lawZone` that does not match a zone silently makes
 asserting every row of that table. Its value is not the one bug it finds today;
 it is that this class of bug has now survived eight audits.
 
-## 1.6 Three arenas have no water source at all
+## 1.6 The water-source census measures the wrong thing, and thirteen arenas are dry — *corrected*
 
-`test:arenas` reports it as a note, not a failure:
+**This entry said something different in the first draft and was wrong. The
+corrected finding is smaller, and the correction is the interesting half.**
+
+`test:arenas` reports, as a note rather than a failure:
 
 ```
  -     a water source: 42/45 — missing: frozen warren silkwood
 ```
 
-`zoneFeatures().waterSource` is read by the hydration layer in `survival.ts`
-and is the precondition on the `Died of thirst within sight of the water`
-universal death (§7.2). In `frozen`, `warren` and `silkwood`, no zone declares
-or derives one, so:
+The first draft read that as three arenas with no drinkable water and proposed
+declaring one in each. Checked against the resolver rather than the check, that
+is wrong twice over.
 
-- the only water in the arena is carried water and sponsor gifts;
-- `thirstNearWaterChance` is structurally unreachable;
-- `drinkThreshold` behaviour — the single most common "what do I do this
-  cycle" decision in the game — degenerates to "walk toward the horn".
+The check tests `a.zones.some(z => z.features?.waterSource !== undefined)` —
+whether a zone **explicitly declares** the field. But `zoneFeatures()` derives
+it when absent, from terrain and name, and `frozen` and `silkwood` both resolve
+water sources that way (`Frozen Lake`, `The Meltwater Channel`, `The Sink`). So
+the note names two arenas that are fine and misses every arena that is not.
 
-None of those three arenas declares `noWaterExceptZone`, so this is not a law;
-it is an omission. In `frozen` specifically it is also strange: the arena is
-made of ice.
+Resolving `zoneFeatures().waterSource` across all 470 zones, **thirteen of the
+forty-five arenas have no drinkable water anywhere**: `toxic`, `tempest`,
+`saltflats`, `warren`, `reef`, `abattoir`, `ashwaste`, `floe`, `seapeaks`,
+`ashgrove`, `kelvin`, `menagerie`. Several are visibly made of water —
+`tempest` has a kelp shallows and a tidal cave, `reef` has a trench.
 
-**Fix.** Either declare `waterSource: true` on one zone in each (a meltpool, a
-sump, a condensation trap — the Vault already does exactly this), or declare
-`noWaterExceptZone` and make it deliberate. Then raise the note to a failure:
-an arena with no water is a design decision and should have to say so.
+And that is deliberate. **48 zones across 26 arenas explicitly declare
+`waterSource: false`**, and every one of them is right to: sea water, brine
+pans, coolant vats, sea ice, a flooded school pool. All four of `tempest`'s
+water zones are salt; all four of `floe`'s are the ocean. The hydration
+pressure in those arenas is the design, not a gap in it.
+
+So there is no data bug here and nothing to fix in the arenas. What is left is
+smaller and real:
+
+- **The note is misleading** and will mislead the next reader exactly as it
+  misled this one. It should measure `zoneFeatures(z).waterSource` — the thing
+  the engine reads — and report the thirteen, not the three.
+- **`Died of thirst within sight of the water` is unreachable in thirteen
+  arenas**, which is a third of the roster and part of why it fires once per
+  400 Games (§1.10). Worth knowing when re-gating it.
+- `warren` is the one case worth a second look on its own merits: six zones,
+  no water terrain, no foul-water declaration, nothing saying so out loud.
+
+**Fix.** Change the census line in `validate-arenas.ts` to resolve rather than
+read the raw field, and print the count. Change nothing in `data/constants.ts`.
 
 ## 1.7 Four of the ten zone-effect kinds cannot be produced by any procedural arena
 
@@ -1031,6 +1082,15 @@ cannot leave the floor, however good its read site is.
    audits that added skills all checked the read site and none checked the
    population.
 
+**Measured after implementing 1 and 2** — `signalling`'s floor lowered and the
+attempt made to teach, plus one high-frequency partial site each for
+`intimidation` (every point of fear inflicted), `oratory` (every charter sworn
+and every hearing convened) and `readingPeople` (every parley attended): the
+field's **best proficiency mean went 3.15 -> 4.04** at n=1,600. That is the
+whole population moving, not four skills moving, which is the point — these
+axes are read in gates all over the engine and a population mean near zero is
+a gate that is always shut.
+
 ## 3.6 What is solid and should not be touched
 
 - **The wound model.** Graded severity per site, per-site infection with its
@@ -1254,7 +1314,7 @@ than arbitrary:
 authored-layer coverage across 45 arenas:
     own event pack: 45/45      cornucopiaLayout: 45/45
     effectVocab:    45/45      off-season skins:  45/45
-    restockBias:    45/45      a water source:    42/45  (see §1.6)
+    restockBias:    45/45      a water source:    42/45  (misleading; see §1.6)
     arenas on the universal Gamemaker pack: 0 (ceiling 0)
     arenas that can produce a death of their own: 45/45
 zone interiors: 470/470 authored, 176 vertical, 373 acoustic, 309 shelter
@@ -1690,9 +1750,10 @@ anchors, one per biome, each reading a mechanic the biome already has:
 - **saltmarsh** — "Brined"; "The tide came in twice"; "Salt in the wound"
   (an infection accelerant the terrain justifies).
 
-**The three waterless arenas** (§1.6) — `frozen`, `warren`, `silkwood` each
-need a thirst-shaped death that is *theirs*, because the universal one is
-unreachable in them.
+**The thirteen waterless arenas** (§1.6) — each needs a thirst-shaped death
+that is *theirs*, because the universal
+`Died of thirst within sight of the water` is structurally unreachable where
+nothing is drinkable.
 
 ## 7.4 More events: universal
 
@@ -2693,7 +2754,8 @@ If only a handful of things get done, this is the order.
 6. **§1.9** — the procedural obituary. One line, 72 new death strings.
 7. **§1.7** — four zone-effect kinds into the procedural draw. One array.
 8. **§1.8** — the two inert signature combinations. Three lines.
-9. **§1.6** — a water source in `frozen`, `warren` and `silkwood`.
+9. **§1.6** — make the water-source census resolve rather than read the raw
+   field, so it stops naming the wrong three arenas. No arena data changes.
 10. **§4.6** — twenty archetype antipathy rows. Pure data.
 
 **The real work, in descending order of effect on the game:**

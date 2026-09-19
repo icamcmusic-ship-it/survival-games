@@ -508,7 +508,38 @@ const TRIGGER_KINDS: SignatureRule['trigger']['kind'][] = ['everyCycle', 'everyN
 const SELECTOR_KINDS: SignatureRule['selector']['kind'][] = ['fixedRotation', 'busiestZone', 'emptiestZone', 'nearCornucopia', 'lowestDanger', 'allZones'];
 const PAYLOAD_KINDS: SignatureRule['payload']['kind'][] = ['damageEffect', 'severEdges', 'invertResources', 'spawnMutt', 'drainVital', 'revealPositions'];
 const TELEGRAPH_KINDS: SignatureRule['telegraph']['kind'][] = ['oneAhead', 'none', 'falseChance'];
-const SIGNATURE_EFFECT_KINDS: ZoneEffectKind[] = ['burning', 'flooded', 'frozen', 'contaminated', 'fogbound', 'stripped'];
+/*
+ * AUDIT-8 §1.6: all ten kinds, not the original six.
+ *
+ * `ZoneEffectKind` has ten members and this array held the six that existed
+ * when it was written, so `blooming`, `irradiated`, `quaking` and `swarming` —
+ * the four added *because* the original set was all punishments and all
+ * temporary — could not be produced by any procedural arena's signature at
+ * all. Measured live instances across 400 runs: fogbound 2,372 down to
+ * irradiated 102, a 23:1 spread with three of the four excluded kinds in the
+ * bottom four. `blooming` is the exception only because `regenerateZones`
+ * starts one directly in the day/night phase, which is the proof the others
+ * would rise too if they had a source.
+ *
+ * Weighted rather than uniform, because they are not interchangeable:
+ * `irradiated` is permanent and creeps, so a generated arena that rolls it as
+ * its every-cycle signature is a different and much harsher game than one that
+ * rolls fog. Listing a kind twice is the whole of the weighting — it keeps the
+ * draw a single `rng.pick` and so keeps every existing seed's *number* of
+ * draws unchanged.
+ */
+const SIGNATURE_EFFECT_KINDS: ZoneEffectKind[] = [
+    'burning', 'burning',
+    'flooded', 'flooded',
+    'frozen', 'frozen',
+    'contaminated', 'contaminated',
+    'fogbound', 'fogbound',
+    'stripped', 'stripped',
+    'blooming',
+    'quaking',
+    'swarming',
+    'irradiated',
+];
 
 function rollSignatureRule(rng: RNG): SignatureRule {
     const triggerKind = rng.pick(TRIGGER_KINDS);

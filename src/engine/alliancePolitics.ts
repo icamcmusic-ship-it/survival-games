@@ -1,10 +1,11 @@
 import { Alliance, CharterRule, Tribute } from '../models/types';
-import { ALLIANCES } from '../data/balance';
+import { ALLIANCES, PROFICIENCY } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { allianceRecords, membersOf, pickLeader, registerAlliance } from './alliance';
 import { adjustRel, getRel } from './relationships';
 import { cycleOf, suspicionOf } from './memory';
 import { giveItem } from './items';
+import { trainProficiency } from './proficiency';
 
 /**
  * §4.2: politics inside the group.
@@ -203,6 +204,16 @@ export function noteBreach(ctx: SimContext, record: Alliance, offender: Tribute,
                 .forEach(m => adjustRel(m, leader.id, -ALLIANCES.expulsionRegardCost / 4));
         }
         return;
+    }
+    /*
+     * AUDIT-8 §3.5: a hearing is one person speaking for a group about
+     * somebody in it, which is the definition `oratory` was given and the
+     * second-commonest occasion for it in the engine. The leader who convenes
+     * it learns from it whichever way it goes.
+     */
+    const speaker = members.find(m => m.id === record.leaderId);
+    if (speaker && speaker.id !== offender.id) {
+        trainProficiency(speaker, 'oratory', undefined, PROFICIENCY.oratoryAddressShare);
     }
     const expelChance = style === 'tyrant'
         ? ALLIANCES.hearingExpelChance + ALLIANCES.tyrantExpelBonus
