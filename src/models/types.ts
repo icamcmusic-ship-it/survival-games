@@ -2436,6 +2436,15 @@ export interface GameState {
      * which is a different question and the one nothing could ask.
      */
     structuresCollapsed?: number;
+    /**
+     * AUDIT-9 (audit B20): who dealt the most recent tribute-dealt kill.
+     *
+     * `firstBloodId` has existed since the side-bet book needed it and there
+     * was no counterpart, so "First and Last" — a title the audit lists as
+     * shared by two different achievements — could only ever be tested as
+     * "first blood, plus some other number", which is not what it says.
+     */
+    lastKillerId?: string;
     /** Monotonic day/night cycle counter, used for memory and decay timings. */
     cycle?: number;
     /**

@@ -1600,6 +1600,9 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         // §6.8: the first tribute-dealt kill of the Games — the side-bet book
         // settles 'first blood' off this.
         if (ctx.state.firstBloodId === undefined) ctx.state.firstBloodId = killer.id;
+        // AUDIT-9 (audit B20): and the other end of the same thread. Written
+        // unconditionally, so at the epilogue it names whoever killed last.
+        ctx.state.lastKillerId = killer.id;
         victim.causeOfDeath = cause
             || (weapon ? `Killed by ${killer.name} (${weapon.name})` : `Killed by ${killer.name}`);
 

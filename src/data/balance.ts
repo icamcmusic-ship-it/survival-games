@@ -4939,8 +4939,21 @@ export const ROMANCE = {
     bondBeatChance: 0.65,
     /** Excitement a bonded pair earns for playing one of those days on camera. */
     bondBeatExcitement: 6,
-    /** Cycles of recent contact required, tracked as a streak. */
-    sustainedCycles: 4,
+    /**
+     * Cycles of recent contact required, tracked as a streak.
+     *
+     * §(requests)/AUDIT-9: 4 -> 5. Floor pacts are real alliances now, so a
+     * pair can be walking together from the gong rather than from whenever the
+     * day-phase formation roll happened to put them in the same zone — which
+     * meant the streak started earlier for far more of the cast and pushed
+     * star-crossed runs from 17% to 22.3% at n=400, through the 22% bound.
+     *
+     * Raised rather than compensated elsewhere, because it is the clause that
+     * says what the streak is *for*: romance should be about a relationship
+     * that developed, not about having signed the same agreement on the
+     * training floor. One more cycle keeps it that.
+     */
+    sustainedCycles: 5,
     /** Contact this stale breaks the streak. */
     contactWindow: 2,
     /**
