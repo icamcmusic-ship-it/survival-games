@@ -384,6 +384,26 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
         roleCycles: asNum(r.roleCycles, 0),
         succeededAsHeir: asBool(r.succeededAsHeir, false),
         collapsesSurvived: asNum(r.collapsesSurvived, 0),
+        /*
+         * AUDIT-9 B04: the two pieces of per-cycle scratch that used to live
+         * in module-level WeakMaps and so did not survive a save at all.
+         *
+         * Carried across now, which is the entire point of moving them onto
+         * the tribute. Absent in a save written before this — which reads as
+         * "no previous cycle", the same state a fresh run starts in, and is
+         * exactly one cycle of the old behaviour rather than an ongoing one.
+         */
+        lastZone: typeof r.lastZone === 'string' ? r.lastZone : undefined,
+        recordWatch: (() => {
+            const w = r.recordWatch as Record<string, unknown> | undefined;
+            if (!w || typeof w !== 'object') return undefined;
+            if (typeof w.health !== 'number' || typeof w.zone !== 'string') return undefined;
+            return {
+                health: w.health,
+                zone: w.zone,
+                frontZone: typeof w.frontZone === 'string' ? w.frontZone : undefined,
+            };
+        })(),
         forageSuccesses: asNum(r.forageSuccesses, 0),
         terminalInfectionBeaten: asBool(r.terminalInfectionBeaten, false),
         septicCycles: asNum(r.septicCycles, 0),

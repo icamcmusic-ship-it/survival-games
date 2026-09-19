@@ -1,3 +1,4 @@
+import { giftRefusal } from './arenaPolicy';
 import { SimContext, getAlive } from './context';
 import { profOf } from './proficiency';
 import { isSeptic } from './infection';
@@ -170,6 +171,12 @@ export function processSponsors(ctx: SimContext) {
         // durability loss propagate to every future copy of that item.
         const candidates = pool.length > 0 ? pool : ITEMS.filter(i => i.value > GIFT_NEED.fallbackItemValue);
         const gift = mintItem(ctx.rng, pickNeededGift(ctx, t, candidates), QUALITY_BIAS.parachute);
+        // AUDIT-9 B03: the same validator the player's booth goes through, so
+        // there is one definition of what the arena will accept rather than
+        // two that drift. The `noSponsors` and `sponsorsFixedZone` checks at
+        // the top of this loop are what it was built from; `noWeapons` is the
+        // one this path never had, and the item is only chosen here.
+        if (giftRefusal(ctx.state, gift, t.zone)) return;
         // §9.4: somebody specific pays for this. When every purse that would
         // back this tribute is empty, the parachute does not come.
         const bloc = drawFromBloc(ctx, t, gift.value);

@@ -2,7 +2,7 @@ import { Alliance, CharterRule, Tribute } from '../models/types';
 import { easeSuspicion, noteFormerAllies, raiseSuspicion } from './memory';
 import { SUSPICION, CHARTER, ENDGAME, ALLIANCES } from '../data/balance';
 import { SimContext, getAlive } from './context';
-import { allianceOf } from './alliance';
+import { allianceOf, cacheDivisionLine, distributeCache } from './alliance';
 import { noteBreach } from './alliancePolitics';
 import { adjustRel, getRel } from './relationships';
 import { RNG } from '../utils/rng';
@@ -141,12 +141,21 @@ export function enforceCharters(ctx: SimContext) {
             // behind, and it is worth a small warmth for a promise kept — not
             // a *breach* cost, which is the constant this used to reuse.
             noteFormerAllies(members);
+            // AUDIT-9 B07: the line below has always said they divide the
+            // cache. Now they do — before the ids come off, because the record
+            // is pruned a moment later and whatever is still in it at that
+            // point ceases to exist.
+            const division = distributeCache(ctx, record, members);
             members.forEach(m => { delete m.allianceId; });
             members.forEach(m => members.forEach(o => {
                 if (o.id !== m.id) adjustRel(m, o.id, CHARTER.honouredPartingRegard);
             }));
+            const divisionLine = cacheDivisionLine(division);
             ctx.logEvent(
-                `${members.map(m => m.name).join(', ')} count the cannons and stop at ${alive.length}. The terms were the terms: they divide what is in the cache, and walk away from each other without a word being broken.`,
+                `${members.map(m => m.name).join(', ')} count the cannons and stop at ${alive.length}. The terms were the terms: `
+                + (divisionLine
+                    ? `${divisionLine} They walk away from each other without a word being broken.`
+                    : 'there is nothing left in the cache to divide, and they walk away from each other without a word being broken.'),
                 members.map(m => m.id),
                 { important: true, category: 'alliance' }
             );

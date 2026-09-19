@@ -1064,6 +1064,25 @@ export interface Tribute {
     succeededAsHeir?: boolean;
     /** §11: structural collapses walked out of. */
     collapsesSurvived?: number;
+    /**
+     * AUDIT-9 B04: the zone this tribute was standing in at the end of last
+     * cycle, so `tickAbandonedCamps` can notice a departure.
+     *
+     * Was a module-level `WeakMap`, which is process memory and does not
+     * survive a save — a resumed run created no abandoned camp on a flee
+     * transition that uninterrupted play created one for.
+     */
+    lastZone?: string;
+    /**
+     * AUDIT-9 B04: last cycle's health, zone and weather-front position, for
+     * `tickRunRecords` to diff against.
+     *
+     * Same defect as `lastZone`, found by the sweep the audit asked for: a
+     * resumed run could not see the first cycle's change, so a recovery off
+     * the near-death line went uncounted and 'Hairsbreadth' and 'Unbroken'
+     * became reload-dependent.
+     */
+    recordWatch?: { health: number; zone: string; frontZone?: string };
     /** §11: forages that turned something up. */
     forageSuccesses?: number;
     /** §11: an infection treated back down from its terminal grade. */

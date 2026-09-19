@@ -9,6 +9,7 @@ import { adjustRel, adjustTrust, getRel } from './relationships';
 import { pactOath, pactStrictness, rollPact } from './alliancePact';
 import { noteTookOverLead } from './runRecords';
 import { trainProficiency } from './proficiency';
+import { giveItem } from './items';
 
 /**
  * Alliance structure.
@@ -621,6 +622,24 @@ export function reconcileAlliances(ctx: SimContext) {
                 .map(mid => ctx.state.tributes.find(o => o.id === mid))
                 .filter((o): o is Tribute => o !== undefined);
             noteFormerAllies(roster.length >= 2 ? roster : members);
+            /*
+             * AUDIT-9 B07: the third and quietest teardown path.
+             *
+             * This one has no narration and no ceremony — it is the record
+             * being pruned because the group has died or drifted down to one —
+             * and it was deleting whatever the group was still holding along
+             * with it. The survivor inherits it; with nobody alive it stays on
+             * the ground as a cache, which is the honest answer and gives the
+             * arena something to find.
+             */
+            const division = distributeCache(ctx, records[id], members);
+            if (division.given.length > 0) {
+                ctx.logEvent(
+                    `What the group was keeping has one owner now: ${cacheDivisionLine(division)}`,
+                    division.given.map(g => g.to.id),
+                    { category: 'loot' },
+                );
+            }
             members.forEach(m => { delete m.allianceId; });
             delete records[id];
             return;
@@ -753,6 +772,77 @@ export function emptyCache(record: Alliance): Item[] {
     const spoils = record.sharedCache;
     record.sharedCache = [];
     return spoils;
+}
+
+/**
+ * AUDIT-9 B07: an alliance ends; the food it was holding does not evaporate.
+ *
+ * Three paths tore a group down — the `split-at-eight` clause coming due, the
+ * rot-dissolve when average regard falls through the floor, and
+ * `reconcileAlliances` pruning a record whose membership has dropped below two
+ * — and not one of them touched `sharedCache`. The split-at-eight line even
+ * says out loud that "they divide what is in the cache"; nothing was divided,
+ * the record was pruned a moment later, and the items ceased to exist.
+ * Reproduced: one cached loaf in, zero items received, record deleted.
+ *
+ * Distribution is round-robin from the leader outward, which is both the
+ * simplest defensible allocation and the one the charter language implies. It
+ * goes through `giveItem`, so capacity applies and anything that genuinely
+ * cannot be carried is *dropped* and returned rather than deleted — the same
+ * conservation contract every other transfer in the game obeys.
+ *
+ * Returns what was handed out and what was left on the ground, so the caller
+ * can narrate the actual allocation instead of asserting one.
+ */
+export function distributeCache(
+    ctx: SimContext,
+    record: Alliance | undefined,
+    members: Tribute[],
+): { given: Array<{ to: Tribute; item: Item }>; dropped: Item[] } {
+    const given: Array<{ to: Tribute; item: Item }> = [];
+    const dropped: Item[] = [];
+    if (!record || record.sharedCache.length === 0) return { given, dropped };
+
+    const living = members.filter(m => m.status === 'alive');
+    const spoils = emptyCache(record);
+    if (living.length === 0) {
+        // Nobody left to take it. It stays where the group kept it, which is
+        // what the abandoned-camp layer is for; the items are still real.
+        ctx.state.abandonedCamps = ctx.state.abandonedCamps ?? [];
+        ctx.state.abandonedCamps.push({
+            zone: record.campZone ?? ctx.state.arena.zones[0].name,
+            ownerId: record.leaderId ?? '',
+            ownerName: 'the group that kept it',
+            cycle: ctx.state.cycle ?? 0,
+            items: spoils.map(i => i.id),
+        });
+        return { given, dropped: spoils };
+    }
+
+    // Leader first, then the rest in roster order: a deterministic allocation,
+    // so a replay divides the cache the same way.
+    const order = [
+        ...living.filter(m => m.id === record.leaderId),
+        ...living.filter(m => m.id !== record.leaderId),
+    ];
+    spoils.forEach((item, index) => {
+        const taker = order[index % order.length];
+        const spilled = giveItem(taker, item);
+        if (spilled.includes(item)) dropped.push(item);
+        else given.push({ to: taker, item });
+        spilled.filter((i: Item) => i !== item).forEach((i: Item) => dropped.push(i));
+    });
+    return { given, dropped };
+}
+
+/** One clause naming who actually ended up with what. */
+export function cacheDivisionLine(division: { given: Array<{ to: Tribute; item: Item }>; dropped: Item[] }): string {
+    if (division.given.length === 0 && division.dropped.length === 0) return '';
+    const handed = division.given.map(g => `${g.to.name} takes ${g.item.name}`).join('; ');
+    const left = division.dropped.length > 0
+        ? ` ${division.dropped.map(i => i.name).join(', ')} ${division.dropped.length === 1 ? 'is' : 'are'} left where it lay.`
+        : '';
+    return `${handed ? `${handed}.` : ''}${left}`.trim();
 }
 
 /**

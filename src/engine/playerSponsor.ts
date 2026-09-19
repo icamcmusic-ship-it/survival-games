@@ -1,3 +1,4 @@
+import { giftRefusal } from './arenaPolicy';
 import { GameState, Item, Tribute } from '../models/types';
 import { ITEMS } from '../data/constants';
 import { SPONSOR_MARKET, QUALITY_BIAS } from '../data/balance';
@@ -92,6 +93,18 @@ export function sendPlayerParachute(state: GameState, tributeId: string, itemId:
     if (state.phase !== 'day' && state.phase !== 'night' && state.phase !== 'feast') {
         return { ok: false, cost: 0, message: 'Parachutes can only be sent once the tributes are in the arena.' };
     }
+    /*
+     * AUDIT-9 B03: the arena's laws apply to the player's booth too.
+     *
+     * The automatic sponsor stream has checked `noSponsors` for several
+     * audits; this path checked nothing, so the Carnival accepted a sword and
+     * the Vault accepted a parachute. Refused *before* the coins are charged —
+     * `sendPlayerParachute` returning `ok: false` is what stops the store
+     * debiting the wallet — and with a reason, because a purchase that
+     * silently does nothing is the other half of the same defect.
+     */
+    const refusal = giftRefusal(state, base, t.zone);
+    if (refusal) return { ok: false, cost: 0, message: refusal };
 
     const cost = sponsorCost(state, t, base);
     // Seeded off the run and the gift count so a replayed run is identical.

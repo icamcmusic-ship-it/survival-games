@@ -1,3 +1,4 @@
+import { samePlace } from './verticality';
 import { Tribute } from '../models/types';
 import { DEBTS, RELATIONSHIPS, SUSPICION } from '../data/balance';
 import { DEBT_TEXTS } from '../data/flavorText';
@@ -98,7 +99,9 @@ export function tickRetainers(ctx: SimContext) {
             // The regard is contractual, not warm — it is the client's, and it
             // stops the moment the fee stops.
             adjustRel(client, t.id, DEBTS.retainerRegardPerCycle);
-            if (client.zone === t.zone) {
+            // AUDIT-9 B10: visibly on the job means visibly — two people on
+            // opposite levels of a shaft are not attending each other.
+            if (samePlace(ctx.state.arena, client, t)) {
                 t.sponsorTrust = Math.min(100, t.sponsorTrust + DEBTS.retainerTrustPerCycle);
             }
         });
@@ -124,8 +127,19 @@ export function repayDebts(ctx: SimContext) {
             .sort((a, b) => debtTo(debtor, b) - debtTo(debtor, a))[0];
         if (!creditorId) return;
         const creditor = alive.find(o => o.id === creditorId);
-        // A debt to the dead cannot be paid, only carried.
-        if (!creditor || creditor.zone !== debtor.zone) return;
+        /*
+         * A debt to the dead cannot be paid, only carried.
+         *
+         * AUDIT-9 B10: and a debt cannot be paid across a two-hundred-metre
+         * shaft either. `zone === zone` ignores vertical level, so repayment
+         * transferred bread and cleared the debt between a tribute on the rim
+         * and a tribute at the bottom of it — `samePlace` returned false for
+         * the pair at the same moment the handover happened. `samePlace` is
+         * the engine's existing answer to "are these two in the same place",
+         * and physically handing somebody a loaf is exactly the kind of act it
+         * governs.
+         */
+        if (!creditor || !samePlace(ctx.state.arena, debtor, creditor)) return;
         if (debtTo(debtor, creditorId) < DEBTS.repayThreshold) return;
         // AUDIT-6 §12.2 `debtHonour`: a Bookkeeper pays what they owe.
         /*
@@ -270,7 +284,9 @@ export function offerLoans(ctx: SimContext) {
         const borrower = alive.find(o =>
             o.id !== lender.id
             && o.allianceId === lender.allianceId
-            && o.zone === lender.zone
+            // AUDIT-9 B10: lending is a physical handover, so it needs the
+            // locality test rather than the zone name.
+            && samePlace(ctx.state.arena, lender, o)
             // Short of something the lender has two of. A weapon still counts
             // for the reason it always did; so now does everything else.
             && spares.some(sp => !o.inventory.some(i => i.type === sp.type))
@@ -346,7 +362,10 @@ export function settleLoans(ctx: SimContext) {
             // Giving it back: they have found something better, and they are
             // standing in front of the person who lent it to them.
             const armedElsewhere = borrower.inventory.some(i => i.type === 'weapon' && i.id !== loan.itemId);
-            if (armedElsewhere && borrower.zone === lender.zone) {
+            // AUDIT-9 B10: "standing in front of the person who lent it to
+            // them" is what the comment above already says. Now it is what the
+            // code tests.
+            if (armedElsewhere && samePlace(ctx.state.arena, borrower, lender)) {
                 borrower.inventory = borrower.inventory.filter(i => i !== held);
                 giveItem(lender, held);
                 delete borrower.loans![lenderId];

@@ -12,7 +12,7 @@ import { adjustRel, getRel, trustOf } from '../relationships';
 import { cycleOf, cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, hasVengeanceAgainst, noteContact, raiseSuspicion, sharedHistoryOf, suspicionOf } from '../memory';
 import { fearOf } from '../fear';
 import { respectOf } from '../relationships';
-import { careerSocialFactor, sniffPerformances, isStarCrossed } from '../alliance';
+import { careerSocialFactor, sniffPerformances, isStarCrossed, cacheDivisionLine, distributeCache } from '../alliance';
 import { allianceOf, areLovers, cacheValue, contributeToCache, isPerforming, maintainPerformance, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance, shownRegard } from '../alliance';
 import { resolveBetrayal, preemptiveBetrayer } from '../betrayal';
 import { resolveDuePacts } from '../alliancePact';
@@ -222,10 +222,17 @@ export function processAlliances(ctx: SimContext) {
         const averageTrust = members.reduce((sum, m) =>
             sum + members.reduce((inner, o) => inner + (o.id === m.id ? 0 : shownRegard(m, o.id)), 0) / (members.length - 1), 0) / members.length;
         if (averageTrust < ALLIANCES.rotDissolveTrust) {
+            // AUDIT-9 B07: the second of the three teardown paths that dropped
+            // the shared cache on the floor. A group that stops being a group
+            // still has to account for the food it was holding — and a bad
+            // parting is exactly where who ends up with it is interesting.
+            const division = distributeCache(ctx, allianceOf(ctx.state, id), members);
             members.forEach(m => { delete m.allianceId; });
+            const divisionLine = cacheDivisionLine(division);
             // One line for the whole collapse, not a near-identical one per member.
             ctx.logEvent(
-                `The alliance of ${members.map(m => m.name).join(', ')} has come apart. They go their separate ways.`,
+                `The alliance of ${members.map(m => m.name).join(', ')} has come apart. They go their separate ways.`
+                + (divisionLine ? ` ${divisionLine}` : ''),
                 members.map(m => m.id),
                 { category: 'alliance' }
             );
