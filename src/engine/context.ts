@@ -142,9 +142,40 @@ export function createContext(state: GameState, rng: RNG): SimContext {
             // breaking the "same seed replays the same Games" promise. The
             // pool's first line is a stable identity for a static template
             // array.
+            /*
+             * §(requests): "limit repeat entries across entire games".
+             *
+             * The anti-repeat memory was one line deep — it avoided whatever
+             * was drawn *last* from this pool and nothing before that. Over a
+             * twelve-day run with hundreds of draws from a pool of eight, the
+             * same four sentences came round and round, which is most of why
+             * the chronicle reads repetitive. It is also why a long run feels
+             * like a shorter one: the feed stops carrying new information
+             * before the Games stop producing it.
+             *
+             * The memory is a *used set* per pool instead: a sentence is not
+             * drawn again until every other sentence in the pool has been. When
+             * the pool is exhausted it resets, minus the one just used, so the
+             * cycle cannot begin with an immediate repeat of the line that
+             * ended the last one. That turns a pool of eight from "four
+             * sentences on rotation" into eight sentences before any of them
+             * comes back.
+             *
+             * Still on the state, still keyed by the pool's first line, so it
+             * serialises with the save exactly as the single-entry version did
+             * and a resumed run continues the same rotation.
+             */
             const memory = state.lastPickedText ?? (state.lastPickedText = {});
-            const previous = memory[pool[0]];
-            const options = previous !== undefined ? pool.filter(p => p !== previous) : pool;
+            const used = state.usedText ?? (state.usedText = {});
+            const seen = used[pool[0]] ?? [];
+            let options = pool.filter(p => !seen.includes(p));
+            if (options.length === 0) {
+                // Exhausted: start the rotation again, but never with the line
+                // that closed the previous one.
+                const previous = memory[pool[0]];
+                options = previous !== undefined ? pool.filter(p => p !== previous) : pool;
+                used[pool[0]] = [];
+            }
             // AUDIT-9 B12: narration draws from its own stream, never from
             // `ctx.rng`. On the shared stream the *size of a prose pool* was a
             // mechanical input: a one-entry pool short-circuits above and
@@ -157,6 +188,7 @@ export function createContext(state: GameState, rng: RNG): SimContext {
             state.proseDraws = draw + 1;
             const chosen = new RNG(`${state.seed}-prose-${draw}`).pick(options.length > 0 ? options : pool);
             memory[pool[0]] = chosen;
+            used[pool[0]] = [...(used[pool[0]] ?? []), chosen];
             return chosen;
         },
         logEvent(text, tributesInvolved, options, zone) {
@@ -187,6 +219,10 @@ export function createContext(state: GameState, rng: RNG): SimContext {
                 important: opts.important ?? false,
                 zone: resolvedZone,
                 category: opts.category ?? 'system',
+                // §(requests): the stripped-down chronicle's version of this
+                // line, where the caller knows something the prose does not
+                // say outright. Derived from the entry elsewhere.
+                fact: opts.fact,
             });
         }
     };

@@ -8255,3 +8255,37 @@ export const LOOTING = {
     /** The person from home is not a body to be gone through. */
     districtPartnerPenalty: 0.45,
 } as const;
+
+/**
+ * §(requests): "most of the time, they act very optimally".
+ *
+ * The decision layer's *inputs* degrade under pressure — memory distorts,
+ * sightings expire, beliefs go stale — and the act of choosing did not, so a
+ * concussed tribute on their fourth sleepless night in the dark weighed the
+ * map exactly as carefully as a rested one. These weights compose the missing
+ * term. They flatten the selection rather than biasing it: the ranking stays
+ * honest and the pick off it gets noisier, which is what being unable to
+ * think straight looks like from outside.
+ *
+ * `max` is deliberately short of 1. Even the worst-off tribute in the arena
+ * still avoids the zone they watched three people die in; confusion is a
+ * degradation of judgement, not its abolition.
+ */
+export const CONFUSION = {
+    max: 0.75,
+    fatigueFloor: 45,
+    fatigueWeight: 0.35,
+    sanityCeiling: 60,
+    sanityWeight: 0.3,
+    thirstFloor: 60,
+    thirstWeight: 0.2,
+    headInjuryPerGrade: 0.12,
+    bleeding: 0.1,
+    afterDark: 0.12,
+    /**
+     * How far confusion flattens the destination draw. At full confusion the
+     * sharpness exponent falls by this much, which turns a decisive pick into
+     * something much closer to "one of the ones that looked all right".
+     */
+    destinationFlattening: 0.9,
+} as const;

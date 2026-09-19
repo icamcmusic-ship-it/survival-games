@@ -1,6 +1,7 @@
 import { Tribute, Zone } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
-import { FEAR, MEMORY, MOVEMENT, NOTORIETY, DECISION_TRACE, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, RISK } from '../data/balance';
+import { CONFUSION, FEAR, MEMORY, MOVEMENT, NOTORIETY, DECISION_TRACE, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, RISK } from '../data/balance';
+import { confusionOf } from './confusion';
 import { SimContext } from './context';
 import { effectiveResources, zoneFeatures } from './map';
 import { believedIn, ensureMemory, hasVengeanceAgainst, reckonsRegrown, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
@@ -161,13 +162,30 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
     // sharpen. A flat clamp gave every bad zone the same weight as every other
     // bad zone, and there are many more bad zones than good ones.
     const lowest = scored.reduce((lo, o) => Math.min(lo, o.score), Infinity);
+    /*
+     * §(requests): how decisively they are able to choose.
+     *
+     * The ranking above is the tribute's honest read of the map; this is
+     * whether they are in any condition to act on it. Exhausted, dehydrated,
+     * concussed, bleeding, coming apart, in the dark — the sharpness falls and
+     * the draw flattens toward "one of the ones that looked all right", which
+     * is what a bad decision made by a person rather than by a dice roll looks
+     * like. A rested, unhurt tribute in daylight sits at zero confusion and
+     * gets exactly the behaviour this scorer has always had.
+     */
+    const confusion = confusionOf(ctx, t);
+    const sharpness = Math.max(
+        MOVEMENT.destinationSharpness - confusion * CONFUSION.destinationFlattening,
+        MOVEMENT.destinationSharpness - CONFUSION.destinationFlattening,
+    );
     const weighted = scored.map(o => ({
         o,
-        w: Math.pow(o.score - lowest + MOVEMENT.destinationFloor, MOVEMENT.destinationSharpness),
+        w: Math.pow(o.score - lowest + MOVEMENT.destinationFloor, sharpness),
     }));
 
     // A §1: the top few destinations, for the tribute sheet's trace.
     if (t.decisionTrace) {
+        t.decisionTrace.confusion = Math.round(confusion * 100) / 100;
         t.decisionTrace.destinations = [...scored]
             .sort((a, b) => b.score - a.score)
             .slice(0, DECISION_TRACE.topN)

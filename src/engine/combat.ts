@@ -1726,16 +1726,34 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
                     ctx.logEvent(
                         `${opener} ${killer.name} takes what they can carry — ${lootNames || 'nothing they can use'} — and leaves ${dropped.map(i => i.name).join(', ')} in the dirt.`,
                         [killer.id, victim.id],
-                        { important: !silent, category: silent ? 'loot' : 'kill' }
+                        {
+                            important: !silent, category: silent ? 'loot' : 'kill',
+                            // §(requests): the record states the method and
+                            // the goods; the prose above states the scene.
+                            fact: `${killer.name} killed ${victim.name} (${weapon?.name ?? 'unarmed'}); took ${lootNames || 'nothing'}, left ${dropped.map(i => i.name).join(', ')}`,
+                        }
                     );
                 } else {
-                    ctx.logEvent(`${opener} ${killer.name} strips the body: ${lootNames}.`, [killer.id, victim.id], { important: !silent, category: silent ? 'loot' : 'kill' });
+                    ctx.logEvent(
+                        `${opener} ${killer.name} strips the body: ${lootNames}.`,
+                        [killer.id, victim.id],
+                        {
+                            important: !silent, category: silent ? 'loot' : 'kill',
+                            fact: `${killer.name} killed ${victim.name} (${weapon?.name ?? 'unarmed'}); took ${lootNames}`,
+                        },
+                    );
                 }
             } else if (!silent) {
-                ctx.logEvent(text, [killer.id, victim.id], { important: true, category: 'kill' });
+                ctx.logEvent(text, [killer.id, victim.id], {
+                    important: true, category: 'kill',
+                    fact: `${killer.name} killed ${victim.name} (${weapon?.name ?? 'unarmed'})`,
+                });
             }
         } else if (!silent) {
-            ctx.logEvent(text, [killer.id, victim.id], { important: true, category: 'kill' });
+            ctx.logEvent(text, [killer.id, victim.id], {
+                important: true, category: 'kill',
+                fact: `${killer.name} killed ${victim.name} (${weapon?.name ?? 'unarmed'})`,
+            });
         }
     } else {
         victim.causeOfDeath = cause || victim.lastDamage?.cause || 'Died to environment';
@@ -1749,7 +1767,15 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             .split('{cause}').join(victim.causeOfDeath)
             .split('{age}').join(String(victim.age))
             .split('{witness}').join(witness?.name ?? 'someone nearby');
-        if (!silent) ctx.logEvent(text, witness ? [victim.id, witness.id] : [victim.id], { important: true, category: 'death' });
+        if (!silent) {
+            ctx.logEvent(text, witness ? [victim.id, witness.id] : [victim.id], {
+                important: true, category: 'death',
+                // §(requests): the record carries the cause code, not the
+                // sentence that dressed it. `causeOfDeath` is the same string
+                // the obituary and every measurement already read.
+                fact: `${victim.name} died — ${victim.causeOfDeath}`,
+            });
+        }
     }
 
     // §6.9: the district token goes home with the body. The cameras do not

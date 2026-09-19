@@ -100,7 +100,38 @@ export interface Prefs {
      * pretending otherwise would just fail silently on every load.
      */
     fullscreenOnStart: boolean;
+    /**
+     * §(requests): how much prose the chronicle carries.
+     *
+     * 'broadcast' is the feed as written — the Capitol's own coverage, which
+     * is what the game is for. 'facts' is the stripped-down mode: the same
+     * run, reported as the record rather than the broadcast. Every event that
+     * changed the state is still there, in the same order, with the same
+     * timestamps; what goes is the sentence around it.
+     *
+     * Deliberately a rendering setting rather than an engine one. The events
+     * are identical either way — the same seed produces the same Games — so a
+     * player can switch mid-run, and a chronicle exported in one mode is the
+     * same run as one exported in the other.
+     */
+    chronicleStyle: ChronicleStyle;
+    /**
+     * §(requests): "remove internal sanity reasoning, but still track it. Only
+     * show very important sanity changes."
+     *
+     * A tribute's mind is modelled in detail and most of that detail was being
+     * narrated: dozens of low-stakes lines a run about somebody's hands
+     * shaking. The state is unchanged — sanity still drains, still bands,
+     * still drives breakdowns, hallucinations and the endgame — but the
+     * running commentary on it is off by default. What survives is what the
+     * engine already marks `important`: the breakdowns, the hallucinations,
+     * the oaths, the moments a mind actually goes.
+     */
+    quietSanity: boolean;
 }
+
+/** §(requests): the chronicle's two registers. See `Prefs.chronicleStyle`. */
+export type ChronicleStyle = 'broadcast' | 'facts';
 
 export const DEFAULT_PREFS: Prefs = {
     units: 'imperial',
@@ -120,6 +151,8 @@ export const DEFAULT_PREFS: Prefs = {
     seenShortcutHint: false,
     arenaBriefingOnDrop: true,
     fullscreenOnStart: true,
+    chronicleStyle: 'broadcast',
+    quietSanity: true,
 };
 
 /**
@@ -191,6 +224,8 @@ export const PREFS_SPEC: StorageSpec<Prefs> = {
             seenShortcutHint: asBool(r.seenShortcutHint, DEFAULT_PREFS.seenShortcutHint),
             arenaBriefingOnDrop: asBool(r.arenaBriefingOnDrop, DEFAULT_PREFS.arenaBriefingOnDrop),
             fullscreenOnStart: asBool(r.fullscreenOnStart, DEFAULT_PREFS.fullscreenOnStart),
+            chronicleStyle: r.chronicleStyle === 'facts' ? 'facts' : DEFAULT_PREFS.chronicleStyle,
+            quietSanity: asBool(r.quietSanity, DEFAULT_PREFS.quietSanity),
         };
     },
 };

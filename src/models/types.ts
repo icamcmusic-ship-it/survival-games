@@ -1358,6 +1358,16 @@ export interface DecisionTrace {
      * `percentile` is the pick's score position across all options (1 = best).
      */
     destinationPick?: { zone: string; rank: number; of: number; percentile: number };
+    /**
+     * §(requests): how clearly this tribute was thinking when they chose,
+     * 0 (rested and lucid) to `CONFUSION.max`.
+     *
+     * Recorded so an odd-looking decision has a visible cause on the tribute
+     * sheet — "they were on their fourth night without sleep, concussed and in
+     * the dark" — rather than reading as the simulation misbehaving. See
+     * `engine/confusion.ts`.
+     */
+    confusion?: number;
 }
 
 /** A §3: a goal held behind the errand queue. */
@@ -2370,6 +2380,16 @@ export interface GameState {
      * sequence, exactly as `lastPickedText` does.
      */
     proseDraws?: number;
+    /**
+     * §(requests): which lines of each flavour pool this run has already used.
+     *
+     * `lastPickedText` remembered one line deep, so a pool of eight produced
+     * four sentences on rotation across a whole Games. This is the full used
+     * set per pool: nothing repeats until everything else has been said. Reset
+     * when a pool is exhausted. Keyed by the pool's first line, like
+     * `lastPickedText`, and serialised with the save for the same reason.
+     */
+    usedText?: Record<string, string[]>;
     /** Zone name -> fraction of its printed yield currently stripped out (0-1). */
     zoneDepletion?: Record<string, number>;
     /** Zone name -> whatever is currently happening to it beyond depletion. */
@@ -2816,12 +2836,25 @@ export interface EventLog {
     important: boolean;
     zone?: string;
     category: EventCategory;
+    /**
+     * §(requests): the same event, stated as a fact.
+     *
+     * The stripped-down chronicle renders this instead of `text`. Supplied at
+     * the sites where the prose is hiding something the record should state
+     * outright — who killed whom with what, what was taken, who joined what —
+     * and derived from the entry's own fields everywhere else. Optional by
+     * design: an event with no `fact` is one whose category, cast and zone
+     * already say everything the record needs.
+     */
+    fact?: string;
 }
 
 export interface LogOptions {
     important?: boolean;
     zone?: string;
     category?: EventCategory;
+    /** §(requests): the factual restatement for the stripped-down chronicle. */
+    fact?: string;
 }
 
 export interface EpilogueQA {

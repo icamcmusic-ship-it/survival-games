@@ -216,6 +216,48 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
                     </span>
                 </label>
 
+                {/* §(requests): "add a stripped down mode that only shows raw
+                    facts without prose". A rendering register, not an engine
+                    mode — the same seed is the same Games either way, and
+                    switching mid-run does not make it a different run. */}
+                <div className="space-y-1.5">
+                    <span className="eyebrow">Chronicle</span>
+                    <div className="seg w-fit">
+                        {([['broadcast', 'Broadcast'], ['facts', 'Facts only']] as const).map(([id, label]) => (
+                            <button
+                                key={id}
+                                onClick={() => setPrefs({ chronicleStyle: id })}
+                                aria-pressed={prefs.chronicleStyle === id}
+                            >
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                    <span className="block text-xs text-[var(--color-ink-500)]">
+                        Facts only reports the run as a record rather than as Capitol coverage: every event that changed
+                        the state, in order, with its cast and its place, and no sentence around it.
+                    </span>
+                </div>
+
+                {/* §(requests): "remove internal sanity reasoning, but still
+                    track it. Only show very important sanity changes." */}
+                <label className="flex items-start gap-2.5 cursor-pointer">
+                    <input
+                        type="checkbox"
+                        checked={prefs.quietSanity}
+                        onChange={e => setPrefs({ quietSanity: e.target.checked })}
+                        className="mt-1"
+                    />
+                    <span>
+                        <span className="block text-sm">Quiet the running commentary on sanity</span>
+                        <span className="block text-xs text-[var(--color-ink-500)]">
+                            Keeps the breakdowns, the hallucinations and the oaths; drops the line-by-line narration of
+                            everybody's state of mind. Nothing about how sanity works changes — it is still tracked, still
+                            drains, and still decides the endgame.
+                        </span>
+                    </span>
+                </label>
+
                 <div className="space-y-1.5">
                     <span className="eyebrow">Units</span>
                     <div className="seg w-fit">
