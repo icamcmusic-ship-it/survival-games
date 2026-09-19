@@ -15,6 +15,8 @@ import { giveItem, inventoryValue } from './items';
 import { healInjury, clearBleeding } from './wounds';
 import { clampTribute } from './vitals';
 import { trainProficiency } from './proficiency';
+import { trapsIn } from './fieldcraft';
+import { allianceOf } from './alliance';
 import { getZone, zoneNames, zoneFeatures } from './map';
 import { addZoneThreat } from './memory';
 import { hasTruce } from './parley';
@@ -927,6 +929,144 @@ export const SIGNATURES: Record<string, Signature> = {
             .forEach(o => addZoneThreat(ctx.state, o, t.zone, -ARCHETYPE_HOOKS.quietThreatShed));
         trainProficiency(t, 'stealth', ctx);
         t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust);
+        return true;
+    },
+
+    /*
+     * AUDIT-8 §12.5: the six new beats.
+     *
+     * Each one cashes the hook that makes its archetype different, rather
+     * than being a second flavour line. That is the rule §8.1 arrived at the
+     * hard way: an archetype whose set piece converts into nothing measures
+     * exactly like one that has no set piece.
+     */
+
+    /** The Bait: stands where they can be seen, on ground they have worked. */
+    lureOpening: (ctx, t) => {
+        const marks = others(ctx, t);
+        if (marks.length === 0) return false;
+        const traps = trapsIn(ctx, t.zone).filter(p => p.ownerId === t.id);
+        // Gated on the thing the archetype is *for*: being visible is only a
+        // plan if standing there costs somebody else something.
+        if (traps.length === 0) return false;
+        say(ctx, t, 'lureOpening', [t.id]);
+        // Everyone who can be drawn is drawn: the zone stops reading as
+        // dangerous, which is the whole of the lie.
+        marks.forEach(o => {
+            addZoneThreat(ctx.state, o, t.zone, -ARCHETYPE_HOOKS.lureThreatShed);
+            addNotoriety(o, t.id, ARCHETYPE_HOOKS.lureNotoriety);
+        });
+        t.objective = { kind: 'hold', zone: t.zone, expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.signatureObjectiveCycles };
+        trainProficiency(t, 'bracing', ctx);
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement * ARCHETYPE_HOOKS.signatureGatedMultiplier);
+        return true;
+    },
+
+    /** The Orderly: works the room, worst first, and does not ask who they are. */
+    orderlyTriage: (ctx, t) => {
+        const hurt = getAlive(ctx.state)
+            .filter(o => o.id !== t.id && (o.health < ARCHETYPE_HOOKS.orderlyTriageHealth || o.injuries.bleeding))
+            .filter(o => o.zone === t.zone)
+            .sort((a, b) => a.health - b.health);
+        if (hurt.length === 0) return false;
+        const worst = hurt[0];
+        say(ctx, t, 'orderlyTriage', [t.id, ...hurt.map(h => h.id)], { target: worst.name, count: String(hurt.length) });
+        hurt.slice(0, ARCHETYPE_HOOKS.orderlyTriageMax).forEach(o => {
+            clearBleeding(o);
+            healInjury(o, 'torso', ARCHETYPE_HOOKS.orderlyTriageHeal);
+            healInjury(o, 'legs', ARCHETYPE_HOOKS.orderlyTriageHeal);
+            clampTribute(o);
+            // §12.5: and the reason this is not simply a free heal — a person
+            // you have patched up in an arena remembers it.
+            adjustMutual(ctx.state, t, o, ARCHETYPE_HOOKS.orderlyTriageRegard);
+            witnessKindness(ctx, t, o);
+        });
+        trainProficiency(t, 'medicine', ctx);
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement * ARCHETYPE_HOOKS.signatureGatedMultiplier);
+        return true;
+    },
+
+    /** The Drover: picks the biggest thing in the field and decides where it goes. */
+    droverDrive: (ctx, t) => {
+        const beast = others(ctx, t)
+            .sort((a, b) => (b.attributes.strength + b.health / 20) - (a.attributes.strength + a.health / 20))[0];
+        if (!beast) return false;
+        const away = zoneNames(ctx.state.arena).filter(z => z !== t.zone && z !== beast.zone);
+        if (away.length === 0) return false;
+        const into = ctx.rng.pick(away);
+        say(ctx, t, 'droverDrive', [t.id, beast.id], { target: beast.name, dest: into });
+        /*
+         * The conversion. A Drover does not fight the strongest tribute in
+         * the arena — they make that tribute's own memory of the ground wrong.
+         * Everything they believe about where it is safe to be is edited, and
+         * the place they are steered toward is the place the Drover has
+         * decided they should be.
+         */
+        addZoneThreat(ctx.state, beast, t.zone, ARCHETYPE_HOOKS.droverThreatPush);
+        addZoneThreat(ctx.state, beast, into, -ARCHETYPE_HOOKS.droverThreatPush);
+        beast.objective = { kind: 'reach', zone: into, reason: 'shelter', expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.signatureObjectiveCycles };
+        t.objective = { kind: 'flee', from: beast.zone, expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.signatureObjectiveCycles };
+        trainProficiency(t, 'husbandry', ctx);
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement * ARCHETYPE_HOOKS.signatureGatedMultiplier);
+        return true;
+    },
+
+    /** The Beacon: tells the sky where they are, and charges for it. */
+    beaconSignal: (ctx, t) => {
+        const zone = getZone(ctx.state.arena, t.zone);
+        if (!zone) return false;
+        const feats = zoneFeatures(zone);
+        // Only from somewhere it can be seen from. That is what makes it a
+        // decision rather than a mood: the high ground is also the exposed
+        // ground, and this archetype has decided that is the trade.
+        if (!feats.elevation) return false;
+        say(ctx, t, 'beaconSignal', [t.id]);
+        t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.beaconTrust);
+        // The cost, and it is a real one: the whole field now knows.
+        getAlive(ctx.state).forEach(o => {
+            if (o.id === t.id) return;
+            addNotoriety(o, t.id, ARCHETYPE_HOOKS.beaconNotoriety);
+            addZoneThreat(ctx.state, o, t.zone, ARCHETYPE_HOOKS.beaconThreat);
+        });
+        trainProficiency(t, 'signalling', ctx);
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement * ARCHETYPE_HOOKS.signatureGatedMultiplier);
+        return true;
+    },
+
+    /** The Factor: takes the inventory of the whole arena, out loud. */
+    factorAudit: (ctx, t) => {
+        const field = others(ctx, t);
+        if (field.length < 2) return false;
+        const richest = field.sort((a, b) => inventoryValue(b) - inventoryValue(a))[0];
+        if (inventoryValue(richest) <= 0) return false;
+        say(ctx, t, 'factorAudit', [t.id, richest.id], { target: richest.name });
+        /*
+         * The Factor's edge is not force, it is knowing. Every tribute in the
+         * field gets read — `improveRead` is the currency the Archivist's fix
+         * proved converts — and the one holding the most gets watched.
+         */
+        field.forEach(o => improveRead(t, o.id, ARCHETYPE_HOOKS.factorReadGain));
+        t.objective = { kind: 'stalk', targetId: richest.id, expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.signatureObjectiveCycles };
+        trainProficiency(t, 'readingPeople', ctx);
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement * ARCHETYPE_HOOKS.signatureGatedMultiplier);
+        return true;
+    },
+
+    /** The Inheritor: is standing there when the group needs somebody to be. */
+    inheritorClaim: (ctx, t) => {
+        if (t.allianceId === undefined) return false;
+        const mates = getAlive(ctx.state).filter(o => o.allianceId === t.allianceId && o.id !== t.id);
+        if (mates.length === 0) return false;
+        say(ctx, t, 'inheritorClaim', [t.id, ...mates.map(m => m.id)], { count: String(mates.length + 1) });
+        // They make themselves the obvious answer, and the group agrees with
+        // them without being asked. `succeededAsHeir` is what cashes it, in
+        // `alliance.ts`, if the leader does not come back.
+        const record = allianceOf(ctx.state, t.allianceId);
+        if (record) record.successorId = t.id;
+        mates.forEach(o => adjustRel(t, o.id, ARCHETYPE_HOOKS.inheritorRegard));
+        t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust);
+        trainProficiency(t, 'oratory', ctx);
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement * ARCHETYPE_HOOKS.signatureGatedMultiplier);
         return true;
     },
 };

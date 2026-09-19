@@ -39,6 +39,11 @@ const PROFICIENCY_LABELS: Record<string, string> = {
     forage: 'Foraging', melee: 'Melee', ranged: 'Ranged', medicine: 'Medicine', tracking: 'Tracking',
     persuasion: 'Persuasion', climbing: 'Climbing', swimming: 'Swimming', crafting: 'Crafting',
     stealth: 'Stealth', intimidation: 'Intimidation',
+    // AUDIT-8: the eight added since this map was written all fell through to
+    // their raw keys, so the sheet read "fieldcookery" at a player.
+    butchery: 'Butchery', navigation: 'Navigation', carpentry: 'Carpentry', oratory: 'Oratory',
+    signalling: 'Signalling', fieldcookery: 'Field cookery', pacing: 'Pacing',
+    readingPeople: 'Reading people', husbandry: 'Husbandry', bracing: 'Bracing',
 };
 
 /** A5: four tabs, defaulting to Overview. */

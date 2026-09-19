@@ -68,6 +68,18 @@ const ARCHETYPE_SPECIALITY: Record<ArchetypeId, Proficiency> = {
      */
     cartographer: 'navigation',
     debtor: 'persuasion',
+    /*
+     * AUDIT-8 §12.5, and the two axes §12.4 just added. `drover` is the
+     * constituency `husbandry` was written for and `lure` is `bracing`'s —
+     * an archetype whose whole method is standing on prepared ground and
+     * being walked toward.
+     */
+    lure: 'bracing',
+    orderly: 'medicine',
+    drover: 'husbandry',
+    beacon: 'signalling',
+    factor: 'readingPeople',
+    inheritor: 'oratory',
     forecaster: 'navigation',
     understudy: 'forage',
     archivist: 'oratory',
@@ -460,6 +472,9 @@ const TEACH_PHRASE: Record<Proficiency, string> = {
     fieldcookery: 'how long that has to sit on the coals before it stops being a gamble',
     pacing: 'to go slower now so that there is still something left at dusk',
     readingPeople: 'to watch the hands rather than the face, because the face has been practised',
+    // AUDIT-8 §12.4
+    husbandry: 'to stand still and let it decide, because it will, and then it is over',
+    bracing: 'where to put the back foot so that the next one does not move you',
 };
 
 /**

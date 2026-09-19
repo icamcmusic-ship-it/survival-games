@@ -1521,7 +1521,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         hint: 'See one tribute personally stand in every zone the arena has.',
         category: 'arena',
         // Audit 5 §1.6: 8 of 9,600 tributes did it. Legendary, not theoretical.
-        rarity: 'possible',
+        rarity: 'legendary',
         test: state => {
             const all = state.arena.zones.map(z => z.name);
             return state.tributes.some(t => all.every(z => (t.visitedZones ?? []).includes(z)));
@@ -3630,7 +3630,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Nothing Left To Give',
         hint: 'See every sponsor bloc spend out in a Games whose victor was sent nothing at all.',
         category: 'capitol',
-        rarity: 'possible',
+        rarity: 'legendary',
         // AUDIT-8 §1.4: this shared a byte-identical predicate with 'nobody-is-buying' and 'a7-every-bloc-spent'.
         // Two cards for one boolean, always flipping together. Re-gated to the
         // harder half of the same idea rather than deleted, so no id already in
@@ -4718,12 +4718,24 @@ export const ACHIEVEMENTS: Achievement[] = [
     // ---- combat (12): the thinnest shelf -----------------------------------
     {
         id: 'a8-first-and-last',
-        name: 'First and Last',
-        hint: 'Crown a victor who drew first blood and finished with two kills or more.',
+        name: 'Opened It Clean',
+        hint: 'Crown a victor who drew first blood and came home without a single logged wound.',
         category: 'combat', rarity: 'rare',
-        test: (state, v) => !!v && state.firstBloodId === v.id && v.kills >= 2,
-        nearMiss: (state, v) => (state.firstBloodId === v?.id && (v?.kills ?? 0) < 2
-            ? 'first blood was theirs; the last was not' : undefined),
+        /*
+         * AUDIT-8 §12.5: the duplicate guard caught this against the
+         * pre-existing `first-blood-victor` once the archetype batch shifted
+         * the sample — every victor who drew first blood in it also finished
+         * with two kills, so the second clause was decorative and the two
+         * cards asked one question. They even shared a *name*.
+         *
+         * Re-aimed rather than deleted, per §1.4: a `kills` threshold on top
+         * of a `kills`-shaped achievement was never going to separate, so the
+         * new clause is on a different axis entirely.
+         */
+        test: (state, v) => !!v && state.firstBloodId === v.id
+            && (v.woundsLogged ?? 0) === 0,
+        nearMiss: (state, v) => (state.firstBloodId === v?.id && (v?.woundsLogged ?? 0) > 0
+            ? `first blood was theirs, and so were ${v?.woundsLogged} wound${v?.woundsLogged === 1 ? '' : 's'}` : undefined),
     },
     {
         id: 'a8-the-long-reach',
@@ -4911,7 +4923,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'a8-the-whole-charter',
         name: 'The Whole Charter',
         hint: 'See a charter of five clauses or more sworn in a single Games.',
-        category: 'social', rarity: 'possible',
+        category: 'social', rarity: 'legendary',
         test: state => (state.deepestCharter ?? 0) >= 5,
         nearMiss: state => ((state.deepestCharter ?? 0) === 4
             ? 'the deepest charter this year ran to four clauses' : undefined),
@@ -5143,7 +5155,24 @@ export const ACHIEVEMENTS: Achievement[] = [
         // AUDIT-8: the duplicate guard from §1.4 caught this as identical to
         // 'made-them-blink' on its first run — which is the guard doing its job on the
         // very next batch written. Re-aimed at a question nothing else asks.
-        test: (state, v) => state.gamemakerSignatureFired === true && !!v && v.kills === 0,
+        /*
+         * AUDIT-8 §12.5: caught a *second* time, by the same guard, after the
+         * archetype batch shifted the sample — `gamemakerSignatureFired` is
+         * true in very nearly every Games, so this predicate had quietly
+         * degenerated back into `bloodless-crown` with an extra clause on it.
+         *
+         * The lesson the guard keeps teaching is that a near-universal flag
+         * is not a condition. Re-aimed at the intervention itself being the
+         * thing that decided it: the victor came out of a year the Head
+         * Gamemaker meddled in having killed nobody *and* having been on the
+         * receiving end of the arena rather than of anybody in it.
+         */
+        test: (state, v) => state.gamemakerSignatureFired === true && !!v
+            && v.kills === 0 && (v.woundsLogged ?? 0) >= 3,
+        nearMiss: (state, v) => (state.gamemakerSignatureFired === true && !!v && v.kills === 0
+            && (v.woundsLogged ?? 0) > 0 && (v.woundsLogged ?? 0) < 3
+            ? `the Gamemaker leaned on them for ${v.woundsLogged} wound${v.woundsLogged === 1 ? '' : 's'} — three is the mark`
+            : undefined),
     },
     {
         id: 'a8-bought-nothing',
@@ -5242,6 +5271,19 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'games', rarity: 'possible',
         test: state => Object.keys(state.alliances ?? {}).length === 0
             && !state.tributes.some(t => (t.formerAllies ?? []).length > 0),
+        // AUDIT-8 §12.5: this fired once in 500 runs before the archetype
+        // batch and zero times after it — the Orderly and the Inheritor are
+        // both high-affinity, so a field with nobody willing to pair up got
+        // rarer still. The entry stays (a Games where nobody trusts anybody
+        // is a real outcome and worth a card), but a card nobody earns and
+        // nobody is told about is the thing §2.4 exists to stop.
+        nearMiss: state => {
+            const formed = Object.keys(state.alliances ?? {}).length
+                + state.tributes.filter(t => (t.formerAllies ?? []).length > 0).length;
+            return formed > 0 && formed <= 3
+                ? `${formed} tribute${formed === 1 ? '' : 's'} found somebody this year — the rest never did`
+                : undefined;
+        },
     },
     {
         id: 'a8-everybody-knew-everybody',

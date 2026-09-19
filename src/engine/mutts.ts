@@ -12,7 +12,8 @@ import { addZoneThreat, ensureMemory, cycleOf, rattle } from './memory';
 import { hasEffect } from './zoneEffects';
 import { injure, openWound } from './wounds';
 import { clampTribute } from './vitals';
-import { trainProficiency } from './proficiency';
+import { PROFICIENCY } from '../data/balance';
+import { profOf, trainProficiency } from './proficiency';
 import { earnTrait } from './earnedTraits';
 import { wildcardIs } from './gamesProfile';
 import { loseSanity } from './sanityBands';
@@ -187,11 +188,17 @@ export function engageMutt(ctx: SimContext, t: Tribute, mutt: Mutt) {
     // Roll evasion once per mutt in the pack — more mutts, more chances to connect.
     let hits = 0;
     for (let i = 0; i < packSize; i++) {
-        const roll = t.attributes.agility + ctx.rng.nextInt(0, MUTTS.evasionRollSpread);
+        // §12.4: agility is how fast you are; `husbandry` is knowing which
+        // way the thing in front of you is going to go. A tribute who has
+        // walked away from mutts before walks away from them again.
+        const roll = t.attributes.agility
+            + profOf(t, 'husbandry') * PROFICIENCY.husbandryMuttEvasion
+            + ctx.rng.nextInt(0, MUTTS.evasionRollSpread);
         if (roll <= mutt.speed) hits++;
     }
 
     if (hits === 0) {
+        trainProficiency(t, 'husbandry', ctx);
         ctx.logEvent(
             packSize > 1
                 ? `${t.name} outruns a pack of ${mutt.name} through ${t.zone}.`
@@ -202,6 +209,8 @@ export function engageMutt(ctx: SimContext, t: Tribute, mutt: Mutt) {
         clampTribute(t);
         return;
     }
+
+    trainProficiency(t, 'husbandry', undefined, PROFICIENCY.husbandryMuttShare);
 
     // `herder` never damages — a connecting hit shoves the tribute into an
     // adjacent zone instead, and the encounter ends there.

@@ -79,7 +79,15 @@ function bracingHelps(event: ArenaEventDef): boolean {
 function bracedDamage(t: Tribute, event: ArenaEventDef): number {
     const raw = event.damage ?? 0;
     if (raw <= 0 || !bracingHelps(event)) return raw;
-    const soak = Math.min(ENCOUNTERS.braceMaxSoak, t.attributes.strength * ENCOUNTERS.bracePerStrength);
+    // §12.4: this function is called bracing and it read nothing but raw
+    // strength, which is why the skill is named for it. A point of `bracing`
+    // is worth rather less than a point of strength here — the frame is still
+    // most of it — but having done this before is worth something.
+    const soak = Math.min(
+        ENCOUNTERS.braceMaxSoak,
+        (t.attributes.strength + profOf(t, 'bracing') * PROFICIENCY.bracingSoakPerPoint)
+            * ENCOUNTERS.bracePerStrength,
+    );
     return Math.max(1, Math.round(raw * (1 - soak)));
 }
 
@@ -133,6 +141,8 @@ function rollEscape(ctx: SimContext, t: Tribute, event: ArenaEventDef, isBoon: b
             log(alt === 'strength'
                 ? `{tribute} takes the worst of it in {zone} and is still standing when it passes.`
                 : event.escapeText);
+            // §12.4: standing in it and not going down is the lesson.
+            if (alt === 'strength') trainProficiency(t, 'bracing', ctx);
             return true;
         }
     }
@@ -814,6 +824,8 @@ function huntAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeof arena
         );
         trainProficiency(t, 'butchery');
         trainProficiency(t, 'tracking');
+        // §12.4: catching it is the animal skill; what happens next is the knife.
+        trainProficiency(t, 'husbandry');
         clampTribute(t);
         ctx.logEvent(
             `${t.name} runs down something small in ${t.zone} and eats it where it fell.`,
@@ -832,7 +844,9 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
     const fishing = hasTool(t, 'fishing')
         && (zone?.terrain === 'water' || zone?.terrain === 'wetland');
     const baseForageChance = ZONES.baseForageChance
-        + (fishing ? ZONES.fishingBonus : 0)
+        // §12.4: a net is only as good as the person setting it, and until
+        // now it was exactly as good for everybody.
+        + (fishing ? ZONES.fishingBonus + profOf(t, 'husbandry') * PROFICIENCY.husbandryFishingWeight : 0)
         // §11.5: a light after dark turns groping into searching.
         + (ctx.state.timeOfDay === 'night' && hasTool(t, 'light') ? TOOLS.lightNightForageBonus : 0)
         + available * ZONES.yieldForageWeight
@@ -1025,6 +1039,9 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
             noteSighting(ctx.state, t, z.name, getAlive(ctx.state).filter(o => o.zone === z.name && o.allianceId !== t.allianceId).length, depletionOf(ctx.state, z.name));
         });
         trainProficiency(t, 'tracking');
+        // §12.4: walking a line you have decided to hold is the same discipline
+        // as standing on it.
+        trainProficiency(t, 'bracing', undefined, PROFICIENCY.bracingPatrolShare);
         return;
     }
 

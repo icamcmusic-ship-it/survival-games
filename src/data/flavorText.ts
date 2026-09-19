@@ -283,6 +283,15 @@ export const CAESAR_QUESTIONS = {
             'Caesar asks {tribute} what he is thinking. {tribute} tells him, and Caesar moves the interview on rather quickly.',
             '"You are reading me," Caesar says. {tribute} says they are reading the hands, and that the face is very good.',
         ],
+        // AUDIT-8 §12.4
+        husbandry: [
+            'Caesar asks whether {tribute} is afraid of dogs. {tribute} says dogs are afraid of people, mostly, and that the ones that are not are the problem.',
+            '"You have been bitten," Caesar observes. {tribute} shows him where, and the Capitol decides it is charming.',
+        ],
+        bracing: [
+            'Caesar asks {tribute} what they do when there is nowhere to go. {tribute} says you put your feet properly and you stop going anywhere.',
+            '"Do you run?" Caesar asks {tribute}. {tribute} says running is for people who have somewhere better, and lets that sit.',
+        ],
     },
     /** Keyed on the district's trade, so a tribute is asked about home properly. */
     district: [
@@ -4123,6 +4132,69 @@ export const ARCHETYPE_SIGNATURE_TEXTS: Record<string, string[]> = {
         'The commentary desk has run out of ways to not mention {tribute}, and in {zone} they stop trying.',
         'There is a name on the board that nobody has footage of. In {zone}, {tribute} becomes real to the audience.',
         '{tribute} has not been seen in days and is still alive, and the Capitol has decided that is a story.',
+    ],
+    // AUDIT-8 §12.5: eight lines each, which is the floor `check-flavor-pools`
+    // holds every signature pool to — a once-per-run beat a player sees worded
+    // the same way twice has stopped being a set piece.
+    lureOpening: [
+        '{tribute} walks out into the middle of {zone} and stands there. Nothing about it is an accident; they spent the morning on the ground around them.',
+        'There is an obvious person in the open in {zone}, and the obviousness is the point. {tribute} does not look up.',
+        '{tribute} makes themselves the easiest thing to see in {zone} and then waits to find out who agrees.',
+        'Anyone watching {zone} would say {tribute} has made a mistake. {tribute} would like them to keep thinking so.',
+        '{tribute} sits down in the open in {zone} with their back to two directions they already know nobody can come from.',
+        'The sensible thing in {zone} is cover. {tribute} steps out of it and lets the cameras have them.',
+        '{tribute} lights a small fire in the worst possible place in {zone} and settles in beside it.',
+        'What {tribute} has built in {zone} does not look like anything. What {tribute} is doing in the middle of it looks like carelessness.',
+    ],
+    orderlyTriage: [
+        '{tribute} goes down the line in {zone} worst first — {target} before anyone — and does not ask a single person which district they are from.',
+        'There are {count} people in {zone} who need something. {tribute} starts with {target}, because {target} has the least time.',
+        '{tribute} works in {zone} the way somebody works who has done this before and expects to do it again tomorrow.',
+        'Nobody asked {tribute} to. {tribute} is already kneeling beside {target} with their sleeves pushed up.',
+        '{tribute} puts a hand flat on {target} and says the only useful thing anybody has said in {zone} all day: hold still.',
+        'In {zone}, {tribute} decides the order. {target} first. The arguing can happen afterwards.',
+        '{tribute} packs what is open on {target}, moves on, and does not look back to see whether it held.',
+        'It is not kindness exactly, what {tribute} does in {zone}. It is closer to housekeeping, and {target} will take it.',
+    ],
+    droverDrive: [
+        '{tribute} does not look at {target} the way people look at {target}. They look at the ground between {target} and {dest}.',
+        '{target} has decided to go to {dest}. {target} believes this was their own idea. It was {tribute}’s.',
+        '{tribute} makes {zone} feel wrong to {target} without ever being in it, and {dest} start looking like the sensible choice.',
+        'Back home {tribute} moved things that weighed forty times what they did, by deciding where those things were going. {target} is not heavier than that.',
+        '{tribute} puts one sound in the wrong place and {target} turns toward {dest} without knowing why.',
+        'There is nothing in {dest} that {target} wants. {target} goes anyway, and {tribute} watches them go.',
+        '{tribute} never touches {target}. {target} ends up in {dest} regardless, which was the entire plan.',
+        'You do not fight the big one, {tribute}’s father used to say. You tell it where the gate is. {target} finds the gate.',
+    ],
+    beaconSignal: [
+        '{tribute} builds the fire on the highest thing in {zone} and makes it bigger than it needs to be, because the point is not warmth.',
+        'Everyone in the arena now knows where {tribute} is. {tribute} arranged that, and would do it again.',
+        '{tribute} stands on the top of {zone} with their arms out and gives the Capitol something worth cutting to.',
+        'The smoke over {zone} is a signal and it is not meant for anybody in here.',
+        '{tribute} has worked out that the arena has two halves and only one of them is on the ground. This is the other one.',
+        'Hiding is free, {tribute} thinks, and free things are worth what you pay. The fire in {zone} goes up.',
+        '{tribute} makes a shape on the high ground in {zone} that is visible from every sector, and holds it long enough to be sure.',
+        'Somewhere a long way from {zone}, somebody with money leans forward. That is what {tribute} came up here for.',
+    ],
+    factorAudit: [
+        '{tribute} has been counting since the gong, and what the count says is that {target} is carrying more than anybody.',
+        '"Somebody has the good knife," {tribute} says to nobody in {zone}, "and I know who." {target} does not know they have been named.',
+        '{tribute} could tell you what every person still alive is carrying and roughly what it cost them.',
+        'There is a ledger in {tribute}’s head and tonight it balances. {target} is at the top of it.',
+        '{tribute} does not want to fight {target}. {tribute} wants to know exactly when {target} puts the pack down.',
+        'In {zone}, {tribute} works out what everything in this arena is worth and who is currently holding it. {target} is the answer to the second question.',
+        '{tribute} kept books for a man who would have been whipped for keeping them. The habit did not stop at the fence.',
+        'Everything is worth something to somebody, {tribute} thinks, watching {target} across two sectors of nothing.',
+    ],
+    inheritorClaim: [
+        'When the group in {zone} needs somebody to say the next thing, {tribute} is already standing. All {count} of them notice.',
+        '{tribute} has been the second person in every room they have ever been in, and has been ready to not be for some time.',
+        'Nobody votes. {tribute} simply answers a question that was addressed to somebody else, and the group in {zone} lets them.',
+        '{tribute} takes one step forward in {zone}, which is exactly one more than anybody else takes.',
+        'The group of {count} in {zone} settles around {tribute} the way water finds the low ground, and nobody says so out loud.',
+        '"After you," {tribute} says, and means it, and everybody there understands the arrangement perfectly.',
+        '{tribute} does not ask for it. {tribute} arranges to be the obvious answer and waits for the question.',
+        'Somebody in {zone} says "so what do we do" and looks at {tribute} without deciding to.',
     ],
 };
 

@@ -1,6 +1,6 @@
 import { GameState, Stance, TraceReason, Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
-import { DECISION_TRACE, FEAR, RISK, RIVAL_READ, STANCE, STANCE_HOLD, STANCE_MODES, STEALTH, VITALS } from '../data/balance';
+import { DECISION_TRACE, FEAR, PROFICIENCY, RISK, RIVAL_READ, STANCE, STANCE_HOLD, STANCE_MODES, STEALTH, VITALS } from '../data/balance';
 import { STANCES, STANCE_PROFILES } from '../data/stances';
 import { SimContext } from './context';
 import { sleepStanceHold } from './survival';
@@ -12,7 +12,7 @@ import { fearOf } from './fear';
 import { massOf, visibleBulk } from './physique';
 import { dreadOf, isCowed } from './intent';
 import { traitMod } from '../data/traits';
-import { profOf } from './proficiency';
+import { profOf, trainProficiency } from './proficiency';
 import { hasBroken } from './resolve';
 import { awareness } from './stealth';
 import { getZone, reachableZones, zoneFeatures } from './map';
@@ -761,6 +761,8 @@ function stanceReasons(ctx: SimContext, t: Tribute, sig: StanceSignals, stance: 
         const camp = ctx.state.camps?.[t.id];
         if (camp?.fire !== undefined || camp?.camouflage !== undefined) push('a camp they built', STANCE_HOLD.fortifiedCampBonus);
         if (sig.kit >= STANCE_HOLD.fortifiedSuppliedKit) push('supplies worth defending', STANCE_HOLD.fortifiedSuppliedBonus);
+        // §12.4: a tribute who has dug in before reaches for it sooner.
+        if (profOf(t, 'bracing') > 0) push('has held ground before', profOf(t, 'bracing') * PROFICIENCY.bracingHoldWeight);
     } else if (stance === 'Shadowing') {
         push('stealth', (t.attributes.stealth - STANCE_MODES.shadowing.stealthMin) * STANCE_MODES.shadowing.perStealthPoint);
         const quarry = sig.shadowTarget?.id ?? t.shadowing?.targetId;
@@ -865,7 +867,11 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
 
     if (bestStance === t.stance) {
         t.stanceHeld += 1;
-        if (t.stance === 'Fortified') t.fortifiedCycles = (t.fortifiedCycles ?? 0) + 1;
+        if (t.stance === 'Fortified') {
+            t.fortifiedCycles = (t.fortifiedCycles ?? 0) + 1;
+            // §12.4: the skill that improves by doing the thing.
+            trainProficiency(t, 'bracing', undefined, PROFICIENCY.bracingHeldShare);
+        }
         settleShadowing();
         return;
     }
@@ -896,7 +902,11 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
         // stance, not only the ones where the scorer re-picks it outright.
         // Held here by the hysteresis *is* held, and the set piece that reads
         // this counter was being stepped over on the cycles it skipped.
-        if (t.stance === 'Fortified') t.fortifiedCycles = (t.fortifiedCycles ?? 0) + 1;
+        if (t.stance === 'Fortified') {
+            t.fortifiedCycles = (t.fortifiedCycles ?? 0) + 1;
+            // §12.4: the skill that improves by doing the thing.
+            trainProficiency(t, 'bracing', undefined, PROFICIENCY.bracingHeldShare);
+        }
         settleShadowing();
         return;
     }
@@ -915,7 +925,11 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
     const margin = STANCE.switchMargin * (1 + (t.stanceChurn ?? 0) * STANCE.churnMarginPerSwitch);
     if (stillValid && bestScore < (scores[t.stance] ?? -Infinity) + margin) {
         t.stanceHeld += 1;
-        if (t.stance === 'Fortified') t.fortifiedCycles = (t.fortifiedCycles ?? 0) + 1;
+        if (t.stance === 'Fortified') {
+            t.fortifiedCycles = (t.fortifiedCycles ?? 0) + 1;
+            // §12.4: the skill that improves by doing the thing.
+            trainProficiency(t, 'bracing', undefined, PROFICIENCY.bracingHeldShare);
+        }
         settleShadowing();
         return;
     }

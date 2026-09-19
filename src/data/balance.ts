@@ -929,6 +929,30 @@ export const PROFICIENCY = {
     oratoryAddressShare: 0.5,
     /** Sitting across from somebody at a parley, whether or not a bluff is thrown. */
     readingParleyShare: 0.4,
+    /*
+     * AUDIT-8 §12.4: the two new axes, and what each is worth where it reads.
+     *
+     * Both are deliberately small at the read end and frequent at the train
+     * end, which is the shape §3.5 established: a rare full-credit site
+     * leaves a population on the floor, and a large read weight on a skill
+     * nobody has is a balance change disguised as content.
+     */
+    /** Per point of `husbandry` added to the roll that decides a mutt misses. */
+    husbandryMuttEvasion: 0.7,
+    /** Walking away from a mutt whole. The lesson is the whole encounter. */
+    husbandryMuttShare: 0.8,
+    /** Per point of `husbandry` on the chance a net in still water comes up full. */
+    husbandryFishingWeight: 0.015,
+    /** Per point of `bracing` added to combat power while Fortified. */
+    bracingFortifiedPower: 0.6,
+    /** Per point of `bracing` on the Fortified hold score — practice at staying. */
+    bracingHoldWeight: 0.25,
+    /** Per point of `bracing`, in points of notional strength, on a hazard soak. */
+    bracingSoakPerPoint: 0.5,
+    /** A cycle spent dug in. Small, because a held position accrues many of them. */
+    bracingHeldShare: 0.3,
+    /** Walking a perimeter is the same discipline from the other side. */
+    bracingPatrolShare: 0.5,
     /**
      * Audit 4 §3.4: what a failed attempt is worth, as a share of a successful
      * one. Used by the wound-dressing path, which is the one skill in the game
@@ -7762,6 +7786,38 @@ export const ARCHETYPE_HOOKS = {
     /** Mean notoriety the rest of the field may hold about them and still not know them. */
     quietNamelessNotoriety: 8,
     quietThreatShed: 0.15,
+    /*
+     * AUDIT-8 §12.5: the six new signatures.
+     *
+     * Every one of them converts into a currency the engine already moves —
+     * remembered zone threat, notoriety, `RivalRecord.read`, sponsor trust,
+     * an alliance's named successor — because §8.1's finding was that a set
+     * piece which converts into nothing measures exactly like no set piece.
+     */
+    /** How much the arena stops fearing the ground the Bait is standing on. */
+    lureThreatShed: 0.3,
+    /** And how much more they think about the person standing on it. */
+    lureNotoriety: 6,
+    /** Health below which the Orderly counts somebody as theirs to work on. */
+    orderlyTriageHealth: 70,
+    /** Nobody works on more than this in one pass; triage is a queue. */
+    orderlyTriageMax: 3,
+    /** Injury grades taken off each of them. One step, not a resurrection. */
+    orderlyTriageHeal: 1,
+    /** What being patched up in an arena is worth, both ways. */
+    orderlyTriageRegard: 12,
+    /** How hard the Drover edits the strongest tribute's read of the ground. */
+    droverThreatPush: 0.45,
+    /** A broadcast position is worth this much to the people paying. */
+    beaconTrust: 14,
+    /** And this much of everybody knowing exactly who you are. */
+    beaconNotoriety: 10,
+    /** And this much of everybody knowing exactly where. */
+    beaconThreat: 0.35,
+    /** `read` gained on every tribute in the field when the books come out. */
+    factorReadGain: 1,
+    /** What standing up at the right moment is worth with the people watching. */
+    inheritorRegard: 10,
 } as const;
 
 

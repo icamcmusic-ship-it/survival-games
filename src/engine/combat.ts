@@ -579,6 +579,17 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
     // is somebody who did not want this fight and is not equipped for it.
     if (t.stance === 'Desperate') power += STANCE_MODES.desperate.powerBonus;
     if (t.stance === 'Scavenging') power -= STANCE_MODES.scavenging.combatPenalty;
+    /*
+     * AUDIT-8 §12.4: and what Fortified is worth, which until now was
+     * nothing at all in an exchange.
+     *
+     * Fortified paid in traps, terrain and a fatigue penalty for leaving, and
+     * the tribute standing in the position they had spent four days preparing
+     * fought exactly as well as the one who had just walked into it. That is
+     * the gap `bracing` is for: the bonus is not for the ground, it is for
+     * having stood on ground before.
+     */
+    if (t.stance === 'Fortified') power += profOf(t, 'bracing') * PROFICIENCY.bracingFortifiedPower;
 
     // What they have learned from losing to this person before.
     power += rematchEdge(t, opponent);

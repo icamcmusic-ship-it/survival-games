@@ -100,7 +100,25 @@ export type ArchetypeId =
      * somebody else standing in the zone is an archetype most players never see
      * do its thing.
      */
-    | 'cartographer' | 'debtor' | 'forecaster' | 'understudy' | 'archivist' | 'quiet';
+    | 'cartographer' | 'debtor' | 'forecaster' | 'understudy' | 'archivist' | 'quiet'
+    /*
+     * AUDIT-8 §12.5: six more, on the rule the last four batches were held to
+     * — each holds a stance/objective/target combination nothing in the table
+     * holds — plus the one this pass adds, from §8.1: **a new archetype must
+     * measure inside the win-rate guards at n=1,600 before it merges.**
+     *
+     * Each of the previous three batches landed at the bottom of the table,
+     * and for a reason that is structural rather than coincidental: the
+     * combinations nothing holds are the ones that were left over because they
+     * are weak. Distinctiveness and balance pull against each other and the
+     * process was only measuring one of them.
+     *
+     * Four of the six exist because a stance or an objective was the top bias
+     * of *nobody*: `Baiting` and `Tending` (added by AUDIT-7 §12.6 and never
+     * given a character), and `flee` and `stalk`. The other two take the two
+     * slots held by exactly one archetype each, `Patrolling` and `wait`.
+     */
+    | 'lure' | 'orderly' | 'drover' | 'beacon' | 'factor' | 'inheritor';
 
 export interface Attributes {
     strength: number;
@@ -258,7 +276,26 @@ export type Proficiency = 'forage' | 'melee' | 'ranged' | 'medicine' | 'tracking
      *    `tracking` standing in again — which is why tracking shows up in
      *    seeing through a bluff.
      */
-    | 'signalling' | 'fieldcookery' | 'pacing' | 'readingPeople';
+    | 'signalling' | 'fieldcookery' | 'pacing' | 'readingPeople'
+    /*
+     * AUDIT-8 §12.4: two more, and only two, under the rule that batch set —
+     * every read site checked before the axis is added, and nothing added
+     * until the starved axes above have been widened (they have: `signalling`
+     * trains on the attempt, `intimidation` on every point of fear inflicted,
+     * `oratory` on every address to a group, `readingPeople` on every parley
+     * attended).
+     *
+     *  - `husbandry` — animals, live. `butchery` covers what comes off a
+     *    corpse; the mutt a tribute walks away from, and the net in still
+     *    water, both resolve off raw `agility` and a flat item flag with no
+     *    skill behind either. This is the axis that says a tribute grew up
+     *    around things that bite.
+     *  - `bracing` — holding a position under pressure. Fortified and
+     *    Patrolling are the whole defensive half of the stance roster and
+     *    they resolve through raw `strength`, trap counts and terrain flags;
+     *    nothing about a tribute got better at digging in by digging in.
+     */
+    | 'husbandry' | 'bracing';
 
 /** Why a tribute is walking somewhere. Drives the chronicle copy as well as the route. */
 export type ObjectiveReason = 'water' | 'shelter' | 'feast' | 'ally' | 'forage'

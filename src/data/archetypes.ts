@@ -1223,6 +1223,163 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         targetDraw: -2.5,
         fearScale: 0.9,
     },
+
+    /*
+     * AUDIT-8 §12.5: six, under a rule the last three batches did not have.
+     *
+     * §8.1 measured every batch since AUDIT-6 landing at the bottom of the
+     * win table, and the reason is structural rather than careless: the
+     * stance/objective/target combinations nothing holds are the ones that
+     * were left over, and they were left over because they are weak. So this
+     * batch carries two rules instead of one — each must hold a combination
+     * nothing else in the table holds, **and** must measure inside the win
+     * guards at n = 1,600 before it merges.
+     *
+     * The uncovered slots, measured against the table as it stood: `Baiting`
+     * and `Tending` were the top stance bias of **nobody**, `Hunting` and
+     * `Patrolling` of one archetype each; `stalk` and `flee` were the top
+     * objective bias of nobody. These six cover exactly those.
+     */
+    lure: {
+        id: 'lure',
+        name: 'The Bait',
+        description: 'Stands in the open on purpose, somewhere they have spent the morning making dangerous, and waits to be walked toward.',
+        statBias: { charisma: 2, intelligence: 1, strength: -2, stealth: -1 },
+        preferredTraits: ['Trapwise', 'Cool-Headed', 'Stone-Faced', 'Showman'],
+        aggression: 0.15,
+        allianceAffinity: -0.05,
+        treachery: 0.25,
+        caution: 0.1,
+        // The whole point: `Baiting` was nobody's top bias, which §3.4 named
+        // as the reason the stance never cleared 1.9% of stance-time.
+        stanceBias: { Baiting: 0.6, Fortified: 0.2, Defensive: 0.1 },
+        objectiveBias: { hold: 0.5, wait: 0.2 },
+        targetPreference: 'nearest',
+        riskCurve: 'flat',
+        signature: 'lureOpening',
+        hatesArchetypes: ['tracker', 'beast', 'career'],
+        tagline: 'Come and get it.',
+        targetDraw: 1.5,
+        fearScale: 1.1,
+    },
+
+    orderly: {
+        id: 'orderly',
+        name: 'The Orderly',
+        description: 'Not a doctor and never claimed to be. Carried stretchers, held people down, cleaned up after, and knows exactly how long somebody has before the thing in their leg decides it.',
+        statBias: { intelligence: 2, endurance: 2, strength: -1, agility: -1 },
+        preferredTraits: ['Field Surgeon', 'Softhearted', 'Steady Hand', 'Set Bones'],
+        aggression: -0.25,
+        allianceAffinity: 0.35,
+        treachery: -0.2,
+        caution: 0.2,
+        // `Tending` had no constituency either, and a stance nobody leans
+        // toward is a stance that only fires by accident.
+        stanceBias: { Tending: 0.6, Nursing: 0.3, Defensive: 0.2 },
+        objectiveBias: { protect: 0.5, survive: 0.2 },
+        targetPreference: 'mostWounded',
+        riskCurve: 'escalating',
+        signature: 'orderlyTriage',
+        hatesArchetypes: ['captor', 'beast'],
+        tagline: 'Somebody has to.',
+        targetDraw: -2,
+        fearScale: 0.95,
+    },
+
+    drover: {
+        id: 'drover',
+        name: 'The Drover',
+        description: 'Spent their life moving animals bigger than themselves by deciding where those animals were going to go. Does not fight the largest thing in the arena. Steers it.',
+        statBias: { endurance: 2, intelligence: 1, agility: 1, strength: -1 },
+        preferredTraits: ['Beast-Wise', 'Reads Ground', 'Cool-Headed', 'Long Wind'],
+        aggression: -0.05,
+        allianceAffinity: 0.05,
+        treachery: 0.15,
+        caution: 0.3,
+        stanceBias: { Evasive: 0.5, Baiting: 0.3, Shadowing: 0.2 },
+        // The only archetype that picks the biggest threat in the field and
+        // then runs away from it on purpose. `flee` was nobody's top bias.
+        objectiveBias: { flee: 0.6, stalk: 0.2 },
+        targetPreference: 'strongest',
+        riskCurve: 'front-loaded',
+        signature: 'droverDrive',
+        hatesArchetypes: ['career', 'duellist'],
+        tagline: 'It goes where I want it to go.',
+        targetDraw: -1,
+        fearScale: 0.75,
+    },
+
+    beacon: {
+        id: 'beacon',
+        name: 'The Beacon',
+        description: 'Believes, correctly, that the only currency in here is being watched. Lights fires on high ground and tells the sky exactly where they are, because the sponsors are the other half of the arena.',
+        statBias: { charisma: 3, intelligence: 1, stealth: -3 },
+        preferredTraits: ['Showman', 'Reads The Sky', 'Trusted Voice', 'Crowd-Pleaser'],
+        aggression: 0,
+        allianceAffinity: 0.2,
+        treachery: 0,
+        caution: -0.1,
+        stanceBias: { Fortified: 0.5, Patrolling: 0.2, Defensive: 0.1 },
+        objectiveBias: { reach: 0.5, hold: 0.3 },
+        // The one target reading that was authored and never used as a top
+        // preference by anything: they go for whoever the arena is already
+        // talking about, because that is the shot.
+        targetPreference: 'mostFamous',
+        riskCurve: 'late-blooming',
+        signature: 'beaconSignal',
+        hatesArchetypes: ['ghost', 'quiet', 'opportunist'],
+        tagline: 'Look up.',
+        targetDraw: 2.5,
+        fearScale: 1.05,
+    },
+
+    factor: {
+        id: 'factor',
+        name: 'The Factor',
+        description: 'Kept the books for somebody who would have been beaten for keeping them himself. Knows what everything in the arena is worth, who is holding it, and how long they can hold it for.',
+        statBias: { intelligence: 3, charisma: 1, strength: -2, endurance: -1 },
+        preferredTraits: ['Keeps Books', 'Hoarder', 'Tallyman', 'Horse Trader'],
+        aggression: -0.1,
+        allianceAffinity: 0.15,
+        treachery: 0.3,
+        caution: 0.25,
+        // `Patrolling` was the top bias of exactly one archetype and 0.9% of
+        // stance-time, which is the definition of an authored stance nobody
+        // is for.
+        stanceBias: { Patrolling: 0.55, Defensive: 0.2, Scavenging: 0.2 },
+        objectiveBias: { wait: 0.5, hold: 0.2 },
+        targetPreference: 'richest',
+        riskCurve: 'escalating',
+        signature: 'factorAudit',
+        hatesArchetypes: ['scavenger', 'debtor', 'broker'],
+        tagline: 'Everything is worth something to somebody.',
+        targetDraw: 0.5,
+        fearScale: 1,
+    },
+
+    inheritor: {
+        id: 'inheritor',
+        name: 'The Inheritor',
+        description: 'Came in as somebody else’s second and has been quietly ready to not be one since the first morning. Will hold the alliance together and will take it the moment it is offered.',
+        statBias: { charisma: 2, willpower: 2, strength: -1 },
+        preferredTraits: ["Standard-Bearer's Second", 'Hangs Back', 'Trusted Voice', 'Reads The Room'],
+        aggression: 0.1,
+        allianceAffinity: 0.4,
+        treachery: 0.35,
+        caution: 0.15,
+        stanceBias: { Nursing: 0.4, Defensive: 0.3, Shadowing: 0.2 },
+        // `stalk` was nobody's top objective bias, and the reading that makes
+        // it a character rather than a lurk is that the person being followed
+        // is somebody they are *in an alliance with*.
+        objectiveBias: { stalk: 0.5, protect: 0.4 },
+        targetPreference: 'rival',
+        riskCurve: 'late-blooming',
+        signature: 'inheritorClaim',
+        hatesArchetypes: ['bellwether', 'understudy'],
+        tagline: 'After you.',
+        targetDraw: -0.5,
+        fearScale: 0.9,
+    },
 };
 
 /**
@@ -1319,6 +1476,19 @@ const BASE_WEIGHTS: ArchetypeWeights = {
     understudy: 0.8,
     archivist: 0.8,
     quiet: 0.8,
+    /*
+     * AUDIT-8 §12.5. Same 0.8, for the same reason the last batch kept it:
+     * the flat baseline is what keeps the draw spread narrow enough for
+     * `metrics.ts` to render a verdict on every archetype at n = 1,600, and
+     * this batch is the one with a measured balance gate attached, so it is
+     * the last batch that can afford a thumb on the scale.
+     */
+    lure: 0.8,
+    orderly: 0.8,
+    drover: 0.8,
+    beacon: 0.8,
+    factor: 0.8,
+    inheritor: 0.8,
 };
 
 /** Career districts train for it; everyone else is shaped by their industry. */
