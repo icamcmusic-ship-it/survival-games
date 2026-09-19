@@ -4166,6 +4166,16 @@ export const STANCE_MODES = {
         concealmentCost: 0.25,
         /** Added to the chance somebody else walks into this sector. */
         trafficDraw: 0.2,
+        /*
+         * AUDIT-8 §12.5: what the bait is actually for.
+         *
+         * `fortified.trapTriggerMultiplier` has paid a dug-in owner for
+         * tending their ground since A1; a Baiting owner does the same work
+         * in one cycle and was paid nothing, which is why §3.4 measured the
+         * stance firing more and the trap conversion rate not moving. Below
+         * Fortified's, because days of tending should beat one afternoon.
+         */
+        trapTriggerMultiplier: 1.25,
     },
     /** How much of the archetype's temperament a conditional stance inherits. */
     conditionalArchetypeWeight: 0.5,
@@ -7814,6 +7824,8 @@ export const ARCHETYPE_HOOKS = {
     beaconNotoriety: 10,
     /** And this much of everybody knowing exactly where. */
     beaconThreat: 0.35,
+    /** What the same signal is worth from low ground, with nothing burning under it. */
+    beaconLowGroundShare: 0.45,
     /** `read` gained on every tribute in the field when the books come out. */
     factorReadGain: 1,
     /** What standing up at the right moment is worth with the people watching. */

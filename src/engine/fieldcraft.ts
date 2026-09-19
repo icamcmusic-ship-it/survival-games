@@ -4,7 +4,7 @@ import { SimContext } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { addZoneThreat, cycleOf, rattle, noteSighting } from './memory';
 import { endgameEdge } from './objectives';
-import { getZone, zoneFeatures } from './map';
+import { getZone, zoneFeatures, reachableZones } from './map';
 import { hasEffect } from './zoneEffects';
 import { clampTribute } from './vitals';
 import { injure, openWound } from './wounds';
@@ -293,9 +293,32 @@ export function checkTraps(ctx: SimContext, t: Tribute) {
     // A1: a Fortified owner has been tending their ground. Their traps are
     // better hidden and bite harder against anyone who walks onto it.
     const fortifiedOwner = owner?.status === 'alive' && owner.stance === 'Fortified' && owner.zone === trap.zone;
-    const concealment = fortifiedOwner
-        ? Math.min(0.95, trap.concealment * STANCE_MODES.fortified.trapTriggerMultiplier)
-        : trap.concealment;
+    /*
+     * AUDIT-8 §12.5 / §3.4: and a Baiting owner, which is the whole reason
+     * the stance exists.
+     *
+     * §3.4's finding was that `Baiting` was written to convert fieldcraft's
+     * 72% untriggered traps and did not move the number at all. The gate was
+     * widened to see the trapline (§3.4) so the stance now fires — and it
+     * still had no effect on the trap. A tribute standing in the open on
+     * purpose, drawing somebody onto ground they prepared, is doing the
+     * *same* thing a Fortified owner does and the engine paid one of them
+     * for it. Worth slightly less than Fortified, which is days of tending
+     * rather than one cycle of standing there.
+     */
+    const baitingOwner = owner?.status === 'alive' && owner.stance === 'Baiting'
+        // Here or one zone over: `Baiting`'s own gate reads `ownTrapsHere` or
+        // `ownTrapsAdjacent`, because a trapline is a shape around a position
+        // rather than a tile, and this has to agree with it.
+        && (owner.zone === trap.zone
+            || reachableZones(ctx.state.arena, owner.zone, ctx.state.collapsedZones ?? [])
+                .some(z => z.name === trap.zone));
+    const tended = fortifiedOwner
+        ? STANCE_MODES.fortified.trapTriggerMultiplier
+        : baitingOwner ? STANCE_MODES.baiting.trapTriggerMultiplier : 1;
+    const concealment = tended === 1
+        ? trap.concealment
+        : Math.min(0.95, trap.concealment * tended);
     const spotted = ctx.rng.chance(Math.max(0.05, Math.min(0.9, awareness(t) / 20)))
         && !ctx.rng.chance(concealment);
 

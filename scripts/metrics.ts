@@ -1287,6 +1287,22 @@ if (underSampled.length) {
         console.log(`  These two lines are the design targets over the real cast, and every`);
         console.log(`  archetype cleared ${GUARD_MIN_SAMPLE} entrants at ${runs} runs, so the verdict stands.`);
     }
+    /*
+     * AUDIT-8 §12.5: the whole table, on request.
+     *
+     * This block printed the best row, the worst row and a spread, which is
+     * enough to fail a build and not enough to fix one — diagnosing a batch
+     * of six new archetypes meant reading two numbers and guessing at the
+     * other thirty-nine. The rows already exist; only the printing did not.
+     * Off by default because forty-one lines in every CI log is noise.
+     */
+    if (process.env.METRICS_ARCHETYPE_TABLE) {
+        console.log('  the whole table, worst first:');
+        [...archetypeRates].reverse().forEach(([id, r, n]) => {
+            const flag = n < GUARD_MIN_SAMPLE ? ' (under sample)' : '';
+            console.log(`    ${id.padEnd(14)} ${(r * 100).toFixed(2).padStart(6)}%  n=${String(n).padStart(5)}${flag}`);
+        });
+    }
 }
 
 /*

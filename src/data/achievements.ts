@@ -2806,7 +2806,16 @@ export const ACHIEVEMENTS: Achievement[] = [
         // Audit 5 §1.7: two scars on a victor measured 0 in 400 runs, and 6
         // tributes of 9,600 ever carried two. One scar on the winner is 5 of
         // 389 victors — the legendary it was always going to be.
-        test: (_s, v) => Object.values(v?.scars ?? {}).filter(Boolean).length >= 1,
+        //
+        // AUDIT-8 §12.5: and that is precisely why the duplicate guard caught
+        // this against `one-wound`. `>= 1` and `=== 1` are the same predicate
+        // for as long as no victor ever carries two, which is every run so
+        // far — two cards, one question, and the count was never the thing
+        // this card's own name and hint were about. "An old wound that never
+        // closed properly" is a standing injury, not a healed mark, and the
+        // engine has kept the grade the whole time.
+        test: (_s, v) => Object.values(v?.injurySeverity ?? {})
+            .some((g): g is number => typeof g === 'number' && g >= 2),
         nearMiss: (_s, v) => {
             if (!v) return undefined;
             const grades = Object.values(v.injurySeverity ?? {}).filter((g): g is number => typeof g === 'number');

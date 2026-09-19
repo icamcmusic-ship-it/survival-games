@@ -1244,7 +1244,27 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'lure',
         name: 'The Bait',
         description: 'Stands in the open on purpose, somewhere they have spent the morning making dangerous, and waits to be walked toward.',
-        statBias: { charisma: 2, intelligence: 1, strength: -2, stealth: -1 },
+        /*
+         * AUDIT-8 §12.5, second pass. The gate this batch attached to itself
+         * caught this archetype and nothing else: at n = 1,600 `lure`
+         * measured 2.10% against a guard of 2.6%, the worst row in the table
+         * and the exact failure §8.1 predicted for a new batch.
+         *
+         * Measured, the sheet counted "conspicuous" three times over. The
+         * Baiting stance already sheds concealment (`stealth.ts`), the
+         * signature already sheds the field's remembered threat about the
+         * zone to pull people in, and then `targetDraw: 1.5` told the whole
+         * arena to come and find them on top of both. Two negatives on the
+         * stat line under all that made a tribute who is easy to reach and
+         * cannot win the fight they have arranged.
+         *
+         * So the draw comes off — the Bait's visibility is a thing they
+         * *do*, priced twice already, not a thing they are — and the frame
+         * comes up one point. The payoff moves to where §3.4 wanted it in
+         * the first place: a Baiting owner's traps now bite (`fieldcraft.ts`),
+         * which converts the stance instead of compensating the archetype.
+         */
+        statBias: { charisma: 2, intelligence: 1, willpower: 1, strength: -1, stealth: -1 },
         preferredTraits: ['Trapwise', 'Cool-Headed', 'Stone-Faced', 'Showman'],
         aggression: 0.15,
         allianceAffinity: -0.05,
@@ -1259,7 +1279,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         signature: 'lureOpening',
         hatesArchetypes: ['tracker', 'beast', 'career'],
         tagline: 'Come and get it.',
-        targetDraw: 1.5,
+        targetDraw: -0.5,
         fearScale: 1.1,
     },
 
@@ -1493,25 +1513,33 @@ const BASE_WEIGHTS: ArchetypeWeights = {
 
 /** Career districts train for it; everyone else is shaped by their industry. */
 export const DISTRICT_ARCHETYPE_WEIGHTS: Record<number, ArchetypeWeights> = {
-    1:  { career: 7, trickster: 1.5, strategist: 1, diplomat: 1.2, herald: 1.2, duellist: 1.2 },
-    2:  { career: 8, protector: 1.5, wildcard: 1, zealot: 1.5, duellist: 1.5, warden: 1.2 },
-    3:  { strategist: 4, trickster: 2, underdog: 1.5, saboteur: 1.5, scholar: 1.5, broker: 1.2 },
-    4:  { career: 6, survivalist: 2, protector: 1.5, medic: 1.2, forager: 1.5 },
-    5:  { strategist: 2.5, trickster: 2, wildcard: 1.5, mercenary: 1.5, scholar: 1.5, broker: 1.5 },
-    6:  { wildcard: 2.5, underdog: 2, trickster: 1.5, mercenary: 1.5, ghost: 1.5, broker: 1.2 },
-    7:  { protector: 2.5, survivalist: 2, wildcard: 1.5, beast: 1.2, warden: 1.5, forager: 1.2 },
-    8:  { underdog: 2.5, trickster: 2, protector: 1.5, saboteur: 1.5, broker: 1.2 },
-    9:  { survivalist: 2.5, underdog: 2, protector: 1.5, ghost: 1.5, forager: 2 },
-    10: { protector: 2.5, survivalist: 2, wildcard: 1.5, beast: 1.2, forager: 1.5, warden: 1.2 },
-    11: { survivalist: 3.5, underdog: 2.5, protector: 1.5, zealot: 1.2, medic: 1.5, forager: 2, penitent: 1.5 },
-    12: { survivalist: 3, underdog: 3, trickster: 1.5, diplomat: 1.2, ghost: 1.5, penitent: 1.5, herald: 1.2 },
+    1:  { career: 7, trickster: 1.5, strategist: 1, diplomat: 1.2, herald: 1.2, duellist: 1.2, beacon: 1.5 },
+    2:  { career: 8, protector: 1.5, wildcard: 1, zealot: 1.5, duellist: 1.5, warden: 1.2, lure: 1.2 },
+    3:  { strategist: 4, trickster: 2, underdog: 1.5, saboteur: 1.5, scholar: 1.5, broker: 1.2, factor: 1.5 },
+    4:  { career: 6, survivalist: 2, protector: 1.5, medic: 1.2, forager: 1.5, drover: 1.5 },
+    5:  { strategist: 2.5, trickster: 2, wildcard: 1.5, mercenary: 1.5, scholar: 1.5, broker: 1.5, factor: 1.5 },
+    6:  { wildcard: 2.5, underdog: 2, trickster: 1.5, mercenary: 1.5, ghost: 1.5, broker: 1.2, drover: 1.5 },
+    7:  { protector: 2.5, survivalist: 2, wildcard: 1.5, beast: 1.2, warden: 1.5, forager: 1.2, orderly: 1.2 },
+    8:  { underdog: 2.5, trickster: 2, protector: 1.5, saboteur: 1.5, broker: 1.2, orderly: 1.5 },
+    9:  { survivalist: 2.5, underdog: 2, protector: 1.5, ghost: 1.5, forager: 2, drover: 2 },
+    10: { protector: 2.5, survivalist: 2, wildcard: 1.5, beast: 1.2, forager: 1.5, warden: 1.2, drover: 2, orderly: 1.2 },
+    11: { survivalist: 3.5, underdog: 2.5, protector: 1.5, zealot: 1.2, medic: 1.5, forager: 2, penitent: 1.5, orderly: 1.5 },
+    12: { survivalist: 3, underdog: 3, trickster: 1.5, diplomat: 1.2, ghost: 1.5, penitent: 1.5, herald: 1.2, inheritor: 1.2 },
     // §1.1: the expanded Games. Districts 13-16 previously had no entry at all,
     // so they fell through to the bare baseline and could never roll a Career
     // — a documented, slider-reachable configuration with an unwritten cast.
-    13: { survivalist: 3, saboteur: 2.5, strategist: 2, scholar: 1.5, warden: 2, penitent: 1.2 },
-    14: { career: 3, mercenary: 2.5, wildcard: 2, beast: 1.2, duellist: 2, broker: 1.2 },
-    15: { protector: 2.5, medic: 2, underdog: 2, zealot: 1.5, penitent: 2, herald: 1.2 },
-    16: { ghost: 2.5, trickster: 2, survivalist: 2, diplomat: 1.5, herald: 2, broker: 1.5 },
+    13: { survivalist: 3, saboteur: 2.5, strategist: 2, scholar: 1.5, warden: 2, penitent: 1.2, factor: 1.5 },
+    14: { career: 3, mercenary: 2.5, wildcard: 2, beast: 1.2, duellist: 2, broker: 1.2, lure: 1.5 },
+    15: { protector: 2.5, medic: 2, underdog: 2, zealot: 1.5, penitent: 2, herald: 1.2, orderly: 2, inheritor: 1.5 },
+    /*
+     * AUDIT-8 §12.5: and the six new ones placed. Every archetype outside the
+     * Careers sits at the same 0.8 baseline, so a district entry is the only
+     * thing that lifts one over `GUARD_MIN_SAMPLE` — and `metrics.ts` reported
+     * `beacon` and `factor` among seven archetypes it could not render a
+     * verdict on at n = 1,600. An archetype the balance table cannot judge is
+     * one that cannot be held to this batch's own gate.
+     */
+    16: { ghost: 2.5, trickster: 2, survivalist: 2, diplomat: 1.5, herald: 2, broker: 1.5, beacon: 2, inheritor: 1.5 },
 };
 
 /**

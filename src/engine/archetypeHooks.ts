@@ -17,7 +17,7 @@ import { clampTribute } from './vitals';
 import { trainProficiency } from './proficiency';
 import { trapsIn } from './fieldcraft';
 import { allianceOf } from './alliance';
-import { getZone, zoneNames, zoneFeatures } from './map';
+import { getZone, reachableZones, zoneNames, zoneFeatures } from './map';
 import { addZoneThreat } from './memory';
 import { hasTruce } from './parley';
 import { ARCHETYPE_SIGNATURE_TEXTS } from '../data/flavorText';
@@ -945,10 +945,40 @@ export const SIGNATURES: Record<string, Signature> = {
     lureOpening: (ctx, t) => {
         const marks = others(ctx, t);
         if (marks.length === 0) return false;
-        const traps = trapsIn(ctx, t.zone).filter(p => p.ownerId === t.id);
+        /*
+         * AUDIT-8 §12.5, second pass. This read `trapsIn(t.zone)` and fired
+         * for **1.4%** of holders against a 29% floor — the worst set piece
+         * in the game — for exactly the reason §3.4 found for the `Baiting`
+         * stance itself: since §6.1 a trapper lays the line on the *approaches*
+         * and not underfoot, so a gate on the tile the tribute is standing on
+         * cannot see the work. `Baiting`'s own precondition was widened to
+         * `ownTrapsHere || ownTrapsAdjacent` for this; the signature has to
+         * agree with it or it is gating on a thing the stance does not mean.
+         *
+         * A chokepoint counts too, and for the same reason it counts for the
+         * stance: ground that funnels people is prepared ground somebody else
+         * prepared.
+         */
+        const zone = getZone(ctx.state.arena, t.zone);
+        const approaches = zone
+            ? reachableZones(ctx.state.arena, t.zone, ctx.state.collapsedZones ?? []).map(z => z.name)
+            : [];
+        const traps = [t.zone, ...approaches]
+            .flatMap(z => trapsIn(ctx, z))
+            .filter(p => p.ownerId === t.id);
+        const feats = zone ? zoneFeatures(zone) : undefined;
+        // ...and, at 25.8% against the 29% floor after the trapline fix, the
+        // same widening `Fortified`'s precondition took for the same reason:
+        // a camp is work done on ground too, and high ground funnels an
+        // approach as surely as a chokepoint does. Either half is prepared
+        // ground; requiring the traps specifically was two rare gates in
+        // series against an archetype that only has the one set piece.
+        const camp = ctx.state.camps?.[t.id];
+        const prepared = (feats?.chokepoint ?? false) || (feats?.elevation ?? false)
+            || camp?.shelter !== undefined || camp?.camouflage !== undefined;
         // Gated on the thing the archetype is *for*: being visible is only a
         // plan if standing there costs somebody else something.
-        if (traps.length === 0) return false;
+        if (traps.length === 0 && !prepared) return false;
         say(ctx, t, 'lureOpening', [t.id]);
         // Everyone who can be drawn is drawn: the zone stops reading as
         // dangerous, which is the whole of the lie.
@@ -1016,17 +1046,45 @@ export const SIGNATURES: Record<string, Signature> = {
         const zone = getZone(ctx.state.arena, t.zone);
         if (!zone) return false;
         const feats = zoneFeatures(zone);
-        // Only from somewhere it can be seen from. That is what makes it a
-        // decision rather than a mood: the high ground is also the exposed
-        // ground, and this archetype has decided that is the trade.
-        if (!feats.elevation) return false;
+        /*
+         * AUDIT-8 §12.5, second pass. This asked for elevation alone and
+         * fired for 14.8% of holders against a 29% floor: high ground is one
+         * feature among several across 45 arenas, and an archetype that can
+         * only perform its own character on a particular tile is an
+         * archetype most of whose holders never perform it.
+         *
+         * A fire is the other half of the same idea and was already in the
+         * archetype's own description — "lights fires on high ground and
+         * tells the sky exactly where they are". A fire tells the sky from
+         * anywhere; the high ground only makes it louder. So either will do,
+         * and it is still a decision rather than a mood, because both are
+         * things the tribute went and did.
+         */
+        const camp = ctx.state.camps?.[t.id];
+        /*
+         * ...and then measured again at 17.3%, because a camp fire is nearly
+         * as rare a thing to be standing next to as high ground is. The gate
+         * was the wrong idea twice over: a Beacon does not need permission
+         * from the terrain to make themselves seen — that is the entire
+         * character — and gating a set piece on a tile means most holders
+         * never perform it.
+         *
+         * So the position stops deciding *whether* and starts deciding *how
+         * much*. The beat always fires while there is anybody left to see it;
+         * high ground or a fire under it is what makes the arena look. That
+         * is the same shape the other thirty-nine signatures have, and it is
+         * the one thing this archetype's whole premise says should be true.
+         */
+        const loud = feats.elevation || camp?.fire !== undefined;
+        if (getAlive(ctx.state).length < 3) return false;
         say(ctx, t, 'beaconSignal', [t.id]);
-        t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.beaconTrust);
+        t.sponsorTrust = Math.min(100, t.sponsorTrust
+            + ARCHETYPE_HOOKS.beaconTrust * (loud ? 1 : ARCHETYPE_HOOKS.beaconLowGroundShare));
         // The cost, and it is a real one: the whole field now knows.
         getAlive(ctx.state).forEach(o => {
             if (o.id === t.id) return;
-            addNotoriety(o, t.id, ARCHETYPE_HOOKS.beaconNotoriety);
-            addZoneThreat(ctx.state, o, t.zone, ARCHETYPE_HOOKS.beaconThreat);
+            addNotoriety(o, t.id, ARCHETYPE_HOOKS.beaconNotoriety * (loud ? 1 : ARCHETYPE_HOOKS.beaconLowGroundShare));
+            addZoneThreat(ctx.state, o, t.zone, ARCHETYPE_HOOKS.beaconThreat * (loud ? 1 : ARCHETYPE_HOOKS.beaconLowGroundShare));
         });
         trainProficiency(t, 'signalling', ctx);
         addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement * ARCHETYPE_HOOKS.signatureGatedMultiplier);
