@@ -1,3 +1,4 @@
+import { ARENA_REVEALS } from '../../data/arenaReveals';
 import { dreadOf } from '../intent';
 import { targetDrawOf } from '../targeting';
 import { SimContext, getAlive } from '../context';
@@ -211,6 +212,30 @@ function hornWeaponsPool(ctx: SimContext): Item[] {
  */
 function pedestalMinute(ctx: SimContext, alive: Tribute[]) {
     const horn = ctx.state.arena.zones[0]?.name ?? 'the Cornucopia';
+    /*
+     * §(requests): the long shot, before anything else happens.
+     *
+     * `PEDESTAL_ARENA_SHOTS` below is a generic opener — it works for any
+     * arena, which is exactly what is wrong with it as the *only* thing said
+     * about this one. `Arena.description` is a catalogue line written to sit
+     * in a list on the setup screen, one or two sentences, and it was carrying
+     * the whole burden of telling a player where they are. So the single most
+     * visual moment in the format was being summarised in eleven words.
+     *
+     * The reveal is a paragraph per arena, specific to the zones that exist,
+     * the law that governs it and the thing that will kill people there.
+     * A hidden-arena run does not get it — naming the place is precisely what
+     * that setting exists to withhold — and a procedural arena has no entry,
+     * which is correct: it has no authored identity to reveal, and the
+     * generator narrates its own.
+     */
+    const reveal = ctx.state.arenaHidden ? undefined : ARENA_REVEALS[ctx.state.arena.id];
+    if (reveal) {
+        ctx.logEvent(reveal, [], {
+            important: true, category: 'arena',
+            fact: `Arena revealed: ${ctx.state.arena.name} — ${ctx.state.arena.zones.length} zones`,
+        });
+    }
     ctx.logEvent(
         ctx.pickText(PEDESTAL_ARENA_SHOTS)
             .split('{arena}').join(ctx.state.arena.name)

@@ -1,3 +1,4 @@
+import { ARENA_REVEALS } from '../data/arenaReveals';
 import React, { useMemo, useState } from 'react';
 import { ARENAS, STARTER_ARENA_IDS, DEFAULT_GAME_CONFIG } from '../data/constants';
 import { MUTATORS, applyMutator, dailyArenaId, dailyConfig, dailySeed, featuredArena, mutatorActive } from '../data/replayHooks';
@@ -823,6 +824,16 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                         <div className={`text-[11px] mt-0.5 leading-snug ${selected ? 'text-[#c9b8a0]' : 'text-[var(--color-ink-500)] line-clamp-2'}`}>
                                             {selected ? a.description : (SIGNATURE_BLURBS[a.id] ?? a.description)}
                                         </div>
+                                        {/* §(requests): the long-form reveal, for a player
+                                            who is choosing rather than being dropped into
+                                            it. Selection only — forty-five of these in a
+                                            list would be unreadable, which is exactly why
+                                            `description` stays a catalogue line. */}
+                                        {selected && ARENA_REVEALS[a.id] && (
+                                            <p className="text-[11px] mt-1.5 leading-relaxed text-[#c9b8a0] m-0">
+                                                {ARENA_REVEALS[a.id]}
+                                            </p>
+                                        )}
                                         {selected && SIGNATURE_BLURBS[a.id] && (
                                             <div className="text-[10px] mt-1 font-mono text-[var(--red)]">
                                                 ⚙ {SIGNATURE_BLURBS[a.id]}
