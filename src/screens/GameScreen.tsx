@@ -1,4 +1,5 @@
 import { dayPhaseLabel } from '../ui/phaseLabels';
+import { SHORTCUTS, boundKey, keyLabel, keyMap } from '../data/shortcuts';
 import { evaluateInRunNearMisses } from '../data/achievements';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Hint } from '../components/Hint';
@@ -343,6 +344,13 @@ export function GameScreen({
         if (shortcutHintRef.current) shortcutHintRef.current.textContent = message;
     };
 
+    /*
+     * AUDIT-8 §2.1: the live key -> command map, rebuilt only when the
+     * player's overrides change. `keyMap` resolves collisions and drops
+     * anything bound over a reserved key, so the handler below never has to.
+     */
+    const KEYS = useMemo(() => keyMap(prefs.shortcutOverrides), [prefs.shortcutOverrides]);
+
     const sortedRoster = useMemo(() => [...gameState.tributes].sort((a, b) => {
         if (a.status !== b.status) return a.status === 'alive' ? -1 : 1;
         if (a.district !== b.district) return a.district - b.district;
@@ -355,7 +363,7 @@ export function GameScreen({
             if (target && (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable)) return;
             if (e.ctrlKey || e.metaKey || e.altKey) return;
             if (selectedTributeId) return;
-            if (showHelp && e.key !== 'Escape' && e.key !== '?') return;
+            if (showHelp && e.key !== 'Escape' && (KEYS[e.key] ?? KEYS[e.key.toLowerCase()]) !== 'help') return;
 
             const zones = arenaSealed ? [] : gameState.arena.zones.map(z => z.name);
             const cycle = <T,>(list: T[], current: T | null, step: number): T | null => {
@@ -421,13 +429,24 @@ export function GameScreen({
 
             const key = e.key;
             const lower = key.toLowerCase();
+            /*
+             * AUDIT-8 §2.1: one lookup, then a switch on the *command*.
+             *
+             * This was twenty `else if` branches comparing `e.key` to a
+             * literal, with the help overlay listing the same twenty in a
+             * second hand-maintained array. Nothing could be rebound — a real
+             * accessibility gap, since `[` and `]` need a modifier on most
+             * non-US layouts and `?` needs Shift on all of them — and the two
+             * lists had already drifted once.
+             */
+            const command = KEYS[key] ?? KEYS[lower];
 
-            if (key === ' ' && !isOver && !runningRef.current) {
+            if (command === 'advance' && !isOver && !runningRef.current) {
                 e.preventDefault();
                 onNextPhase();
-            } else if (lower === 'f') {
+            } else if (command === 'filters') {
                 setShowFilters(v => !v);
-            } else if (lower === 'm') {
+            } else if (command === 'map') {
                 // §17: the shortcut follows the tab. Before the gong there is
                 // no map, and a key that silently switches to a pane that is
                 // not there is worse than a key that says so.
@@ -440,31 +459,31 @@ export function GameScreen({
                         return next;
                     });
                 }
-            } else if (lower === 'c') {
+            } else if (command === 'chronicle') {
                 // §(requests 6): the chronicle is a page, so C navigates to it.
                 gameActions.setView('chronicle');
                 announceShortcut('Chronicle');
-            } else if (lower === 's') {
+            } else if (command === 'standings') {
                 setStageTab('standings');
                 setMobilePane('standings');
                 announceShortcut('Standings');
-            } else if (key === '?') {
+            } else if (command === 'help') {
                 setShowHelp(v => !v);
             } else if (key === 'Escape') {
                 setShowHelp(false);
                 setSelectedTributeId(null);
                 setChronicle({ selectedZone: null });
-            } else if (lower === 'z') {
+            } else if (command === 'cycleZone') {
                 const next = cycle(zones, filters.selectedZone, e.shiftKey ? -1 : 1);
                 setChronicle({ selectedZone: next });
                 announceShortcut(next ? `Sector filter: ${next}` : 'Sector filter cleared');
-            } else if (lower === 't') {
+            } else if (command === 'cycleTribute') {
                 const ids = sortedRoster.map(t => t.id);
                 const next = cycle(ids, filters.filterTributeId, e.shiftKey ? -1 : 1);
                 setChronicle({ filterTributeId: next });
                 const name = next ? sortedRoster.find(t => t.id === next)?.name : null;
                 announceShortcut(name ? `Tribute filter: ${name}` : 'Tribute filter cleared');
-            } else if (lower === 'o') {
+            } else if (command === 'openWatched') {
                 // §2.5: open the dossier of the tribute being watched. The
                 // single most frequent thing a reader does had no key at all.
                 if (watched) {
@@ -473,7 +492,7 @@ export function GameScreen({
                 } else {
                     announceShortcut('No tribute is being watched — star one in the roster, or filter the chronicle to one with T');
                 }
-            } else if (lower === 'x') {
+            } else if (command === 'filterWatched') {
                 // §2.5: narrow the chronicle to that same tribute, and back.
                 if (filters.filterTributeId && (!watched || filters.filterTributeId === watched.id)) {
                     setChronicle({ filterTributeId: null, filterTributeId2: null });
@@ -484,13 +503,13 @@ export function GameScreen({
                 } else {
                     announceShortcut('No tribute is being watched — star one in the roster first');
                 }
-            } else if (lower === 'd') {
+            } else if (command === 'nextDeath') {
                 jumpDeath(e.shiftKey ? -1 : 1);
-            } else if (key === '[') {
+            } else if (command === 'prevDay') {
                 jumpDay(-1);
-            } else if (key === ']') {
+            } else if (command === 'nextDay') {
                 jumpDay(1);
-            } else if (lower === 'i') {
+            } else if (command === 'density') {
                 const next = filters.density === 'everything' ? 'scenes'
                     : filters.density === 'scenes' ? 'headlines' : 'everything';
                 setChronicle({ density: next });
@@ -498,7 +517,7 @@ export function GameScreen({
             // `lower`, like every other letter branch: these two compared the
             // raw key, so CapsLock silently turned off density cycling and
             // play/pause while the help overlay went on advertising both.
-            } else if (lower === 'p' && !isOver) {
+            } else if (command === 'playPause' && !isOver) {
                 setSpeed(s => {
                     const next = s === 'manual' ? '1x' : 'manual';
                     announceShortcut(next === 'manual' ? 'Auto-advance paused' : 'Auto-advance running');
@@ -512,7 +531,7 @@ export function GameScreen({
                     toggleMutedGroup(group.id);
                     announceShortcut(`${group.label} events ${filters.mutedGroups.includes(group.id) ? 'unmuted' : 'muted'}`);
                 }
-            } else if (key === '0') {
+            } else if (command === 'resetFilters') {
                 setChronicle({
                     mutedGroups: [], density: 'everything', searchText: '',
                     filterTributeId: null, filterTributeId2: null, filterPairMode: 'either', filterDay: null, selectedZone: null,
@@ -523,7 +542,7 @@ export function GameScreen({
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [onNextPhase, isOver, selectedTributeId, showHelp, gameState, filters, sortedRoster]);
+    }, [onNextPhase, isOver, selectedTributeId, showHelp, gameState, filters, sortedRoster, KEYS]);
 
     const runningRef = useRef(false);
     runningRef.current = !!runProgress;
@@ -1029,6 +1048,7 @@ export function GameScreen({
 /** §2.3: every binding, in one overlay, reachable from `?`. */
 function HelpOverlay({ onClose }: { onClose: () => void }) {
     const panelRef = useDialogFocus<HTMLDivElement>(onClose);
+    const overrides = useStore(prefsStore, p => p.shortcutOverrides);
     return (
         <div
             className="fixed inset-0 z-50 bg-black/70 flex items-start md:items-center justify-center p-4 overflow-y-auto"
@@ -1047,23 +1067,28 @@ function HelpOverlay({ onClose }: { onClose: () => void }) {
                     <span className="eyebrow">Keyboard</span>
                     <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs text-[var(--color-ink-200)]">
                         {[
-                            ['Space', 'Advance one phase'],
-                            ['P', 'Start or stop auto-advance'],
-                            ['C', 'Show the chronicle'],
-                            ['M', 'Switch between the chronicle and the arena map'],
-                            ['S', 'Show the standings table'],
-                            ['O', 'Open the dossier of the tribute you are watching — the starred one, or whoever the chronicle is filtered to'],
-                            ['X', 'Filter the chronicle to that same tribute, and back'],
-                            ['D / Shift+D', 'Jump to the next or previous death in the chronicle'],
-                            ['T / Shift+T', 'Cycle the tribute filter forward or back — past the last tribute clears it'],
-                            ['F', 'Show or hide the chronicle filters'],
-                            ['Z / Shift+Z', 'Cycle the sector filter forward or back — past the last sector clears it'],
-                            ['[ / ]', 'Jump the chronicle to the previous or next day'],
-                            ['I', 'Cycle reading density — everything, scenes, headlines'],
-                            ...CATEGORY_GROUPS.slice(0, 9).map((g, i) => [String(i + 1), `Mute or unmute ${g.label.toLowerCase()} events`]),
-                            ['0', 'Reset every chronicle filter'],
+                            /*
+                             * AUDIT-8 §2.1: rendered from `SHORTCUTS` rather
+                             * than from a second hand-kept list beside it.
+                             * The two had already drifted once — AUDIT-7 §2.5
+                             * found the first-run hint strip advertising two
+                             * keys that did something else — and a help panel
+                             * that can lie about the bindings is worse than no
+                             * help panel. Now it shows whatever the player has
+                             * actually bound.
+                             */
+                            ...SHORTCUTS.filter(sc => sc.id !== 'nextDay').map(sc => {
+                                const key = keyLabel(boundKey(sc.id, overrides));
+                                // The two day-paging keys are one idea and read
+                                // as one row; everything else is its own line.
+                                if (sc.id === 'prevDay') {
+                                    return [`${key} / ${keyLabel(boundKey('nextDay', overrides))}`,
+                                        'Jump the chronicle to the previous or next day'] as [string, string];
+                                }
+                                return [sc.reversible ? `${key} / Shift+${key}` : key, sc.label] as [string, string];
+                            }),
+                            ...CATEGORY_GROUPS.slice(0, 9).map((g, i) => [String(i + 1), `Mute or unmute ${g.label.toLowerCase()} events`] as [string, string]),
                             ['Ctrl+K / ⌘K', 'Open the command palette — jump to a tribute, a zone or a log line, switch views, toggle spoiler-safe'],
-                            ['?', 'Open this panel'],
                             ['Esc', 'Close a panel, clear the selected sector'],
                         ].map(([key, what]) => (
                             <React.Fragment key={key}>

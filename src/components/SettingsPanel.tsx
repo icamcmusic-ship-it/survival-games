@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 import { prefsStore, resetPrefs, setPrefs } from '../store/prefsStore';
 import { useStore } from '../store/createStore';
 import { DEFAULT_FILTERS, writeFilters } from '../utils/prefsStorage';
+import { SHORTCUTS, ShortcutId, boundKey, keyLabel, shortcutConflict } from '../data/shortcuts';
 
 /**
  * §2.14: the one place every persisted preference can be seen and reset.
@@ -14,6 +15,10 @@ import { DEFAULT_FILTERS, writeFilters } from '../utils/prefsStorage';
  * (HofTransfer), where the data it moves actually lives.
  */
 export function SettingsPanel({ onClose }: { onClose: () => void }) {
+    /* AUDIT-8 §2.1: which binding is waiting for a keypress, and what to say
+       about the last attempt. `null` is "not listening". */
+    const [capturing, setCapturing] = React.useState<ShortcutId | null>(null);
+    const [keyNotice, setKeyNotice] = React.useState<string | null>(null);
     const prefs = useStore(prefsStore, p => p);
     const panelRef = useDialogFocus<HTMLDivElement>(onClose);
 
@@ -36,6 +41,104 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
                     <button onClick={onClose} className="btn btn-sm btn-ghost" aria-label="Close settings">
                         <X className="w-4 h-4" /> Close
                     </button>
+                </div>
+
+                {/* AUDIT-8 §2.1: rebindable keys. Open since AUDIT-7 §2.4.
+
+                    Twenty keys were bound directly off `e.key` with no
+                    indirection at all. That is an accessibility gap rather
+                    than a nicety: `[` and `]` need a modifier on most non-US
+                    layouts, `?` needs Shift on all of them, and a one-handed
+                    player cannot reach Space and Shift+D together. The help
+                    overlay taught the map, which made it discoverable and
+                    still unchangeable. */}
+                {/* Collapsed by default. Sixteen rebindable keys is a lot of
+                    vertical space for a control most players never touch, and
+                    an always-open list made the Settings panel tall enough
+                    that the browser harness could no longer reach the controls
+                    below it — which is exactly what it would do to a reader on
+                    a short screen. */}
+                <details className="space-y-1.5">
+                    <summary className="eyebrow cursor-pointer select-none">
+                        Keyboard <span className="font-normal normal-case text-[var(--color-ink-500)]">— rebind any shortcut</span>
+                    </summary>
+                    <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 items-center mt-2">
+                        {SHORTCUTS.map(sc => {
+                            const key = boundKey(sc.id, prefs.shortcutOverrides);
+                            const listening = capturing === sc.id;
+                            return (
+                                <React.Fragment key={sc.id}>
+                                    <button
+                                        onClick={() => { setCapturing(listening ? null : sc.id); setKeyNotice(null); }}
+                                        onKeyDown={e => {
+                                            if (!listening) return;
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                            if (e.key === 'Escape') { setCapturing(null); return; }
+                                            const why = shortcutConflict(sc.id, e.key, prefs.shortcutOverrides);
+                                            if (why) { setKeyNotice(`${keyLabel(e.key)}: ${why}`); return; }
+                                            setPrefs({ shortcutOverrides: { ...prefs.shortcutOverrides, [sc.id]: e.key } });
+                                            setCapturing(null);
+                                            setKeyNotice(`"${sc.label}" is now ${keyLabel(e.key)}.`);
+                                        }}
+                                        aria-pressed={listening}
+                                        aria-label={listening
+                                            ? `Press a new key for ${sc.label}, or Escape to cancel`
+                                            : `${sc.label} — currently ${keyLabel(key)}. Activate to rebind.`}
+                                        className="btn btn-sm font-mono min-w-[5.5rem]"
+                                    >
+                                        {listening ? 'press a key' : keyLabel(key)}
+                                    </button>
+                                    <span className="text-xs text-[var(--color-ink-300)]">{sc.label}</span>
+                                </React.Fragment>
+                            );
+                        })}
+                    </div>
+                    <div className="flex items-center gap-3 flex-wrap">
+                        <button
+                            onClick={() => { setPrefs({ shortcutOverrides: {} }); setCapturing(null); setKeyNotice('Every key is back to its default.'); }}
+                            className="btn btn-sm btn-ghost"
+                        >
+                            Reset keys
+                        </button>
+                        <span className="text-xs text-[var(--color-ink-500)]" role="status">
+                            {keyNotice ?? 'The digits mute categories and Escape closes panels; neither can be rebound.'}
+                        </span>
+                    </div>
+                </details>
+
+                {/* AUDIT-8 §2.2: reading size. Open since AUDIT-7 §2.3.
+
+                    The chronicle's density control is a *content* filter — it
+                    decides which lines exist, not how big they are — so a
+                    reader who wanted the text larger had no control at all in a
+                    game whose main output is nine hundred lines of prose in a
+                    scrolling column. Everything is sized in `rem`, so this is
+                    one multiplier on the root, stamped on <html> exactly the
+                    way the palette and the theme already are. */}
+                <div className="space-y-1.5">
+                    <span className="eyebrow">Reading size</span>
+                    <div className="seg w-fit flex-wrap">
+                        {([
+                            ['small', 'Small', 'Tighter; fits more of the chronicle on screen at once.'],
+                            ['normal', 'Normal', 'The size the poster layout was drawn at.'],
+                            ['large', 'Large', 'Roughly fifteen per cent up, everywhere.'],
+                            ['larger', 'Larger', 'About a third up. Past this, the browser\'s own page zoom is the better tool.'],
+                        ] as const).map(([id, label, hint]) => (
+                            <Hint key={id} text={hint}>
+                                <button
+                                    onClick={() => setPrefs({ textScale: id })}
+                                    aria-pressed={prefs.textScale === id}
+                                    className="seg-item"
+                                >
+                                    {label}
+                                </button>
+                            </Hint>
+                        ))}
+                    </div>
+                    <p className="text-xs text-[var(--color-ink-500)]">
+                        Scales every size in the interface at once, and takes effect immediately.
+                    </p>
                 </div>
 
                 {/* §2.1: category colour is a real information channel, and it

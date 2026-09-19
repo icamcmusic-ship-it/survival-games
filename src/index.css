@@ -326,6 +326,37 @@ body,
     min-height: 100%;
 }
 
+/* ----------------------------------------------------------------------------
+   AUDIT-8 §2.2: reading size.
+
+   Open for two audits. `Prefs` carried thirteen fields and no type scale, in a
+   game whose primary output is ~900 log lines per run read in a scrolling
+   column at a size fixed in this stylesheet. The chronicle's `FeedDensity`
+   is a *content* filter — it decides which lines exist, not how big they are —
+   so no amount of filtering addressed it.
+
+   Done the way `data-theme` and `data-palette` already are: a stamp on <html>
+   set from Settings, and one number. Everything sized in `rem` follows it for
+   free, which is the great majority of the interface; the handful of absolute
+   sizes below the fold were already `rem` too.
+
+   The scale deliberately tops out at 1.3. Past that the poster layout — which
+   is built on hard-edged bands and offset shadows at specific proportions —
+   starts wrapping headlines in ways no type scale can fix, and the honest
+   answer for a reader who needs more is the browser's own page zoom.
+   -------------------------------------------------------------------------- */
+:root {
+    --text-scale: 1;
+}
+
+:root[data-scale='small']   { --text-scale: 0.9; }
+:root[data-scale='large']   { --text-scale: 1.15; }
+:root[data-scale='larger']  { --text-scale: 1.3; }
+
+html {
+    font-size: calc(100% * var(--text-scale));
+}
+
 body {
     background-color: var(--paper);
     color: var(--color-ink-300);
