@@ -1,5 +1,5 @@
 import { earnTrait } from './earnedTraits';
-import { Tribute } from '../models/types';
+import { DeathCauseCode, Tribute } from '../models/types';
 import { injure } from './wounds';
 import { CLIMATE, CRAFTING, PHYSIQUE, PROFICIENCY, TOOLS , EARNED_TRAIT_RULES } from '../data/balance';
 import { profOf, trainProficiency } from './proficiency';
@@ -29,6 +29,14 @@ export interface ExposureProfile {
     name: string;
     /** Cause recorded if the exposure itself is what kills them. */
     cause: string;
+    /**
+     * AUDIT-9: the structured cause, where this profile's own wording does not
+     * classify. Optional across the authored profiles on purpose —
+     * `classifyCause` resolves the overwhelming majority from the prose, and
+     * `check-cause-codes` fails the build on any that resolve to `unknown`.
+     * Setting it here is how an entry opts out of being read for its words.
+     */
+    code?: DeathCauseCode;
     /** Flat health cost per tick. */
     damage?: number;
     /**
@@ -154,14 +162,14 @@ export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProf
     }
 
     if (profile.damage && (profile.damageChance === undefined || ctx.rng.chance(profile.damageChance * scale))) {
-        applyDamage(ctx, t, amount(profile.damage), { cause: profile.cause, kind: 'climate' });
+        applyDamage(ctx, t, amount(profile.damage), { cause: profile.cause, code: profile.code, kind: 'climate' });
     }
     // §7: heatstroke. A heat profile is one that works by taking water; a
     // tribute already parched and spent under it can collapse outright.
     if (isHeat && t.status === 'alive'
         && t.vitals.thirst >= CLIMATE.heatstrokeThirst && t.vitals.fatigue >= CLIMATE.heatstrokeFatigue
         && ctx.rng.chance(CLIMATE.heatstrokeChance * scale * resist('heatResist'))) {
-        applyDamage(ctx, t, CLIMATE.heatstrokeDamage, { cause: `Heatstroke in ${profile.name}`, kind: 'climate' });
+        applyDamage(ctx, t, CLIMATE.heatstrokeDamage, { cause: `Heatstroke in ${profile.name}`, kind: 'climate', code: 'heatstroke' });
         ctx.logEvent(
             t.health <= 0
                 ? `${t.name} sits down in ${t.zone} to get their breath back and does not get up. The heat has finished what the thirst started.`

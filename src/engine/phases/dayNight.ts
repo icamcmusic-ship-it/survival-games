@@ -1296,7 +1296,7 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
         // 1 + itself — and then read the generic "pushed along in front of it"
         // line immediately after a line insisting there is no such version.
         if (inAChokepoint && !finalists) {
-            applyDamage(ctx, t, Math.round(damage * ESCALATION.chokepointCrushMultiplier), { cause, kind: 'arena' });
+            applyDamage(ctx, t, Math.round(damage * ESCALATION.chokepointCrushMultiplier), { cause, kind: 'arena', code: 'border' });
             openWound(t, BLEEDING.hazardSeverity);
             ctx.logEvent(
                 `${trappedZone} is not somewhere anybody rides out a collapse. The walls of it come together with ${t.name} still inside, `
@@ -1306,7 +1306,7 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
             );
             clampTribute(t);
         } else {
-            applyDamage(ctx, t, damage, { cause, kind: 'arena' });
+            applyDamage(ctx, t, damage, { cause, kind: 'arena', code: 'border' });
             ctx.logEvent(
                 fill(ctx.pickText(BORDER_TEXTS.collapse), {
                     tribute: t.name, trapped: trappedZone, damage: String(damage), safe: newSafeZone,
@@ -1504,7 +1504,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
                     const chance = Math.max(0, MOVEMENT.drowningChance - profOf(m, 'swimming') * MOVEMENT.drowningSwimmingProtection);
                     if (ctx.rng.chance(chance)) {
                         const cause = `Drowned crossing to ${dest}`;
-                        applyDamage(ctx, m, MOVEMENT.drowningDamage, { cause, kind: 'hazard' });
+                        applyDamage(ctx, m, MOVEMENT.drowningDamage, { cause, kind: 'hazard', code: 'drowning' });
                         ctx.logEvent(
                             m.health <= 0
                                 ? `${m.name} goes under a body-length from the bank of ${dest} and does not come up. There was nothing left in their arms.`

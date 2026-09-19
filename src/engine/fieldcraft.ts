@@ -390,8 +390,8 @@ export function checkTraps(ctx: SimContext, t: Tribute) {
         ? `Killed by ${claimant.name}'s ${trap.kind}`
         : `Caught in an abandoned ${trap.kind}`;
     applyDamage(ctx, t, damage, claimant
-        ? { cause, sourceId: claimant.id, kind: 'tribute' }
-        : { cause, kind: 'hazard' });
+        ? { cause, sourceId: claimant.id, kind: 'tribute', code: 'tribute' }
+        : { cause, kind: 'hazard', code: 'trap' });
     const bleedChance =
         trap.kind === 'snare' ? TRAPS.snareBleedChance
             : trap.kind === 'pit' ? TRAPS.pitBleedChance
@@ -458,7 +458,7 @@ function springOwnTrap(ctx: SimContext, t: Tribute, trap: Trap) {
                 // §6.3: an untreated point is a hole with a spike in it.
                 : trap.kind === 'stake' ? (trap.treated ? TRAPS.stakeDamage : TRAPS.stakeUntreatedDamage)
                     : TRAPS.deadfallDamage;
-    applyDamage(ctx, t, damage, { cause, kind: 'hazard' });
+    applyDamage(ctx, t, damage, { cause, kind: 'hazard', code: 'trap' });
     openWound(t, BLEEDING.combatSeverity);
     if (trap.kind === 'snare' || trap.kind === 'pit') injure(t, 'legs');
     if (trap.kind === 'stake' && trap.treated) injure(t, 'poisoned');

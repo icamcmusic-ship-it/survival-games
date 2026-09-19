@@ -308,7 +308,7 @@ function runSetPiece(ctx: SimContext, event: ArenaSetPiece) {
                 const taken = Math.round(amount * (1 - sheltered * ARENA_EVENTS.surgeShelterRelief));
                 if (taken <= 0) return;
                 t.vitals.fatigue = Math.min(100, t.vitals.fatigue + ARENA_EVENTS.surgeFatigue);
-                applyDamage(ctx, t, taken, { cause: `Caught in ${event.name.toLowerCase()}`, kind: 'gamemaker' });
+                applyDamage(ctx, t, taken, { cause: `Caught in ${event.name.toLowerCase()}`, kind: 'gamemaker', code: 'gamemaker' });
                 clampTribute(t);
                 checkDeath(ctx, t, `Caught in ${event.name.toLowerCase()}`);
             });

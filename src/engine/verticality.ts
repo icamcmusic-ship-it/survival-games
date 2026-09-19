@@ -119,7 +119,7 @@ export function tickVerticality(ctx: SimContext) {
         if (going === 'upper'
             && profOf(t, 'climbing') < UNIVERSAL_DEATHS.climbFailProficiency
             && ctx.rng.chance(UNIVERSAL_DEATHS.climbFailChance)) {
-            applyDamage(ctx, t, UNIVERSAL_DEATHS.climbFailDamage, { cause: `Could not make the climb in ${t.zone}`, kind: 'arena' });
+            applyDamage(ctx, t, UNIVERSAL_DEATHS.climbFailDamage, { cause: `Could not make the climb in ${t.zone}`, kind: 'arena', code: 'fall' });
             openWound(t, BLEEDING.combatSeverity);
             ctx.logEvent(
                 `${t.name} gets most of the way up ${t.zone} and runs out of the thing that was getting them up it. `
@@ -148,7 +148,7 @@ export function tickVerticality(ctx: SimContext) {
             applyDamage(
                 ctx, t,
                 Math.round((sheer ? VERTICALITY.sheerFallDamage : VERTICALITY.fallDamage) * (1 + spent)),
-                { cause, kind: 'arena' }
+                { cause, kind: 'arena', code: 'fall' }
             );
             openWound(t, BLEEDING.hazardSeverity);
             injure(t, 'legs');

@@ -263,7 +263,7 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
     // longer before the arena starts taking health for it; a Wasted one has
     // spent that buffer already, which is precisely when they most need it.
     if (t.vitals.hunger > VITALS.starvingThreshold + starvationBuffer(t)) {
-        if (applyDamage(ctx, t, VITALS.starvingDamage, { cause: 'Died of starvation', kind: 'status' })) {
+        if (applyDamage(ctx, t, VITALS.starvingDamage, { cause: 'Died of starvation', kind: 'status', code: 'starvation' })) {
             reliefFor(t, 'hunger');
         }
         // Going properly hungry and coming out the other side teaches a thing.
@@ -292,7 +292,7 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
                 && fearOf(t, o.id) >= UNIVERSAL_DEATHS.thirstNearWaterFear)
             && ctx.rng.chance(UNIVERSAL_DEATHS.thirstNearWaterChance);
         const cause = scaredOff ? `Died of thirst within sight of the water in ${t.zone}` : 'Died of dehydration';
-        if (applyDamage(ctx, t, VITALS.dehydratedDamage, { cause, kind: 'status' })) {
+        if (applyDamage(ctx, t, VITALS.dehydratedDamage, { cause, kind: 'status', code: 'dehydration' })) {
             reliefFor(t, 'thirst');
         }
         if (scaredOff && t.status !== 'alive') {
@@ -324,7 +324,7 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
             [t.id], { important: true, zone: t.zone, category: 'survival' },
         );
         injure(t, 'poisoned');
-        applyDamage(ctx, t, UNIVERSAL_DEATHS.desperateForageDamage, { cause: 'Ate what they knew better than to eat', kind: 'status' });
+        applyDamage(ctx, t, UNIVERSAL_DEATHS.desperateForageDamage, { cause: 'Ate what they knew better than to eat', kind: 'status', code: 'poison' });
         checkDeath(ctx, t, 'Ate what they knew better than to eat');
     }
     // §7: the body failing rather than the will. Distinct from the nightlock
@@ -333,7 +333,7 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
     // the only vital with a cap and no terminal state, so exhaustion never
     // appeared in a death breakdown at all.
     if (t.vitals.fatigue > VITALS.exhaustedThreshold) {
-        if (applyDamage(ctx, t, VITALS.exhaustedDamage, { cause: 'Collapsed from exhaustion', kind: 'status' })) {
+        if (applyDamage(ctx, t, VITALS.exhaustedDamage, { cause: 'Collapsed from exhaustion', kind: 'status', code: 'exhaustion' })) {
             reliefFor(t, 'fatigue');
         }
     }
@@ -353,7 +353,7 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
         && t.vitals.fatigue > UNIVERSAL_DEATHS.neverWokeFatigue
         && (arenaHasLaw(ctx.state, 'noRest') || arenaHasLaw(ctx.state, 'deadlyNight'))
         && ctx.rng.chance(UNIVERSAL_DEATHS.neverWokeChance)) {
-        applyDamage(ctx, t, UNIVERSAL_DEATHS.neverWokeDamage, { cause: 'Did not wake', kind: 'status' });
+        applyDamage(ctx, t, UNIVERSAL_DEATHS.neverWokeDamage, { cause: 'Did not wake', kind: 'status', code: 'exhaustion' });
         if (t.status !== 'alive') {
             ctx.logEvent(
                 `${t.name} lies down in ${t.zone} and does not get up in the morning. There is no wound on them. `
@@ -386,25 +386,25 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
             : 'Bled out from untreated wounds';
         if (applyDamage(ctx, t, bleedDamage(t), {
             cause: bleedCause,
-            kind: 'status',
+            kind: 'status', code: 'bleeding',
             sourceId: opener?.id,
         })) {
             reliefFor(t, 'bleeding');
         }
     }
     if (t.injuries.infected) {
-        if (applyDamage(ctx, t, INJURY_DAMAGE.infected * gradeDamageScale(t, 'infected'), { cause: 'Succumbed to an infected wound', kind: 'status' })) {
+        if (applyDamage(ctx, t, INJURY_DAMAGE.infected * gradeDamageScale(t, 'infected'), { cause: 'Succumbed to an infected wound', kind: 'status', code: 'infection' })) {
             reliefFor(t, 'infected');
         }
     }
     if (t.injuries.poisoned) {
-        if (applyDamage(ctx, t, INJURY_DAMAGE.poisoned * gradeDamageScale(t, 'poisoned'), { cause: 'Succumbed to poison', kind: 'status' })) {
+        if (applyDamage(ctx, t, INJURY_DAMAGE.poisoned * gradeDamageScale(t, 'poisoned'), { cause: 'Succumbed to poison', kind: 'status', code: 'poison' })) {
             reliefFor(t, 'poisoned');
         }
         loseSanity(t, INJURY_DAMAGE.poisonSanity);
     }
     if (t.injuries.burned) {
-        if (applyDamage(ctx, t, INJURY_DAMAGE.burned * gradeDamageScale(t, 'burned'), { cause: 'Died of untreated burns', kind: 'status' })) {
+        if (applyDamage(ctx, t, INJURY_DAMAGE.burned * gradeDamageScale(t, 'burned'), { cause: 'Died of untreated burns', kind: 'status', code: 'burns' })) {
             reliefFor(t, 'burned');
         }
     }
@@ -422,7 +422,7 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
                 [t.id],
                 { category: 'survival' }
             );
-        } else if (applyDamage(ctx, t, INJURY_DAMAGE.frostbitten * gradeDamageScale(t, 'frostbitten'), { cause: 'Froze to death', kind: 'status' })) {
+        } else if (applyDamage(ctx, t, INJURY_DAMAGE.frostbitten * gradeDamageScale(t, 'frostbitten'), { cause: 'Froze to death', kind: 'status', code: 'hypothermia' })) {
             reliefFor(t, 'frostbitten');
         }
     }
@@ -883,7 +883,7 @@ function applyWearAndTear(ctx: SimContext, t: Tribute) {
             // could only ever take you to one health was a hazard with the
             // teeth filed off.
             const cause = 'Fell badly from exhaustion';
-            applyDamage(ctx, t, FATIGUE_MISTAKES.stumbleDamage, { cause, kind: 'hazard' });
+            applyDamage(ctx, t, FATIGUE_MISTAKES.stumbleDamage, { cause, kind: 'hazard', code: 'fall' });
             ctx.logEvent(
                 t.health <= 0
                     ? `${t.name} misjudges a step they would have made easily three days ago, goes down hard, and does not get up. The arena did not have to do anything.`

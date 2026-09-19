@@ -265,7 +265,7 @@ export function runGamemakerSignature(ctx: SimContext) {
                 struck += 1;
                 group.forEach(t => {
                     applyDamage(ctx, t, GAMEMAKER_AGENCY.punishAllianceDamage, {
-                        cause: `Singled out for travelling in company in ${zone}`, kind: 'gamemaker',
+                        cause: `Singled out for travelling in company in ${zone}`, kind: 'gamemaker', code: 'gamemaker',
                     });
                     loseSanity(t, GAMEMAKER_AGENCY.punishAllianceSanity);
                     clampTribute(t);

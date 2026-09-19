@@ -1,4 +1,4 @@
-import { Arena, ArenaLawId, Attributes, Condition, Item, Stance, Terrain, ZoneEffectKind } from '../models/types';
+import { Arena, ArenaLawId, Attributes, Condition, DeathCauseCode, Item, Stance, Terrain, ZoneEffectKind } from '../models/types';
 import type { SanityBand } from '../engine/sanityBands';
 import { proceduralArenaFlavor } from './proceduralFlavor';
 import { EXTRA_ARENA_EVENTS } from './arenaEvents';
@@ -19,6 +19,14 @@ export interface ArenaEventDef {
     escapeText: string;
     /** Cause of death recorded if this kills them. */
     cause: string;
+    /**
+     * AUDIT-9: the structured cause, where this event's own wording does not
+     * classify. Optional across the ~1,700 authored entries on purpose —
+     * `classifyCause` resolves the overwhelming majority from the prose, and
+     * `check-cause-codes` fails the build on any that resolve to `unknown`.
+     * Setting it here is how an entry opts out of being read for its words.
+     */
+    code?: DeathCauseCode;
     /** Attribute rolled against to avoid the event entirely. */
     dodgeStat?: keyof Attributes;
     /**

@@ -395,7 +395,8 @@ export function processBloodbath(ctx: SimContext) {
             [t.id],
             { important: true, category: 'death' }
         );
-        selfInflictedDeath(ctx, t, 'Stepped off the plate before the gong', true);
+        // The plate mines are the Gamemakers', whoever stepped off them.
+        selfInflictedDeath(ctx, t, 'Stepped off the plate before the gong', true, 'gamemaker');
     });
 
     const onTheGong = getAlive(ctx.state);

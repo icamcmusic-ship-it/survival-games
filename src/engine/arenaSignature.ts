@@ -1,4 +1,4 @@
-import { SignatureRule, Tribute } from '../models/types';
+import { DeathCauseCode, SignatureRule, Tribute } from '../models/types';
 import { RNG } from '../utils/rng';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
@@ -44,11 +44,11 @@ import { loseSanity } from './sanityBands';
  * already hurt, should be decisive. Called after the ordinary damage has
  * landed, so it reads as the wound that finished them rather than a new one.
  */
-function machineryMayFinish(ctx: SimContext, t: Tribute, rng: RNG, cause: string, line: string, zone: string): void {
+function machineryMayFinish(ctx: SimContext, t: Tribute, rng: RNG, cause: string, line: string, zone: string, code: DeathCauseCode = 'machinery'): void {
     if (t.status !== 'alive' || t.health <= 0) return;
     if (t.health > SIGNATURE_RULES.machineryFinishBelowHealth) return;
     if (!rng.chance(SIGNATURE_RULES.machineryFinishChance)) return;
-    applyDamage(ctx, t, t.health, { cause, kind: 'arena' });
+    applyDamage(ctx, t, t.health, { cause, kind: 'arena', code });
     ctx.logEvent(line, [t.id], { important: true, zone, category: 'hazard' });
     checkDeath(ctx, t, cause);
 }
@@ -101,7 +101,7 @@ function clockworkSignature(ctx: SimContext, cycle: number, rng: RNG) {
             ctx.logEvent(`${t.name} is already moving when ${striking} goes off, and clears it.`, [t.id], { zone: striking, category: 'arena' });
             return;
         }
-        applyDamage(ctx, t, horror.damage, { cause: `Caught by the clock in ${striking}`, kind: 'arena' });
+        applyDamage(ctx, t, horror.damage, { cause: `Caught by the clock in ${striking}`, kind: 'arena', code: 'machinery' });
         if (horror.poison) injure(t, 'poisoned');
         addZoneThreat(ctx.state, t, striking, MEMORY.hazardThreat * 2);
         clampTribute(t);
@@ -135,7 +135,7 @@ function vaultSignature(ctx: SimContext, cycle: number, rng: RNG) {
     zones.forEach(z => startZoneEffect(ctx, z, 'fogbound', false));
     getAlive(ctx.state).forEach(t => {
         if (!rng.chance(ARENA_SIGNATURES.vault.stumbleChance)) return;
-        applyDamage(ctx, t, 6, { cause: 'Walked into something in the dark', kind: 'arena' });
+        applyDamage(ctx, t, 6, { cause: 'Walked into something in the dark', kind: 'arena', code: 'hazard' });
         loseSanity(t, ARENA_SIGNATURES.vault.stumbleSanity);
         clampTribute(t);
         checkDeath(ctx, t, 'Walked into something in the dark');
@@ -175,7 +175,7 @@ function tempestSignature(ctx: SimContext, cycle: number, rng: RNG) {
             clampTribute(t);
             return;
         }
-        applyDamage(ctx, t, 18, { cause: `Taken by the tide in ${target}`, kind: 'arena' });
+        applyDamage(ctx, t, 18, { cause: `Taken by the tide in ${target}`, kind: 'arena', code: 'drowning' });
         t.vitals.fatigue += ARENA_SIGNATURES.tide.caughtFatigue;
         addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
         clampTribute(t);
@@ -236,7 +236,7 @@ function solarSignature(ctx: SimContext, _cycle: number, rng: RNG) {
         t.vitals.fatigue += ARENA_SIGNATURES.stalledSun.fatigue;
         if (rng.chance(ARENA_SIGNATURES.stalledSun.burnChance)) {
             injure(t, 'burned');
-            applyDamage(ctx, t, 8, { cause: 'Burned alive under a stalled sun', kind: 'arena' });
+            applyDamage(ctx, t, 8, { cause: 'Burned alive under a stalled sun', kind: 'arena', code: 'burns' });
         }
         clampTribute(t);
         checkDeath(ctx, t, 'Burned alive under a stalled sun');
@@ -263,7 +263,7 @@ function frozenSignature(ctx: SimContext, _cycle: number, rng: RNG) {
     alive.forEach(t => {
         const warm = t.inventory.some(i => i.warmth) || ctx.state.camps?.[t.id]?.shelter !== undefined;
         if (warm) return;
-        applyDamage(ctx, t, 10, { cause: 'Froze to death in the open', kind: 'arena' });
+        applyDamage(ctx, t, 10, { cause: 'Froze to death in the open', kind: 'arena', code: 'hypothermia' });
         t.vitals.fatigue += ARENA_SIGNATURES.freeze.fatigue;
         if (rng.chance(ARENA_SIGNATURES.freeze.frostbiteChance)) injure(t, 'frostbitten');
         clampTribute(t);
@@ -296,7 +296,7 @@ function concreteSignature(ctx: SimContext, cycle: number, rng: RNG) {
             ctx.logEvent(`${t.name} is clear of ${target} before the floor goes.`, [t.id], { zone: target, category: 'arena' });
             return;
         }
-        applyDamage(ctx, t, 24, { cause: `Buried in a collapse in ${target}`, kind: 'arena' });
+        applyDamage(ctx, t, 24, { cause: `Buried in a collapse in ${target}`, kind: 'arena', code: 'collapse' });
         openWound(t, BLEEDING.hazardSeverity);
         addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
         clampTribute(t);
@@ -335,7 +335,7 @@ function toxicSignature(ctx: SimContext, _cycle: number, rng: RNG) {
         if (covered) return;
         loseSanity(t, ARENA_SIGNATURES.bog.sanity);
         injure(t, 'poisoned');
-        applyDamage(ctx, t, 6, { cause: `Breathed the swamp gas in ${target}`, kind: 'arena' });
+        applyDamage(ctx, t, 6, { cause: `Breathed the swamp gas in ${target}`, kind: 'arena', code: 'poison' });
         clampTribute(t);
         checkDeath(ctx, t, `Breathed the swamp gas in ${target}`);
     });
@@ -360,7 +360,7 @@ function ashfallSignature(ctx: SimContext, cycle: number, rng: RNG) {
         t.vitals.fatigue += filtered ? ARENA_SIGNATURES.ashfall.filteredFatigue : ARENA_SIGNATURES.ashfall.unfilteredFatigue;
         t.vitals.thirst += ARENA_SIGNATURES.ashfall.thirst;
         if (!filtered && rng.chance(ARENA_SIGNATURES.ashfall.chokeChance)) {
-            applyDamage(ctx, t, 7, { cause: 'Choked on volcanic ash', kind: 'arena' });
+            applyDamage(ctx, t, 7, { cause: 'Choked on volcanic ash', kind: 'arena', code: 'asphyxiation' });
             injure(t, 'infected');
         }
         clampTribute(t);
@@ -428,7 +428,7 @@ function sporefieldsSignature(ctx: SimContext, _cycle: number, rng: RNG) {
         } else {
             injure(t, 'poisoned');
             loseSanity(t, ARENA_SIGNATURES.bloom.poisonSanity);
-            applyDamage(ctx, t, 14, { cause: `Poisoned by the bloom in ${target}`, kind: 'arena' });
+            applyDamage(ctx, t, 14, { cause: `Poisoned by the bloom in ${target}`, kind: 'arena', code: 'poison' });
             ctx.logEvent(`${t.name} eats well in ${target}, and picks wrong.`, [t.id], { important: true, zone: target, category: 'hazard' });
         }
         clampTribute(t);
@@ -483,7 +483,7 @@ function warrenSignature(ctx: SimContext, cycle: number, rng: RNG) {
             );
             return;
         }
-        applyDamage(ctx, t, SIGNATURE_RULES.warrenFallDamage, { cause: `Brought down by the roof of ${zone}`, kind: 'arena' });
+        applyDamage(ctx, t, SIGNATURE_RULES.warrenFallDamage, { cause: `Brought down by the roof of ${zone}`, kind: 'arena', code: 'collapse' });
         ctx.logEvent(
             `The roof of ${zone} comes in on ${t.name}. In a mine this old the difference between a passage and a grave is which way the timber falls.`,
             [t.id], { important: true, zone, category: 'hazard' },
@@ -543,7 +543,7 @@ function eclipseSignature(ctx: SimContext, cycle: number, rng: RNG) {
     zones.forEach(z => startZoneEffect(ctx, z, 'fogbound', false));
     getAlive(ctx.state).forEach(t => {
         if (!rng.chance(SIGNATURE_RULES.eclipseStumbleChance)) return;
-        applyDamage(ctx, t, 5, { cause: 'Walked off a bearing that no longer existed', kind: 'arena' });
+        applyDamage(ctx, t, 5, { cause: 'Walked off a bearing that no longer existed', kind: 'arena', code: 'fall' });
         loseSanity(t, SIGNATURE_RULES.eclipseSanityLoss);
         clampTribute(t);
         checkDeath(ctx, t, 'Walked off a bearing that no longer existed');
@@ -578,7 +578,7 @@ function reefSignature(ctx: SimContext, _cycle: number, rng: RNG) {
         }
         injure(t, 'poisoned');
         loseSanity(t, SIGNATURE_RULES.reefSanityLoss);
-        applyDamage(ctx, t, 12, { cause: `Stung down by the bloom in ${target}`, kind: 'arena' });
+        applyDamage(ctx, t, 12, { cause: `Stung down by the bloom in ${target}`, kind: 'arena', code: 'poison' });
         addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
         clampTribute(t);
         checkDeath(ctx, t, `Stung down by the bloom in ${target}`);
@@ -608,7 +608,7 @@ function abattoirSignature(ctx: SimContext, cycle: number, rng: RNG) {
             ctx.logEvent(`${t.name} reads the warning shudder in ${striking} and is off the line before it moves.`, [t.id], { zone: striking, category: 'arena' });
             return;
         }
-        applyDamage(ctx, t, 24, { cause: `Caught in the machinery of ${striking}`, kind: 'arena' });
+        applyDamage(ctx, t, 24, { cause: `Caught in the machinery of ${striking}`, kind: 'arena', code: 'machinery' });
         machineryMayFinish(ctx, t, rng, `Rendered on the floor of ${striking}`,
             `${t.name} does not get up off the line in ${striking}. The plant was built to keep going whatever is on it, and it does.`,
             striking);
@@ -652,7 +652,7 @@ function carnivalSignature(ctx: SimContext, _cycle: number, rng: RNG) {
          * on around them.
          */
         if (!rng.chance(SIGNATURE_RULES.carnivalRideChance - t.attributes.agility * 0.03)) return;
-        applyDamage(ctx, t, SIGNATURE_RULES.carnivalRideDamage, { cause: `Taken by the ride in ${target}`, kind: 'arena' });
+        applyDamage(ctx, t, SIGNATURE_RULES.carnivalRideDamage, { cause: `Taken by the ride in ${target}`, kind: 'arena', code: 'machinery' });
         ctx.logEvent(
             `The ride in ${target} finds ${t.name} in the dark. It was built to be safe and it has not been safe for a very long time.`,
             [t.id], { important: true, zone: target, category: 'hazard' },
@@ -687,7 +687,7 @@ function ashwasteSignature(ctx: SimContext, cycle: number, rng: RNG) {
         const zone = getZone(ctx.state.arena, t.zone);
         if (zone?.terrain === 'highland' && rng.chance(SIGNATURE_RULES.ashwasteBurnChance)) {
             injure(t, 'burned');
-            applyDamage(ctx, t, 12, { cause: 'Scorched by the caldera gust', kind: 'arena' });
+            applyDamage(ctx, t, 12, { cause: 'Scorched by the caldera gust', kind: 'arena', code: 'burns' });
         }
         clampTribute(t);
         checkDeath(ctx, t, 'Scorched by the caldera gust');
@@ -720,7 +720,7 @@ function quarrySignature(ctx: SimContext, cycle: number, rng: RNG) {
             ctx.logEvent(`${t.name} feels ${target} tilt underfoot and runs the right way.`, [t.id], { zone: target, category: 'arena' });
             return;
         }
-        applyDamage(ctx, t, 24, { cause: `Went down with the bench in ${target}`, kind: 'arena' });
+        applyDamage(ctx, t, 24, { cause: `Went down with the bench in ${target}`, kind: 'arena', code: 'fall' });
         openWound(t, BLEEDING.hazardSeverity);
         addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
         clampTribute(t);
@@ -756,14 +756,14 @@ function glacierSignature(ctx: SimContext, cycle: number, rng: RNG) {
             ctx.logEvent(`${t.name} reads the crack running overhead in ${target} and is out before the roof follows it.`, [t.id], { zone: target, category: 'arena' });
             return;
         }
-        applyDamage(ctx, t, SIGNATURE_RULES.glacierCalvingDamage, { cause: `Buried in the calving at ${target}`, kind: 'arena' });
+        applyDamage(ctx, t, SIGNATURE_RULES.glacierCalvingDamage, { cause: `Buried in the calving at ${target}`, kind: 'arena', code: 'collapse' });
         // AUDIT-6 §7.3: the same branch the industrial arenas needed. 22 damage
         // and a frostbite almost never finishes anybody, so a block of ice the
         // size of a district coming down on somebody produced no deaths of its
         // own in twenty runs.
         machineryMayFinish(ctx, t, rng, `Buried under the calving face at ${target}`,
             `${t.name} is under it when the face comes down in ${target}. The glacier does not notice.`,
-            target);
+            target, 'collapse');
         injure(t, 'frostbitten');
         addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
         clampTribute(t);
@@ -805,7 +805,7 @@ function floeSignature(ctx: SimContext, cycle: number, rng: RNG) {
     );
     tributesIn(ctx, zone).forEach(t => {
         if (!rng.chance(SIGNATURE_RULES.floeDunkChance)) return;
-        applyDamage(ctx, t, 14, { cause: 'Went into the black water when the plates parted', kind: 'arena' });
+        applyDamage(ctx, t, 14, { cause: 'Went into the black water when the plates parted', kind: 'arena', code: 'drowning' });
         injure(t, 'frostbitten');
         t.vitals.fatigue += SIGNATURE_RULES.floeDunkFatigue;
         clampTribute(t);
@@ -836,7 +836,7 @@ function alpineSignature(ctx: SimContext, cycle: number, rng: RNG) {
             ctx.logEvent(`${t.name} skis the debris of ${target} on their boot soles and stays on top of it.`, [t.id], { zone: target, category: 'arena' });
             return;
         }
-        applyDamage(ctx, t, 26, { cause: `Buried by the avalanche in ${target}`, kind: 'arena' });
+        applyDamage(ctx, t, 26, { cause: `Buried by the avalanche in ${target}`, kind: 'arena', code: 'collapse' });
         injure(t, 'frostbitten');
         addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
         clampTribute(t);
@@ -871,7 +871,7 @@ function terracesSignature(ctx: SimContext, cycle: number, rng: RNG) {
             ctx.logEvent(`${t.name} gets a hand on standing rock as ${target} settles, and keeps it.`, [t.id], { zone: target, category: 'arena' });
             return;
         }
-        applyDamage(ctx, t, 20, { cause: `Went down with the terrace in ${target}`, kind: 'arena' });
+        applyDamage(ctx, t, 20, { cause: `Went down with the terrace in ${target}`, kind: 'arena', code: 'fall' });
         openWound(t, BLEEDING.hazardSeverity);
         t.vitals.fatigue += SIGNATURE_RULES.terracesFatigue;
         addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
@@ -899,7 +899,7 @@ function seapeaksSignature(ctx: SimContext, cycle: number, rng: RNG) {
 
     ctx.logEvent(`THE TIDE: the water climbs another fifty feet, and ${target.name} goes under.`, [], { important: true, zone: target.name, category: 'arena' });
     tributesIn(ctx, target.name).forEach(t => {
-        applyDamage(ctx, t, 18, { cause: `Caught by the rising tide in ${target.name}`, kind: 'arena' });
+        applyDamage(ctx, t, 18, { cause: `Caught by the rising tide in ${target.name}`, kind: 'arena', code: 'drowning' });
         addZoneThreat(ctx.state, t, target.name, MEMORY.hazardThreat * 2);
         clampTribute(t);
         checkDeath(ctx, t, `Caught by the rising tide in ${target.name}`);
@@ -926,7 +926,7 @@ function canopywebSignature(ctx: SimContext, cycle: number, rng: RNG) {
             ctx.logEvent(`${t.name} gets under cover before the worst of it reaches ${target}.`, [t.id], { zone: target, category: 'arena' });
             return;
         }
-        applyDamage(ctx, t, 16, { cause: `Shredded by falling needles in ${target}`, kind: 'arena' });
+        applyDamage(ctx, t, 16, { cause: `Shredded by falling needles in ${target}`, kind: 'arena', code: 'hazard' });
         openWound(t, BLEEDING.hazardSeverity);
         addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
         clampTribute(t);
@@ -951,7 +951,7 @@ function acousticforestSignature(ctx: SimContext, cycle: number, rng: RNG) {
             ctx.logEvent(`${t.name} throws themself flat as ${target} implodes into splinters overhead.`, [t.id], { zone: target, category: 'arena' });
             return;
         }
-        applyDamage(ctx, t, 24, { cause: `Caught in the shattering trees of ${target}`, kind: 'arena' });
+        applyDamage(ctx, t, 24, { cause: `Caught in the shattering trees of ${target}`, kind: 'arena', code: 'hazard' });
         openWound(t, BLEEDING.hazardSeverity);
         loseSanity(t, SIGNATURE_RULES.acousticforestSanityLoss);
         addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
@@ -971,7 +971,7 @@ function burnscarSignature(ctx: SimContext, cycle: number, rng: RNG) {
     const target = rng.pick(zones);
     ctx.logEvent(`THE MOUNTAIN CATCHES HEAT: the seed pods over ${target} go off at once, and the brush with them.`, [], { important: true, zone: target, category: 'arena' });
     tributesIn(ctx, target).forEach(t => {
-        applyDamage(ctx, t, 15, { cause: `Caught in the seed-shrapnel over ${target}`, kind: 'arena' });
+        applyDamage(ctx, t, 15, { cause: `Caught in the seed-shrapnel over ${target}`, kind: 'arena', code: 'hazard' });
         if (!t.injuries.burned && rng.chance(SIGNATURE_RULES.burnscarBurnChance)) injure(t, 'burned');
         addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
         clampTribute(t);
@@ -997,7 +997,7 @@ function craterfieldSignature(ctx: SimContext, cycle: number, rng: RNG) {
         return;
     }
     ctx.logEvent(`${t.name} reaches for what looks like fruit in ${target}, and the pod goes off in their hand.`, [t.id], { important: true, zone: target, category: 'arena' });
-    applyDamage(ctx, t, 26, { cause: `Caught by a pressure pod in ${target}`, kind: 'arena' });
+    applyDamage(ctx, t, 26, { cause: `Caught by a pressure pod in ${target}`, kind: 'arena', code: 'machinery' });
     openWound(t, BLEEDING.hazardSeverity);
     addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
     clampTribute(t);
@@ -1083,7 +1083,7 @@ function culdesacSignature(ctx: SimContext, cycle: number, rng: RNG) {
              * a thing you notice on the way in.
              */
             if (!rng.chance(SIGNATURE_RULES.culdesacHouseChance - t.attributes.intelligence * 0.025)) return;
-            applyDamage(ctx, t, SIGNATURE_RULES.culdesacHouseDamage, { cause: `Kept by the house in ${zone}`, kind: 'arena' });
+            applyDamage(ctx, t, SIGNATURE_RULES.culdesacHouseDamage, { cause: `Kept by the house in ${zone}`, kind: 'arena', code: 'trap' });
             ctx.logEvent(
                 `${zone} stops announcing ${t.name} and simply keeps them. The porch light stays on.`,
                 [t.id], { important: true, zone, category: 'hazard' },
@@ -1134,7 +1134,7 @@ function labyrinthSignature(ctx: SimContext, cycle: number, rng: RNG) {
         // Anyone standing at the moving wall rolls to keep their feet.
         tributesIn(ctx, from).concat(tributesIn(ctx, to)).forEach(t => {
             if (rng.chance(SIGNATURE_RULES.labyrinthDodgeBase + t.attributes.agility * 0.03)) return;
-            applyDamage(ctx, t, 16, { cause: 'Crushed by a shifting wall', kind: 'arena' });
+            applyDamage(ctx, t, 16, { cause: 'Crushed by a shifting wall', kind: 'arena', code: 'collapse' });
             openWound(t, BLEEDING.hazardSeverity);
             addZoneThreat(ctx.state, t, t.zone, MEMORY.hazardThreat * 2);
             clampTribute(t);
@@ -1210,7 +1210,7 @@ function ashgroveSignature(ctx: SimContext, cycle: number, rng: RNG) {
             clampTribute(t);
             return;
         }
-        applyDamage(ctx, t, 20, { cause: 'Locked in during session', kind: 'arena' });
+        applyDamage(ctx, t, 20, { cause: 'Locked in during session', kind: 'arena', code: 'trap' });
         loseSanity(t, SIGNATURE_RULES.ashgroveSessionSanity);
         addZoneThreat(ctx.state, t, striking, MEMORY.hazardThreat * 2);
         clampTribute(t);
@@ -1279,7 +1279,7 @@ function kelvinSignature(ctx: SimContext, cycle: number, rng: RNG) {
     alive.forEach(t => {
         const warm = t.inventory.some(i => i.warmth) || ctx.state.camps?.[t.id]?.shelter !== undefined;
         if (warm) return;
-        applyDamage(ctx, t, 11, { cause: 'Froze when the generator failed', kind: 'arena' });
+        applyDamage(ctx, t, 11, { cause: 'Froze when the generator failed', kind: 'arena', code: 'hypothermia' });
         t.vitals.fatigue += SIGNATURE_RULES.kelvinColdFatigue;
         if (rng.chance(SIGNATURE_RULES.kelvinFrostbiteChance)) injure(t, 'frostbitten');
         addZoneThreat(ctx.state, t, t.zone, MEMORY.hazardThreat);
@@ -1356,7 +1356,7 @@ function silkwoodSignature(ctx: SimContext, cycle: number, _rng: RNG) {
     const wrapRng = new RNG(`${ctx.state.seed}-silkwood-wrap-${cycle}`);
     tributesIn(ctx, target).forEach(t => {
         if (!wrapRng.chance(SIGNATURE_RULES.silkwoodWrapChance - t.attributes.strength * 0.02)) return;
-        applyDamage(ctx, t, SIGNATURE_RULES.silkwoodWrapDamage, { cause: `Spun over in ${target}`, kind: 'arena' });
+        applyDamage(ctx, t, SIGNATURE_RULES.silkwoodWrapDamage, { cause: `Spun over in ${target}`, kind: 'arena', code: 'asphyxiation' });
         ctx.logEvent(
             `The re-spin closes over ${t.name} in ${target}. They notice the silk first. They do not notice the rest of it for long.`,
             [t.id], { important: true, zone: target, category: 'hazard' },
@@ -1467,7 +1467,7 @@ function redcathedralSignature(ctx: SimContext, cycle: number, rng: RNG) {
             clampTribute(t);
             return;
         }
-        applyDamage(ctx, t, 30, { cause: 'Taken by the flash', kind: 'arena' });
+        applyDamage(ctx, t, 30, { cause: 'Taken by the flash', kind: 'arena', code: 'burns' });
         t.vitals.fatigue += SIGNATURE_RULES.redcathedralCaughtFatigue;
         addZoneThreat(ctx.state, t, flooding, MEMORY.hazardThreat * 2);
         clampTribute(t);
@@ -1781,7 +1781,7 @@ function applySignaturePayload(ctx: SimContext, zones: string[], payload: Signat
                     const cause = named
                         ? `Caught by the ${named} in ${zone}`
                         : `Caught by the arena in ${zone}`;
-                    applyDamage(ctx, t, damage, { cause, kind: 'arena' });
+                    applyDamage(ctx, t, damage, { cause, kind: 'arena', code: 'hazard' });
                     addZoneThreat(ctx.state, t, zone, MEMORY.hazardThreat * 2);
                     clampTribute(t);
                     checkDeath(ctx, t, cause);
@@ -1912,7 +1912,7 @@ function cabinSignature(ctx: SimContext, _cycle: number, rng: RNG) {
              */
             present.forEach(t => {
                 if (!rng.chance(SIGNATURE_RULES.cabinFreezeChance - t.attributes.endurance * 0.02)) return;
-                applyDamage(ctx, t, SIGNATURE_RULES.cabinFreezeDamage, { cause: `Froze in the unlit ${zone}`, kind: 'arena' });
+                applyDamage(ctx, t, SIGNATURE_RULES.cabinFreezeDamage, { cause: `Froze in the unlit ${zone}`, kind: 'arena', code: 'hypothermia' });
                 injure(t, 'frostbitten');
                 ctx.logEvent(
                     `The stove in ${zone} is out and stays out. ${t.name} went indoors to get warm, which on this property is the mistake.`,
@@ -2009,10 +2009,10 @@ function karstSignature(ctx: SimContext, cycle: number, rng: RNG) {
         loseSanity(t, ARENA_SIGNATURES.undermere.darkSanity);
         t.vitals.fatigue += ARENA_SIGNATURES.undermere.darkFatigue;
         if (rng.chance(ARENA_SIGNATURES.undermere.blindStumbleChance)) {
-            applyDamage(ctx, t, ARENA_SIGNATURES.undermere.stumbleDamage, { cause: `Lost in the dark under ${t.zone}`, kind: 'arena' });
+            applyDamage(ctx, t, ARENA_SIGNATURES.undermere.stumbleDamage, { cause: `Lost in the dark under ${t.zone}`, kind: 'arena', code: 'hazard' });
             machineryMayFinish(ctx, t, rng, `Went into the sump under ${t.zone}`,
                 `${t.name} puts a foot into nothing under ${t.zone}. The sound it makes arrives a very long time afterwards.`,
-                t.zone);
+                t.zone, 'drowning');
             ctx.logEvent(
                 `${t.name} walks into something in the dark of ${t.zone} that turns out to be the floor arriving early.`,
                 [t.id],
@@ -2101,7 +2101,7 @@ function tidewrackSignature(ctx: SimContext, _cycle: number, rng: RNG) {
             clampTribute(t);
             return;
         }
-        applyDamage(ctx, t, knobs.damage, { cause: `Stranded by the tide in ${target}`, kind: 'arena' });
+        applyDamage(ctx, t, knobs.damage, { cause: `Stranded by the tide in ${target}`, kind: 'arena', code: 'drowning' });
         t.vitals.fatigue += knobs.caughtFatigue;
         addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
         clampTribute(t);
@@ -2138,7 +2138,7 @@ function thresherSignature(ctx: SimContext, cycle: number, rng: RNG) {
             ctx.logEvent(`${t.name} gets off the moving floor of ${target} before it decides where they are going.`, [t.id], { zone: target, category: 'arena' });
             return;
         }
-        applyDamage(ctx, t, knobs.damage, { cause: `Caught in the machinery of ${target}`, kind: 'arena' });
+        applyDamage(ctx, t, knobs.damage, { cause: `Caught in the machinery of ${target}`, kind: 'arena', code: 'machinery' });
         machineryMayFinish(ctx, t, rng, `Taken into the intake of ${target}`,
             `The floor of ${target} takes ${t.name} the rest of the way. There is a reason this room has a drain in it.`,
             target);
@@ -2175,7 +2175,7 @@ function vigilSignature(ctx: SimContext, _cycle: number, rng: RNG) {
         clampTribute(t);
         if (!sheltered && rng.chance(knobs.stumbleChance)) {
             ctx.logEvent(`${t.name} is on their feet in ${t.zone} before they are awake, and pays for it.`, [t.id], { zone: t.zone, category: 'arena' });
-            applyDamage(ctx, t, knobs.stumbleDamage, { cause: 'Did not wake for the watch', kind: 'arena' });
+            applyDamage(ctx, t, knobs.stumbleDamage, { cause: 'Did not wake for the watch', kind: 'arena', code: 'exhaustion' });
             checkDeath(ctx, t, 'Did not wake for the watch');
         }
     });
@@ -2205,7 +2205,7 @@ function saltworksSignature(ctx: SimContext, cycle: number, rng: RNG) {
     const present = tributesIn(ctx, target);
     present.forEach(t => {
         if (rng.chance(knobs.holdBase + t.attributes.agility * knobs.holdPerAgility)) return;
-        applyDamage(ctx, t, knobs.damage, { cause: `Went through the pan in ${target}`, kind: 'arena' });
+        applyDamage(ctx, t, knobs.damage, { cause: `Went through the pan in ${target}`, kind: 'arena', code: 'fall' });
         addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
         clampTribute(t);
         checkDeath(ctx, t, `Went through the pan in ${target}`);
@@ -2259,7 +2259,7 @@ function kilnSignature(ctx: SimContext, _cycle: number, rng: RNG) {
         t.vitals.fatigue += knobs.fatigue;
         if (rng.chance(knobs.burnChance)) {
             injure(t, 'burned');
-            applyDamage(ctx, t, knobs.burnDamage, { cause: `Found no shade in ${announced}`, kind: 'arena' });
+            applyDamage(ctx, t, knobs.burnDamage, { cause: `Found no shade in ${announced}`, kind: 'arena', code: 'heatstroke' });
         }
         clampTribute(t);
         checkDeath(ctx, t, `Found no shade in ${announced}`);

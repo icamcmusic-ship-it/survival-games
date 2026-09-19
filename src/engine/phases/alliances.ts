@@ -171,7 +171,7 @@ export function processAlliances(ctx: SimContext) {
         alliances.forEach(members => {
             if (members.length <= cap) return;
             members.forEach(m => {
-                applyDamage(ctx, m, QUELL_MECHANICS.allianceCapHazardDamage, { cause: 'Struck down for defying the Gamemakers\' Quell', kind: 'arena' });
+                applyDamage(ctx, m, QUELL_MECHANICS.allianceCapHazardDamage, { cause: 'Struck down for defying the Gamemakers\' Quell', kind: 'arena', code: 'gamemaker' });
                 clampTribute(m);
                 checkDeath(ctx, m, 'Struck down for defying the Gamemakers\' Quell');
             });

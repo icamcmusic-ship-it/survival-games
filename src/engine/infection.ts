@@ -185,7 +185,7 @@ export function applySepsisDrain(ctx: SimContext, t: Tribute) {
         const terminal = t.septicCycles >= INFECTION.terminalCycles;
         applyDamage(ctx, t, terminal ? t.health : INFECTION.septicDamage, {
             cause: `Died of sepsis from an untreated ${siteWord(worst.site)}`,
-            kind: 'status',
+            kind: 'status', code: 'sepsis',
         });
     } else {
         t.septicCycles = 0;

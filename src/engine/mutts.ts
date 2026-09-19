@@ -225,7 +225,7 @@ export function engageMutt(ctx: SimContext, t: Tribute, mutt: Mutt) {
     // infection axis hangs off: a parasite encounter is not a fight a tribute
     // can lose, it is a decision they now have to make about a wound.
     if (mutt.role === 'parasite') {
-        applyDamage(ctx, t, Math.round(scaledDamage(ctx, mutt) * MUTTS.parasiteDamageShare), { cause: `Infested by ${mutt.name}`, kind: 'mutt' });
+        applyDamage(ctx, t, Math.round(scaledDamage(ctx, mutt) * MUTTS.parasiteDamageShare), { cause: `Infested by ${mutt.name}`, kind: 'mutt', code: 'infection' });
         applyMuttInjuries(t, mutt);
         // Whatever it carries is now in them, whether or not the bite was.
         if (!t.injuries.infected && ctx.rng.chance(MUTTS.parasiteInfectChance)) injure(t, 'infected');
@@ -260,7 +260,7 @@ export function engageMutt(ctx: SimContext, t: Tribute, mutt: Mutt) {
     // it, and that is a different death from being torn apart.
     if (packSize >= MUTTS.stampedeMinPack && ctx.rng.chance(MUTTS.stampedeChance)) {
         const cause = `Trampled in a ${mutt.name} stampede`;
-        applyDamage(ctx, t, MUTTS.stampedeDamage, { cause, kind: 'mutt' });
+        applyDamage(ctx, t, MUTTS.stampedeDamage, { cause, kind: 'mutt', code: 'mutt' });
         openWound(t, BLEEDING.hazardSeverity);
         ctx.logEvent(
             `${t.name} does not get hit by ${mutt.name} so much as gone over. The whole pack is moving in one direction `
@@ -280,7 +280,7 @@ export function engageMutt(ctx: SimContext, t: Tribute, mutt: Mutt) {
     // Hardened: having met worse is worth something against exactly this.
     damage *= Math.max(0.2, 1 + traitMod(t, 'muttDamage'));
 
-    applyDamage(ctx, t, Math.round(damage), { cause: `Torn apart by ${mutt.name}`, kind: 'mutt' });
+    applyDamage(ctx, t, Math.round(damage), { cause: `Torn apart by ${mutt.name}`, kind: 'mutt', code: 'mutt' });
     // §1.2: walking away from something with teeth leaves a mark that is not
     // an injury. Read by combat power and the retreat roll, same as momentum.
     if (t.status === 'alive') rattle(t, HUNTING.rattledPerMutt);
