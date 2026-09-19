@@ -102,6 +102,43 @@ const EARNED_LINES: Record<string, string[]> = {
         '{name} has learnt what the water in here does, and moves through it like somebody who grew up with it.',
         'The crossing that nearly took {name} on day one is a walk now.',
     ],
+    /* ---- AUDIT-8 §12.3: the six new earned traits ---- */
+    'Unbroken': [
+        '{name} has been in this arena for over a week and has never once been on the wrong side of the line. The bookmakers notice before anybody else does.',
+        'Nobody has had {name} down. Not once, not close. The Capitol has started running the number as a feature.',
+        'A week in, and the worst thing that has happened to {name} is a bad night\'s sleep. The field has begun to find that unnerving.',
+        '{name} checks themselves over out of habit and finds nothing to check. It has been like that since the gong.',
+    ],
+    'Sleepless Week': [
+        '{name} has taken the watch four nights running. They see everything now, and they are asleep on their feet by noon.',
+        'Four nights. {name} has stopped being able to tell which sounds are outside their head, and has not stopped listening.',
+        '{name} volunteers for the watch again and nobody argues, which is not the kindness the group thinks it is.',
+        'The others sleep because {name} does not. It is showing in {name}, in the daylight, where everyone can see it.',
+    ],
+    'Trapline': [
+        '{name} sets the fifth one without thinking about where. The ground around them has stopped being neutral.',
+        'Snare, deadfall, snare. {name} has built enough of these that their hands do it while they think about something else.',
+        '{name} walks their own line at dusk the way a person walks a garden. Everything on it is theirs.',
+        'There are five of {name}\'s traps out there now, and {name} is the only person in the arena who knows where.',
+    ],
+    'Mapmaker': [
+        '{name} has found two ways through this arena that are not on anybody\'s plan, and is already looking for the third.',
+        'Two hidden crossings. {name} has begun to think of the arena as a thing with a back of house.',
+        '{name} knows a way out of here that the Gamemakers would have to look up.',
+        'The map {name} is carrying in their head is no longer the map the Capitol handed out.',
+    ],
+    'Kept The Peace': [
+        'Three truces, three terms run out clean. The field has worked out that {name}\'s word is worth something.',
+        '{name} has never once gone back on it, and by now enough people know that it has become a kind of armour.',
+        'Nobody has been knifed by {name} at a parley. In this arena, over three agreements, that is a reputation.',
+        '{name} keeps their word the third time, which is the time it stops being luck.',
+    ],
+    'Outlived The Pack': [
+        'Everyone {name} trained with is in the sky. {name} is still walking, and nobody has worked out how to talk to them about it.',
+        'The last of four. {name} carries all of them now, and it has changed the way they look at whoever is left.',
+        '{name} is the only one of their group still standing. They have stopped saying "we".',
+        'There were five. {name} has stopped counting out loud.',
+    ],
     'Silent Step': [
         'Nobody has laid eyes on {name} in days. The commentators have started calling them a ghost, and they are not wrong about how it moves.',
         '{name} has worked out where the noise comes from and stopped making it.',

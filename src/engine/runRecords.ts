@@ -1,7 +1,8 @@
 import { Tribute } from '../models/types';
 import { SimContext } from './context';
-import { RUN_RECORDS } from '../data/balance';
+import { EARNED_TRAIT_RULES, RUN_RECORDS } from '../data/balance';
 import { effectsIn } from './zoneEffects';
+import { earnTrait } from './earnedTraits';
 
 /**
  * §12: per-run bookkeeping the achievements read.
@@ -40,6 +41,34 @@ export function tickRunRecords(ctx: SimContext) {
         // now. Three of these is 'Hairsbreadth'.
         if (last && last.health < RUN_RECORDS.nearDeathHealth && t.health >= RUN_RECORDS.nearDeathHealth) {
             t.lowHealthRecoveries = (t.lowHealthRecoveries ?? 0) + 1;
+        }
+
+        /*
+         * AUDIT-8 §12.3: 'Unbroken' — a week and more in the arena without
+         * ever having been on the wrong side of the near-death line. Read off
+         * the same threshold 'Hairsbreadth' uses, from the other direction:
+         * one counts the times they came back, this one is the absence of any.
+         * `everDowned` is in the test because being downed is the same claim
+         * by a different route.
+         */
+        if (t.daysSurvived >= EARNED_TRAIT_RULES.unbrokenDays
+            && t.health >= RUN_RECORDS.nearDeathHealth
+            && (t.lowHealthRecoveries ?? 0) === 0
+            && t.everDowned !== true) {
+            earnTrait(ctx, t, 'Unbroken');
+        }
+
+        /*
+         * AUDIT-8 §12.3: 'Outlived The Pack' — the last one standing out of a
+         * group of four or more. `formerAllies` is the set of people this
+         * tribute was in a dissolved alliance with, and it is already written
+         * on every ordinary ending; the trait is what it means when all of
+         * them are in the sky and the tribute is not.
+         */
+        const pack = t.formerAllies ?? [];
+        if (pack.length >= EARNED_TRAIT_RULES.outlivedPackSize - 1
+            && pack.every(id => state.tributes.find(o => o.id === id)?.status === 'dead')) {
+            earnTrait(ctx, t, 'Outlived The Pack');
         }
 
         // Walked into weather rather than out of it: the zone changed, and the

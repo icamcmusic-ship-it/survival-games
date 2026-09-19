@@ -1105,6 +1105,18 @@ export interface Tribute {
     poisonedByWeapon?: boolean;
     /** §10.1: they held armour, light, warmth and a purifier all at once. */
     fullKitSeen?: boolean;
+    /*
+     * AUDIT-8 §12.3: state the six new earned traits read.
+     *
+     * Each is a counter the engine was in a position to keep and did not:
+     * the arc was expressible and nothing was expressing it.
+     */
+    /** Truces this tribute kept all the way to their declared term. */
+    trucesKept?: number;
+    /** Consecutive nights this tribute has taken their group's watch. */
+    watchStreak?: number;
+    /** Cycles spent with the group they were last in, once they are its last member. */
+    outlivedPackOf?: number;
     /** §10.1: other tribute id -> times a truce with them was renewed. */
     truceRenewed?: Record<string, number>;
 

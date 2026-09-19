@@ -1,7 +1,7 @@
 import { GameState, Item, Tribute, TruceReason } from '../models/types';
 import { sanityBandOf } from './sanityBands';
 import { dreadOf } from './intent';
-import { COMPOSURE, INTEL, PARLEY, PROFICIENCY, RELATIONSHIPS, RESPECT, ROMANCE } from '../data/balance';
+import { COMPOSURE, EARNED_TRAIT_RULES, INTEL, PARLEY, PROFICIENCY, RELATIONSHIPS, RESPECT, ROMANCE } from '../data/balance';
 import { RNG } from '../utils/rng';
 import { PARLEY_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
@@ -922,6 +922,15 @@ function resolveTrucePair(ctx: SimContext, a: Tribute, b: Tribute) {
 
     // LAPSE: kept to the end. The arena takes note, and so does the feed.
     truceLedger(ctx.state).lapsed++;
+    /*
+     * AUDIT-8 §12.3: three terms run out clean and the field has worked out
+     * that this person's word is worth something. Counted on both sides —
+     * keeping a truce is a thing two people do.
+     */
+    a.trucesKept = (a.trucesKept ?? 0) + 1;
+    b.trucesKept = (b.trucesKept ?? 0) + 1;
+    if (a.trucesKept >= EARNED_TRAIT_RULES.keptPeaceTruces) earnTrait(ctx, a, 'Kept The Peace');
+    if (b.trucesKept >= EARNED_TRAIT_RULES.keptPeaceTruces) earnTrait(ctx, b, 'Kept The Peace');
     //
     // §1.4: 'Kept Word' used to need a *renewed* truce still standing when one
     // party died, which across 400 runs happened 11 times against 218 truces —

@@ -1,7 +1,8 @@
 import { arenaHasLaw } from './gamesProfile';
+import { earnTrait } from './earnedTraits';
 import { Arena, EdgeRule, GameState, Tribute, Zone, ResolvedZoneFeatures, attr, chokepointByName } from '../models/types';
 import { traitMod } from '../data/traits';
-import { BLEEDING, EDGE_RULES, EDGE_TOLL, PROFICIENCY, ZONE_EFFECTS, ZONES } from '../data/balance';
+import { EARNED_TRAIT_RULES, BLEEDING, EDGE_RULES, EDGE_TOLL, PROFICIENCY, ZONE_EFFECTS, ZONES } from '../data/balance';
 import { injuryGrade, openWound } from './wounds';
 import { chokepointModifier, climbModifier, massOf } from './physique';
 import { SimContext, getAlive } from './context';
@@ -740,6 +741,15 @@ export function tickHiddenEdges(ctx: SimContext) {
             if (!ctx.rng.chance(chance)) continue;
             learnEdge(t, key);
             trainProficiency(t, 'navigation');
+            /*
+             * AUDIT-8 §12.3: two of these and the arena has a back of house.
+             * Only counted for edges the tribute found themselves — the
+             * sharing pass below is somebody being told, which is a different
+             * thing and should not earn the same trait.
+             */
+            if ((t.knownEdges?.length ?? 0) >= EARNED_TRAIT_RULES.mapmakerEdges) {
+                earnTrait(ctx, t, 'Mapmaker');
+            }
             const other = t.zone === a ? b : a;
             ctx.logEvent(
                 `${t.name} finds the way out of ${t.zone} that is not on anybody's map — a seam, a gap, a stair — and it comes out in ${other}.`,

@@ -2068,6 +2068,31 @@ export const EARNED_TRAIT_RULES = {
      */
     hardenedMuttSurvivals: 2,
 
+    /*
+     * AUDIT-8 §12.3: the six new earned traits, and where each is earned.
+     *
+     * The earned set was 31 against 148 rollable, and it is the half a player
+     * actually notices arriving — a reaped trait is who somebody was on day
+     * zero, an earned one is the arena changing them on camera. Each threshold
+     * below is set against a thing the engine already counts, at a level the
+     * measured distribution actually reaches.
+     */
+    /** Days survived without ever crossing the near-death line, for 'Unbroken'. */
+    unbrokenDays: 8,
+    /** Consecutive nights on the watch, for 'Sleepless Week'. */
+    sleeplessWatches: 4,
+    /** Traps built before it stops being a decision, for 'Trapline'. */
+    /* AUDIT-8: 5 -> 3: 1,151 traps are built across 400 runs by ~7,600 tributes, so five is several times what any one of them lays. */
+    traplineTraps: 3,
+    /** Hidden edges personally found, for 'Mapmaker'. */
+    /* AUDIT-8: 2 -> 1: `check-achievements`'s ceiling guard already proved no victor in 500 runs reaches two, and hidden edges are found in 14.8% of runs at all. */
+    mapmakerEdges: 1,
+    /** Truces run to their full term, for 'Kept The Peace'. */
+    /* AUDIT-8: 3 -> 2: 182 truces run their full term across 400 runs, spread over the whole field. */
+    keptPeaceTruces: 2,
+    /** Original size of a group you are now the last of, for 'Outlived The Pack'. */
+    outlivedPackSize: 4,
+
     /**
      * §3.2: traits stop being one-way.
      *
@@ -7707,7 +7732,13 @@ export const ARCHETYPE_HOOKS = {
      * survivor. Deliberately most of the way to `RIVAL_READ.max` (1): the
      * point of the archetype is that by the time it speaks, it knows the room.
      */
-    archivistReadGain: 0.6,
+    archivistReadGain: 0.85,
+    /**
+     * AUDIT-8 §8.1: combat power per point of read, for the Archivist only.
+     * On the ~20-point power scale, so a full read is worth about as much as a
+     * decent weapon — against one specific person they have studied.
+     */
+    archivistReadPower: 3.5,
     quietNamelessDay: 3,
     /** Mean notoriety the rest of the field may hold about them and still not know them. */
     quietNamelessNotoriety: 8,

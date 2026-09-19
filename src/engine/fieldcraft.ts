@@ -219,6 +219,10 @@ export function setTrap(ctx: SimContext, t: Tribute) {
         treated,
     });
     t.trapsSet = (t.trapsSet ?? 0) + 1;
+    // AUDIT-8 §12.3: enough of them that the ground around them stops being
+    // neutral. `trapsSet` was already counted and read by nothing but the
+    // achievement table.
+    if (t.trapsSet >= EARNED_TRAIT_RULES.traplineTraps) earnTrait(ctx, t, 'Trapline');
     // AUDIT-7 §3.5: a trap is read *and* built. Tracking is choosing where it
     // goes; carpentry is making it hold. The second half was not being trained.
     trainProficiency(t, 'tracking');

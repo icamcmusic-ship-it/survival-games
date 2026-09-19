@@ -1147,7 +1147,19 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         name: 'Archivist',
         description: 'Keeps the count. Knows who fell, where, on which day, and in what order — and says the list out loud at intervals that unnerve everybody within earshot, including the Capitol.',
         statBias: { intelligence: 2, willpower: 2, strength: -1, agility: -1 },
-        preferredTraits: ['Keeps Books', 'Tallyman', 'Bookkeeper', 'Watchful'],
+        /*
+         * AUDIT-8 §8.1: two of these are new.
+         *
+         * Adding thirty rollable traits dilutes every archetype's preferred
+         * set — the odds of drawing any one of four out of 148 are worse than
+         * out of 118 — and the Archivist was the archetype least able to
+         * afford it: it went back to the bottom of the win table at 2.16% and
+         * took the spread guard over with it. 'Reads The Sky' and 'Trusted
+         * Voice' are the two rows in the new batch that are most obviously
+         * this character, so the dilution is answered with a better set rather
+         * than a wider one.
+         */
+        preferredTraits: ['Keeps Books', 'Tallyman', 'Reads The Sky', 'Trusted Voice', 'Bookkeeper', 'Watchful'],
         aggression: -0.25,
         allianceAffinity: 0.1,
         treachery: 0,
