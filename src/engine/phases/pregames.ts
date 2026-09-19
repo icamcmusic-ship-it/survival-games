@@ -12,7 +12,7 @@ import { legacyOf } from '../../data/districts';
 import { HEAD_GAMEMAKERS } from '../../data/gamemakers';
 import { resolveContinuity, standingEffect, standingLine } from '../continuity';
 import { addNotoriety } from '../notoriety';
-import { readPanem } from '../../utils/panemStorage';
+import { campaignOf } from '../campaign';
 import { ordinal } from '../gamesProfile';
 import { loseSanity } from '../sanityBands';
 
@@ -74,7 +74,22 @@ export function processSquare(ctx: SimContext) {
      * finished term, or a stored name no longer in the roster all land back on
      * exactly the old behaviour.
      */
-    const panem = readPanem();
+    /*
+     * AUDIT-9 B06: the record book as an *input*, not as an ambient read.
+     *
+     * This used to be `readPanem()` — the engine reaching into browser storage
+     * mid-simulation. That is what made a shared seed an incomplete
+     * description of a run: the history is not in the link, so the same link
+     * produced different district standing and different opening sponsor trust
+     * for two players (63 vs 71 on one tribute, with nothing else changed).
+     * It also meant a resumed save inherited whatever the player's career
+     * looked like *now* rather than what it looked like when the run started.
+     *
+     * The snapshot is taken once, at run creation, by whoever owns storage.
+     * A run without one — every headless harness, and every first Games —
+     * gets `FRESH_CAMPAIGN`, which is exactly the no-history behaviour.
+     */
+    const panem = campaignOf(ctx.state.campaign);
     const term = panem.headGamemakerTerm;
     const incumbent = term && term.runsServed < CONTINUITY.gamemakerTerm
         ? HEAD_GAMEMAKERS.find(g => g.name === term.name)
@@ -149,7 +164,7 @@ export function processSquare(ctx: SimContext) {
 
     const record = panem.gamemakerRecords?.[headGamemaker.name];
     if (record && record.games > 0) {
-        const avgDays = (record.totalDays / record.games).toFixed(1);
+        const avgDays = ((record.totalDays ?? 0) / record.games).toFixed(1);
         ctx.logEvent(
             `This is ${headGamemaker.name}'s ${ordinal(record.games + 1)} Games. `
             + `Of the previous ${record.games}, ${record.victors} produced a victor, `

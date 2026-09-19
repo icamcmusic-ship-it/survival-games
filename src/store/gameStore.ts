@@ -1,4 +1,4 @@
-import { InterviewPersona, GameState, GameConfig, HallOfFameEntry } from '../models/types';
+import { InterviewPersona, GameState, GameConfig, HallOfFameEntry, CampaignSnapshot } from '../models/types';
 import { Bet, REWIND_PERSIST, SAVED_RUN_SPEC, SAVE_SLOT_SPECS, SavedRun, SideBet, SideBetKind, packRewind } from '../utils/saveMigrations';
 import { SIDE_BETS } from '../data/balance';
 import { SideBetTarget, SideQuote, priceSideBet, quoteSideMarkets, settleSideBet } from '../engine/sideMarkets';
@@ -13,7 +13,7 @@ import { RNG } from '../utils/rng';
 import type { Simulator } from '../engine/simulator';
 import type { GamemakerEventType } from '../engine/gamemaker';
 import { createStore } from './createStore';
-import { PanemRecords, RunOutcome, addPatronDistrict, buyArena, clearPanem, commitRun, dropPatronDistrict, noteStipendTaken, readPanem } from '../utils/panemStorage';
+import { PanemRecords, campaignSnapshotOf, RunOutcome, addPatronDistrict, buyArena, clearPanem, commitRun, dropPatronDistrict, noteStipendTaken, readPanem } from '../utils/panemStorage';
 import type { SponsorResult } from '../engine/playerSponsor';
 import { readPrefs } from './prefsStore';
 import { seatVeterans } from '../engine/veterans';
@@ -902,7 +902,16 @@ export const gameActions = {
         });
     },
 
-    async startGame(seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig = DEFAULT_GAME_CONFIG, markReplayed = false, forceQuell = false, pinnedQuellId?: string | null) {
+    /**
+     * AUDIT-9 B06: `pinnedCampaign` is the "reproduce this run" path.
+     *
+     * A share link may carry the sender's record book. When it does, the run
+     * is played under *that* history — which is what makes the link reproduce
+     * the run rather than merely reproduce the seed. Omitted, the player's own
+     * campaign applies, which is the "play this seed in my campaign" path and
+     * the behaviour every existing link keeps.
+     */
+    async startGame(seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig = DEFAULT_GAME_CONFIG, markReplayed = false, forceQuell = false, pinnedQuellId?: string | null, pinnedCampaign?: CampaignSnapshot) {
         // Abandoning a run mid-wager used to silently pocket the player's coins.
         gameActions.refundOpenBets();
         cancelRunToEnd();
@@ -957,10 +966,25 @@ export const gameActions = {
 
         const tributes = generateTributes(safeSeed, config, startZone, gamesProfile.castShape, gamesProfile.quell);
 
+        /*
+         * AUDIT-9 B06: the record book, snapshotted once, here.
+         *
+         * Everything below — patronage, mentors, and (inside the engine) the
+         * Head Gamemaker's term, district standing and heirlooms — used to
+         * read the live record book at the moment it was needed, the engine
+         * included. That is what made a shared seed an incomplete description
+         * of a run. One snapshot, taken at creation, travels with the save and
+         * can travel with a link; `campaignSnapshotOf` is the only place the
+         * storage shape is translated into the simulation's.
+         *
+         * `pinnedCampaign` is a reproduce-this-run link: the sender's record
+         * book came with it, so the run replays under that history rather than
+         * under the receiver's career.
+         */
+        const panemNow = pinnedCampaign ?? campaignSnapshotOf(gameStore.getState().panem);
         // §6.2: standing district patronage — a persistent sink for Capitol
         // Coins. The patron's tributes arrive with sponsors already warm.
         // §9 (audit): patronage is a list now, not a single district.
-        const panemNow = gameStore.getState().panem;
         const patrons = new Set(
             panemNow.patronDistricts ?? (panemNow.patronDistrict === undefined ? [] : [panemNow.patronDistrict]),
         );
@@ -1020,6 +1044,10 @@ export const gameActions = {
             logCounter: 0,
             feastsHeld: 0,
             veteransSeated: veterans.length > 0 ? veterans : undefined,
+            // AUDIT-9 B06: the record book this run is played under, carried
+            // by the state so the engine never reaches for storage and a save
+            // resumes under the history it started with.
+            campaign: panemNow,
         };
 
         gameStore.setState({

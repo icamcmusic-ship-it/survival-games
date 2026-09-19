@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { decodeCampaign } from './utils/campaignLink';
 import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { Settings2, Swords } from 'lucide-react';
 import { ShareButton } from './components/ShareButton';
@@ -156,7 +157,16 @@ export default function App() {
       // existed (`null` here) fall through to the ordinary seeded draw.
       const rawQuell = params.get('quell');
       const pinnedQuellId = rawQuell === null ? undefined : (rawQuell === 'none' ? null : rawQuell);
-      void gameActions.startGame(urlSeed, urlArena, urlGamemaker, config, true, false, pinnedQuellId);
+      /*
+       * AUDIT-9 B06: a link may carry the record book the run was played
+       * under. When it does the run is reproduced; when it does not — which
+       * is every link written before this, and every deliberate "play this
+       * seed in my campaign" link — the receiver's own career applies, as it
+       * always has. `decodeCampaign` validates rather than casts: a link is
+       * untrusted input and a malformed payload reads as no history.
+       */
+      const pinnedCampaign = decodeCampaign(params.get('campaign'));
+      void gameActions.startGame(urlSeed, urlArena, urlGamemaker, config, true, false, pinnedQuellId, pinnedCampaign);
       bootedFromLink = true;
       // Consume the replay params so a later refresh doesn't relaunch it.
       window.history.replaceState(null, '', window.location.pathname);
@@ -212,7 +222,7 @@ export default function App() {
             )}
             <span className="chip chip-gold" role="status" aria-label={`${coins} Capitol Coins available for wagers`} title="Capitol Coins available for wagers">{coins} <span aria-hidden="true">⨷</span></span>
             {gameState && (
-              <ShareButton seed={gameState.seed} arenaId={gameState.arena.id} gamemakerMode={gameState.gamemakerMode} config={gameState.baseConfig} quellId={gameState.gamesProfile?.quell?.id ?? null} />
+              <ShareButton seed={gameState.seed} arenaId={gameState.arena.id} gamemakerMode={gameState.gamemakerMode} config={gameState.baseConfig} quellId={gameState.gamesProfile?.quell?.id ?? null} campaign={gameState.campaign} />
             )}
             {/* Real links now that screens are real routes: the address bar
                 follows them, and middle-click / open-in-new-tab work. The click

@@ -12,8 +12,8 @@
  *
  *   npm run test:sim
  */
+import { coverageCells, coverageReport, initialRunState } from './runInit';
 import { emptyTruceLedger, truceLedger } from '../src/engine/parley';
-import { resolveArenaForRun } from '../src/engine/arenaSetup';
 import { OFF_SEASON_SKINS } from '../src/data/offSeason';
 import { PARLEY_TEXTS } from '../src/data/flavorText';
 const TRUCE_LEDGER = emptyTruceLedger();
@@ -123,15 +123,13 @@ function prose(re: RegExp, text: string): boolean {
   return true;
 }
 
-function start(seed: string, arenaId: string, config: GameConfig, gamemaker: boolean): GameState {
-  const gamesProfile = gamesProfileFor(seed);
-  // AUDIT-6 §1.3: the same call `gameStore.newGame` makes. The clone, the
-  // off-season skin and the Quell law override used to be copied by hand here
-  // and were quietly missing the skin entirely.
-  const arena = resolveArenaForRun(seed, arenaId, gamesProfile);
-  const tributes = generateTributes(seed, config, arena.zones[0].name, gamesProfile.castShape, gamesProfile.quell);
-  return { seed, arena, tributes, phase: 'setup', day: 0, log: [], gamemakerMode: gamemaker, config, baseConfig: config, gamesProfile, logCounter: 0, feastsHeld: 0, cycle: 0 };
-}
+/**
+ * AUDIT-9 B19: production's own initialisation, shared with the metrics
+ * harness. This copy stored the raw config where production stores the
+ * profile-resolved one. See `scripts/runInit.ts`.
+ */
+const start = (seed: string, arenaId: string, config: GameConfig, gamemaker: boolean): GameState =>
+  initialRunState({ seed, arenaId, config, gamemakerMode: gamemaker });
 
 const trainingHistogram: Record<number, number> = {};
 let runs = 0, victors = 0, wipeouts = 0, totalDays = 0, totalLogs = 0, feastRuns = 0;
@@ -303,10 +301,15 @@ let maxAbsRelationship = 0;
 // floor below its calibrated threshold with no underlying regression. The
 // sweep is cheap (a few seconds for hundreds of runs), so scaling it up
 // preserves the floors' statistical power instead of loosening them.
+// AUDIT-9 B19: the explicit arena x config product rather than two moduli
+// that share a factor and so visit half the matrix forever. See runInit.ts.
+const cells = coverageCells(arenaIds, configs.length, 400);
+console.log(coverageReport(cells, arenaIds, configs.length));
+
 for (let i = 0; i < 400; i++) {
   const seed = `SOAK${i}`;
-  const arenaId = arenaIds[i % arenaIds.length];
-  const config = configs[i % configs.length];
+  const arenaId = cells[i].arenaId;
+  const config = configs[cells[i].configIndex];
   const gamemaker = i % 5 === 0;
   const sim = new Simulator(start(seed, arenaId, config, gamemaker));
 

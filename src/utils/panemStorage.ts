@@ -1,3 +1,4 @@
+import { CampaignSnapshot } from '../models/types';
 import { GameState, Tribute } from '../models/types';
 import { HEAD_GAMEMAKERS } from '../data/gamemakers';
 import { QUELLS } from '../data/gamesProfile';
@@ -835,4 +836,31 @@ export function noteStipendTaken(): PanemRecords {
 
 export function clearPanem(): void {
     removeStored(PANEM_SPEC);
+}
+
+/**
+ * AUDIT-9 B06: the record book, translated into the shape the simulation reads.
+ *
+ * The engine must not import this module — it must not know that a career of
+ * Games is stored in a browser at all — so this is the one crossing point.
+ * Everything the simulation actually consults is listed explicitly rather than
+ * spread, which keeps the snapshot small enough to travel in a share link and
+ * makes it obvious when a new continuity feature widens what a seed depends on.
+ */
+export function campaignSnapshotOf(records: PanemRecords): CampaignSnapshot {
+    return {
+        runs: records.runs,
+        victors: records.victors,
+        patronDistrict: records.patronDistrict,
+        patronDistricts: records.patronDistricts,
+        patronWins: records.patronWins,
+        victorDistrictStreak: records.victorDistrictStreak,
+        lastVictorDistrict: records.lastVictorDistrict,
+        districtCrowns: records.districtCrowns,
+        gamemakerRecords: records.gamemakerRecords,
+        recentRuns: records.recentRuns,
+        headGamemakerTerm: records.headGamemakerTerm,
+        victorMentors: records.victorMentors,
+        heirlooms: records.heirlooms,
+    };
 }

@@ -2392,6 +2392,22 @@ export interface GameState {
      * this is the run-local exception list layered on top of it.
      */
     severedEdges?: string[];
+    /**
+     * AUDIT-9 B06: the record book this run was played under, snapshotted at
+     * creation.
+     *
+     * The engine used to read the player's persistent history straight out of
+     * storage during the reaping, so a shared seed did not describe a run: the
+     * same link produced different opening sponsor trust for two players, and
+     * for the same player after a few more Games. Snapshotting it here makes
+     * the campaign an *input* to the simulation like every other input —
+     * carried by the save, exportable with a share link, and omittable on
+     * purpose when the player wants the seed rather than the run.
+     *
+     * Undefined means no history, which is what every headless harness and
+     * every first run gets. See `engine/campaign.ts`.
+     */
+    campaign?: CampaignSnapshot;
     /** Monotonic day/night cycle counter, used for memory and decay timings. */
     cycle?: number;
     /**
@@ -2857,4 +2873,33 @@ export interface HallOfFameEntry {
     winnerTraits?: string[];
     winnerEndHealth?: number;
     tributeSummaries?: TributeHoFSummary[];
+}
+
+/**
+ * AUDIT-9 B06: everything a career of Games contributes to a run.
+ *
+ * Declared here rather than in the engine so the model layer stays the one
+ * place a `GameState` field is defined; `engine/campaign.ts` holds the
+ * behaviour and the rationale. The shape is deliberately structural — it
+ * mirrors the subset of the stored record book the simulation reads, and
+ * nothing in the engine may import the storage layer.
+ */
+export interface CampaignSnapshot {
+    runs: number;
+    victors: number;
+    patronDistrict?: number;
+    patronWins?: number;
+    victorDistrictStreak?: number;
+    lastVictorDistrict?: number;
+    districtCrowns?: Record<number, { victories: number }>;
+    gamemakerRecords?: Record<string, { games: number; victors: number; deaths: number; totalDays?: number }>;
+    recentRuns?: Array<{ victorDistrict?: number }>;
+    /** The incumbent Head Gamemaker and how many Games they have run. */
+    headGamemakerTerm?: { name: string; runsServed: number };
+    /** §6.2: districts the player is paying to patronise this run. */
+    patronDistricts?: number[];
+    /** §9: districts whose last victor is alive to sit in the mentor's chair. */
+    victorMentors?: Record<number, { name: string; archetype: string; run: number }>;
+    /** §10.4: a keepsake an earlier tribute of that district did not bring home. */
+    heirlooms?: Record<number, { token: string; quirk?: string; fromName: string; run: number }>;
 }
