@@ -67,21 +67,55 @@ and finish the readability work the text-scale fix started.
 district and trait win rate in section 9 is provisional. The correct first step
 is not to tune anything.
 
-1. **Re-baseline.** Re-run the sweep on corrected counting and publish the new
-   table beside the old one. Some of the twelve gaps will have moved without a
-   single balance change; tuning against the stale numbers would be tuning
-   against an artefact.
+1. **Re-baseline.** ~~Re-run the sweep on corrected counting and publish the new
+   table beside the old one.~~ **Done** — run at `METRICS_RUNS=1600` on
+   corrected counting, all regression guards holding. The sweep now reports
+   **1,634 people crowned across 1,599 Games with a victor (35 dual)**, which is
+   the B09 undercount stated plainly.
+
+   The prediction that some gaps would move without a balance change holds, and
+   one of them moved enough to redirect the work:
+
+   | Indicator | Audit (§9) | Re-baselined | Note |
+   |---|---:|---:|---|
+   | Best/worst archetype win ratio | 3.24× | **3.12×** | goal ≤2.3×, still unmet |
+   | Career win rate | 9.06% (n=1,778) | **9.17%** | goal ≤8%, still unmet |
+   | Confessor | 2.79% (n=501) | **2.99%** | no longer the worst archetype |
+   | Zealot | 3.07% (n=783) | **2.94%** | **now the worst**, and the floor case |
+   | Broker | 3.28% (n=1,005) | **3.28%** | unchanged |
+   | Career share of winners | 51.0% | **51.2%** | goal ≤45%, still unmet |
+   | Training ≥9 | 23.5% | **23.5%** | unchanged |
+   | Stranger final-two standoffs | 35.4% | **35.5%** | unchanged |
+   | Time at sanity floor | 19.4% | **19.4%** | unchanged |
+   | Zero-kill winners | 7.8% | **8.5%** | now per person crowned, not per run |
+   | Rarest stance (Scavenging) | 1.3% | **1.3%** | unchanged |
+   | Typical duration | 10.33 days | **10.34** | unchanged |
+
+   **Confessor and Zealot swapped places.** The audit's step 3 names Confessor
+   as a floor case and Zealot as needing a disengagement condition; on corrected
+   counting Zealot is the one under the floor and Confessor is above where
+   Zealot was. Neither changed; the measurement did. That is the whole argument
+   for re-baselining before tuning, and it means step 3 below is now ordered
+   Zealot first.
+
+   Signature rates are unaffected (they are per entrant and never read the
+   winner): all 36 clear the 29% floor, five still short of the 35% target —
+   Cartographer 32.6%, Bellwether 32.1%, Courier 31.3%, Captor 29.8%, Broker
+   29.3%.
 2. **Diagnose before adjusting.** For each weak archetype (Confessor 2.79%,
    Zealot 3.07%, Broker 3.28%), break losses down by phase, arena, district,
    age and loadout, and count *signature opportunities before death*. The
    audit's hypothesis — that a weak archetype may be dying before its signature
    ever becomes legal — is testable and changes the fix entirely: an
    opportunity problem does not get better by enlarging the bonus.
-3. **Social archetypes get opportunities, not buffs.** Broker needs reliable
-   negotiating situations; Confessor needs usable social leverage. Guard
-   against the failure mode where a social role is only valuable when everyone
-   nearby is already friendly. Zealot gets an intentional disengagement
-   condition rather than flat health.
+3. **Social archetypes get opportunities, not buffs.** Re-ordered by the
+   re-baseline above: **Zealot first**, since it is now the archetype under the
+   floor — an intentional disengagement condition rather than flat health.
+   Then Broker, which needs reliable negotiating situations and has the least
+   margin of any signature (29.3% against a 29% floor). Confessor last; at
+   2.99% it is close to the 3.5% floor rather than far below it. Throughout,
+   guard against the failure mode where a social role is only valuable when
+   everyone nearby is already friendly.
 4. **Career compounding, selectively.** Starting attributes, equipment,
    training, alliance formation and sponsors each currently assume the others
    provide no advantage. Reduce the stacking, not the dangerous opening.
