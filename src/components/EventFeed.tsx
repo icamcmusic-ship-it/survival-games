@@ -425,6 +425,7 @@ export function FeedLine({ log, showTag = true, animate = true, cast, onSelectTr
  */
 export function MomentShare({ gameState, log }: { gameState: GameState; log: EventLog }) {
     const [state, setState] = useTransientFlag<'idle' | 'ok' | 'fail'>('idle', 1600);
+    const facts = useStore(prefsStore, p => p.chronicleStyle) === 'facts';
     return (
         <button
             type="button"
@@ -434,7 +435,7 @@ export function MomentShare({ gameState, log }: { gameState: GameState; log: Eve
             aria-label={state === 'ok' ? 'Moment copied' : 'Copy this moment'}
             onClick={async e => {
                 e.stopPropagation();
-                setState(await copyMoment(gameState, log) ? 'ok' : 'fail');
+                setState(await copyMoment(gameState, log, facts) ? 'ok' : 'fail');
             }}
         >
             {state === 'ok' ? 'copied' : state === 'fail' ? 'copy failed' : 'copy'}

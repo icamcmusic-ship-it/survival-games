@@ -3,6 +3,8 @@ import { Hint } from './Hint';
 import { useTransientFlag } from '../ui/useTransientFlag';
 import { GameState } from '../models/types';
 import { ChronicleFormat, copyChronicle, downloadChronicleAs, downloadChronicleJson } from '../utils/chronicle';
+import { prefsStore } from '../store/prefsStore';
+import { useStore } from '../store/createStore';
 
 /**
  * "Copy chronicle" / "Download as Markdown" — the cheapest retention feature
@@ -20,6 +22,9 @@ export function ChronicleExport({ gameState, importantOnly = false }: {
     // plain-text file wants no markers at all.
     const [format, setFormat] = useState<ChronicleFormat>('markdown');
     const filter = { importantOnly, tributeId: tributeId || undefined };
+    // §(requests): an export written in the facts register carries the
+    // same register the reader chose for the chronicle itself.
+    const facts = useStore(prefsStore, p => p.chronicleStyle) === 'facts';
 
     return (
         <div className="flex items-center gap-2 flex-wrap" role="group" aria-label="Export the chronicle">
@@ -55,7 +60,7 @@ export function ChronicleExport({ gameState, importantOnly = false }: {
                 aria-live="polite"
                 aria-label={copied === 'ok' ? 'Chronicle copied to clipboard' : 'Copy the chronicle to the clipboard as Markdown'}
                 onClick={async () => {
-                    const ok = await copyChronicle(gameState, filter, format);
+                    const ok = await copyChronicle(gameState, filter, format, facts);
                     setCopied(ok ? 'ok' : 'fail');
                 }}
             >
@@ -65,7 +70,7 @@ export function ChronicleExport({ gameState, importantOnly = false }: {
                 type="button"
                 className="btn btn-sm btn-ghost"
                 aria-label="Download the chronicle as a file"
-                onClick={() => downloadChronicleAs(gameState, filter, format)}
+                onClick={() => downloadChronicleAs(gameState, filter, format, facts)}
             >
                 Download
             </button>
