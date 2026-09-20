@@ -237,7 +237,7 @@ export function resolveDuePacts(ctx: SimContext) {
                 : `${because} ${members.map(m => m.name).join(' and ')} keep their word without any ceremony about it `
                   + 'and go their separate ways.',
             members.map(m => m.id),
-            { important: true, category: 'alliance' }
+            { type: 'pact-honoured', important: true, category: 'alliance' }
         );
         // §3.7: they kept their word and walked away from each other. That is
         // not the same as never having met, and the ordinary decay rate treats

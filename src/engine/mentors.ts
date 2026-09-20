@@ -292,7 +292,7 @@ export function processMentorPleas(ctx: SimContext, alive: Tribute[]): Set<strin
                 `${mentor} and ${ally.mentorLegacy} have evidently been talking. The second parachute comes down beside the first, `
                 + `and ${ally.name} gets ${itemPhrase(shared)} out of a conversation happening a long way above their head.`,
                 [t.id, ally.id],
-                { important: true, category: 'sponsor', zone: t.zone }
+                { type: 'mentor-cross-talk', important: true, category: 'sponsor', zone: t.zone }
             );
         }
     });

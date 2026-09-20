@@ -749,7 +749,7 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
             `${attacker.name} swings the ${weapon!.name} and it does not go where they meant it to. `
             + 'It is a good weapon. It is not their weapon, not yet.',
             [attacker.id],
-            { category: 'combat' }
+            { type: 'cold-weapon-swings', category: 'combat' }
         );
     }
     noteWeaponUse(attacker, weapon);
@@ -897,7 +897,7 @@ export function resolveCombat(
         ctx.logEvent(
             `${t1.name} and ${t2.name} have done this before — ${priorFights - 1} times now. Neither of them needs a reason any more.`,
             [t1.id, t2.id],
-            { important: true, category: 'combat' }
+            { type: 'feud', important: true, category: 'combat' }
         );
     }
 
@@ -936,7 +936,7 @@ export function resolveCombat(
             ctx.logEvent(
                 fill(ctx.pickText(DUEL_TEXTS.retreat), { fleer: t2.name, stayer: t1.name, zone: t1.zone }),
                 [t2.id, t1.id],
-                { important: true, category: 'combat' }
+                { type: 'retreat', important: true, category: 'combat' }
             );
             // Same bookkeeping as the main retreat path, for both sides:
             // fleeing feeds the rivalry record, and the ambusher holds a
@@ -1000,7 +1000,7 @@ export function resolveCombat(
             ctx.logEvent(
                 fill(ctx.pickText(DUEL_TEXTS.stalemate), { t1: t1.name, t2: t2.name, zone: t1.zone }),
                 [t1.id, t2.id],
-                { category: 'combat' }
+                { type: 'feud', category: 'combat' }
             );
         } else {
             const winner = edge > 0 ? t1 : t2;
@@ -1035,7 +1035,7 @@ export function resolveCombat(
             ctx.logEvent(
                 fill(ctx.pickText(DUEL_TEXTS.mutualBreak), { t1: t1.name, t2: t2.name, zone: t1.zone }),
                 [t1.id, t2.id],
-                { important: true, category: 'combat' }
+                { type: 'retreat', important: true, category: 'combat' }
             );
             ended = true;
             break;
@@ -1060,7 +1060,7 @@ export function resolveCombat(
             ctx.logEvent(
                 fill(ctx.pickText(DUEL_TEXTS.retreat), { fleer: fleer.name, stayer: stayer.name, zone: stayer.zone }),
                 [fleer.id, stayer.id],
-                { important: true, category: 'combat' }
+                { type: 'retreat', important: true, category: 'combat' }
             );
             // Letting a beaten opponent walk is a choice, and the arena
             // remembers people who make it.
@@ -1077,7 +1077,7 @@ export function resolveCombat(
         ctx.logEvent(
             fill(ctx.pickText(DUEL_TEXTS.mutualBreak), { t1: t1.name, t2: t2.name, zone: t1.zone }),
             [t1.id, t2.id],
-            { important: true, category: 'combat' }
+            { type: 'retreat', important: true, category: 'combat' }
         );
     }
 
@@ -1356,7 +1356,7 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
             ctx.logEvent(
                 fill(ctx.pickText(breaking.length === 1 ? GROUP_COMBAT_TEXTS.scatterSolo : GROUP_COMBAT_TEXTS.scatter), { names: breaking.map(t => t.name).join(', '), zone }),
                 breaking.map(t => t.id),
-                { important: true, category: 'combat' }
+                { type: 'retreat', important: true, category: 'combat' }
             );
             // One skittish tribute on the periphery used to end the whole
             // engagement for everyone. Only the breakers leave; the brawl
@@ -1409,7 +1409,7 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
         `${fighters.map(f => f.name).join(', ')} all reach ${zone} at once, and not one of them has a friend in it. ` +
         `It comes apart into every-tribute-for-themselves.`,
         fighters.map(f => f.id),
-        { important: true, category: 'combat' }
+        { type: 'free-for-alls', important: true, category: 'combat' }
     );
 
     const withdrawn = new Set<string>();
@@ -1478,7 +1478,7 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
             ctx.logEvent(
                 fill(ctx.pickText(breaking.length === 1 ? GROUP_COMBAT_TEXTS.scatterSolo : GROUP_COMBAT_TEXTS.scatter), { names: breaking.map(t => t.name).join(', '), zone }),
                 breaking.map(t => t.id),
-                { important: true, category: 'combat' }
+                { type: 'retreat', important: true, category: 'combat' }
             );
             // Only the breakers leave the melee; whoever still wants it keeps
             // fighting. Ending the whole free-for-all on the first tribute to
@@ -1827,7 +1827,7 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         ctx.logEvent(
             `The hovercraft lifts ${victim.name} with their district token still on them — ${victim.token}. District ${victim.district} sent it out with them, and District ${victim.district} gets it back.`,
             [victim.id],
-            { category: 'system' }
+            { type: 'sepsis-treated', category: 'system' }
         );
     }
 

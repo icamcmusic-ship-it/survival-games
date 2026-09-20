@@ -102,7 +102,7 @@ export function formVengeancePacts(ctx: SimContext) {
                 : `${a.name} and ${partner.name} discover they are carrying the same name, and agree, without much ceremony, to carry it together. `
                     + `${target.name} now has two people coming.`,
             [a.id, partner.id, target.id],
-            { important: true, category: 'alliance' }
+            { type: 'vengeance-pacts', important: true, category: 'alliance' }
         );
     });
 }
@@ -129,7 +129,7 @@ export function tickVengeancePacts(ctx: SimContext) {
                     `${names.join(' and ')} swore this together and are both in the sky now. `
                     + `${target.name} will never know how close it came, or that it was coming at all.`,
                     [...pact.memberIds, pact.targetId],
-                    { important: true, category: 'alliance' }
+                    { type: 'vengeance-outlived', important: true, category: 'alliance' }
                 );
             }
             return false;
@@ -168,7 +168,7 @@ export function tickVengeancePacts(ctx: SimContext) {
                         : `${target.name} is dead, and it was not ${members.map(m => m.name).join(' or ')} who did it. `
                         + 'They swore this together and somebody else has taken it off them, which is not the same as it being over.',
                 [...members.map(m => m.id), pact.targetId],
-                { important: true, category: 'alliance' }
+                { type: theirs || present ? 'vengeance-paid' : 'vengeance-stolen', important: true, category: 'alliance' }
             );
             return false;
         }
@@ -188,7 +188,7 @@ export function tickVengeancePacts(ctx: SimContext) {
                     `${lost.join(' and ')} is dead, and whatever ${survivor.name} swore alongside them is ${survivor.name}'s alone now. `
                     + `It has not stopped being about ${target.name}. It has stopped being a thing two people are doing.`,
                     [survivor.id, pact.targetId],
-                    { important: true, category: 'alliance' }
+                    { type: 'vengeance-soloed', important: true, category: 'alliance' }
                 );
             }
             return false;
@@ -213,7 +213,7 @@ export function tickVengeancePacts(ctx: SimContext) {
                 `${quitter.name} lets it go. ${others.map(m => m.name).join(' and ')} does not, and will not be forgetting `
                 + 'which of them was the one who could.',
                 [quitter.id, ...others.map(m => m.id)],
-                { important: true, category: 'betrayal' }
+                { type: 'vengeance-abandoned', important: true, category: 'betrayal' }
             );
             return false;
         }

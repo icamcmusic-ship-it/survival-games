@@ -137,7 +137,7 @@ export function tickInfection(ctx: SimContext, t: Tribute) {
                                 + 'This is no longer a wound they are carrying. It is a clock.'
                             : `${t.name}'s ${siteWord(site)} is worse today — swollen, wet, and warm to the back of a hand.`,
                         [t.id],
-                        { important: next >= INFECTION.maxGrade, category: 'injury' }
+                        { type: 'sepsis-deepened', important: next >= INFECTION.maxGrade, category: 'injury' }
                     );
                 }
             }
@@ -157,7 +157,7 @@ export function tickInfection(ctx: SimContext, t: Tribute) {
             `The ${siteWord(site)} ${t.name} has been walking on for days has stopped looking like a wound and started looking like a problem. `
             + 'The edges are red and they are hotter than the night is.',
             [t.id],
-            { important: true, category: 'injury' }
+            { type: 'wound-turned', important: true, category: 'injury' }
         );
     });
 
@@ -195,7 +195,7 @@ export function applySepsisDrain(ctx: SimContext, t: Tribute) {
             `${t.name} is running a fever they cannot sweat out. They keep checking the ${siteWord(worst.site)} `
             + 'and keep finding it exactly as bad as the last time they looked.',
             [t.id],
-            { category: 'survival' }
+            { type: 'fever-lines', category: 'survival' }
         );
     }
 }
@@ -252,7 +252,7 @@ export function treatInfection(ctx: SimContext, t: Tribute, medic?: Tribute): bo
             : `${t.name} cleans the ${siteWord(worst.site)} out with the ${supply.name}, all the way down, without anybody to hold them still for it. `
                 + 'The heat is out of it by morning.',
         medic ? [medic.id, t.id] : [t.id],
-        { important: true, category: 'survival' }
+        { type: 'sepsis-treated', important: true, category: 'survival' }
     );
     return true;
 }

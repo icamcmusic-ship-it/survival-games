@@ -2,7 +2,7 @@ import { forceTriangleChoice } from '../triangles';
 import { SimContext, getAlive } from '../context';
 import { tickRunRecords } from '../runRecords';
 import { RNG } from '../../utils/rng';
-import { GameState, Item, Tribute } from '../../models/types';
+import { EventType, GameState, Item, Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
 import { ARCHETYPES } from '../../data/archetypes';
 import { FEAST, POISONING, PRE_ARENA, TRAINING_FLOOR } from '../../data/balance';
@@ -255,7 +255,7 @@ function claimPacks(
         ctx.logEvent(
             `${victim.name} works out, from the gap in the row and the name still printed beside it, that ${t.name} has walked off with the one thing on that table that was theirs.`,
             [victim.id, t.id],
-            { important: true, zone: cornucopia, category: 'sanity' }
+            { type: 'hidden-moments', important: true, zone: cornucopia, category: 'sanity' }
         );
     });
 }
@@ -440,7 +440,7 @@ export function processFeast(ctx: SimContext) {
 
     // One line per tribute turned the feed into a wall of near-identical
     // sentences; past a couple of names these are summarised instead.
-    const announce = (group: typeof alive, pool: string[], summary: (names: string) => string, absent = false) => {
+    const announce = (group: typeof alive, pool: string[], summary: (names: string) => string, absent = false, type?: EventType) => {
         if (group.length === 0) return;
         /*
          * AUDIT-9 B18: these lines are filed under the Cornucopia because
@@ -458,7 +458,7 @@ export function processFeast(ctx: SimContext) {
             ctx.logEvent(
                 summary(group.map(t => t.name).join(', ')),
                 group.map(t => t.id),
-                { zone: cornucopia, category: 'feast', absentIds: absent ? group.map(t => t.id) : undefined },
+                { type, zone: cornucopia, category: 'feast', absentIds: absent ? group.map(t => t.id) : undefined },
             );
         }
     };

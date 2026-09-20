@@ -151,6 +151,50 @@ const configs: GameConfig[] = [
  * listed there is allowed to read zero because the beat it watches is genuinely
  * rarer than the sweep. Adding to it is a decision somebody has to write down.
  */
+/**
+ * AUDIT-9, second pass: a measured beat, counted by what it *is*.
+ *
+ * This replaces `prose(...)` at every counter in this file. The probes were
+ * the file's own documented weakness — it says so in the header, about two of
+ * them that read zero for several commits — and the dead-probe assertion added
+ * with the first pass only catches a probe that reaches exactly zero. A reword
+ * that costs a counter most of its hits, or a regex loose enough to count
+ * somebody else's lines, stays silent and stays wrong.
+ *
+ * Both happened. See `DEAD_TYPES` below and the migration notes in the commit:
+ * six of these counters were reading lines that were not the beat at all.
+ */
+const beatCounts = new Map<string, number>();
+function beat(l: { type?: string }, type: string): boolean {
+  if (!beatCounts.has(type)) beatCounts.set(type, 0);
+  if (l.type !== type) return false;
+  beatCounts.set(type, (beatCounts.get(type) ?? 0) + 1);
+  return true;
+}
+
+/**
+ * Types allowed to read zero across a sweep, with the reason. Deliberately
+ * small, like `PROSE_ALLOWED_ZERO`: adding to it is a decision somebody writes
+ * down.
+ */
+const BEAT_ALLOWED_ZERO = new Map<string, string>([
+  ['expulsion', 'the hearing-driven expulsion: it needs a second charter breach, a hearing, '
+    + 'the expel roll and two members left to stay a group — measured at 0 across 400 runs '
+    + 'against 11 hearings, so it is genuinely rarer than the sweep. Every expulsion the '
+    + 'sweep does see is a faction one. If this ever fires, delete this line.'],
+]);
+
+/**
+ * A counter whose beat has more than one type under it. `expulsions` is the
+ * whole of "somebody was put out of a group", which the engine reaches by two
+ * routes — a faction with the numbers, and a second charter breach going to a
+ * hearing. The prose probe counted both because both go through one sentence;
+ * the types keep them apart, and this is where they are put back together.
+ */
+function beatAny(l: { type?: string }, types: string[]): boolean {
+  return types.map(t => beat(l, t)).some(Boolean);
+}
+
 const proseProbes = new Map<string, { hits: number }>();
 /** Probes allowed to read zero across a sweep, with the reason. */
 const PROSE_ALLOWED_ZERO = new Map<string, string>([
@@ -164,6 +208,7 @@ function prose(re: RegExp, text: string): boolean {
   probe.hits++;
   return true;
 }
+
 
 /**
  * AUDIT-9 B19: production's own initialisation, shared with the metrics
@@ -258,13 +303,7 @@ let objectivesFormed = 0, trapsSet = 0, trapsTriggered = 0;
  * kind, and a kind that reads zero fails the build like any other dead branch.
  */
 const trapKinds = { snare: 0, deadfall: 0, pit: 0, tripwire: 0, stake: 0 };
-const TRAP_SET_PATTERNS: Array<[keyof typeof trapKinds, RegExp]> = [
-    ['snare', /sets a snare across a game trail/],
-    ['deadfall', /balances a deadfall over a gap/],
-    ['pit', /spends most of the day digging in/],
-    ['tripwire', /runs a line at ankle height across the approach/],
-    ['stake', /sets a line in .* over something sharpened/],
-];
+const TRAP_SET_KINDS = Object.keys(trapKinds) as Array<keyof typeof trapKinds>;
 let firesLit = 0, sheltersBuilt = 0, camouflaged = 0, weaponsPoisoned = 0;
 // Arena: stateful zones, mutts, border variety.
 let zoneFiresStarted = 0, zoneFiresSpread = 0, zoneFloods = 0, zoneFreezes = 0;
@@ -558,37 +597,37 @@ for (let i = 0; i < 400; i++) {
     if (l.type === 'ambush') ambushes++;
     // Prose-matched, so kept deliberately broad: these must survive new
     // flavour lines being added to the same pools.
-    if (prose(/breaks off|disengages and runs|back away from each other|is gone into the cover|breaks contact|throws everything they are carrying|does not follow far|go opposite ways out of|simply stop, ten feet apart/, l.text)) retreats++;
-    if (prose(/hears the cannon and stops dead|face in the sky|says .*'s name out loud|something closes behind their eyes/, l.text)) griefEvents++;
-    if (prose(/never knows it|does not move a muscle|until .* has gone|is right there|never once looks up|until the footsteps go away/, l.text)) hiddenMoments++;
-    if (prose(/wave .* in\.|worth more inside|nobody asks them to leave|makes their case/, l.text)) recruitments++;
+    if (beat(l, 'retreat')) retreats++;
+    if (beat(l, 'grief-events')) griefEvents++;
+    if (beat(l, 'hidden-moments')) hiddenMoments++;
+    if (beat(l, 'recruitment')) recruitments++;
     // AUDIT-6 §9.1: the muster, both halves — the offer and somebody taking it.
-    if (prose(/every sponsor in the city is watching/, l.text)) musterCalls++;
-    if (prose(/with the whole Capitol watching, and all of them know|is the only tribute in .* while the city is watching/, l.text)) musterScenes++;
+    if (beat(l, 'muster-calls')) musterCalls++;
+    if (beat(l, 'muster-scenes')) musterScenes++;
     if (l.text.includes('cannot carry it all') || l.text.includes('leaves') && l.text.includes('in the dirt')) overloadedDrops++;
     if (l.text.includes('already stripped bare')) depletedForages++;
     // --- Tribute-logic overhaul: each new system must actually fire. ---
     if (l.text.includes('bleeding has clotted')) clots++;
-    if (prose(/binds their wound tight|rough dressing onto the wound|dressing onto .*'s wound|binds .*'s wound properly/, l.text)) fieldDressings++;
+    if (beat(l, 'field-dressings')) fieldDressings++;
     if (l.text.includes('sleeps properly for the first time')) restRecoveries++;
-    if (prose(/runs down something small|knapping a stone|works it into a cudgel/, l.text)) huntOrCraft++;
-    if (prose(/drinks their fill from the water|risks a drink from|boils water from/, l.text)) zoneDrinks++;
+    if (beat(l, 'hunt-or-craft')) huntOrCraft++;
+    if (beat(l, 'zone-drinks')) zoneDrinks++;
     if (l.text.includes('hunting ')) pursuits++;
-    if (prose(/too few left for either|Only one of them is going home|the week runs out|wanting has stopped mattering|small enough now to decide things/, l.text)) desperationFights++;
+    if (beat(l, 'desperation-fights')) desperationFights++;
     // --- Intentions and fieldcraft. ---
-    if (prose(/starts hunting |sets off for |worth holding and digs in|wants to be anywhere but|not dying on their watch/, l.text)) objectivesFormed++;
-    TRAP_SET_PATTERNS.forEach(([kind, re]) => { if (prose(re, l.text)) { trapKinds[kind]++; trapsSet++; } });
-    if (prose(/snare closes on their leg|deadfall comes down on|pulls apart a (snare|deadfall)/, l.text)) trapsTriggered++;
-    if (prose(/gets a fire going/, l.text)) firesLit++;
-    if (prose(/lashes together a shelter/, l.text)) sheltersBuilt++;
-    if (prose(/works mud and leaf litter/, l.text)) camouflaged++;
-    if (prose(/^STANDOFF:|back out of the clearing|both decide, separately|stop pretending either of them will|neither turns their back|It is arithmetic\./, l.text)) standoffs++;
+    if (beat(l, 'objective-formed')) objectivesFormed++;
+    TRAP_SET_KINDS.forEach(kind => { if (beat(l, `trap-set-${kind}`)) { trapKinds[kind]++; trapsSet++; } });
+    if (beat(l, 'trap-triggered')) trapsTriggered++;
+    if (beat(l, 'fire-lit')) firesLit++;
+    if (beat(l, 'shelter-built')) sheltersBuilt++;
+    if (beat(l, 'camouflaged')) camouflaged++;
+    if (beat(l, 'standoff')) standoffs++;
     // Both shapes of the toll: an item handed over, and — for the far more
     // common tribute who is carrying nothing spare — directions paid instead.
-    if (prose(/is allowed to walk away|works out the price on their own|to get out of .* alive|before .* has finished closing|A toll, in everything but name/, l.text)) tributesPaid++;
-    if (prose(/pay in directions instead|finds nothing worth taking, and asks a question|Empty pockets buy nothing|Information is the only currency|knowing better than to go back to/, l.text)) tributesPaidInformation++;
-    if (prose(/^TRUCE:/, l.text)) trucesStruck++;
-    if (prose(/The agreement is holding|still worth more than the fight|it holds for one more day|Nothing is what they agreed on|That is what the word was for|and neither of them says what|It looks like courtesy|and neither of them moves/, l.text)) trucesHeld++;
+    if (beat(l, 'tribute-paid')) tributesPaid++;
+    if (beat(l, 'tribute-paid-information')) tributesPaidInformation++;
+    if (beat(l, 'truce')) trucesStruck++;
+    if (beat(l, 'truce-held')) trucesHeld++;
     if (matchesPool(PARLEY_TEXTS.truceBroken, l.text)) trucesBroken++;
     // §4.1: expiry resolves on-screen now — renew, lapse, or turn. These three
     // together are the fix for the "80 of 84 truces evaporated silently" bug,
@@ -596,39 +635,39 @@ for (let i = 0; i < 400; i++) {
     if (matchesPool(PARLEY_TEXTS.truceRenewed, l.text)) trucesRenewed++;
     if (matchesPool(PARLEY_TEXTS.truceLapsed, l.text)) trucesLapsed++;
     if (matchesPool(PARLEY_TEXTS.truceTurned, l.text)) trucesTurned++;
-    if (prose(/would rather stop pretending otherwise/, l.text)) soloDepartures++;
-    if (prose(/it is two camps/, l.text)) schisms++;
-    if (prose(/stops taking cover in|stops making plans/, l.text)) resolveBreakdowns++;
-    if (prose(/takes out the nightlock|starts looking at the undergrowth instead/, l.text)) nightlockDeaths++;
-    if (prose(/without being asked. Neither of them mentions why|That is the whole conversation|settles up in|so they take it, all of it|pay what they can|I owe you one/, l.text)) debtsRepaid++;
-    if (prose(/while the pile stayed empty|It gets loud between|come back to an empty one|which is the one thing this group agreed/, l.text)) charterBreaches++;
-    if (prose(/plays it beautifully/, l.text)) performedBonds++;
-    if (prose(/A front builds on the edge of the arena/, l.text)) weatherFronts++;
-    if (prose(/The horn belongs to somebody now|The horn has changed hands/, l.text)) cornucopiaHeld++;
-    if (prose(/takes .* straight off the top/, l.text)) cornucopiaPayouts++;
-    if (prose(/is so much ash|lifts .* trap clean off its anchor/, l.text)) trapsDestroyed++;
-    if (prose(/calls the tributes to the Cornucopia|is asked, live, when he intends to intervene|signs the release order personally|adjusts nothing dramatic|finally gets to use the weather systems|brings the schedule forward|A parachute comes down for the youngest/, l.text)) gamemakerSignatures++;
-    if (prose(/Nobody in the Capitol is saying out loud what that is going to mean/, l.text)) districtBonds++;
-    if (prose(/^THE CLOCK:|^THE VAULT GOES DARK:|^THE TIDE TURNS:|^STRUCTURAL FAILURE:|^THE SUN STALLS:|^THE COLD COMES DOWN:|^THE BOG EXHALES:|^THE FALL THICKENS:|^THE MIRROR:|^THE BLOOM:|A crossing parts two hundred metres up/, l.text)) signatureBeats++;
-    if (prose(/coats their .* with it/, l.text)) weaponsPoisoned++;
+    if (beat(l, 'solo-departures')) soloDepartures++;
+    if (beat(l, 'schism')) schisms++;
+    if (beat(l, 'resolve-breakdowns')) resolveBreakdowns++;
+    if (beat(l, 'nightlock-deaths')) nightlockDeaths++;
+    if (beat(l, 'debt-repaid')) debtsRepaid++;
+    if (beat(l, 'charter-breaches')) charterBreaches++;
+    if (beat(l, 'performed-bonds')) performedBonds++;
+    if (beat(l, 'weather-fronts')) weatherFronts++;
+    if (beat(l, 'cornucopia-held')) cornucopiaHeld++;
+    if (beat(l, 'cornucopia-payouts')) cornucopiaPayouts++;
+    if (beat(l, 'trap-destroyed')) trapsDestroyed++;
+    if (beat(l, 'gamemaker-signatures')) gamemakerSignatures++;
+    if (beat(l, 'district-bonds')) districtBonds++;
+    if (beat(l, 'signature-beats')) signatureBeats++;
+    if (beat(l, 'weapon-poisoned')) weaponsPoisoned++;
     // --- Relationships and alliances. ---
-    if (prose(/empties the group's stash|and watches them go|keeps their hand over the pocket|hears it, and keeps walking/, l.text)) exoticBetrayals++;
-    if (prose(/decides not to wait to find out/, l.text)) preemptiveBetrayals++;
-    if (prose(/run as one/, l.text)) merges++;
-    if (prose(/takes charge of what is left|stops deferring to/, l.text)) leadershipChanges++;
-    if (prose(/There is no reason at all for it to be true/, l.text)) rumoursPlanted++;
-    if (prose(/looking them in the face, and knew/, l.text)) rumoursCaughtPlanted++;
-    if (prose(/passed it on in good faith/, l.text)) rumoursCaughtRepeated++;
-    if (prose(/cannot even remember now who told them|no way for anybody to find out it was never true/, l.text)) rumoursDeadEnd++;
-    if (prose(/Neither of them is doing this alone any more|now has two people coming/, l.text)) vengeancePacts++;
+    if (beat(l, 'exotic-betrayals')) exoticBetrayals++;
+    if (beat(l, 'preemptive-betrayals')) preemptiveBetrayals++;
+    if (beat(l, 'merge')) merges++;
+    if (beat(l, 'leadership-changes')) leadershipChanges++;
+    if (beat(l, 'rumour-planted')) rumoursPlanted++;
+    if (beat(l, 'rumour-caught-planted')) rumoursCaughtPlanted++;
+    if (beat(l, 'rumour-caught-repeated')) rumoursCaughtRepeated++;
+    if (beat(l, 'rumour-dead-end')) rumoursDeadEnd++;
+    if (beat(l, 'vengeance-pacts')) vengeancePacts++;
     // §4.3: two ways a pact is paid by the people who swore it — the named
     // hand, and both of them standing in the fight it ended in.
-    if (prose(/finish what they swore to finish|which is what they swore to be/, l.text)) vengeancePaid++;
-    if (prose(/somebody else has taken it off them/, l.text)) vengeanceStolen++;
-    if (prose(/which of them was the one who could/, l.text)) vengeanceAbandoned++;
+    if (beat(l, 'vengeance-paid')) vengeancePaid++;
+    if (beat(l, 'vengeance-stolen')) vengeanceStolen++;
+    if (beat(l, 'vengeance-abandoned')) vengeanceAbandoned++;
     // AUDIT-6 §1.2: the swearing line was rewritten under §22 to name both
     // memberships; the old probe string is gone from src/ entirely.
-    if (prose(/agree a truce between their groups and take it back to them/, l.text)) treatiesSworn++;
+    if (beat(l, 'treaty-sworn')) treatiesSworn++;
     /*
      * AUDIT-7 §4.5: counted off the engine's own flag, not off prose.
      *
@@ -645,55 +684,55 @@ for (let i = 0; i < 400; i++) {
      */
     // AUDIT-7 §4.5: a treaty that comes up and gets renewed, which is the
     // ending that did not exist. 204 of 253 used to end by one side dying.
-    if (prose(/both sides send somebody to say the same thing: again/, l.text)) treatiesRenewed++;
-    if (prose(/Nobody renews it and nobody breaks it/, l.text)) treatiesLapsed++;
-    if (prose(/an arithmetic problem rather than a moral one/, l.text)) treatiesOutgrown++;
+    if (beat(l, 'treaty-renewed')) treatiesRenewed++;
+    if (beat(l, 'treaty-lapsed')) treatiesLapsed++;
+    if (beat(l, 'treaty-outgrown')) treatiesOutgrown++;
     // AUDIT-6 §4.3: the ending that used to happen silently, and was the
     // most common one by an order of magnitude.
-    if (prose(/released from a promise by the deaths of the people they made it to/, l.text)) treatiesOutlivedASide++;
-    if (prose(/only ever an arrangement/, l.text)) fractures++;
-    if (prose(/comes back having seen enough/, l.text)) investigationsGuilty++;
-    if (prose(/counts everything twice/, l.text)) investigationsCleared++;
-    if (prose(/Some betrayals you leave before they happen/, l.text)) preemptiveDepartures++;
-    if (prose(/Whatever trust there was is being rationed now/, l.text)) sleepingApart++;
-    if (prose(/^TRAGEDY:/, l.text)) loverTragedies++;
-    if (prose(/They keep the treeline between themselves and everybody left/, l.text)) hauntedGrants++;
-    if (prose(/stopped flinching at the cannons/, l.text)) hollowGrants++;
-    if (prose(/Nobody calls it peace/, l.text)) reconciliations++;
-    if (prose(/Both of them are heavier than they look|thinks less of them for it|heard it often enough to carry it on/, l.text)) inheritances++;
-    if (prose(/have evidently been talking/, l.text)) mentorCrossTalk++;
-    if (prose(/takes the first watch|takes the watch in/, l.text)) watchesPosted++;
+    if (beat(l, 'treaty-outlived-a-side')) treatiesOutlivedASide++;
+    if (beat(l, 'fracture')) fractures++;
+    if (beat(l, 'investigation-guilty')) investigationsGuilty++;
+    if (beat(l, 'investigation-cleared')) investigationsCleared++;
+    if (beat(l, 'preemptive-departures')) preemptiveDepartures++;
+    if (beat(l, 'sleeping-apart')) sleepingApart++;
+    if (beat(l, 'romance-tragedy')) loverTragedies++;
+    if (beat(l, 'haunted-grants')) hauntedGrants++;
+    if (beat(l, 'hollow-grants')) hollowGrants++;
+    if (beat(l, 'reconciliation')) reconciliations++;
+    if (beat(l, 'inheritance')) inheritances++;
+    if (beat(l, 'mentor-cross-talk')) mentorCrossTalk++;
+    if (beat(l, 'watch-posted')) watchesPosted++;
     // §4.1: all three triangle beats draw from pools now (TRIANGLE_TEXTS), so
     // each matcher names one fragment per variant rather than the single
     // wording the beat used to have.
-    if (prose(/going to be able to go on being polite|the unit of measurement is|both know exactly where|shapes like that do not hold|want the same thing, and that the thing is|Neither of them makes room for the other|only ever had room for one of those|have both already decided what is going on here/, l.text)) trianglesFormed++;
-    if (prose(/neither of them has said a word about why|the silence afterwards lasts longer|counts it, again, and says nothing, again|watching which portion goes to|holding the same thing from opposite ends|is looking somewhere else on purpose|takes slightly too long to say|and it is not really a joke/, l.text)) triangleJealousy++;
-    if (prose(/makes the choice in front of both of them|the nod is a door closing|believes a word of it|very specific reason to be careful|being extremely reasonable about it|load-bearing quietly stops being|walks their watch alone that night|decided to be decent about it|the sponsors read as weakness|would rather know, and then does not say/, l.text)) triangleChoices++;
-    if (prose(/both of them hear the word/, l.text)) loansMade++;
-    if (prose(/back without being asked for it/, l.text)) loansReturned++;
-    if (prose(/stopped thinking of the .* as lent/, l.text)) loansDefaulted++;
+    if (beat(l, 'triangle-formed')) trianglesFormed++;
+    if (beat(l, 'triangle-jealousy')) triangleJealousy++;
+    if (beat(l, 'triangle-choices')) triangleChoices++;
+    if (beat(l, 'loan-made')) loansMade++;
+    if (beat(l, 'loan-returned')) loansReturned++;
+    if (beat(l, 'loan-defaulted')) loansDefaulted++;
     // §4.2: the three endings the loan ledger used to close silently. 175 of
     // 244 loans reached the end of a run in no state at all; these are where
     // they were going.
-    if (prose(/nods, and files it/, l.text)) loansLost++;
-    if (prose(/they stop thinking of it as borrowed/, l.text)) loansLenderDied++;
-    if (prose(/It is out there somewhere in/, l.text)) loansBorrowerDied++;
+    if (beat(l, 'loan-lost')) loansLost++;
+    if (beat(l, 'loan-lender-died')) loansLenderDied++;
+    if (beat(l, 'loan-borrower-died')) loansBorrowerDied++;
     // §4.3: and the two the vengeance-pact ledger closed silently.
-    if (prose(/are both in the sky now/, l.text)) vengeanceOutlived++;
-    if (prose(/stopped being a thing two people are doing/, l.text)) vengeanceSoloed++;
+    if (beat(l, 'vengeance-outlived')) vengeanceOutlived++;
+    if (beat(l, 'vengeance-soloed')) vengeanceSoloed++;
     // AUDIT-6 §1.2: the first branch matched nothing, so this counter was
     // silently reporting *contested* installs as clean ones. Both shapes are
     // an heir taking over, and both are counted, but the clean line is the
     // one that actually exists.
-    if (prose(/takes over the group, having been named for it|only thing anybody can point at/, l.text)) successionHeir++;
-    if (prose(/without ever putting it to a vote/, l.text)) successionPassedOver++;
-    if (prose(/two camps and neither of them is going to be the one that apologises/, l.text)) successionSplit++;
+    if (beat(l, 'succession-heir')) successionHeir++;
+    if (beat(l, 'succession-passed-over')) successionPassedOver++;
+    if (beat(l, 'succession-split')) successionSplit++;
     // AUDIT-6 §1.2: likewise — the real line is the one `resolveSuccession`
     // writes when no heir was ever named.
-    if (prose(/No heir was named and nobody objects/, l.text)) successionUnnamed++;
+    if (beat(l, 'succession-unnamed')) successionUnnamed++;
     // §4.1: pacts are a union of six shapes now, all sworn with `shake on it:`.
-    if (prose(/shake on it: they /, l.text)) pactsDeclared++;
-    if (prose(/agreed this was where it ended|keep their word without any ceremony/, l.text)) pactsHonoured++;
+    if (beat(l, 'pact-declared')) pactsDeclared++;
+    if (beat(l, 'pact-honoured')) pactsHonoured++;
     /*
      * AUDIT-7 §4.3: this probe read a third of what it named.
      *
@@ -708,10 +747,10 @@ for (let i = 0; i < 400; i++) {
      *
      * Three counters now, one per branch, so no branch can hide behind another.
      */
-    if (prose(/simply stop pretending/, l.text)) factionCoups++;
-    if (prose(/and this morning they say it to their face/, l.text)) factionExpulsions++;
-    if (prose(/take their share and leave the group over/, l.text)) factionWalkouts++;
-    if (prose(/is put out of the group/, l.text)) expulsions++;
+    if (beat(l, 'faction-coups')) factionCoups++;
+    if (beat(l, 'faction-expulsions')) factionExpulsions++;
+    if (beat(l, 'faction-walkouts')) factionWalkouts++;
+    if (beatAny(l, ['expulsion', 'faction-expulsions'])) expulsions++;
     /*
      * AUDIT-6 §4.4: this counted two of the four ways a hearing ends.
      *
@@ -721,29 +760,29 @@ for (let i = 0; i < 400; i++) {
      * as the two dead probes in §1.2, and it is why the hearing looked
      * near-dead when what was actually rare was a hearing somebody survived.
      */
-    if (prose(/takes the .* job off them|account for it in front of everyone|the second time nobody argues for them|Somebody ought to say something/, l.text)) hearings++;
-    if (prose(/does not notice their .* going/, l.text)) sleepDrops++;
-    if (prose(/not their weapon, not yet/, l.text)) coldWeaponSwings++;
-    if (prose(/decides this is not worth finding out about|does not call it, and the moment passes/, l.text)) bluffsLanded++;
-    if (prose(/knows exactly how alone|watches the hand, not the pack/, l.text)) bluffsCaught++;
-    if (prose(/they are not that any more/, l.text)) loyalBroke++;
-    if (prose(/it did not survive the week/, l.text)) mercyBroke++;
-    if (prose(/given up arguing with it/, l.text)) pacifistBroke++;
-    if (prose(/started looking like a problem/, l.text)) woundsTurned++;
-    if (prose(/worse today — swollen/, l.text)) sepsisDeepened++;
-    if (prose(/gone dark and the heat of it/, l.text)) { sepsisDeepened++; sepsisTerminal++; }
-    if (prose(/cleans it out properly|cleans the .* out with the/, l.text)) sepsisTreated++;
-    if (prose(/running a fever they cannot sweat out/, l.text)) feverLines++;
-    if (prose(/never once broke it|is buried with both of them|is standing still\. They leave the arena together|is down to one\. /, l.text)) trucesOutlived++;
+    if (beat(l, 'hearing')) hearings++;
+    if (beat(l, 'sleep-drops')) sleepDrops++;
+    if (beat(l, 'cold-weapon-swings')) coldWeaponSwings++;
+    if (beat(l, 'bluff-landed')) bluffsLanded++;
+    if (beat(l, 'bluff-caught')) bluffsCaught++;
+    if (beat(l, 'loyal-broke')) loyalBroke++;
+    if (beat(l, 'mercy-broke')) mercyBroke++;
+    if (beat(l, 'pacifist-broke')) pacifistBroke++;
+    if (beat(l, 'wound-turned')) woundsTurned++;
+    if (beat(l, 'sepsis-deepened')) sepsisDeepened++;
+    if (beat(l, 'sepsis-deepened')) { sepsisDeepened++; sepsisTerminal++; }
+    if (beat(l, 'sepsis-treated')) sepsisTreated++;
+    if (beat(l, 'fever-lines')) feverLines++;
+    if (beat(l, 'truce-outlived')) trucesOutlived++;
     // §1.4: all three beats that pay a broker. This matcher used to name only
     // the LAPSE line, which is why the counter read 1 across 400 runs even
     // after the other endings started crediting the broker — the metric was
     // measuring one ending, not the mechanic.
-    if (prose(/the agreement that held them apart was|and they are still holding|never got them to break the agreement/, l.text)) brokeredHeld++;
-    if (prose(/have done this before/, l.text)) feuds++;
-    if (prose(/not one of them has a friend in it/, l.text)) freeForAlls++;
-    if (prose(/walks the other way|there is no pack this year/, l.text)) careerDefections++;
-    if (prose(/adds their .* to the group's stash/, l.text)) cacheContributions++;
+    if (beat(l, 'brokered-held')) brokeredHeld++;
+    if (beat(l, 'feud')) feuds++;
+    if (beat(l, 'free-for-alls')) freeForAlls++;
+    if (beat(l, 'career-defections')) careerDefections++;
+    if (beat(l, 'cache-contributions')) cacheContributions++;
     // --- Arena: stateful zones, mutts, border variety. ---
     if (l.text.includes('Fire takes hold')) zoneFiresStarted++;
     if (l.text.includes('jumps to')) zoneFiresSpread++;
@@ -1406,6 +1445,25 @@ Object.keys(trainingHistogram).map(Number).sort((a, b) => a - b).forEach(k => {
   console.log(`prose probes: ${proseProbes.size} evaluated, ${proseProbes.size - dead.length} matched at least once`);
   dead.forEach(source => problems.push(
     `dead prose probe: /${source}/ matched nothing in ${runs} runs — the line it watches has been rewritten or deleted`,
+  ));
+}
+/*
+ * AUDIT-9, second pass: the same meta-assertion, one level down.
+ *
+ * A dead *type* is a stronger statement than a dead probe. A probe reads zero
+ * when its sentence changed; a type reads zero only when the beat itself
+ * stopped happening, or when somebody removed the `type:` from its emitter —
+ * and the second is a mistake the compiler cannot catch, because `type` is
+ * optional by design. This is what catches it.
+ */
+{
+  const dead = [...beatCounts.entries()]
+    .filter(([type, n]) => n === 0 && !BEAT_ALLOWED_ZERO.has(type))
+    .map(([type]) => type);
+  console.log(`typed beats: ${beatCounts.size} counted, ${beatCounts.size - dead.length} fired at least once`);
+  dead.forEach(type => problems.push(
+    `dead event type: '${type}' was never emitted in ${runs} runs — either the beat stopped happening `
+    + 'or its emitter lost its `type:`',
   ));
 }
 console.log(problems.length ? '\nPROBLEMS:\n' + problems.map(p => ' - ' + p).join('\n') : '\nNo invariant violations.');

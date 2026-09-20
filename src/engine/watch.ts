@@ -101,7 +101,7 @@ export function postWatches(ctx: SimContext) {
                         ? `${watcher.name} takes the first watch in ${zone}. ${asleep} sleep${sleepers.length === 1 ? 's' : ''}.`
                         : `${watcher.name} keeps watch in ${zone}. ${asleep} sleep${sleepers.length === 1 ? 's' : ''}.`,
                     camp.map(m => m.id),
-                    { category: 'alliance', zone }
+                    { type: 'watch-posted', category: 'alliance', zone }
                 );
             }
         });

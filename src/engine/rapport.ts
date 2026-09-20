@@ -126,7 +126,7 @@ export function reconcileRivals(ctx: SimContext) {
                     `${t.name} and ${other.name} have tried to kill each other before. Tonight they are simply two people `
                     + 'in the same bad place, and neither of them raises a hand. Nobody calls it peace. It is nearer to it than anything else in here.',
                     [t.id, other.id],
-                    { important: true, category: 'alliance' }
+                    { type: 'reconciliation', important: true, category: 'alliance' }
                 );
             }
         });

@@ -207,7 +207,7 @@ export function plantRumour(ctx: SimContext, planter: Tribute, listener: Tribute
         `${planter.name} mentions to ${listener.name}, as though it were an afterthought, that ${claim(ctx, rumour.kind, zone)}. `
         + 'It is said well. There is no reason at all for it to be true.',
         [planter.id, listener.id],
-        { category: 'alliance' }
+        { type: 'rumour-planted', category: 'alliance' }
     );
     return true;
 }
@@ -317,7 +317,7 @@ export function checkRumours(ctx: SimContext) {
                 ctx.logEvent(
                     `${t.name} gets to ${rumour.zone} and finds nothing anybody described. They cannot even remember now who told them.`,
                     [t.id],
-                    { category: 'travel' }
+                    { type: 'rumour-dead-end', category: 'travel' }
                 );
                 return;
             }
@@ -331,7 +331,7 @@ export function checkRumours(ctx: SimContext) {
                     : `${t.name} reaches ${rumour.zone} and there is nothing there. ${source.name} passed it on in good faith, `
                         + 'which is going to be difficult to prove to somebody who has just walked a day for it.',
                 [t.id, source.id],
-                { category: 'travel' }
+                { type: planted ? 'rumour-caught-planted' : 'rumour-caught-repeated', category: 'travel' }
             );
         });
     });
@@ -352,7 +352,7 @@ export function checkRumours(ctx: SimContext) {
             `Whatever ${planter.name} said about ${rumour.zone} has stopped being repeated. Nobody went, nobody checked, `
             + 'and there is now no way for anybody to find out it was never true.',
             [planter.id],
-            { category: 'system' }
+            { type: 'rumour-dead-end', category: 'system' }
         );
     });
 

@@ -260,7 +260,7 @@ export function setTrap(ctx: SimContext, t: Tribute) {
     // goes; carpentry is making it hold. The second half was not being trained.
     trainProficiency(t, 'tracking');
     trainProficiency(t, 'carpentry', ctx, PROFICIENCY.trapCarpentryShare);
-    ctx.logEvent(TRAP_SET_LINES[kind](t.name, t.zone), [t.id], { category: 'survival' });
+    ctx.logEvent(TRAP_SET_LINES[kind](t.name, t.zone), [t.id], { type: `trap-set-${kind}`, category: 'survival' });
 }
 
 /**
@@ -319,7 +319,7 @@ export function checkTraps(ctx: SimContext, t: Tribute) {
                 ctx.logEvent(
                     `${t.name} stops dead in ${t.zone}, crouches, and pulls apart a ${trap.kind} someone left for them.`,
                     owner ? [t.id, owner.id] : [t.id],
-                    { important: true, category: 'survival' }
+                    { type: 'trap-triggered', important: true, category: 'survival' }
                 );
                 return;
             }
@@ -410,7 +410,7 @@ export function checkTraps(ctx: SimContext, t: Tribute) {
     ctx.logEvent(
         TRAP_SPRING_LINES[trap.kind](t.name, t.zone),
         owner ? [t.id, owner.id] : [t.id],
-        { important: true, category: 'hazard' }
+        { type: 'trap-triggered', important: true, category: 'hazard' }
     );
     clampTribute(t);
     checkDeath(ctx, t, cause);
@@ -528,7 +528,7 @@ export function tickTraps(ctx: SimContext) {
                         ? `The water in ${trap.zone} lifts ${owner.name}'s trap clean off its anchor and carries it away.`
                         : `The water in ${trap.zone} lifts ${owner.name}'s trap clean off its anchor. ${owner.name} will come back for it and find bare ground.`,
                 [owner.id],
-                { category: 'survival' }
+                { type: 'trap-destroyed', category: 'survival' }
             );
             return;
         }
@@ -610,7 +610,7 @@ export function lightFire(ctx: SimContext, t: Tribute): boolean {
     ctx.logEvent(
         `${t.name} gets a fire going in ${t.zone}. It is warm, it is the first hot food in days, and it can be seen from every ridge in the arena.`,
         [t.id],
-        { important: true, category: 'survival' }
+        { type: 'fire-lit', important: true, category: 'survival' }
     );
     return true;
 }
@@ -645,7 +645,7 @@ export function buildShelter(ctx: SimContext, t: Tribute): boolean {
     ctx.logEvent(
         `${t.name} lashes together a shelter in ${t.zone} — branches, a rock overhang, and something almost like a roof.`,
         [t.id],
-        { category: 'survival' }
+        { type: 'shelter-built', category: 'survival' }
     );
     return true;
 }
@@ -667,7 +667,7 @@ export function applyCamouflage(ctx: SimContext, t: Tribute): boolean {
             ? `${t.name} works mud and leaf litter into their clothes until the shape of a person goes out of them.`
             : `${t.name} does what they can with dust and a smear of mud in ${t.zone}. Out here there is not much of anything to look like.`,
         [t.id],
-        { category: 'survival' }
+        { type: 'camouflaged', category: 'survival' }
     );
     return true;
 }
@@ -703,7 +703,7 @@ export function poisonWeapon(ctx: SimContext, t: Tribute): boolean {
     ctx.logEvent(
         `${t.name} works ${source.name} into a paste and coats their ${weapon.name} with it.`,
         [t.id],
-        { important: true, category: 'loot' }
+        { type: 'weapon-poisoned', important: true, category: 'loot' }
     );
     return true;
 }

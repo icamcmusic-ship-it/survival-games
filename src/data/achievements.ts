@@ -914,8 +914,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         hint: 'See the Career pack come apart before the arena does it for them.',
         category: 'social',
         rarity: 'rare',
-        test: state => state.log.some(e =>
-            e.text.includes('there is no pack this year') || e.text.includes('no longer anybody\'s allies')),
+        test: state => state.log.some(e => e.type === 'career-defections'),
     },
     {
         id: 'feast-betrayal',

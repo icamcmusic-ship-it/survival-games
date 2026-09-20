@@ -92,7 +92,7 @@ function clockworkSignature(ctx: SimContext, cycle: number, rng: RNG) {
     ctx.logEvent(
         `THE CLOCK: the hour turns and ${striking} is the sector that pays for it — ${horror.name}. ${next} is next.`,
         [],
-        { important: true, zone: striking, category: 'arena' }
+        { type: 'signature-beats', important: true, zone: striking, category: 'arena' }
     );
     caught.forEach(t => {
         // Anyone who read the dial and moved early is simply not here; anyone
@@ -130,7 +130,7 @@ function vaultSignature(ctx: SimContext, cycle: number, rng: RNG) {
     ctx.logEvent(
         'THE VAULT GOES DARK: every light in the complex fails at once. The schedule is the only thing down here that has ever been reliable.',
         [],
-        { important: true, category: 'arena' }
+        { type: 'signature-beats', important: true, category: 'arena' }
     );
     zones.forEach(z => startZoneEffect(ctx, z, 'fogbound', false));
     getAlive(ctx.state).forEach(t => {
@@ -164,7 +164,7 @@ function tempestSignature(ctx: SimContext, cycle: number, rng: RNG) {
     ctx.logEvent(
         `THE TIDE TURNS: the water comes up over ${target} in the dark, faster than anything that deep should move.`,
         [],
-        { important: true, zone: target, category: 'arena' }
+        { type: 'signature-beats', important: true, zone: target, category: 'arena' }
     );
     startZoneEffect(ctx, target, 'flooded', false);
     tributesIn(ctx, target).forEach(t => {
@@ -206,7 +206,7 @@ function canopySignature(ctx: SimContext, cycle: number, rng: RNG) {
     ctx.logEvent(
         `A crossing parts two hundred metres up: the span between ${from} and ${to} is gone, and there is no rebuilding it.`,
         [],
-        { important: true, zone: from, category: 'arena' }
+        { type: 'signature-beats', important: true, zone: from, category: 'arena' }
     );
 }
 
@@ -229,7 +229,7 @@ function solarSignature(ctx: SimContext, _cycle: number, rng: RNG) {
     ctx.logEvent(
         'THE SUN STALLS: the Gamemakers hold noon in place, and every open sector in the arena becomes an oven.',
         [],
-        { important: true, category: 'arena' }
+        { type: 'signature-beats', important: true, category: 'arena' }
     );
     exposed.forEach(t => {
         t.vitals.thirst += ARENA_SIGNATURES.stalledSun.thirst;
@@ -258,7 +258,7 @@ function frozenSignature(ctx: SimContext, _cycle: number, rng: RNG) {
     ctx.logEvent(
         'THE COLD COMES DOWN: the temperature drops past anything a person survives in the open. Tonight, shelter is the whole game.',
         [],
-        { important: true, category: 'arena' }
+        { type: 'signature-beats', important: true, category: 'arena' }
     );
     alive.forEach(t => {
         const warm = t.inventory.some(i => i.warmth) || ctx.state.camps?.[t.id]?.shelter !== undefined;
@@ -289,7 +289,7 @@ function concreteSignature(ctx: SimContext, cycle: number, rng: RNG) {
     ctx.logEvent(
         `STRUCTURAL FAILURE: something enormous comes down in ${target}, and the dust takes ten minutes to settle.`,
         [],
-        { important: true, zone: target, category: 'arena' }
+        { type: 'signature-beats', important: true, zone: target, category: 'arena' }
     );
     tributesIn(ctx, target).forEach(t => {
         if (rng.chance(ARENA_SIGNATURES.collapse.dodgeBase + t.attributes.agility * ARENA_SIGNATURES.collapse.dodgePerAgility)) {
@@ -327,7 +327,7 @@ function toxicSignature(ctx: SimContext, _cycle: number, rng: RNG) {
     ctx.logEvent(
         `THE BOG EXHALES: ${target} fills with something that smells sweet and is not. The air itself is the hazard now.`,
         [],
-        { important: true, zone: target, category: 'arena' }
+        { type: 'signature-beats', important: true, zone: target, category: 'arena' }
     );
     startZoneEffect(ctx, target, 'contaminated', false);
     tributesIn(ctx, target).forEach(t => {
@@ -353,7 +353,7 @@ function ashfallSignature(ctx: SimContext, cycle: number, rng: RNG) {
     ctx.logEvent(
         'THE FALL THICKENS: the ash comes down heavier, and every breath in the basin tastes like the inside of a furnace.',
         [],
-        { important: true, category: 'arena' }
+        { type: 'signature-beats', important: true, category: 'arena' }
     );
     getAlive(ctx.state).forEach(t => {
         const filtered = t.inventory.some(i => i.purifies);
@@ -385,7 +385,7 @@ function saltflatsSignature(ctx: SimContext, _cycle: number, rng: RNG) {
     ctx.logEvent(
         'THE MIRROR: the glare comes off the crust from below as well as above, and on the flats every living thing is a black mark on white. There is nowhere to hide out here.',
         [],
-        { important: true, category: 'arena' }
+        { type: 'signature-beats', important: true, category: 'arena' }
     );
     // Everyone on the flats sees everyone else on the flats — real sightings,
     // fed to the memory layer, so hunters can actually act on it.
@@ -415,7 +415,7 @@ function sporefieldsSignature(ctx: SimContext, _cycle: number, rng: RNG) {
     ctx.logEvent(
         `THE BLOOM: ${target} fruits overnight. There is more food there than anywhere in the arena, and no way at all to tell which of it is safe.`,
         [],
-        { important: true, zone: target, category: 'arena' }
+        { type: 'signature-beats', important: true, zone: target, category: 'arena' }
     );
     tributesIn(ctx, target).forEach(t => {
         if (!rng.chance(ARENA_SIGNATURES.bloom.eatChance)) return;
@@ -462,7 +462,7 @@ function warrenSignature(ctx: SimContext, cycle: number, rng: RNG) {
         ctx.logEvent(
             `THE SHIFTING: dust runs, timbers groan, and the passage between ${zone} and ${cut} chokes shut. The Warren has redrawn itself.`,
             [],
-            { important: true, category: 'arena' }
+            { type: 'signature-beats', important: true, category: 'arena' }
         );
     }
     /*
@@ -518,7 +518,7 @@ function islandsSignature(ctx: SimContext, cycle: number, rng: RNG) {
         ctx.logEvent(
             `THE FOG RISES: the crossing between ${zone} and ${cut} disappears into the grey, ropes and all. Nobody sane steps onto a span they cannot see the far end of.`,
             [],
-            { important: true, category: 'arena' }
+            { type: 'signature-beats', important: true, category: 'arena' }
         );
     }
 }
@@ -568,7 +568,7 @@ function reefSignature(ctx: SimContext, _cycle: number, rng: RNG) {
     ctx.logEvent(
         `THE BLOOM OPENS: every anemone in ${target} unfurls at once, acres of them, reaching for an ocean that is not coming back. The ground itself is venomous now.`,
         [],
-        { important: true, zone: target, category: 'arena' }
+        { type: 'signature-beats', important: true, zone: target, category: 'arena' }
     );
     startZoneEffect(ctx, target, 'contaminated', false);
     tributesIn(ctx, target).forEach(t => {
@@ -601,7 +601,7 @@ function abattoirSignature(ctx: SimContext, cycle: number, rng: RNG) {
     ctx.logEvent(
         `THE LINE STARTS: the machinery of ${striking} shudders through a full shift — pistons, belts, hooks, all of it. ${next} is next on the board.`,
         [],
-        { important: true, zone: striking, category: 'arena' }
+        { type: 'signature-beats', important: true, zone: striking, category: 'arena' }
     );
     tributesIn(ctx, striking).forEach(t => {
         if (rng.chance(SIGNATURE_RULES.abattoirDodgeBase + t.attributes.agility * 0.04)) {
@@ -637,7 +637,7 @@ function carnivalSignature(ctx: SimContext, _cycle: number, rng: RNG) {
     ctx.logEvent(
         `THE RIDE WAKES: ${target} lights up end to end and the music starts, mid-song, like it never stopped. Every tribute in the arena turns to look.`,
         [],
-        { important: true, zone: target, category: 'arena' }
+        { type: 'signature-beats', important: true, zone: target, category: 'arena' }
     );
     caught.forEach(t => {
         loseSanity(t, SIGNATURE_RULES.carnivalSanityLoss);
@@ -801,7 +801,7 @@ function floeSignature(ctx: SimContext, cycle: number, rng: RNG) {
     ctx.logEvent(
         `THE DRIFT: black water opens between ${zone} and ${cut}, wide as a river and getting wider. That crossing is gone.`,
         [],
-        { important: true, zone, category: 'arena' }
+        { type: 'signature-beats', important: true, zone, category: 'arena' }
     );
     tributesIn(ctx, zone).forEach(t => {
         if (!rng.chance(SIGNATURE_RULES.floeDunkChance)) return;
@@ -1146,7 +1146,7 @@ function labyrinthSignature(ctx: SimContext, cycle: number, rng: RNG) {
     ctx.logEvent(
         `THE SHIFT: the rails take up and the maze redraws itself — ${cut.length ? `the way between ${cut.join(', and between ')} is yew now` : 'no path closes'}${reopened.length ? ', and somewhere a wall that stood for days is an opening again' : ''}.`,
         [],
-        { important: true, category: 'arena' }
+        { type: 'signature-beats', important: true, category: 'arena' }
     );
 
     // The telegraph for next time, with a false-direction chance: the grinding
@@ -1192,7 +1192,7 @@ function ashgroveSignature(ctx: SimContext, cycle: number, rng: RNG) {
         ctx.logEvent(
             `THE BELL: it rings for ${striking}, where there are no doors to lock. A free period. ${next} is next, then ${after} — the timetable in Main Corridor says so.`,
             [],
-            { zone: striking, category: 'arena' }
+            { type: 'signature-beats', zone: striking, category: 'arena' }
         );
         return;
     }
@@ -1200,7 +1200,7 @@ function ashgroveSignature(ctx: SimContext, cycle: number, rng: RNG) {
     ctx.logEvent(
         `THE BELL: ${striking} goes into session. The doors drop their latches down the whole wing. Next period: ${next}, then ${after}. It is posted in Main Corridor. It is always posted.`,
         [],
-        { important: true, zone: striking, category: 'arena' }
+        { type: 'signature-beats', important: true, zone: striking, category: 'arena' }
     );
     tributesIn(ctx, striking).forEach(t => {
         // Out before the latches: agility, or knowing the building well enough.
@@ -1328,7 +1328,7 @@ function silkwoodSignature(ctx: SimContext, cycle: number, _rng: RNG) {
     ctx.logEvent(
         `THE RE-SPIN: overnight the wood closes a road out of ${target} — not blocked, gone, spun over trunk to trunk in sheets nothing is cutting through.`,
         [],
-        { important: true, zone: target, category: 'arena' }
+        { type: 'signature-beats', important: true, zone: target, category: 'arena' }
     );
 
     const next = targetFor(cycle + 2); // night cycles only; the next night is two cycles on
@@ -1456,7 +1456,7 @@ function redcathedralSignature(ctx: SimContext, cycle: number, rng: RNG) {
         `THE FLASH: a wall of red water and broken timber comes down ${flooding}, ` +
         `chest-high and faster than a person runs. ${downstream} is downstream.`,
         [],
-        { important: true, zone: flooding, category: 'arena' }
+        { type: 'signature-beats', important: true, zone: flooding, category: 'arena' }
     );
     tributesIn(ctx, flooding).forEach(t => {
         // Getting out is half reading the ground and half moving on it.
@@ -1577,7 +1577,7 @@ function storywoodSignature(ctx: SimContext, cycle: number, rng: RNG) {
                 ctx.logEvent(
                     `THE BARGAIN: ${t.name} eats at the Gingerbread House until they cannot remember being hungry. The smell of it carries to every corner of the wood, and everything with a nose now knows exactly where they are.`,
                     [t.id],
-                    { important: true, zone: t.zone, category: 'arena' }
+                    { type: 'signature-beats', important: true, zone: t.zone, category: 'arena' }
                 );
                 break;
             }
@@ -1591,7 +1591,7 @@ function storywoodSignature(ctx: SimContext, cycle: number, rng: RNG) {
                 ctx.logEvent(
                     `THE BARGAIN: ${t.name} takes up the woodcutter's axe, and the work makes them whole and strong and quiet in a way that does not entirely come back off.`,
                     [t.id],
-                    { important: true, zone: t.zone, category: 'arena' }
+                    { type: 'signature-beats', important: true, zone: t.zone, category: 'arena' }
                 );
                 break;
             }
@@ -1603,7 +1603,7 @@ function storywoodSignature(ctx: SimContext, cycle: number, rng: RNG) {
                 ctx.logEvent(
                     `THE BARGAIN: ${t.name} sits at the wheel in the Spinning House and spins their troubles into gold thread. Every fear goes onto the spool — along with something of theirs the wheel keeps.`,
                     [t.id],
-                    { important: true, zone: t.zone, category: 'arena' }
+                    { type: 'signature-beats', important: true, zone: t.zone, category: 'arena' }
                 );
                 break;
             }
@@ -1619,7 +1619,7 @@ function storywoodSignature(ctx: SimContext, cycle: number, rng: RNG) {
                 ctx.logEvent(
                     `THE BARGAIN: ${t.name} is tucked into the bed at Grandmother's Cottage and wakes healed of everything — with a look behind the eyes that nobody who meets them will ever quite trust.`,
                     [t.id],
-                    { important: true, zone: t.zone, category: 'arena' }
+                    { type: 'signature-beats', important: true, zone: t.zone, category: 'arena' }
                 );
                 break;
             }
@@ -1635,7 +1635,7 @@ function storywoodSignature(ctx: SimContext, cycle: number, rng: RNG) {
                 ctx.logEvent(
                     `THE BARGAIN: ${t.name} asks the well, and the water shows them every living soul in the wood at once — where they stand, where they sleep. The well keeps its fee out of whatever leaned over to look.`,
                     [t.id],
-                    { important: true, zone: t.zone, category: 'arena' }
+                    { type: 'signature-beats', important: true, zone: t.zone, category: 'arena' }
                 );
                 break;
             }
@@ -1719,7 +1719,7 @@ function telegraphSignature(ctx: SimContext, rule: SignatureRule, cycle: number,
     ctx.logEvent(
         `THE ARENA: something in ${named.join(' and ')} is about to give way.`,
         [],
-        { zone: named[0], category: 'arena' }
+        { type: 'signature-beats', zone: named[0], category: 'arena' }
     );
 
     // A2: the Scholar reads the arena rather than the tributes, and this is
@@ -2044,7 +2044,7 @@ function karstSignature(ctx: SimContext, cycle: number, rng: RNG) {
             ctx.logEvent(
                 `THE SIPHON FLOODS: the water under the Undermere finds a new way through and the crawl to ${cut} fills to the roof. It is not a hazard now. It is simply not there.`,
                 [],
-                { important: true, zone: 'The Siphon Passage', category: 'arena' }
+                { type: 'signature-beats', important: true, zone: 'The Siphon Passage', category: 'arena' }
             );
         }
     }
@@ -2090,7 +2090,7 @@ function tidewrackSignature(ctx: SimContext, _cycle: number, rng: RNG) {
     ctx.logEvent(
         `THE TIDE TURNS: the sea comes back over ${target} in one long push, and the flats are not flats any more.`,
         [],
-        { important: true, zone: target, category: 'arena' }
+        { type: 'signature-beats', important: true, zone: target, category: 'arena' }
     );
     startZoneEffect(ctx, target, 'flooded', false);
     tributesIn(ctx, target).forEach(t => {
@@ -2131,7 +2131,7 @@ function thresherSignature(ctx: SimContext, cycle: number, rng: RNG) {
     ctx.logEvent(
         `THE LINE STARTS: somewhere a switch is thrown and the floor of ${target} begins to move. It was always machinery. It has only been pretending to be ground.`,
         [],
-        { important: true, zone: target, category: 'arena' }
+        { type: 'signature-beats', important: true, zone: target, category: 'arena' }
     );
     present.forEach(t => {
         if (rng.chance(knobs.dodgeBase + t.attributes.agility * knobs.dodgePerAgility)) {
@@ -2199,7 +2199,7 @@ function saltworksSignature(ctx: SimContext, cycle: number, rng: RNG) {
     ctx.logEvent(
         `THE PAN CRACKS: the crust over ${target} gives with a sound like a shot, and the brine underneath it is not empty.`,
         [],
-        { important: true, zone: target, category: 'arena' }
+        { type: 'signature-beats', important: true, zone: target, category: 'arena' }
     );
     startZoneEffect(ctx, target, 'quaking', false);
     const present = tributesIn(ctx, target);
@@ -2243,7 +2243,7 @@ function kilnSignature(ctx: SimContext, _cycle: number, rng: RNG) {
         ctx.logEvent(
             `THE FIRING: the draught changes and every chimney on the ridge starts to draw towards ${target}. The kiln is being loaded, and it is not loaded with clay.`,
             [],
-            { zone: target, category: 'arena' }
+            { type: 'signature-beats', zone: target, category: 'arena' }
         );
         return;
     }
@@ -2251,7 +2251,7 @@ function kilnSignature(ctx: SimContext, _cycle: number, rng: RNG) {
     ctx.logEvent(
         `THE SECOND SUN: ${announced} goes to firing heat in the space of an hour. Whatever shade was in it is not shade any more.`,
         [],
-        { important: true, zone: announced, category: 'arena' }
+        { type: 'signature-beats', important: true, zone: announced, category: 'arena' }
     );
     startZoneEffect(ctx, announced, 'burning', false);
     tributesIn(ctx, announced).forEach(t => {

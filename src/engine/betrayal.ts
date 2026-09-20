@@ -119,7 +119,7 @@ export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Trib
                 `${betrayer.name} waits until the others are asleep, empties the group's stash in ${betrayer.zone}, and walks. ` +
                 `${victim.name} wakes to find ${spoils.length > 0 ? `the ${spoils.map(i => i.name).join(', ')} gone` : 'nothing but the shape of where they had been lying'}.`,
                 [betrayer.id, victim.id],
-                { important: true, category: 'betrayal' }
+                { type: 'exotic-betrayals', important: true, category: 'betrayal' }
             );
             if (dropped.length > 0) {
                 ctx.logEvent(
@@ -153,7 +153,7 @@ export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Trib
                 `${betrayer.name} tells ${victim.name} there is water in ${deathTrap.name}, and watches them go. ` +
                 `${betrayer.name} knows exactly what happened in ${deathTrap.name}.`,
                 [betrayer.id, victim.id],
-                { zone: deathTrap.name, important: true, category: 'betrayal' }
+                { type: 'exotic-betrayals', zone: deathTrap.name, important: true, category: 'betrayal' }
             );
             return kind;
         }
@@ -178,7 +178,7 @@ export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Trib
                 `${victim.name} asks ${betrayer.name} for the ${med.name}. ${betrayer.name} says they used it days ago, ` +
                 `and keeps their hand over the pocket it is in.`,
                 [betrayer.id, victim.id],
-                { important: true, category: 'betrayal' }
+                { type: 'exotic-betrayals', important: true, category: 'betrayal' }
             );
             return kind;
         }
@@ -198,7 +198,7 @@ export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Trib
             ctx.logEvent(
                 `${victim.name} calls out for ${betrayer.name} in ${victim.zone}. ${betrayer.name} hears it, and keeps walking.`,
                 [betrayer.id, victim.id],
-                { important: true, category: 'betrayal' }
+                { type: 'exotic-betrayals', important: true, category: 'betrayal' }
             );
             return kind;
         }
@@ -214,7 +214,7 @@ export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Trib
                     ? `${victim.name} had been watching ${betrayer.name}'s too.`
                     : `${victim.name} had not been planning anything at all.`),
                 [betrayer.id, victim.id],
-                { important: true, category: 'betrayal' }
+                { type: 'preemptive-betrayals', important: true, category: 'betrayal' }
             );
             return resolveKnife(ctx, betrayer, victim, members);
         }

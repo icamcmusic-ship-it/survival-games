@@ -44,7 +44,7 @@ function announce(ctx: SimContext, t: Tribute, objective: Objective) {
             ctx.logEvent(
                 `${t.name} stops pretending to forage and starts hunting ${name(objective.targetId)}.`,
                 [t.id, objective.targetId],
-                { important: true, category: 'travel' }
+                { type: 'objective-formed', important: true, category: 'travel' }
             );
             return;
         case 'reach': {
@@ -59,7 +59,7 @@ function announce(ctx: SimContext, t: Tribute, objective: Objective) {
             ctx.logEvent(
                 `${t.name} sets off for ${objective.zone}, ${why}.`,
                 [t.id],
-                { category: 'travel' }
+                { type: 'objective-formed', category: 'travel' }
             );
             return;
         }
@@ -67,14 +67,14 @@ function announce(ctx: SimContext, t: Tribute, objective: Objective) {
             ctx.logEvent(
                 `${t.name} decides ${objective.zone} is worth holding and digs in.`,
                 [t.id],
-                { category: 'survival' }
+                { type: 'objective-formed', category: 'survival' }
             );
             return;
         case 'flee':
             ctx.logEvent(
                 fill(ctx.pickText(SURVIVAL_TEXTS.flee), { tribute: t.name, zone: objective.from }),
                 [t.id],
-                { category: 'travel' }
+                { type: 'objective-formed', category: 'travel' }
             );
             return;
         case 'stalk':
@@ -95,7 +95,7 @@ function announce(ctx: SimContext, t: Tribute, objective: Objective) {
             ctx.logEvent(
                 `${t.name} decides ${name(objective.wardId)} is not dying on their watch.`,
                 [t.id, objective.wardId],
-                { important: true, category: 'alliance' }
+                { type: 'objective-formed', important: true, category: 'alliance' }
             );
             return;
         default:

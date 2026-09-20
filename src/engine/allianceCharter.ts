@@ -201,7 +201,7 @@ export function enforceCharters(ctx: SimContext) {
             ctx.logEvent(
                 breachLine(rule, offender, members),
                 members.map(m => m.id),
-                { important: true, category: 'alliance' }
+                { type: 'charter-breaches', important: true, category: 'alliance' }
             );
 
             // §4.2: 222 breaches across a 400-run soak, and the only

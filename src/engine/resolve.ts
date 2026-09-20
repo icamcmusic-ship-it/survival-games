@@ -204,7 +204,7 @@ export function resolveBreakdowns(ctx: SimContext) {
                     : `${t.name} stops walking in ${t.zone} and starts looking at the undergrowth instead — not for food. `
                         + `They find what they are looking for. The Capitol cuts away, and then has to cut back, because there is nothing else to show.`,
                 [t.id],
-                { important: true, category: 'death' }
+                { type: 'nightlock-deaths', important: true, category: 'death' }
             );
             selfInflictedDeath(ctx, t, 'Took the nightlock rather than keep playing', true, 'nightlock');
             return;
@@ -274,7 +274,7 @@ export function resolveBreakdowns(ctx: SimContext) {
             ctx.logEvent(
                 `${t.name} stops taking cover in ${t.zone}. Whatever is out there can come and find them.`,
                 [t.id],
-                { important: true, category: 'sanity' }
+                { type: 'resolve-breakdowns', important: true, category: 'sanity' }
             );
             return;
         }
@@ -293,7 +293,7 @@ export function resolveBreakdowns(ctx: SimContext) {
         ctx.logEvent(
             `${t.name} sits down in ${t.zone} and stops making plans. They are not hiding and they are not hunting.`,
             [t.id],
-            { important: true, category: 'sanity' }
+            { type: 'resolve-breakdowns', important: true, category: 'sanity' }
         );
     });
 }

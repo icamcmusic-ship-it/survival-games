@@ -460,7 +460,7 @@ function drinkFromZone(ctx: SimContext, t: Tribute) {
         ctx.logEvent(
             `${t.name} boils water from ${t.zone} over their fire until it is safe to drink. It costs the hour, and it is worth the hour.`,
             [t.id],
-            { category: 'survival' }
+            { type: 'zone-drinks', category: 'survival' }
         );
         return;
     }
@@ -477,7 +477,7 @@ function drinkFromZone(ctx: SimContext, t: Tribute) {
                 { important: true, category: 'injury' }
             );
         } else {
-            ctx.logEvent(`${t.name} risks a drink from ${t.zone} and gets away with it.`, [t.id], { category: 'survival' });
+            ctx.logEvent(`${t.name} risks a drink from ${t.zone} and gets away with it.`, [t.id], { type: 'zone-drinks', category: 'survival' });
         }
         return;
     }
@@ -490,7 +490,7 @@ function drinkFromZone(ctx: SimContext, t: Tribute) {
     ctx.logEvent(
         fill(ctx.pickText(foul ? SURVIVAL_TEXTS.drinkTreated : SURVIVAL_TEXTS.drinkClean), { tribute: t.name, zone: t.zone }),
         [t.id],
-        { category: 'survival' }
+        { type: 'zone-drinks', category: 'survival' }
     );
 }
 
@@ -970,7 +970,7 @@ function applyWearAndTear(ctx: SimContext, t: Tribute) {
                 `${t.name} does not notice their ${lost.name} going. It is somewhere back along the last few hours, `
                 + 'and they could not tell you which of them.',
                 [t.id],
-                { category: 'loot' }
+                { type: 'sleep-drops', category: 'loot' }
             );
         }
         loseSanity(t, SLEEP.sanityPerCycle);

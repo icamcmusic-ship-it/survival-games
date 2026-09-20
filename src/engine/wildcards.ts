@@ -178,7 +178,7 @@ function resolveWildcard(ctx: SimContext, wildcard: Wildcard) {
             ctx.logEvent(
                 `The Career pack comes apart in the open: ${pack.map(p => p.name).join(', ')} are no longer anybody's allies.`,
                 pack.map(p => p.id),
-                { important: true, category: 'alliance' }
+                { type: 'career-defections', important: true, category: 'alliance' }
             );
             break;
         }
@@ -310,7 +310,7 @@ function resolveWildcard(ctx: SimContext, wildcard: Wildcard) {
             ctx.logEvent(
                 `Everything with teeth in this arena is moving, and it is all moving toward ${heading.name}. `
                 + 'For the next two days the dangerous half of the map is somewhere it has not been.',
-                [], { important: true, zone: heading.name, category: 'mutt' }
+                [], { type: 'grief-events', important: true, zone: heading.name, category: 'mutt' }
             );
             break;
         }

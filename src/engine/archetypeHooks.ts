@@ -1,4 +1,4 @@
-import { Objective, Tribute } from '../models/types';
+import { EventType, Objective, Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { severRandomEdge } from './zoneEffects';
 import { ARCHETYPE_HOOKS, EARNED_TRAIT_RULES, HUNTING, MEMORY } from '../data/balance';
@@ -132,12 +132,12 @@ function others(ctx: SimContext, t: Tribute): Tribute[] {
         o.id !== t.id && (o.allianceId === undefined || o.allianceId !== t.allianceId));
 }
 
-function say(ctx: SimContext, t: Tribute, key: keyof typeof ARCHETYPE_SIGNATURE_TEXTS, cast: string[], vars: Record<string, string> = {}) {
+function say(ctx: SimContext, t: Tribute, key: keyof typeof ARCHETYPE_SIGNATURE_TEXTS, cast: string[], vars: Record<string, string> = {}, type?: EventType) {
     let text = ctx.pickText(ARCHETYPE_SIGNATURE_TEXTS[key] as string[]);
     Object.entries({ tribute: t.name, zone: t.zone, ...vars }).forEach(([k, v]) => {
         text = text.split(`{${k}}`).join(v);
     });
-    ctx.logEvent(text, cast, { important: true, category: 'system' });
+    ctx.logEvent(text, cast, { type, important: true, category: 'system' });
 }
 
 /**
@@ -411,7 +411,7 @@ export const SIGNATURES: Record<string, Signature> = {
         const recent = (ctx.state.recentCannonZones ?? []).filter(c => c.cycle >= (ctx.state.cycle ?? 0) - 2 && c.zone !== t.zone);
         if (recent.length === 0) return false;
         const site = recent[recent.length - 1].zone;
-        say(ctx, t, 'scavengerClaim', [t.id], { site });
+        say(ctx, t, 'scavengerClaim', [t.id], { site }, 'objective-formed');
         t.objective = { kind: 'reach', zone: site, reason: 'forage', expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.signatureObjectiveCycles };
         addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
         return true;
@@ -505,7 +505,7 @@ export const SIGNATURES: Record<string, Signature> = {
             o.id !== t.id && o.zone === t.zone
             && (o.allianceId === t.allianceId || getRel(t, o.id) > ARCHETYPE_HOOKS.martyrOfferRegard));
         if (!ward) return false;
-        say(ctx, t, 'martyrOffer', [t.id, ward.id], { ward: ward.name });
+        say(ctx, t, 'martyrOffer', [t.id, ward.id], { ward: ward.name }, 'desperation-fights');
         // The offer is not rhetorical: they hand over the margin they were
         // keeping for themselves, and it comes off their own health.
         t.health = Math.max(1, t.health - ARCHETYPE_HOOKS.martyrOfferHealth);
@@ -807,7 +807,7 @@ export const SIGNATURES: Record<string, Signature> = {
                 && !(ctx.state.collapsedZones ?? []).includes(z.name));
         if (unseen.length === 0) return false;
         const target = unseen.sort((a, b) => b.resources - a.resources)[0];
-        say(ctx, t, 'cartographerRoute', [t.id], { target: target.name, seen: String(seen) });
+        say(ctx, t, 'cartographerRoute', [t.id], { target: target.name, seen: String(seen) }, 'objective-formed');
         t.objective = { kind: 'reach', zone: target.name, reason: 'forage', expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.cartographerRouteCycles };
         // Knowing the ground is the reward, and it is the skill §3.5 made real.
         trainProficiency(t, 'navigation', ctx);

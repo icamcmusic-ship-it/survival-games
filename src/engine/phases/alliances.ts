@@ -308,7 +308,7 @@ export function processAlliances(ctx: SimContext) {
                 ctx.logEvent(
                     `${m.name} trails ${suspect.name} for half a day, says nothing, and comes back having seen enough. The watching gets harder to hide after that.`,
                     [m.id, suspect.id],
-                    { important: true, category: 'alliance' }
+                    { type: 'investigation-guilty', important: true, category: 'alliance' }
                 );
             } else {
                 raiseSuspicion(m, suspect.id, -SUSPICION.investigateClearAmount);
@@ -316,7 +316,7 @@ export function processAlliances(ctx: SimContext) {
                 ctx.logEvent(
                     `${m.name} checks the cache while ${suspect.name} sleeps, counts everything twice, and finds it all where it should be. Something eases.`,
                     [m.id, suspect.id],
-                    { category: 'alliance' }
+                    { type: 'investigation-cleared', category: 'alliance' }
                 );
             }
         });
@@ -339,7 +339,7 @@ export function processAlliances(ctx: SimContext) {
                     ctx.logEvent(
                         `${m.name} beds down apart from the others and keeps ${suspect.name} in view. Whatever trust there was is being rationed now.`,
                         [m.id, suspect.id],
-                        { category: 'alliance' }
+                        { type: 'sleeping-apart', category: 'alliance' }
                     );
                 }
                 return;
@@ -348,7 +348,7 @@ export function processAlliances(ctx: SimContext) {
             ctx.logEvent(
                 `${m.name} is gone before dawn. No theft, no knife — just a bedroll left cold and ${suspect.name} watched all the way out of sight. Some betrayals you leave before they happen.`,
                 [m.id, suspect.id],
-                { important: true, category: 'alliance' }
+                { type: 'preemptive-departures', important: true, category: 'alliance' }
             );
         });
     });
@@ -388,7 +388,7 @@ export function processAlliances(ctx: SimContext) {
                     `${m.name} tells ${others.map(o => o.name).join(' and ')} straight out, in ${m.zone}, that only one of them is going home `
                     + `and they would rather stop pretending otherwise. Nobody argues, because nobody can.`,
                     [m.id, ...others.map(o => o.id)],
-                    { important: true, category: 'alliance' }
+                    { type: 'solo-departures', important: true, category: 'alliance' }
                 );
             });
         });
@@ -633,7 +633,7 @@ export function processAlliances(ctx: SimContext) {
                     zone,
                 }),
                 members.map(m => m.id),
-                { important: true, category: 'alliance' }
+                { type: 'recruitment', important: true, category: 'alliance' }
             );
         });
     });
@@ -791,7 +791,7 @@ function schismAlliances(ctx: SimContext, alliances: Map<string, Tribute[]>) {
             `${faction.map(m => m.name).join(' and ')} stop eating with the others. By morning it is not an argument any more, it is two camps: `
             + `${remainder.map(m => m.name).join(' and ')} keep the fire, and the rest walk. Nobody pretends the group still exists.`,
             members.map(m => m.id),
-            { important: true, category: 'alliance' }
+            { type: 'schism', important: true, category: 'alliance' }
         );
     });
 }
@@ -875,7 +875,7 @@ function mergeAlliances(ctx: SimContext) {
                 `${leadA.name} and ${leadB.name} shake on it in ${leadA.zone}: ${allianceOf(ctx.state, ids[i])?.name ?? 'their group'} and ${allianceOf(ctx.state, ids[j])?.name ?? 'the other'} run as one. ` +
                 `Two small groups are one larger one, which is either much safer or much worse.`,
                 merged.map(m => m.id),
-                { important: true, category: 'alliance' }
+                { type: 'merge', important: true, category: 'alliance' }
             );
             if (dissenters.length > 0) {
                 ctx.logEvent(
@@ -1283,7 +1283,7 @@ function declareLovers(ctx: SimContext, t1: Tribute, t2: Tribute, performer?: Tr
         ctx.logEvent(
             `${performer.name} plays it beautifully. ${other.name} is not playing.`,
             [performer.id, other.id],
-            { important: true, category: 'romance' }
+            { type: 'performed-bonds', important: true, category: 'romance' }
         );
     }
 }
