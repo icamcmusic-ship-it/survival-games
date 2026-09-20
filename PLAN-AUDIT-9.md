@@ -57,7 +57,86 @@ all static checks, build.
 
 ---
 
-## Batch 3 — balance and readability
+## Done — batch 3: balance and readability
+
+**Result: the twelve unmet design indicators are nine, all regression guards
+hold, and three of the misses the audit named are closed.**
+
+Measured at `METRICS_RUNS=1600`, every archetype over 500 entrants:
+
+| Indicator | Audit §9 | Re-baselined | **After batch 3** | Goal |
+|---|---:|---:|---:|---|
+| Best/worst archetype ratio | 3.24× | 3.12× | **2.29×** | ≤2.3× **MET** |
+| Career archetype win rate | 9.06% | 9.17% | **7.93%** | ≤8% **MET** |
+| Reaping-trait win spread | 4.35× | 2.93× | **1.90×** | ≤2.5× **MET** |
+| Confessor | 2.79% | 2.99% | **5.39%** (n=501) | ≥3.5% cleared |
+| Zealot | 3.07% | 2.94% | **3.83%** (n=783) | ≥3.5% cleared |
+| Broker | 3.28% | 3.28% | **4.28%** (n=1005) | ≥3.5% cleared |
+| Career share of winners | 51.0% | 51.2% | **49.4%** | ≤45%, unmet |
+| Scavenging stance share | 1.3% | 1.3% | **1.7%** | ≥1.5% cleared |
+| Worst archetype | 2.79% | 2.94% | **3.46%** (Forecaster) | ≥3.5%, 0.04pp short |
+
+Two honest notes on that table. The **rarest stance** indicator is still
+unmet at 1.3% — Scavenging cleared its goal and the indicator now tracks
+*Patrolling*, a different stance that this batch did not touch. And the
+**worst archetype** row is still unmet for the same reason: none of the three
+the audit named is the worst any more, and the new floor-holder is the
+Forecaster, which was never diagnosed here.
+
+**How, and why it matters that it was done this way.** Every one of those
+movements came from an opportunity or correctness fix. Not one stat was
+raised, and no archetype was given a survival subsidy — which was the audit's
+explicit warning ("Do not give a new archetype a flat survival subsidy to
+conceal that its core action rarely becomes legal", and for the existing ones,
+"an opportunity problem does not get better by enlarging the bonus").
+
+The diagnosis step is what made that possible, and it contradicted the obvious
+guesses in all three cases:
+
+- **Zealot** was not short of opportunity. It died at the Cornucopia — 44.2%
+  of its deaths at the horn against a field near a third — with
+  *above-average* company. Fixed with a declared creed, not a health buff.
+- **Confessor** had the **most** company in the game (13.38 others in the
+  zone, alone in only 3.8% of cycles) and still lost. It was surrounded by
+  people it had no way to ask for anything, because every promise in the game
+  required an alliance.
+- **Career**'s edge was the *lowest* horn death rate in the game (23.5%), not
+  superiority in the fight. It dies of body causes more than combat, which is
+  the intended design working.
+
+`scripts/diagnose-archetypes.ts` is the instrument, kept, with Wilson
+intervals. `npm run test:batch3` asserts each mechanism as a positioned scene,
+because a win rate cannot say whether a mechanism fires — and at the
+archetype sample sizes a 400-run sweep gives (n≈145), it cannot say much at
+all: four consecutive measurements of the Confessor read 2.07 / 3.45 / 2.07 /
+1.38%, every interval overlapping every other.
+
+### The browser pass
+
+`npm run test:textscale`, in CI. Four text settings × two viewports, driven
+into a live run rather than taken on the setup screen — because the dense
+labels B16 was about do not exist until the Games have started.
+
+It found three real defects that B16's single-viewport measurement had missed:
+29px of horizontal overflow at "larger" on a 380px phone, the chronicle
+day-picker pushed outside the viewport, and `text-nano` rendering at 8.1px at
+"small". All three fixed and re-verified. This is why the audit's browser
+limitation mattered, and it is now closed.
+
+### Still open from batch 3
+
+- **Career share of winners** at 49.4% against a 45% goal. Moving, not met.
+- **Patrolling and Tending** were left alone. Their eligibility gates need
+  opportunity design of their own and this batch had no diagnosis for them;
+  changing them on the strength of the Scavenging result would be guessing.
+- **Training scores ≥9** at 23.5%, unchanged. It is in the audit's Career
+  compounding list, but the lever is global rather than Career-specific and
+  moving it would have confounded everything else measured here.
+- **Forecaster** at 3.46% is now the floor-holder, 0.04pp short. It has never
+  been diagnosed; it should get the same treatment the other three did rather
+  than a nudge.
+
+## Batch 3 — the original plan
 
 **Goal:** move the twelve unmet design indicators, on numbers we can now trust,
 and finish the readability work the text-scale fix started.
