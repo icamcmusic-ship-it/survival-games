@@ -94,6 +94,19 @@ export function bloodOnTheBlade(ctx: SimContext, weapon: Item | undefined, wield
     if (pool.length === 0) return;
 
     weapon.legendName = ctx.pickText(pool);
+    /*
+     * AUDIT-9 batch 4: who named it.
+     *
+     * `it-changed-hands` promises "a named weapon held by somebody other than
+     * the tribute who named it" and had no way to check that — its predicate
+     * asked whether *some* dead tribute anywhere had a kill, which is nearly
+     * always true, so it unlocked on exactly the same runs as
+     * `a-weapon-with-a-name` across the whole 500-run sample. Differently
+     * worded, same question, which is the B03 defect a second time.
+     *
+     * The weapon has to carry its origin for the card to be able to ask.
+     */
+    weapon.legendNamedById = wielder.id;
     // Audit 5 §1.4: the twelve authored naming lines were never drawn — this
     // moment fires twice a run in nine runs out of ten and printed one
     // hard-coded sentence every time.

@@ -86,6 +86,10 @@ jobs:
       # AUDIT-9 batch 3: the behaviour changes, as positioned scenes. A win
       # rate cannot say whether a mechanism fires; these can.
       - run: npm run test:batch3
+      # AUDIT-9 batch 4: the three content pilots. A sweep can show a chain
+      # firing; it cannot show that a branch which never came up is rare
+      # rather than dead, and two of them were dead when written.
+      - run: npm run test:batch4
 
       # Content and structure.
       - run: npm run test:arenas

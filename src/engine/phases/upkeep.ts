@@ -1,6 +1,7 @@
 import { SimContext } from '../context';
 import { processSpoilage, processVitals } from '../survival';
 import { tickDowned } from '../downed';
+import { tickRescueAftermath, tickRescueLines } from '../rescueLine';
 import { decayMemories, decayRelationships, decaySuspicion } from '../memory';
 import { decayFear } from '../fear';
 import { decayAllianceRegard, decayTrust } from '../relationships';
@@ -47,7 +48,20 @@ export function preActionUpkeep(ctx: SimContext, time: 'day' | 'night') {
 
 /** Stage 2: the rescue window, after movement and violence have settled. */
 export function postActionUpkeep(ctx: SimContext) {
+    /*
+     * AUDIT-9 batch 4, pilot 1: somebody puts a line down, before the clock
+     * on the person at the bottom of it runs out.
+     *
+     * Ordered ahead of `tickDowned` deliberately. That function owns how a
+     * downed tribute's window ends — rescued, executed, or expired — so a
+     * rescue attempt has to happen while the window is still open, in the same
+     * cycle, or the chain can only ever fire on people who were going to be
+     * saved anyway.
+     */
+    tickRescueLines(ctx);
     tickDowned(ctx);
+    // ...and the beat a cycle or two later that reads what actually happened.
+    tickRescueAftermath(ctx);
 }
 
 /** Stage 3: everything that fades on the cycle clock. */

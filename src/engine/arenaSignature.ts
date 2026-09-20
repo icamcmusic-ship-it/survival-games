@@ -1,10 +1,11 @@
+import { forecastHazard } from './hazardChain';
 import { DeathCauseCode, SignatureRule, Tribute } from '../models/types';
 import { RNG } from '../utils/rng';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
 import { getZone, reachableZones, severEdge, edgeKey, depleteZone, depletionOf, zoneFeatures } from './map';
 import { addZoneThreat, noteSighting } from './memory';
-import { startZoneEffect, hasEffect, severRandomEdge } from './zoneEffects';
+import { startZoneEffect, hasEffect, severRandomEdge, effectsFor } from './zoneEffects';
 import { injure, openWound } from './wounds';
 import { clampTribute } from './vitals';
 import { rosterFor, engageMutt } from './mutts';
@@ -154,33 +155,76 @@ function tempestSignature(ctx: SimContext, cycle: number, rng: RNG) {
     const zones = activeZones(ctx);
     if (zones.length === 0) return;
 
+    /*
+     * AUDIT-9 batch 4, pilot 3: the authored arena chain, on the forecast
+     * system rather than beside it.
+     *
+     * This signature used to be one beat: a line of prose and a flood, in the
+     * same instant. The audit's objection to exactly that is in
+     * `hazardChain.ts`'s own header — *"The arena signatures do telegraph,
+     * elaborately, but those telegraphs feed prose and the occasional
+     * attribute save — nobody can act on one, because there is nothing to act
+     * on until the thing has already happened"* — and the instruction for this
+     * pilot is to reuse the forecast machinery for authored signatures
+     * "rather than maintaining unrelated warning semantics".
+     *
+     * So the tide now runs the whole six-stage chain the audit specifies:
+     *
+     *   warning     a forecast, a cycle ahead, with the water audible
+     *   source      'arena' — this is the Gamemakers, and the record says so
+     *   growth      the forecast's own lead time
+     *   mitigation  the existing `mitigate` work, which can avert it outright
+     *   impact      the strike below, if it is not averted
+     *   aftermath   `zoneEffects` turns the drawdown into exposed salvage
+     *
+     * Two stages of one beat, managed here: place the warning, then strike
+     * when the water actually arrives. `tideStruck` stops the strike firing
+     * twice for one flood.
+     */
+    const struck = ctx.state.tideStruck ?? [];
+
+    // Stage 2: a flood this signature called for has landed. Hit it.
+    const landed = zones.find(z =>
+        hasEffect(ctx.state, z, 'flooded')
+        && !struck.includes(z)
+        && effectsFor(ctx.state, z).some(e => e.kind === 'flooded' && e.source === 'arena'));
+    if (landed) {
+        ctx.state.tideStruck = [...struck, landed];
+        ctx.logEvent(
+            `THE TIDE TURNS: the water comes up over ${landed} in the dark, faster than anything that deep should move.`,
+            [],
+            { type: 'signature-beats', important: true, zone: landed, category: 'arena' }
+        );
+        tributesIn(ctx, landed).forEach(t => {
+            const swims = rng.chance(ARENA_SIGNATURES.tide.swimBase + t.attributes.strength * ARENA_SIGNATURES.tide.swimPerStrength);
+            if (swims) {
+                ctx.logEvent(`${t.name} gets above the waterline in ${landed} with nothing worse than a soaking.`, [t.id], { zone: landed, category: 'arena' });
+                t.vitals.fatigue += ARENA_SIGNATURES.tide.swimFatigue;
+                clampTribute(t);
+                return;
+            }
+            applyDamage(ctx, t, 18, { cause: `Taken by the tide in ${landed}`, kind: 'arena', code: 'drowning' });
+            t.vitals.fatigue += ARENA_SIGNATURES.tide.caughtFatigue;
+            addZoneThreat(ctx.state, t, landed, MEMORY.hazardThreat * 2);
+            clampTribute(t);
+            checkDeath(ctx, t, `Taken by the tide in ${landed}`);
+        });
+        return;
+    }
+
+    // One tide on the calendar at a time. The arena is menacing, not a metronome.
+    if ((ctx.state.forecasts ?? []).some(f => f.kind === 'flooded')) return;
+
+    // Stage 1: the warning. Same target rule as before — a coin flip between
+    // where the people are and anywhere, so it is threatening rather than
+    // perfectly predictable — but announced with a night to do something
+    // about it.
     const byPopulation = [...zones].sort((a, b) => tributesIn(ctx, b).length - tributesIn(ctx, a).length);
     const busiest = byPopulation[0];
-    // A coin flip between "where the people are" and a genuinely random sector,
-    // so the tide is threatening rather than perfectly predictable.
     const target = rng.chance(ARENA_SIGNATURES.tide.busiestChance) ? busiest : rng.pick(zones);
     if (hasEffect(ctx.state, target, 'flooded')) return;
-
-    ctx.logEvent(
-        `THE TIDE TURNS: the water comes up over ${target} in the dark, faster than anything that deep should move.`,
-        [],
-        { type: 'signature-beats', important: true, zone: target, category: 'arena' }
-    );
-    startZoneEffect(ctx, target, 'flooded', false);
-    tributesIn(ctx, target).forEach(t => {
-        const swims = rng.chance(ARENA_SIGNATURES.tide.swimBase + t.attributes.strength * ARENA_SIGNATURES.tide.swimPerStrength);
-        if (swims) {
-            ctx.logEvent(`${t.name} gets above the waterline in ${target} with nothing worse than a soaking.`, [t.id], { zone: target, category: 'arena' });
-            t.vitals.fatigue += ARENA_SIGNATURES.tide.swimFatigue;
-            clampTribute(t);
-            return;
-        }
-        applyDamage(ctx, t, 18, { cause: `Taken by the tide in ${target}`, kind: 'arena', code: 'drowning' });
-        t.vitals.fatigue += ARENA_SIGNATURES.tide.caughtFatigue;
-        addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
-        clampTribute(t);
-        checkDeath(ctx, t, `Taken by the tide in ${target}`);
-    });
+    ctx.state.tideStruck = (ctx.state.tideStruck ?? []).filter(z => z !== target);
+    forecastHazard(ctx, target, 'flooded', 'arena', { leadCycles: ARENA_SIGNATURES.tide.warnLeadCycles });
 }
 
 /**

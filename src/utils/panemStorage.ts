@@ -273,6 +273,9 @@ export const EMPTY_PANEM: PanemRecords = { runs: 0, victors: 0, unlocked: [], be
  */
 export const RETIRED_ACHIEVEMENT_IDS: Record<string, string> = {
     'a7-half-at-the-horn': 'bloodbath-massacre',
+    // AUDIT-9 batch 4: "exactly one scar" and "at least one scar" are the same
+    // question in a game where a victor has never been observed with two.
+    'one-wound': 'scarred-and-standing',
 };
 
 /**

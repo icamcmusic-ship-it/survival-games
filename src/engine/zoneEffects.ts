@@ -299,6 +299,48 @@ export function tickZoneEffects(ctx: SimContext) {
             startZoneEffect(ctx, zoneName, 'stripped');
         }
 
+        /*
+         * AUDIT-9 batch 4, pilot 3: the aftermath stage of the hazard chain.
+         *
+         * The audit asks for a chain that runs "warning -> source -> growth ->
+         * mitigation -> impact -> aftermath", and separately for "opportunity
+         * after damage": *"Receding floods expose salvage, burnt ground
+         * reveals a cache, machinery shutdown opens a passage. Hazards should
+         * change incentives as well as health."*
+         *
+         * Fire already had an aftermath, and it is the pessimistic one — the
+         * ground is worse than before. Water is the optimistic case and it had
+         * none: a flood expired and the zone simply went back to being itself,
+         * so the whole beat was a health event with no consequence anybody
+         * could act on afterwards.
+         *
+         * Receding water leaves things on the ground. `blooming` is already
+         * the engine's word for "temporary abundance, and everyone who can see
+         * it knows it will not last", which is exactly what a drawdown is —
+         * so this reuses it rather than adding a ninth effect kind that would
+         * need its own tick, its own prose and its own balance row. The
+         * audit's instruction for this pilot is explicit about that: reuse the
+         * forecast system "rather than maintaining unrelated warning
+         * semantics".
+         *
+         * It is an *opportunity*, so it is contested by construction: the
+         * whole map can see a bloom, and the salvage is standing in a zone
+         * that was underwater a day ago.
+         */
+        const floodExpired = list.find(e => e.kind === 'flooded' && cycle >= e.expiresCycle);
+        if (floodExpired && !hasEffect(state, zoneName, 'blooming')) {
+            endZoneEffect(state, zoneName, 'flooded');
+            startZoneEffect(ctx, zoneName, 'blooming', false);
+            ctx.logEvent(
+                `The water goes down in ${zoneName} and leaves the place covered in what it took: `
+                + 'packs, tins, somebody\'s coat, all of it spread across the mud in plain sight. '
+                + 'It will spoil or be taken within a day or two, and everybody who can see the sector knows both.',
+                [],
+                { type: 'hazard-aftermath', zone: zoneName, important: true, category: 'arena' },
+            );
+            state.hazardAftermaths = (state.hazardAftermaths ?? 0) + 1;
+        }
+
         state.zoneEffects![zoneName] = (state.zoneEffects![zoneName] ?? [])
             .filter(e => cycle < e.expiresCycle);
         if (state.zoneEffects![zoneName].length === 0) delete state.zoneEffects![zoneName];
