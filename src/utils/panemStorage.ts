@@ -246,6 +246,72 @@ export interface GamemakerRecord {
 export const EMPTY_PANEM: PanemRecords = { runs: 0, victors: 0, unlocked: [], bests: {}, gamemakerRecords: {}, districtCrowns: {}, quellsSeen: [] };
 
 /**
+ * AUDIT-9 B03: achievement ids that no longer exist, and what they became.
+ *
+ * An id is a permanent key into somebody's saved store, so retiring one is not
+ * a delete — it is a rename with a forwarding address. `a7-half-at-the-horn`
+ * and `bloodbath-massacre` were two entries advertising one condition, and
+ * merging them without this map would silently take a card off the shelf of
+ * every player who happened to have earned the retired one.
+ *
+ * The rules this map is applied under, in `migrateUnlocks`:
+ *
+ *  - A player holding either id ends up holding the survivor.
+ *  - A player holding *both* ends up holding it once. That is the point of the
+ *    merge — one discovery, one card — and it is why the count on the shelf can
+ *    legitimately go down by one for those players.
+ *  - The earliest unlock stamp wins, because the run they first did the thing
+ *    in is the true answer to "when did I earn this", and the merge must not
+ *    move it later.
+ *  - Nothing is ever clawed back. Coins were paid at the time, per unlock, and
+ *    a player who was historically paid for both keeps both payments; only
+ *    future unlocks are paid once.
+ *
+ * Add to this map rather than editing an id in place. It is applied on every
+ * read, so it is idempotent and a store that has already been through it is
+ * unchanged by going through it again.
+ */
+export const RETIRED_ACHIEVEMENT_IDS: Record<string, string> = {
+    'a7-half-at-the-horn': 'bloodbath-massacre',
+};
+
+/**
+ * Rewrite a stored unlock list and its stamps through `RETIRED_ACHIEVEMENT_IDS`.
+ *
+ * Exported so the storage-migration check can state the propositions above
+ * directly rather than inferring them from a round trip.
+ */
+export function migrateUnlocks(
+    unlocked: string[],
+    unlockedAt: Record<string, { run: number; date: string }> | undefined,
+): { unlocked: string[]; unlockedAt: Record<string, { run: number; date: string }> | undefined } {
+    const to = (id: string) => RETIRED_ACHIEVEMENT_IDS[id] ?? id;
+    if (!unlocked.some(id => RETIRED_ACHIEVEMENT_IDS[id] !== undefined)) {
+        return { unlocked, unlockedAt };
+    }
+    // Order is preserved on first appearance, so the shelf does not reshuffle
+    // under a player who has been collecting for twenty Games.
+    const moved: string[] = [];
+    unlocked.forEach(id => { if (!moved.includes(to(id))) moved.push(to(id)); });
+
+    let stamps = unlockedAt;
+    if (unlockedAt) {
+        stamps = {};
+        Object.entries(unlockedAt).forEach(([id, stamp]) => {
+            const target = to(id);
+            const existing = stamps![target];
+            // The earlier run is the one they actually did it in. A stamp with
+            // an unusable run number loses to one that has a real one.
+            const beats = !existing
+                || !Number.isFinite(existing.run)
+                || (Number.isFinite(stamp.run) && stamp.run < existing.run);
+            if (beats) stamps![target] = stamp;
+        });
+    }
+    return { unlocked: moved, unlockedAt: stamps };
+}
+
+/**
  * The record book. Each entry says what it measures and which direction is
  * better, so `commitRun` does not need to know anything about them.
  */
@@ -390,8 +456,13 @@ export const PANEM_SPEC: StorageSpec<PanemRecords> = {
         return {
             runs: Math.max(0, asNum(r.runs, 0)),
             victors: Math.max(0, asNum(r.victors, 0)),
-            unlocked: asStrArray(r.unlocked),
-            unlockedAt: asObjMap<{ run: number; date: string }>(r.unlockedAt),
+            // AUDIT-9 B03: retired ids forward to their survivor. This runs on
+            // every read, not only on a version bump, which is what makes it
+            // reach stores already written at the current version.
+            ...migrateUnlocks(
+                asStrArray(r.unlocked),
+                asObjMap<{ run: number; date: string }>(r.unlockedAt),
+            ),
             bests: asObjMap<RecordHolder>(r.bests),
             gamemakerRecords: asObjMap<GamemakerRecord>(r.gamemakerRecords),
             patronDistrict: Number.isFinite(patron) ? patron : undefined,
