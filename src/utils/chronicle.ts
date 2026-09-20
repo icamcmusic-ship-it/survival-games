@@ -1,4 +1,9 @@
-import { EventLog, GameState } from '../models/types';
+import { EventLog, GameState, Tribute } from '../models/types';
+import { factLineOf } from '../ui/chronicleFacts';
+
+function castLookup(state: GameState): Map<string, Tribute> {
+    return new Map(state.tributes.map(t => [t.id, t]));
+}
 
 /**
  * SIDE-level export: a run produces ~900 lines of genuinely readable prose and
@@ -12,11 +17,12 @@ export interface ChronicleFilter {
     tributeId?: string;
 }
 
-export function chronicleMarkdown(state: GameState, filter: boolean | ChronicleFilter = false): string {
+export function chronicleMarkdown(state: GameState, filter: boolean | ChronicleFilter = false, facts = false): string {
     const f: ChronicleFilter = typeof filter === 'boolean' ? { importantOnly: filter } : filter;
     const logs = state.log.filter(l =>
         (!f.importantOnly || l.important)
         && (!f.tributeId || l.tributesInvolved.includes(f.tributeId)));
+    const byId = castLookup(state);
     const followed = f.tributeId ? state.tributes.find(t => t.id === f.tributeId) : undefined;
     const winner = state.tributes.find(t => t.status === 'alive');
     const lines: string[] = [
@@ -40,7 +46,8 @@ export function chronicleMarkdown(state: GameState, filter: boolean | ChronicleF
             currentKey = key;
             lines.push(`## ${key}`, '');
         }
-        lines.push(log.important ? `**${log.text}**` : log.text, '');
+        const line = facts ? factLineOf(log, byId) : log.text;
+        lines.push(log.important ? `**${line}**` : line, '');
     });
 
     return lines.join('\n');
@@ -59,14 +66,16 @@ export function chronicleText(
     state: GameState,
     filter: boolean | ChronicleFilter = false,
     format: ChronicleFormat = 'markdown',
+    facts = false,
 ): string {
-    if (format === 'markdown') return chronicleMarkdown(state, filter);
+    if (format === 'markdown') return chronicleMarkdown(state, filter, facts);
     if (format === 'prose') return chronicleProse(state, filter);
 
     const f: ChronicleFilter = typeof filter === 'boolean' ? { importantOnly: filter } : filter;
     const logs = state.log.filter(l =>
         (!f.importantOnly || l.important)
         && (!f.tributeId || l.tributesInvolved.includes(f.tributeId)));
+    const byId = castLookup(state);
     const winner = state.tributes.find(t => t.status === 'alive');
     const bb = format === 'bbcode';
 
@@ -92,9 +101,10 @@ export function chronicleText(
             currentKey = key;
             lines.push('', bb ? `[b]${key}[/b]` : `-- ${key} --`, '');
         }
+        const line = facts ? factLineOf(log, byId) : log.text;
         lines.push(log.important
-            ? (bb ? `[b]${log.text}[/b]` : `* ${log.text}`)
-            : log.text);
+            ? (bb ? `[b]${line}[/b]` : `* ${line}`)
+            : line);
     });
 
     return lines.join('\n');
@@ -166,9 +176,10 @@ export function downloadChronicleAs(
     state: GameState,
     filter: boolean | ChronicleFilter,
     format: ChronicleFormat,
+    facts = false,
 ) {
     const f: ChronicleFilter = typeof filter === 'boolean' ? { importantOnly: filter } : filter;
-    const body = chronicleText(state, f, format);
+    const body = chronicleText(state, f, format, facts);
     const blob = new Blob([body], { type: MIME[format] });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -221,9 +232,10 @@ export async function copyChronicle(
     state: GameState,
     filter: boolean | ChronicleFilter = false,
     format: ChronicleFormat = 'markdown',
+    facts = false,
 ): Promise<boolean> {
     try {
-        await navigator.clipboard.writeText(chronicleText(state, filter, format));
+        await navigator.clipboard.writeText(chronicleText(state, filter, format, facts));
         return true;
     } catch {
         return false;
@@ -250,20 +262,21 @@ function ordinal(n: number): string {
  * just a sentence, and the seed is what makes it a thing somebody else can go
  * and watch.
  */
-export function momentText(state: GameState, log: EventLog): string {
+export function momentText(state: GameState, log: EventLog, facts = false): string {
     const when = log.day === 0
         ? log.phase.charAt(0).toUpperCase() + log.phase.slice(1)
         : `Day ${log.day}, ${log.phase}`;
     const games = state.gamesProfile?.gamesNumber
         ? `the ${ordinal(state.gamesProfile.gamesNumber)} Hunger Games`
         : 'the Hunger Games';
-    return `"${log.text}"\n\n— ${when}, ${games} (seed ${state.seed})`;
+    const line = facts ? factLineOf(log, castLookup(state)) : log.text;
+    return `"${line}"\n\n— ${when}, ${games} (seed ${state.seed})`;
 }
 
 /** Copies one moment. Returns false when the clipboard is unavailable. */
-export async function copyMoment(state: GameState, log: EventLog): Promise<boolean> {
+export async function copyMoment(state: GameState, log: EventLog, facts = false): Promise<boolean> {
     try {
-        await navigator.clipboard.writeText(momentText(state, log));
+        await navigator.clipboard.writeText(momentText(state, log, facts));
         return true;
     } catch {
         return false;

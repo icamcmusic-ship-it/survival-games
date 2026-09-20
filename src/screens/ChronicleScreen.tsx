@@ -9,6 +9,7 @@ import { ChronicleFilters } from '../components/ChronicleFilters';
 import { chronicleStore, filtersActive, setChronicle } from '../store/chronicleStore';
 import { useStore } from '../store/createStore';
 import { prefsStore } from '../store/prefsStore';
+import { factLineOf } from '../ui/chronicleFacts';
 import { canSeeArena, disclosureFor } from '../ui/disclosure';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTransientFlag } from '../ui/useTransientFlag';
@@ -153,9 +154,13 @@ function writeDeepLink(page: Page | undefined) {
  * (it indents continuations and suppresses a repeated zone), but it no longer
  * decides the layout.
  */
-function LogRow({ log, cast, onSelectTribute, showZone, continuation, revealed, zone, gameState }: {
+function LogRow({ log, cast, byId, facts, onSelectTribute, showZone, continuation, revealed, zone, gameState }: {
     log: EventLog;
     cast: Tribute[];
+    /** Cast lookup for the facts register — see `chronicleStyle` on `prefsStore`. */
+    byId: Map<string, Tribute>;
+    /** Render `factLineOf(log)` instead of `log.text`. */
+    facts: boolean;
     onSelectTribute: (id: string) => void;
     showZone: boolean;
     /** Not the first line of its beat: the zone is already on the row above. */
@@ -170,9 +175,11 @@ function LogRow({ log, cast, onSelectTribute, showZone, continuation, revealed, 
 }) {
     const meta = categoryMeta(log.category);
     const hidden = !revealed && (log.category === 'death' || log.category === 'kill');
-    const text = !continuation && showZone && zone && log.zone === zone
-        ? stripZoneClause(log.text, zone)
-        : log.text;
+    const text = facts
+        ? factLineOf(log, byId)
+        : !continuation && showZone && zone && log.zone === zone
+            ? stripZoneClause(log.text, zone)
+            : log.text;
     return (
         <div
             className={`log-row${log.important ? ' is-important' : ''}${continuation ? ' is-continuation' : ''}`}
@@ -221,6 +228,11 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
     // suppression lifts on its own rather than needing to be switched off.
     const spoilerSafe = useStore(prefsStore, p => p.spoilerSafe);
     const revealed = !spoilerSafe || gameState.phase === 'ended';
+    // §(requests): the stripped-down chronicle — see `chronicleStyle` on
+    // `prefsStore`. The sidebar feed already reads this; the full-page
+    // chronicle was still always rendering `log.text`.
+    const facts = useStore(prefsStore, p => p.chronicleStyle) === 'facts';
+    const byId = useMemo(() => new Map(gameState.tributes.map(t => [t.id, t])), [gameState.tributes]);
 
     const mutedCategories = useMemo(() => {
         const muted = new Set<EventCategory>();
@@ -440,6 +452,8 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                                 key={log.id}
                                 log={log}
                                 cast={gameState.tributes}
+                                byId={byId}
+                                facts={facts}
                                 onSelectTribute={setSelectedTributeId}
                                 showZone={!arenaSealed && !PRE_ARENA_PHASES.has(page.phase)}
                                 continuation={li > 0 && beat.logs.length > 1}
