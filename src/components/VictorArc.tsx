@@ -76,7 +76,7 @@ export function VictorArc({ gameState, victor }: { gameState: GameState; victor:
             <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-1 text-xs">
                 {facts.map(([k, v]) => (
                     <div key={k} className="flex flex-col">
-                        <dt className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-500)]">{k}</dt>
+                        <dt className="font-mono text-micro uppercase tracking-wider text-[var(--color-ink-500)]">{k}</dt>
                         <dd className="text-[var(--color-ink-200)] m-0">{v}</dd>
                     </div>
                 ))}
@@ -89,13 +89,13 @@ export function VictorArc({ gameState, victor }: { gameState: GameState; victor:
                 <ol className="space-y-2 list-none m-0 p-0">
                     {byDay.map(group => (
                         <li key={group.label}>
-                            <div className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-500)] mb-0.5">{group.label}</div>
+                            <div className="font-mono text-micro uppercase tracking-wider text-[var(--color-ink-500)] mb-0.5">{group.label}</div>
                             <ul className="m-0 p-0 list-none space-y-1">
                                 {group.entries.map(l => {
                                     const meta = categoryMeta(l.category);
                                     return (
                                         <li key={l.id} className="text-sm text-[var(--color-ink-200)] leading-snug flex gap-2">
-                                            <span className="flex-none font-mono text-[10px] mt-0.5" style={{ color: meta.color }} aria-label={meta.label}>{meta.glyph}</span>
+                                            <span className="flex-none font-mono text-micro mt-0.5" style={{ color: meta.color }} aria-label={meta.label}>{meta.glyph}</span>
                                             <span>{l.text}</span>
                                         </li>
                                     );

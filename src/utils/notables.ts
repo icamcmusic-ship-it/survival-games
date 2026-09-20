@@ -1,7 +1,7 @@
 import { CAUSE_FAMILY, deathCodeOf } from '../engine/causes';
 import { GameState, Tribute } from '../models/types';
 import { PanemRecords } from './panemStorage';
-import { isStarCrossed } from '../engine/alliance';
+import { areLovers, isStarCrossed } from '../engine/alliance';
 
 /**
  * "How did that happen."
@@ -24,8 +24,45 @@ export interface Notable {
     weight: number;
 }
 
-function victorOf(state: GameState): Tribute | undefined {
-    return state.tributes.find(t => t.status === 'alive');
+/**
+ * AUDIT-10 B04/B07: everyone who came out, not the first row of the cast that
+ * happens to still be breathing.
+ *
+ * A dual win is a real ending in this game, and reading `find(alive)` made the
+ * second victor invisible to every line below — including the star-crossed one,
+ * which then told the audience their partner was dead while the partner was
+ * standing next to them on the podium. `victorIds` is the run's own record of
+ * who the Games crowned; the living-cast scan is the fallback for a state that
+ * predates it, and it returns *all* of them either way.
+ */
+export function victorsOf(state: GameState): Tribute[] {
+    const byId = new Map(state.tributes.map(t => [t.id, t]));
+    const declared = (state.victorIds ?? [])
+        .map(id => byId.get(id))
+        .filter((t): t is Tribute => t !== undefined);
+    if (declared.length > 0) return declared;
+    return state.tributes.filter(t => t.status === 'alive');
+}
+
+/**
+ * AUDIT-10 B01: how many actually died at the horn.
+ *
+ * `dayOfDeath === 0` was a question no death in the game can answer:
+ * `startGames()` sets `day = 1` before the bloodbath runs, so every horn death
+ * is stamped day 1 — as is every death for the rest of that first day. The
+ * count was therefore always zero, and the quiet-bloodbath highlight fired with
+ * a confident "nobody" over a massacre.
+ *
+ * The phase flag is the only thing that separates the two, so an old record
+ * that predates it cannot be reconstructed: it returns `undefined` rather than
+ * a fabricated zero, and the caller says nothing instead of saying something
+ * false.
+ */
+export function bloodbathDeathCount(state: GameState): number | undefined {
+    const dead = state.tributes.filter(t => t.status === 'dead');
+    if (dead.length === 0) return 0;
+    if (dead.every(t => t.diedInBloodbath === undefined)) return undefined;
+    return dead.filter(t => t.diedInBloodbath === true).length;
 }
 
 function ordinalSuffix(n: number): string {
@@ -34,9 +71,18 @@ function ordinalSuffix(n: number): string {
     return `${n}${['th', 'st', 'nd', 'rd'][n % 10] ?? 'th'}`;
 }
 
-export function runNotables(state: GameState, records: PanemRecords): Notable[] {
+/**
+ * Everything true about this run that is worth a sentence, before selection.
+ *
+ * `runNotables` shows the best three, which is right for the end screen and
+ * wrong for anything that wants to ask whether a given fact was *found* — a
+ * test, or a "see everything" expansion. Selection and derivation are separate
+ * concerns and this is the derivation.
+ */
+export function allNotables(state: GameState, records: PanemRecords): Notable[] {
     const notables: Notable[] = [];
-    const victor = victorOf(state);
+    const winners = victorsOf(state);
+    const victor = winners[0];
     const dead = state.tributes.filter(t => t.status === 'dead');
     const cast = state.tributes.length;
     const gamesNumber = state.gamesProfile?.gamesNumber;
@@ -81,8 +127,18 @@ export function runNotables(state: GameState, records: PanemRecords): Notable[] 
                 });
             }
         }
+        // AUDIT-10 B04: "came out of them alone" is a claim about a specific
+        // other person, so it reads that person. The trait alone said only that
+        // this tribute loved somebody — not that the somebody is dead, and not
+        // that they are not also standing on the podium.
         if (isStarCrossed(victor)) {
-            notables.push({ weight: 9, text: `${victor.name} went into these Games in love and came out of them alone. The broadcast will not dwell on the arithmetic of that.` });
+            const partner = state.tributes.find(o => areLovers(victor, o));
+            const bothWon = partner !== undefined && winners.some(w => w.id === partner.id);
+            if (bothWon) {
+                notables.push({ weight: 11, text: `${victor.name} and ${partner!.name} both came out. The Capitol wanted the romance and got it, and is now working out what to do about having promised one victor.` });
+            } else if (partner && partner.status === 'dead') {
+                notables.push({ weight: 9, text: `${victor.name} went into these Games in love with ${partner.name} and came out of them alone. The broadcast will not dwell on the arithmetic of that.` });
+            }
         }
     } else {
         const priorWipeouts = records.recentRuns?.slice(1).filter(r => r.victorName === undefined).length ?? 0;
@@ -93,12 +149,12 @@ export function runNotables(state: GameState, records: PanemRecords): Notable[] 
         });
     }
 
-    // --- The shape of the run --- counted from who actually died on day 0.
-    const bloodbathDeaths = dead.filter(t => t.dayOfDeath === 0).length;
-    if (bloodbathDeaths >= Math.ceil(cast * 0.55)) {
-        notables.push({ weight: 7, text: `The bloodbath took ${bloodbathDeaths} of ${cast}. More than half the cast never saw a second day.` });
-    } else if (bloodbathDeaths <= 2 && cast >= 12) {
-        notables.push({ weight: 7, text: `Only ${bloodbathDeaths === 0 ? 'nobody' : bloodbathDeaths === 1 ? 'one tribute' : 'two tributes'} died at the Cornucopia. A bloodbath that quiet usually means the Gamemakers have to work harder later.` });
+    // --- The shape of the run --- counted from who actually died at the horn.
+    const bloodbathDeaths = bloodbathDeathCount(state);
+    if (bloodbathDeaths !== undefined && bloodbathDeaths >= Math.ceil(cast * 0.55)) {
+        notables.push({ weight: 7, text: `The bloodbath took ${bloodbathDeaths} of ${cast}. More than half the cast never got clear of the Cornucopia.` });
+    } else if (bloodbathDeaths !== undefined && bloodbathDeaths <= 2 && cast >= 12) {
+        notables.push({ weight: 7, text: `${bloodbathDeaths === 0 ? 'Nobody' : bloodbathDeaths === 1 ? 'Only one tribute' : 'Only two tributes'} died at the Cornucopia. A bloodbath that quiet usually means the Gamemakers have to work harder later.` });
     }
 
     if (state.day >= 14) {
@@ -152,9 +208,22 @@ export function runNotables(state: GameState, records: PanemRecords): Notable[] 
     } else if (betrayals >= 5) {
         notables.push({ weight: 6, text: `${betrayals} separate betrayals. Nobody in this arena could afford to sleep.` });
     }
-    const biggestPack = Math.max(0, ...Object.values(state.alliances ?? {}).map(a => a.memberIds.length));
-    if (biggestPack >= 5) {
-        notables.push({ weight: 5, text: `A pack of ${biggestPack} held together in there. Groups that size usually eat themselves long before the final eight.` });
+    /*
+     * AUDIT-10 B05: a historical statement read from a historical record.
+     *
+     * This used to read the *surviving* alliance registry, which at the end of
+     * a run is almost always empty — 119 of 120 probe runs had a pack of five
+     * or more during play and none of them still had one at the end, so the
+     * line essentially never fired and, when it did, described the wreckage
+     * rather than the pack. `allianceChronicle` keeps the peak.
+     */
+    const peak = [...(state.allianceChronicle ?? [])].sort((a, b) => b.peakSize - a.peakSize)[0];
+    if (peak && peak.peakSize >= 5) {
+        const held = Math.max(1, peak.lastCycle - peak.formedCycle + 1);
+        notables.push({
+            weight: 5,
+            text: `${peak.name ? `${peak.name} ran ${peak.peakSize} deep` : `A pack of ${peak.peakSize} held together`} in there, for ${held === 1 ? 'a single cycle' : `${held} cycles`}. Groups that size usually eat themselves long before the final eight.`,
+        });
     }
     const allianceLines = state.log.filter(l => l.category === 'alliance').length;
     if (allianceLines === 0 && cast >= 12) {
@@ -164,8 +233,18 @@ export function runNotables(state: GameState, records: PanemRecords): Notable[] 
     if (lovers.length >= 2 && lovers.every(l => l.status === 'dead')) {
         notables.push({ weight: 9, text: 'The romance the Capitol built its broadcast around ended with neither of them coming home.' });
     }
-    if (state.log.some(l => l.text.startsWith('VENGEANCE'))) {
+    /*
+     * AUDIT-10 B06: the sentence claims a pursuit was carried out, so it reads
+     * the event that records one.
+     *
+     * The old detector matched the `VENGEANCE` prose prefix, which is the
+     * *oath* — sworn in 120 of 120 probe runs, and paid in 32. It was reporting
+     * a completed hunt every single time somebody said they would.
+     */
+    if (state.log.some(l => l.type === 'vengeance-paid')) {
         notables.push({ weight: 7, text: 'Somebody in that arena did not just survive — they went and found the specific person who took someone from them.' });
+    } else if (state.log.some(l => l.type === 'vengeance-sworn')) {
+        notables.push({ weight: 4, text: 'An oath was sworn over a body in there, and the arena ended before anybody collected on it.' });
     }
 
     // --- What the Capitol had planned before the gong ---
@@ -190,12 +269,19 @@ export function runNotables(state: GameState, records: PanemRecords): Notable[] 
     }
 
     // --- A favourite the Capitol lost early ---
-    const earlyFavourite = dead.find(t => t.fanFavourite && t.dayOfDeath === 0);
+    // AUDIT-10 B02: same day-zero mistake as B01 — the horn is a phase, not a
+    // calendar day, so this never found anybody.
+    const earlyFavourite = dead.find(t => t.fanFavourite && t.diedInBloodbath === true);
     if (earlyFavourite) {
         notables.push({ weight: 8, text: `${earlyFavourite.name} was supposed to be this year's story. The bloodbath did not care.` });
     }
 
-    return notables.sort((a, b) => b.weight - a.weight).slice(0, 3);
+    return notables.sort((a, b) => b.weight - a.weight);
+}
+
+/** The three the end screen shows. */
+export function runNotables(state: GameState, records: PanemRecords): Notable[] {
+    return allNotables(state, records).slice(0, 3);
 }
 
 /**
@@ -236,12 +322,23 @@ export function runDelta(state: GameState, records: PanemRecords): string[] {
             : `Shorter than usual: ${state.day} days against an average of ${avgDays.toFixed(1)} across ${scope}.`);
     }
 
+    /*
+     * AUDIT-10: "bloodier" as a share of the field, not a raw body count.
+     *
+     * With one victor, final deaths are cast size minus one almost by
+     * definition, so comparing raw totals across runs of different cast sizes
+     * was mostly reporting that the last field was bigger. The rate is
+     * comparable; runs whose cast size the store never recorded are excluded
+     * rather than assumed to match.
+     */
     const deaths = state.tributes.filter(t => t.status === 'dead').length;
-    const avgDeaths = mean(r => r.deaths);
-    if (avgDeaths !== undefined && Math.abs(deaths - avgDeaths) >= 2) {
-        out.push(deaths > avgDeaths
-            ? `Bloodier: ${deaths} dead against ${avgDeaths.toFixed(1)} across ${scope}.`
-            : `Quieter: ${deaths} dead against ${avgDeaths.toFixed(1)} across ${scope}.`);
+    const rate = deaths / Math.max(1, state.tributes.length);
+    const avgRate = mean(r => (r.cast ? r.deaths / r.cast : undefined));
+    if (avgRate !== undefined && Math.abs(rate - avgRate) >= 0.08) {
+        const pct = (v: number) => `${Math.round(v * 100)}%`;
+        out.push(rate > avgRate
+            ? `Bloodier: ${pct(rate)} of the field died, against ${pct(avgRate)} across ${scope}.`
+            : `Quieter: ${pct(rate)} of the field died, against ${pct(avgRate)} across ${scope}.`);
     }
 
     if (victor) {

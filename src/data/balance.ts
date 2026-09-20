@@ -3838,6 +3838,21 @@ export const INVENTORY = {
     baseCapacity: 4,
     /** A Backpack also keeps food out of the sun. */
     backpackSpoilageBonus: 2,
+    /*
+     * AUDIT-10 B14: how coarse the freshness bands are when two batches of the
+     * same thing merge into one stack.
+     *
+     * A stack carries one set of properties, so merging by item id alone made
+     * day-old bread as fresh as the loaf it joined — and reversing the order of
+     * arrival reversed the answer. Two batches merge only inside the same band;
+     * outside it they stay separate objects with separate histories.
+     *
+     * The number is a trade. At 1 the inventory shatters into a stack per hour
+     * of age and stacking stops meaning anything; at maxSpoilage nothing is
+     * ever separate and the original defect is back. 3 keeps a bag of food
+     * readable while never laundering a nearly-spoiled batch into a fresh one.
+     */
+    stackSpoilageBand: 3,
 
     /**
      * §3.3: encumbrance — the fast Career counterweight the balance goals

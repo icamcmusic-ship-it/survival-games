@@ -738,7 +738,17 @@ export interface Tribute {
      * Work carried across cycles: a half-set trap, a half-built shelter.
      * One at a time — starting something else abandons it.
      */
-    partialWork?: { kind: string; hoursDone: number };
+    partialWork?: {
+        kind: string;
+        hoursDone: number;
+        /**
+         * AUDIT-10 B10: where the work is, for a job that belongs to a place.
+         * Absent on portable work, which travels with whoever is doing it.
+         */
+        site?: { zone: string; level?: string };
+        /** The requirement in force when the hours went in, for the UI. */
+        totalHours?: number;
+    };
 
     /** Cycles the current stance has been held, for hysteresis. */
     stanceHeld: number;
@@ -1563,6 +1573,22 @@ export interface TrainingPact {
  * decay. That leaves the most socially interesting structure in the game with
  * nothing to actually happen inside it.
  */
+/**
+ * AUDIT-10 B05: the durable trace of one alliance, written while it is alive
+ * and read after it is gone.
+ */
+export interface AllianceRecollection {
+    id: string;
+    name?: string;
+    /** The largest it ever got, not the largest it ended.  */
+    peakSize: number;
+    /** Everyone who was ever in it, in the order they joined. */
+    memberIds: string[];
+    formedCycle: number;
+    /** The last cycle it was observed holding together. */
+    lastCycle: number;
+}
+
 export interface Alliance {
     id: string;
     /** Chosen on merit (charisma and strength) and open to challenge. */
@@ -2710,6 +2736,16 @@ export interface GameState {
     traps?: Trap[];
     /** Alliance id -> its structure. See `Alliance`. */
     alliances?: Record<string, Alliance>;
+    /**
+     * AUDIT-10 B05: what the packs *were*, kept after they stop existing.
+     *
+     * `alliances` is a live registry: it holds who is in a group right now, and
+     * by the end of a run it is usually empty. Anything that wants to say "a
+     * pack of six ran this arena for five days" is making a historical claim
+     * and cannot read a present-tense structure for it, so every group writes
+     * its peak here as it goes and the entry outlives the group.
+     */
+    allianceChronicle?: AllianceRecollection[];
     /**
      * AUDIT-9 stage C §4: sponsor gifts in the air and on the ground.
      *

@@ -88,7 +88,7 @@ export function ReplayFallenStrip({
                                                 onClick={() => { setActive(t.id); onSelectDay?.(day); }}
                                                 aria-pressed={isActive}
                                                 aria-label={`${t.name}, District ${t.district}, died day ${day}. Cause: ${t.causeOfDeath || 'unrecorded'}.`}
-                                                className="panel-flush px-1.5 py-1 text-left text-[11px] leading-tight w-full truncate"
+                                                className="panel-flush px-1.5 py-1 text-left text-mini leading-tight w-full truncate"
                                                 style={{
                                                     borderLeft: '3px solid var(--cat-death)',
                                                     background: isActive ? 'var(--paper-panel)' : undefined,
@@ -105,7 +105,7 @@ export function ReplayFallenStrip({
                                     type="button"
                                     onClick={() => onSelectDay?.(day)}
                                     aria-label={`Jump to day ${day} — ${fallen.length} ${fallen.length === 1 ? 'death' : 'deaths'}`}
-                                    className="text-[11px] font-mono px-1 py-0.5 border-t"
+                                    className="text-mini font-mono px-1 py-0.5 border-t"
                                     style={{
                                         borderColor: isSelected ? 'var(--red)' : 'var(--line-soft)',
                                         borderTopWidth: isSelected ? '3px' : '2px',

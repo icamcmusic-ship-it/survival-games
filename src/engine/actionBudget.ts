@@ -176,28 +176,88 @@ export function spendUpTo(t: Tribute, hours: number): number {
 }
 
 /**
+ * Where a piece of work is being done — a job's site, not just its kind.
+ *
+ * AUDIT-10 B10: `work()` keyed partial progress on the kind alone, so a shelter
+ * was a shelter wherever you were. Two hours of framing on the North Ridge plus
+ * one hour somewhere else finished "the" shelter, and `buildShelter()` then
+ * created it at wherever the tribute was standing when the last hour went in.
+ * A fixed construction does not move because its builder did; a job carries the
+ * place it belongs to, and arriving somewhere else abandons it.
+ */
+export interface JobSite {
+    zone: string;
+    level?: string;
+}
+
+function siteOf(t: Tribute): JobSite {
+    return { zone: t.zone, level: t.zoneLevel };
+}
+
+function sameSite(a: JobSite | undefined, b: JobSite): boolean {
+    if (!a) return true;
+    return a.zone === b.zone && (a.level ?? 'upper') === (b.level ?? 'upper');
+}
+
+/**
  * Put hours into a piece of work, returning true when it is finished.
  *
- * A tribute can only have one thing on the go. Starting something else
- * abandons what was in progress — which is a real cost, and the reason a
- * tribute who keeps changing their mind gets nothing built.
+ * A tribute can only have one thing on the go. Starting something else — or
+ * carrying a fixed job somewhere it does not belong — abandons what was in
+ * progress, which is a real cost, and the reason a tribute who keeps changing
+ * their mind gets nothing built.
+ *
+ * `fixed` marks a job that belongs to its site: shelters, barricades, traps and
+ * hazard mitigation are all built somewhere, and leaving means leaving the
+ * work. Portable crafting passes `fixed: false` and travels with its owner.
  */
-export function work(t: Tribute, kind: string, totalHours: number): boolean {
-    if (t.partialWork && t.partialWork.kind !== kind) delete t.partialWork;
-    const done = t.partialWork?.kind === kind ? t.partialWork.hoursDone : 0;
-    const spent = spendUpTo(t, totalHours - done);
+export function work(
+    t: Tribute,
+    kind: string,
+    totalHours: number,
+    opts: { fixed?: boolean } = {},
+): boolean {
+    const fixed = opts.fixed !== false;
+    const here = siteOf(t);
+    const carried = t.partialWork;
+    const resumable = carried !== undefined
+        && carried.kind === kind
+        && (!fixed || sameSite(carried.site, here));
+    if (carried && !resumable) delete t.partialWork;
+    const done = resumable ? carried!.hoursDone : 0;
+    /*
+     * AUDIT-10 B11: finish immediately when there is no work left to do.
+     *
+     * A job's hour cost is not immutable — hazard mitigation recomputes it from
+     * the tribute's carpentry, so a skill gained mid-job can make the total
+     * *smaller* than the hours already banked. Three hours done against a newly
+     * reduced two-hour total called `spendUpTo(-1)`, which handed an hour back
+     * (one remaining hour became two), returned false, and left the partial
+     * work in place to do it again next cycle.
+     */
+    const remaining = totalHours - done;
+    if (remaining <= 0) {
+        delete t.partialWork;
+        return true;
+    }
+    const spent = spendUpTo(t, remaining);
     if (spent <= 0) return false;
     const total = done + spent;
     if (total >= totalHours) {
         delete t.partialWork;
         return true;
     }
-    t.partialWork = { kind, hoursDone: total };
+    t.partialWork = { kind, hoursDone: total, site: fixed ? here : undefined, totalHours };
     return false;
 }
 
 /** How far along a piece of work is, 0 when it has not been started. */
 export function progressOf(t: Tribute, kind: string, totalHours: number): number {
-    if (t.partialWork?.kind !== kind) return 0;
-    return Math.min(1, t.partialWork.hoursDone / totalHours);
+    const carried = t.partialWork;
+    if (carried?.kind !== kind) return 0;
+    // Progress on a job at a site the tribute has walked away from is progress
+    // on a thing that is not here; reporting it as this job's would put "2 of 3
+    // hours" on a shelter nobody is standing next to.
+    if (!sameSite(carried.site, siteOf(t))) return 0;
+    return Math.min(1, carried.hoursDone / totalHours);
 }

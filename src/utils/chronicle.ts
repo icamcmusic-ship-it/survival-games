@@ -1,8 +1,50 @@
 import { EventLog, GameState, Tribute } from '../models/types';
 import { factLineOf } from '../ui/chronicleFacts';
+import { victorsOf } from './notables';
 
 function castLookup(state: GameState): Map<string, Tribute> {
     return new Map(state.tributes.map(t => [t.id, t]));
+}
+
+/**
+ * AUDIT-10 B07: the arena's title, formatted once.
+ *
+ * Every export built `The ${arena.name} Games` by hand, which reads correctly
+ * for "Frozen Wasteland" and produces "The The Vault Games" for the several
+ * arenas whose authored name already carries the article.
+ */
+export function arenaTitle(state: GameState): string {
+    const name = state.arena.name;
+    return /^the\s/i.test(name) ? `${name} Games` : `The ${name} Games`;
+}
+
+/**
+ * AUDIT-10 B07: what the run actually ended as, for a header line.
+ *
+ * `find(t => t.status === 'alive')` answered "who is standing" and was used to
+ * answer "who won" — so an export taken during setup or mid-run crowned
+ * whoever happened to be first in the cast array, and a dual win named one of
+ * the two and silently dropped the other. Finished-ness is a property of the
+ * run, not of the cast list.
+ */
+export function outcomeOf(state: GameState): { finished: boolean; winners: Tribute[] } {
+    const finished = state.phase === 'ended';
+    return { finished, winners: finished ? victorsOf(state) : [] };
+}
+
+function winnerNames(winners: Tribute[]): string {
+    return winners.map(w => `${w.name} of District ${w.district}`).join(' and ');
+}
+
+/**
+ * The header's outcome row, in the one wording every export shares — as
+ * `Label: value`, so a caller can re-punctuate it for its own format.
+ */
+function victorLine(state: GameState): string {
+    const { finished, winners } = outcomeOf(state);
+    if (!finished) return 'Status: in progress';
+    if (winners.length === 0) return 'Victor: none — the arena won';
+    return `${winners.length > 1 ? 'Victors' : 'Victor'}: ${winnerNames(winners)}`;
 }
 
 /**
@@ -24,16 +66,13 @@ export function chronicleMarkdown(state: GameState, filter: boolean | ChronicleF
         && (!f.tributeId || l.tributesInvolved.includes(f.tributeId)));
     const byId = castLookup(state);
     const followed = f.tributeId ? state.tributes.find(t => t.id === f.tributeId) : undefined;
-    const winner = state.tributes.find(t => t.status === 'alive');
     const lines: string[] = [
-        followed ? `# ${followed.name} of District ${followed.district} — The ${state.arena.name} Games` : `# The ${state.arena.name} Games`,
+        followed ? `# ${followed.name} of District ${followed.district} — ${arenaTitle(state)}` : `# ${arenaTitle(state)}`,
         '',
         `- **Seed:** \`${state.seed}\``,
         `- **Arena:** ${state.arena.name}`,
         `- **Tributes:** ${state.tributes.length}`,
-        winner
-            ? `- **Victor:** ${winner.name} of District ${winner.district}`
-            : (state.phase === 'ended' ? '- **Victor:** none — the arena won' : '- **Status:** in progress'),
+        `- **${victorLine(state).replace(': ', ':** ')}`,
         '',
     ];
 
@@ -76,19 +115,16 @@ export function chronicleText(
         (!f.importantOnly || l.important)
         && (!f.tributeId || l.tributesInvolved.includes(f.tributeId)));
     const byId = castLookup(state);
-    const winner = state.tributes.find(t => t.status === 'alive');
     const bb = format === 'bbcode';
 
-    const title = `The ${state.arena.name} Games`;
+    const title = arenaTitle(state);
     const lines: string[] = [
         bb ? `[size=150][b]${title}[/b][/size]` : title.toUpperCase(),
         bb ? '' : '='.repeat(title.length),
         `Seed: ${state.seed}`,
         `Arena: ${state.arena.name}`,
         `Tributes: ${state.tributes.length}`,
-        winner
-            ? `Victor: ${winner.name} of District ${winner.district}`
-            : (state.phase === 'ended' ? 'Victor: none — the arena won' : 'Status: in progress'),
+        victorLine(state),
         '',
     ];
 
@@ -126,19 +162,19 @@ export function chronicleProse(state: GameState, filter: boolean | ChronicleFilt
     const logs = state.log.filter(l =>
         (!f.importantOnly || l.important)
         && (!f.tributeId || l.tributesInvolved.includes(f.tributeId)));
-    const winner = state.tributes.find(t => t.status === 'alive');
+    const { finished, winners } = outcomeOf(state);
     const subject = f.tributeId ? state.tributes.find(t => t.id === f.tributeId) : undefined;
 
     const out: string[] = [];
     out.push(subject
         ? `${subject.name} of District ${subject.district}, in the ${state.arena.name}.`
-        : `The ${state.arena.name} Games.`);
+        : `${arenaTitle(state)}.`);
     out.push('');
     out.push(
         `${state.tributes.length} tributes went in. `
-        + (winner
-            ? `${winner.name} of District ${winner.district} came out, ${state.day} days later.`
-            : state.phase === 'ended'
+        + (winners.length > 0
+            ? `${winnerNames(winners)} came out, ${state.day} days later.`
+            : finished
                 ? `Nobody came out. The arena took all ${state.tributes.length} of them across ${state.day} days.`
                 : 'It has not finished yet.')
         + ` (Seed ${state.seed} — the same seed replays the same Games.)`
@@ -205,6 +241,10 @@ export function chronicleJson(state: GameState): string {
         config: state.baseConfig,
         day: state.day,
         phase: state.phase,
+        // AUDIT-10 B07: the machine-readable export states the outcome
+        // explicitly rather than leaving a consumer to infer it from `status`.
+        finished: outcomeOf(state).finished,
+        victors: outcomeOf(state).winners.map(w => ({ id: w.id, name: w.name, district: w.district })),
         tributes: state.tributes.map(t => ({
             id: t.id, name: t.name, district: t.district, gender: t.gender, age: t.age,
             status: t.status, kills: t.kills, causeOfDeath: t.causeOfDeath, dayOfDeath: t.dayOfDeath,

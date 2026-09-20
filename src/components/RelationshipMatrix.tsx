@@ -75,7 +75,7 @@ export function RelationshipMatrix({ gameState, onSelectTribute }: {
             </div>
 
             <div className="overflow-auto max-h-[70vh]">
-                <table className="text-[10px]" style={{ borderCollapse: 'collapse', fontFamily: 'var(--font-mono)' }}>
+                <table className="text-micro" style={{ borderCollapse: 'collapse', fontFamily: 'var(--font-mono)' }}>
                     <caption className="sr-only">
                         Relationship matrix: every tribute's feeling about every other tribute, from -100 to +100.
                     </caption>
@@ -154,7 +154,7 @@ export function RelationshipMatrix({ gameState, onSelectTribute }: {
                 </table>
             </div>
 
-            <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-mono uppercase tracking-wider">
+            <div className="flex flex-wrap gap-x-3 gap-y-1 text-micro font-mono uppercase tracking-wider">
                 {(['close', 'friendly', 'neutral', 'wary', 'hostile'] as const).map((band, i) => (
                     <span key={band} className="flex items-center gap-1" style={{ color: bondColor([60, 25, 0, -25, -60][i]) }}>
                         <span className="w-2.5 h-2.5 inline-block" style={{ background: bondColor([60, 25, 0, -25, -60][i]) }} aria-hidden="true" />

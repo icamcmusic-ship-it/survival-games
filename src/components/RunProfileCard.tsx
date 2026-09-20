@@ -39,7 +39,7 @@ export function RunProfileCard({ gameState }: { gameState: GameState }) {
         <div className="panel p-4 space-y-3">
             <div className="flex items-baseline justify-between gap-3 flex-wrap">
                 <h3 className="panel-title">This year's Games</h3>
-                <span className="font-mono text-[10px] text-[var(--color-ink-500)]">seed {gameState.seed}</span>
+                <span className="font-mono text-micro text-[var(--color-ink-500)]">seed {gameState.seed}</span>
             </div>
 
             {profile?.quell && (
@@ -47,13 +47,13 @@ export function RunProfileCard({ gameState }: { gameState: GameState }) {
                     <div className="eyebrow" style={{ color: 'var(--red)' }}>
                         Quarter Quell — {profile.quell.name}
                     </div>
-                    <p className="text-[13px] leading-relaxed text-[var(--color-ink-300)]">
+                    <p className="text-label leading-relaxed text-[var(--color-ink-300)]">
                         {profile.quell.announcement}
                     </p>
                 </div>
             )}
 
-            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[13px]">
+            <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-label">
                 {rows.map(([label, value, notable]) => (
                     <React.Fragment key={label}>
                         <dt className="eyebrow self-center">{label}</dt>

@@ -6,6 +6,7 @@ import { adjustRel, adjustTrust } from './relationships';
 import { isActive, isDowned } from './downed';
 import { giveItem } from './items';
 import { refusesCredit, volunteersToCarry } from '../data/traits';
+import { samePlace } from './verticality';
 
 /**
  * AUDIT-9 stage C §4: negotiated obligations.
@@ -176,7 +177,18 @@ export function tickObligations(ctx: SimContext) {
             return;
         }
 
-        const together = from.zone === to.zone;
+        /*
+         * AUDIT-10 B12: standing next to somebody is a physical fact.
+         *
+         * Zone equality is not it. A vertical zone has an upper and a lower
+         * level that are a climb apart, and `samePlace` is the check the rest
+         * of the engine uses for contact — so a supply promise was being marked
+         * kept, and bread teleported from the rim of a shaft to its floor,
+         * while the one function that knows about levels said they were not
+         * together at all. Both of them also have to be *able* to act: a
+         * tribute who is down or in transit is not handing anything over.
+         */
+        const together = samePlace(state.arena, from, to) && isActive(from);
 
         if (o.kind === 'supply' && together) {
             // What they actually need: a kit for a wound, food for hunger.
@@ -185,14 +197,42 @@ export function tickObligations(ctx: SimContext) {
                 ?? from.inventory.find(i => i.type === 'food' || i.type === 'water');
             if (spare && (to.vitals.hunger > OBLIGATIONS.supplyHungerLine
                 || (wants === 'medical' && spare.type === 'medical'))) {
+                /*
+                 * AUDIT-10 B13: the handover is a transfer, and a transfer can
+                 * fail. `giveItem` returns what would not fit; this caller used
+                 * to discard that return value, take the item off the donor
+                 * regardless, and mark the promise kept — so a full recipient
+                 * could drop the incoming supply (or something else out of
+                 * their own bag) and the ledger recorded a delivery.
+                 *
+                 * The contract: the promise is kept when the thing promised is
+                 * in the recipient's hands afterwards. Anything displaced goes
+                 * on the ground where it happened, which is what dropping
+                 * means, and if the gift itself is what got dropped the donor
+                 * keeps it and the promise stays open for another try.
+                 */
                 from.inventory = from.inventory.filter(i => i !== spare);
-                giveItem(to, spare);
+                const dropped = giveItem(to, spare);
+                const landed = !dropped.includes(spare) && to.inventory.some(i => i.id === spare.id);
+                if (!landed) {
+                    // Nothing changed hands. Put it back and try again later.
+                    to.inventory = to.inventory.filter(i => i !== spare);
+                    from.inventory.push(spare);
+                    return;
+                }
+                if (dropped.length > 0) {
+                    ctx.logEvent(
+                        `${to.name} has to put ${dropped.map(i => i.name).join(' and ')} down to take the ${spare.name} — there is only so much one person can carry.`,
+                        [to.id, from.id],
+                        { category: 'loot', zone: to.zone },
+                    );
+                }
                 keep(ctx, o, `${from.name} hands ${to.name} the ${spare.name} without being asked twice. That is the promise, discharged, in front of everybody who heard it made.`);
                 return;
             }
         }
 
-        if (o.kind === 'escort' && together && o.detail && from.zone === o.detail) {
+        if (o.kind === 'escort' && together && isActive(to) && o.detail && from.zone === o.detail) {
             keep(ctx, o, `${from.name} and ${to.name} walk into ${o.detail} together. ${from.name} said they would get them here, and here they are.`);
             return;
         }

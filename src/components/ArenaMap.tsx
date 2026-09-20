@@ -51,7 +51,7 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
             <div className="flex justify-between items-center gap-3 flex-wrap">
                 <span className="panel-title">Arena sectors</span>
                 <div className="flex items-center gap-3 flex-wrap">
-                    <span className="text-[10px] text-[var(--color-ink-500)]">
+                    <span className="text-micro text-[var(--color-ink-500)]">
                         {view === 'belief'
                             ? 'What one tribute believes is out there, which is not the same as what is'
                             : `Click a sector to isolate its log${collapsed.length > 0 ? ` · ${collapsed.length} sector${collapsed.length === 1 ? '' : 's'} collapsed` : ''}`}
@@ -80,7 +80,7 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                         tributes={tributes}
                     />
                     </div>
-                    <div className="flex flex-wrap gap-x-4 gap-y-1 px-2 pb-1 text-[10px] text-[var(--color-ink-500)] font-mono uppercase tracking-wider">
+                    <div className="flex flex-wrap gap-x-4 gap-y-1 px-2 pb-1 text-micro text-[var(--color-ink-500)] font-mono uppercase tracking-wider">
                         <span>Lines · routes between sectors</span>
                         <span style={{ color: 'var(--red)' }}>Thick/red · traffic this cycle</span>
                         <span style={{ color: 'var(--cat-loot)' }}>Ring · forage remaining</span>
@@ -97,7 +97,7 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                         key. */}
                     <details className="px-2 pb-2">
                         <summary className="eyebrow cursor-pointer">Map key</summary>
-                        <div className="mt-2 grid gap-x-6 gap-y-1 sm:grid-cols-2 text-[10px] text-[var(--color-ink-500)]">
+                        <div className="mt-2 grid gap-x-6 gap-y-1 sm:grid-cols-2 text-micro text-[var(--color-ink-500)]">
                             <div>
                                 <div className="eyebrow mb-1">Terrain</div>
                                 {TERRAIN_LEGEND.map(([icon, label]) => (
@@ -151,7 +151,7 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                                 <h4 className="font-extrabold text-sm leading-snug text-[var(--ink)]">
                                     {TERRAIN_ICONS[zone.terrain] || ''} {zone.name}
                                 </h4>
-                                <div className="flex justify-between text-[10px] uppercase tracking-wider font-mono">
+                                <div className="flex justify-between text-micro uppercase tracking-wider font-mono">
                                     <span style={{ color: dangerColor(zone.danger) }}>⚠ {dangerLabel(zone.danger)}</span>
                                     <span className="text-[var(--color-ink-500)]">{zone.terrain}</span>
                                 </div>
@@ -163,11 +163,11 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
 
                             <div className="w-full">
                                 {isCollapsed ? (
-                                    <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--cat-death)] font-bold">
+                                    <span className="text-micro font-mono uppercase tracking-wider text-[var(--cat-death)] font-bold">
                                         Sector out of bounds
                                     </span>
                                 ) : occupants.length === 0 ? (
-                                    <span className="text-[10px] text-[var(--color-ink-600)] font-mono">No tributes present</span>
+                                    <span className="text-micro text-[var(--color-ink-600)] font-mono">No tributes present</span>
                                 ) : (
                                     <div className="flex flex-wrap gap-1 items-center">
                                         {occupants.slice(0, 12).map(t => {
@@ -183,7 +183,7 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                                                 <span
                                                     key={t.id}
                                                     role="group" aria-label={`${t.name} (District ${t.district}) — ${t.health}% health, ${band}`} title={`${t.name} (District ${t.district}) — ${t.health}% health, ${band}`}
-                                                    className="inline-flex items-center gap-0.5 font-mono text-[10px] leading-none px-1 py-0.5 border"
+                                                    className="inline-flex items-center gap-0.5 font-mono text-micro leading-none px-1 py-0.5 border"
                                                     style={{ color, borderColor: color }}
                                                 >
                                                     <span aria-hidden="true">{glyph}</span>D{t.district}
@@ -191,7 +191,7 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                                             );
                                         })}
                                         {occupants.length > 12 && (
-                                            <span className="text-[10px] text-[var(--color-ink-500)] font-mono">+{occupants.length - 12}</span>
+                                            <span className="text-micro text-[var(--color-ink-500)] font-mono">+{occupants.length - 12}</span>
                                         )}
                                     </div>
                                 )}

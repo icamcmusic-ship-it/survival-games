@@ -1806,10 +1806,21 @@ function resolveEncounters(
 
         if (!finaleOpponent && ctx.rng.chance(eventChance)) {
             // §7e: an arena that started a story last cycle finishes it.
-            applyArenaEvent(ctx, t,
-                pendingChain(ctx, t, flavor.events) ?? pickTerrainEvent(ctx, flavor.events, zone?.terrain, t));
-            acted.add(t.id);
-            return;
+            const arenaEvent = pendingChain(ctx, t, flavor.events)
+                ?? pickTerrainEvent(ctx, flavor.events, zone?.terrain, t);
+            /*
+             * AUDIT-10 B15: the selector can now legitimately return nothing —
+             * every authored event for this zone either needs something this
+             * tribute does not have or has already had its one turn. That is
+             * not an error and it is not a reason to fire an ineligible event;
+             * the arena simply does not single this tribute out this cycle, and
+             * they fall through to the rest of the cycle's ordinary business.
+             */
+            if (arenaEvent) {
+                applyArenaEvent(ctx, t, arenaEvent);
+                acted.add(t.id);
+                return;
+            }
         }
 
         if (!finaleOpponent && ctx.rng.chance(muttChance)) {

@@ -62,7 +62,7 @@ export function BeliefMap({ gameState, tributes }: { gameState: GameState; tribu
                         <option key={t.id} value={t.id}>{t.name} (D{t.district})</option>
                     ))}
                 </select>
-                <span className="text-[10px] text-[var(--color-ink-500)]">
+                <span className="text-micro text-[var(--color-ink-500)]">
                     Their impressions, not the truth. Impressions rot, and some of them were somebody else&rsquo;s idea.
                 </span>
             </div>
@@ -92,12 +92,12 @@ export function BeliefMap({ gameState, tributes }: { gameState: GameState; tribu
                             </div>
 
                             {belief === undefined ? (
-                                <span className="text-[11px] text-[var(--color-ink-500)]">
+                                <span className="text-mini text-[var(--color-ink-500)]">
                                     Never seen. Nobody has mentioned it.
                                 </span>
                             ) : (
                                 <>
-                                    <div className="flex flex-wrap gap-1.5 items-center text-[10px] font-mono uppercase tracking-wider">
+                                    <div className="flex flex-wrap gap-1.5 items-center text-micro font-mono uppercase tracking-wider">
                                         {belief.hearsay ? (
                                             <span className="chip" style={{ color: 'var(--cat-training)', borderColor: 'var(--cat-training)' }}>
                                                 heard it from {nameOf(belief.toldById)}
@@ -107,7 +107,7 @@ export function BeliefMap({ gameState, tributes }: { gameState: GameState; tribu
                                         )}
                                         <span className="text-[var(--color-ink-500)]">{ageLabel(stale ?? 0)}</span>
                                     </div>
-                                    <dl className="grid grid-cols-3 gap-1 text-[10px]">
+                                    <dl className="grid grid-cols-3 gap-1 text-micro">
                                         <div>
                                             <dt className="text-[var(--color-ink-600)] uppercase tracking-wider">Rivals</dt>
                                             <dd className="font-mono text-[var(--ink)]">{belief.rivals}</dd>

@@ -5,7 +5,7 @@ import { QUELLS } from '../data/gamesProfile';
 import { ACHIEVEMENTS, CareerTotals, evaluateAchievements, evaluateMetaAchievements, evaluateNearMisses, NearMiss } from '../data/achievements';
 import { COIN_ECONOMY } from '../data/balance';
 import { arenaLaws } from '../engine/gamesProfile';
-import { Notable, runDelta, runNotables } from './notables';
+import { Notable, runDelta, runNotables, victorsOf } from './notables';
 import { ARENAS } from '../data/constants';
 import { dailySeed } from '../data/replayHooks';
 import { ARENA_MUTTS } from '../data/mutts';
@@ -176,6 +176,10 @@ export interface PanemRecords {
         victorArchetype?: string;
         victorKills?: number;
         deaths: number;
+        /** AUDIT-10: how many went in, so a death count can be read as a rate. */
+        cast?: number;
+        /** AUDIT-10 B08: everyone crowned, so a dual win survives the window. */
+        victorNames?: string[];
     }>;
     /**
      * AUDIT-6 §9.3: the Panem calendar — who is running the Games, and for how
@@ -529,10 +533,29 @@ export function careerTotals(records: PanemRecords): CareerTotals {
 
 export function commitRun(state: GameState): RunOutcome {
     const records = readPanem();
-    const victor = state.tributes.find(t => t.status === 'alive');
+    /*
+     * AUDIT-10 B08: three different questions, three different answers.
+     *
+     * `find(t => t.status === 'alive')` was standing in for all of them — the
+     * run's outcome, the people crowned, and the districts that won — so a dual
+     * victory credited one tribute, one district crown and one mentor seat, and
+     * which of the two got them was decided by cast array order. The store
+     * archives both winners elsewhere, so the record systems disagreed with
+     * each other about the same run.
+     *
+     * `winners` is everyone crowned. `victor` is retained only for the places
+     * that genuinely want a single representative row (the recent-run window's
+     * headline, the record book's holder), and is now explicitly the first of
+     * the list rather than an accident of iteration order.
+     */
+    const winners = victorsOf(state);
+    const victor = winners[0];
+    const hasVictor = winners.length > 0;
 
     records.runs += 1;
-    if (victor) records.victors += 1;
+    // Games that produced a victor, not people crowned — a dual win is one
+    // Games with a winner, and `careerTotals` reads this as a run count.
+    if (hasVictor) records.victors += 1;
 
     // §10.4: what the fallen leave behind for their district. One tribute per
     // district per run at most, and only somebody who actually died carrying
@@ -563,8 +586,8 @@ export function commitRun(state: GameState): RunOutcome {
         records.dailyBests = records.dailyBests ?? {};
         const prior = records.dailyBests[state.seed];
         const betterThanPrior = !prior
-            || (victor !== undefined && prior.victorName === undefined)
-            || ((victor !== undefined) === (prior.victorName !== undefined) && state.day > prior.day);
+            || (hasVictor && prior.victorName === undefined)
+            || (hasVictor === (prior.victorName !== undefined) && state.day > prior.day);
         if (betterThanPrior) {
             records.dailyBests[state.seed] = {
                 day: state.day,
@@ -594,7 +617,9 @@ export function commitRun(state: GameState): RunOutcome {
             victorDistrict: victor?.district,
             victorArchetype: victor?.archetype,
             victorKills: victor?.kills,
+            victorNames: winners.map(w => w.name),
             deaths: state.tributes.filter(t => t.status === 'dead').length,
+            cast: state.tributes.length,
         },
         ...(records.recentRuns ?? []),
     ].slice(0, RECENT_RUN_WINDOW);
@@ -614,7 +639,8 @@ export function commitRun(state: GameState): RunOutcome {
         const gm = records.gamemakerRecords[gmName]
             ?? { games: 0, victors: 0, totalDays: 0, deaths: 0 };
         gm.games += 1;
-        if (victor) gm.victors += 1;
+        // A Gamemaker's record counts Games that produced a victor.
+        if (hasVictor) gm.victors += 1;
         gm.totalDays += state.day;
         gm.deaths += state.tributes.filter(t => t.status === 'dead').length;
         records.gamemakerRecords[gmName] = gm;
@@ -624,14 +650,21 @@ export function commitRun(state: GameState): RunOutcome {
     // District 12 win is a specific thing the player has done rather than a
     // number folded into `victors`.
     let firstCrownDistrict: number | undefined;
-    if (victor) {
+    // AUDIT-10 B08: every district that took a crown this run takes it once.
+    // Two winners from different districts are two crowns; two winners from
+    // the *same* district are one Games their district won, credited once,
+    // with both names on it.
+    const winningDistricts = [...new Set(winners.map(w => w.district))];
+    winningDistricts.forEach(district => {
+        const crowned = winners.filter(w => w.district === district);
+        const headline = crowned[0];
         records.districtCrowns = records.districtCrowns ?? {};
         const stamp: DistrictVictoryStamp = {
-            name: victor.name,
-            archetype: victor.archetype,
+            name: crowned.map(w => w.name).join(' & '),
+            archetype: headline.archetype,
             run: records.runs,
-            kills: victor.kills,
-            days: victor.daysSurvived,
+            kills: crowned.reduce((sum, w) => sum + w.kills, 0),
+            days: Math.max(...crowned.map(w => w.daysSurvived)),
             seed: state.seed,
             arenaName: state.arena.name,
             date: new Date().toISOString(),
@@ -639,25 +672,24 @@ export function commitRun(state: GameState): RunOutcome {
         // A store that was hand-edited (or written by a future/older build) can
         // hold a partial entry; treat anything unusable as a first crown rather
         // than throwing on the debrief.
-        const prior = records.districtCrowns[victor.district];
+        const prior = records.districtCrowns[district];
         const existing = prior && prior.first && Array.isArray(prior.archetypes) ? prior : undefined;
+        const archetypes = crowned.map(w => w.archetype);
         if (existing) {
-            records.districtCrowns[victor.district] = {
+            records.districtCrowns[district] = {
                 victories: existing.victories + 1,
                 first: existing.first,
                 latest: stamp,
-                archetypes: existing.archetypes.includes(stamp.archetype)
-                    ? existing.archetypes
-                    : [...existing.archetypes, stamp.archetype],
+                archetypes: [...new Set([...existing.archetypes, ...archetypes])],
             };
         } else {
-            records.districtCrowns[victor.district] = {
+            records.districtCrowns[district] = {
                 victories: 1,
                 first: stamp,
                 latest: stamp,
-                archetypes: [stamp.archetype],
+                archetypes: [...new Set(archetypes)],
             };
-            firstCrownDistrict = victor.district;
+            firstCrownDistrict = firstCrownDistrict ?? district;
         }
         // §9 (audit): the victor comes back as their district's mentor. A
         // crown used to end at the record book; now it changes how the next
@@ -666,14 +698,14 @@ export function commitRun(state: GameState): RunOutcome {
         // replacing its mentor, which is exactly what a career of Games
         // should look like from the outside.
         records.victorMentors = records.victorMentors ?? {};
-        records.victorMentors[victor.district] = {
-            name: victor.name,
-            archetype: victor.archetype,
+        records.victorMentors[district] = {
+            name: headline.name,
+            archetype: headline.archetype,
             run: records.runs,
         };
-    }
+    });
 
-    if (victor) {
+    if (hasVictor) {
         records.arenasWon = records.arenasWon ?? [];
         // Procedural arenas: key on the per-map identity, not the display
         // name — 4 biomes × 12 name suffixes collapsed genuinely distinct
@@ -695,14 +727,25 @@ export function commitRun(state: GameState): RunOutcome {
             if (!records.biomesWon.includes(biome)) records.biomesWon.push(biome);
         }
 
-        // §10.1: patronage paying off, and the dynasty streak.
-        if (records.patronDistrict !== undefined && victor.district === records.patronDistrict) {
+        /*
+         * §10.1: patronage paying off, and the dynasty streak.
+         *
+         * AUDIT-10 B08: the patron is paid for the *Games* their district won,
+         * once, however many of its tributes came home — two winners from the
+         * patronised district is still one Games that went their way, and
+         * paying it twice would make a dual win a patronage exploit.
+         */
+        if (records.patronDistrict !== undefined && winningDistricts.includes(records.patronDistrict)) {
             records.patronWins = (records.patronWins ?? 0) + 1;
         }
-        records.victorDistrictStreak = records.lastVictorDistrict === victor.district
+        // A dynasty is one district winning consecutively. A split dual win has
+        // no single winning district, so it breaks any streak rather than
+        // arbitrarily continuing one of them.
+        const dynasty = winningDistricts.length === 1 ? winningDistricts[0] : undefined;
+        records.victorDistrictStreak = dynasty !== undefined && records.lastVictorDistrict === dynasty
             ? (records.victorDistrictStreak ?? 0) + 1
-            : 1;
-        records.lastVictorDistrict = victor.district;
+            : dynasty !== undefined ? 1 : 0;
+        records.lastVictorDistrict = dynasty;
     } else {
         // A wipeout is nobody's dynasty.
         records.victorDistrictStreak = 0;
@@ -743,6 +786,8 @@ export function commitRun(state: GameState): RunOutcome {
 
     const brokenRecords: string[] = [];
     RECORD_DEFS.forEach(def => {
+        // The record book holds one holder per record; `victor` is the
+        // designated representative of the winners for that purpose.
         const scored = def.extract(state, victor);
         if (!scored) return;
         const current = records.bests[def.id];

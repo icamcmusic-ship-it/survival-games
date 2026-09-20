@@ -213,6 +213,37 @@ function keepValue(t: Tribute, item: Item): number {
  * Gives a tribute an item, dropping whatever they value least if their hands
  * are full. Returns the items left behind so the caller can narrate it.
  */
+/*
+ * AUDIT-10 B14: two loaves are only one thing you are carrying when they are
+ * the same thing.
+ *
+ * The merge used to key on item id alone, and a stack carries exactly one set
+ * of properties — so day-old bread absorbed into a fresh loaf came out fresh.
+ * One bread at spoilage 1 plus one bread at spoilage 9 became two bread at
+ * spoilage 1, and reversing the order of arrival reversed the answer: food that
+ * should have been about to turn had its life silently extended, or the
+ * reverse. That is a live food-safety mechanic, not a bookkeeping nicety.
+ *
+ * So: merge only where the properties a stack cannot represent separately
+ * actually agree. Anything else opens its own stack and keeps its own history,
+ * which is what a batch is.
+ */
+function mergeable(existing: Item, incoming: Item): boolean {
+    if (existing.id !== incoming.id) return false;
+    // Spoilage is the one that bites. Round to a band rather than demanding
+    // exact equality, so a bag of food does not shatter into a stack per hour
+    // while still never laundering a nearly-spoiled batch into a fresh one.
+    const band = (i: Item) => Math.floor((i.spoilage ?? 0) / INVENTORY.stackSpoilageBand);
+    if (band(existing) !== band(incoming)) return false;
+    if ((existing.quality ?? undefined) !== (incoming.quality ?? undefined)) return false;
+    if ((existing.poison ?? false) !== (incoming.poison ?? false)) return false;
+    if ((existing.durability ?? undefined) !== (incoming.durability ?? undefined)) return false;
+    // A weapon that has earned a name is a specific object and never a unit.
+    if (existing.legendName !== undefined || incoming.legendName !== undefined) return false;
+    return true;
+}
+
+
 export function giveItem(t: Tribute, ...items: Item[]): Item[] {
     // §10.1: 'Nothing but Hands' needs to know whether a weapon ever passed
     // through these hands — set once, here, where every acquisition funnels.
@@ -239,14 +270,20 @@ export function giveItem(t: Tribute, ...items: Item[]): Item[] {
     items.forEach(item => {
         if (item.stack === undefined) { t.inventory.push(item); return; }
         let remaining = item.stack;
-        // Top up existing partial stacks.
+        // Top up existing partial stacks — but only ones this batch can
+        // honestly merge into. See `mergeable`.
         for (const existing of t.inventory) {
             if (remaining <= 0) break;
-            if (existing.id !== item.id || existing.stack === undefined) continue;
+            if (existing.stack === undefined || !mergeable(existing, item)) continue;
             const room = INVENTORY.maxStack - existing.stack;
             if (room <= 0) continue;
             const moved = Math.min(room, remaining);
             existing.stack += moved;
+            // Within a band, the merged stack ages to the older of the two:
+            // merging never makes food fresher than the freshest thing in it.
+            if (existing.spoilage !== undefined || item.spoilage !== undefined) {
+                existing.spoilage = Math.max(existing.spoilage ?? 0, item.spoilage ?? 0);
+            }
             remaining -= moved;
         }
         // The object itself goes in where nothing was merged into, so identity

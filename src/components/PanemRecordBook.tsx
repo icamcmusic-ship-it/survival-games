@@ -100,16 +100,16 @@ function AchievementRow({ a, unlocked, stamp, progress }: {
                         </span>
                     )}
                 </div>
-                <div className="text-[11px] text-[var(--color-ink-500)]">{a.hint}</div>
+                <div className="text-mini text-[var(--color-ink-500)]">{a.hint}</div>
                 {unlocked && stamp && (
-                    <div className="text-[10px] font-mono text-[var(--color-ink-500)]">earned in Games {stamp.run}{Date.parse(stamp.date) > 0 ? ` · ${new Date(stamp.date).toLocaleDateString()}` : ''}</div>
+                    <div className="text-micro font-mono text-[var(--color-ink-500)]">earned in Games {stamp.run}{Date.parse(stamp.date) > 0 ? ` · ${new Date(stamp.date).toLocaleDateString()}` : ''}</div>
                 )}
                 {!unlocked && share !== undefined && progress && (
                     <div className="mt-1 flex items-center gap-2">
                         <div className="h-1.5 flex-1 bg-[var(--paper-flush)]" role="progressbar" aria-valuenow={Math.round(share * 100)} aria-valuemin={0} aria-valuemax={100} aria-label={`${a.name} progress`}>
                             <div className="h-full" style={{ width: `${share * 100}%`, background: 'var(--gold)' }} />
                         </div>
-                        <span className="text-[10px] font-mono text-[var(--color-ink-500)]">{progress.have}/{progress.need}</span>
+                        <span className="text-micro font-mono text-[var(--color-ink-500)]">{progress.have}/{progress.need}</span>
                     </div>
                 )}
             </div>
@@ -218,7 +218,7 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
                 >
                     <Printer className="w-3.5 h-3.5" /> Print
                 </button>
-                <span className="text-[11px] font-mono text-[var(--color-ink-500)]">
+                <span className="text-mini font-mono text-[var(--color-ink-500)]">
                     {panem.runs} Games finished · {panem.victors} crowned ·{' '}
                     {seen.length}/{allAchievements.length} seen
                 </span>
@@ -236,7 +236,7 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
                                     <div className="text-sm text-[var(--ink)] font-semibold mt-0.5">
                                         {def.format(held.value)}
                                     </div>
-                                    <div className="text-[11px] text-[var(--color-ink-500)] truncate">
+                                    <div className="text-mini text-[var(--color-ink-500)] truncate">
                                         {held.name} (D{held.district}) · {held.arenaName} · seed {held.seed}
                                     </div>
                                 </div>
@@ -286,7 +286,7 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
             <section>
                 <div className="flex items-baseline justify-between gap-3 flex-wrap mb-2">
                     <div className="eyebrow">District crowns</div>
-                    <span className="text-[11px] font-mono text-[var(--color-ink-500)]">
+                    <span className="text-mini font-mono text-[var(--color-ink-500)]">
                         {crownedDistricts}/{DISTRICT_NUMBERS.length} districts crowned
                     </span>
                 </div>
@@ -300,7 +300,7 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
                                     <Lock className="w-3.5 h-3.5 mt-0.5 flex-none text-[var(--color-ink-500)]" />
                                     <div className="min-w-0">
                                         <div className="text-sm font-bold text-[var(--color-ink-400)]">District {d}</div>
-                                        <div className="text-[11px] text-[var(--color-ink-500)] truncate">
+                                        <div className="text-mini text-[var(--color-ink-500)] truncate">
                                             {legacy.industry} · no crown yet
                                         </div>
                                     </div>
@@ -323,12 +323,12 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
                                             {victories} crown{victories === 1 ? '' : 's'}
                                         </span>
                                     </div>
-                                    <div className="text-[11px] text-[var(--color-ink-500)] truncate">
+                                    <div className="text-mini text-[var(--color-ink-500)] truncate">
                                         First: {crown.first.name} · Games {crown.first.run ?? '?'} ·{' '}
                                         {kills} kill{kills === 1 ? '' : 's'} ·{' '}
                                         {days} day{days === 1 ? '' : 's'}
                                     </div>
-                                    <div className="text-[11px] text-[var(--color-ink-500)] truncate">
+                                    <div className="text-mini text-[var(--color-ink-500)] truncate">
                                         {crown.first.arenaName || 'an unrecorded arena'} · seed {crown.first.seed || '—'}
                                         {archetypes.length > 0 && ` · won as ${archetypes.map(archetypeName).join(', ')}`}
                                     </div>
@@ -339,14 +339,14 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
                 </div>
                 {/* §2: what the record book is for, while it is still empty. */}
                 {crownedDistricts === 0 && (
-                    <p className="text-[11px] text-[var(--color-ink-500)] mt-2 max-w-prose">
+                    <p className="text-mini text-[var(--color-ink-500)] mt-2 max-w-prose">
                         Nothing here yet. As you finish Games this fills with the country's standing
                         records — the longest Games, the youngest crown, the highest kill count, which
                         districts have ever produced a victor, and which Head Gamemakers ran which years.
                     </p>
                 )}
                 {crownedDistricts < DISTRICT_NUMBERS.length && (
-                    <p className="text-[11px] text-[var(--color-ink-500)] mt-2 italic">
+                    <p className="text-mini text-[var(--color-ink-500)] mt-2 italic">
                         <Trophy className="w-3 h-3 inline mb-0.5" /> The outer districts almost never win.
                         An empty slot is a standing invitation.
                     </p>
@@ -356,14 +356,14 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
             {heirlooms.length > 0 && (
                 <section>
                     <div className="eyebrow mb-2">Heirlooms</div>
-                    <p className="text-[10px] text-[var(--color-ink-500)] italic mb-1.5">
+                    <p className="text-micro text-[var(--color-ink-500)] italic mb-1.5">
                         What the fallen carried in, sent back out by their district with the next tribute. Written every run; shown nowhere until now.
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                         {heirlooms.map(h => (
                             <div key={h.district} className="panel-flush p-2.5 text-xs">
                                 <div className="font-bold text-[var(--ink)]">District {h.district} — {h.token}</div>
-                                <div className="text-[11px] text-[var(--color-ink-500)]">from {h.fromName}, Games {h.run}{h.quirk ? ` · ${h.quirk}` : ''}</div>
+                                <div className="text-mini text-[var(--color-ink-500)]">from {h.fromName}, Games {h.run}{h.quirk ? ` · ${h.quirk}` : ''}</div>
                             </div>
                         ))}
                     </div>
@@ -394,20 +394,20 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
                     </div>
                 </div>
                 {groups.length === 0 && metaEntries.length === 0 && (
-                    <p className="text-[11px] text-[var(--color-ink-500)] italic">Nothing matches.</p>
+                    <p className="text-mini text-[var(--color-ink-500)] italic">Nothing matches.</p>
                 )}
                 <div className="space-y-3 max-h-96 overflow-y-auto pr-2 custom-scrollbar print-unclip">
                     {groups.map(group => (
                         <div key={group.category}>
                             <div className="flex items-baseline justify-between gap-2 mb-1">
-                                <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--color-ink-400)]">
+                                <div className="text-mini font-bold uppercase tracking-wide text-[var(--color-ink-400)]">
                                     {group.category}
                                 </div>
-                                <div className="text-[10px] font-mono text-[var(--color-ink-500)]">
+                                <div className="text-micro font-mono text-[var(--color-ink-500)]">
                                     {group.seenCount}/{group.entries.length}
                                 </div>
                             </div>
-                            <div className="text-[10px] text-[var(--color-ink-500)] italic mb-1.5">{group.blurb}</div>
+                            <div className="text-micro text-[var(--color-ink-500)] italic mb-1.5">{group.blurb}</div>
                             <div className="space-y-1.5">
                                 {group.entries.map(a => <AchievementRow key={a.id} a={a} unlocked={unlocked.has(a.id)} stamp={panem.unlockedAt?.[a.id]} />)}
                             </div>
@@ -416,14 +416,14 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
                     {metaEntries.length > 0 && (
                         <div>
                             <div className="flex items-baseline justify-between gap-2 mb-1">
-                                <div className="text-[11px] font-bold uppercase tracking-wide text-[var(--color-ink-400)]">
+                                <div className="text-mini font-bold uppercase tracking-wide text-[var(--color-ink-400)]">
                                     collection
                                 </div>
-                                <div className="text-[10px] font-mono text-[var(--color-ink-500)]">
+                                <div className="text-micro font-mono text-[var(--color-ink-500)]">
                                     {metaEntries.filter(a => unlocked.has(a.id)).length}/{metaEntries.length}
                                 </div>
                             </div>
-                            <div className="text-[10px] text-[var(--color-ink-500)] italic mb-1.5">
+                            <div className="text-micro text-[var(--color-ink-500)] italic mb-1.5">
                                 Earned across every Games you have ever run, not inside one of them.
                             </div>
                             <div className="space-y-1.5">
@@ -433,7 +433,7 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
                     )}
                 </div>
                 {unseen.length > 0 && (
-                    <p className="text-[11px] text-[var(--color-ink-500)] mt-2 italic">
+                    <p className="text-mini text-[var(--color-ink-500)] mt-2 italic">
                         <Trophy className="w-3 h-3 inline mb-0.5" /> Locked entries are listed on purpose —
                         they are a menu of outcomes this simulation can produce, not a secret.
                     </p>

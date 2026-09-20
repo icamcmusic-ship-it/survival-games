@@ -155,7 +155,7 @@ export function ChronicleFilters({ gameState, filteredCount, onSelectTribute }: 
                                     {group.label}
                                 </button>
                                 <button
-                                    className="btn btn-sm btn-ghost text-[10px]"
+                                    className="btn btn-sm btn-ghost text-micro"
                                     aria-pressed={soloed}
                                     aria-label={`Solo — show only ${group.label.toLowerCase()} events`}
                                     onClick={() => setChronicle({
@@ -172,7 +172,7 @@ export function ChronicleFilters({ gameState, filteredCount, onSelectTribute }: 
                                         return (
                                             <span
                                                 key={c}
-                                                className={`inline-flex items-center gap-1 font-mono text-[9px] uppercase tracking-wider ${muted ? 'opacity-40' : ''}`}
+                                                className={`inline-flex items-center gap-1 font-mono text-nano uppercase tracking-wider ${muted ? 'opacity-40' : ''}`}
                                                 style={{ color: meta.color }}
                                                 role="group" aria-label={meta.label} title={meta.label}
                                             >
@@ -203,7 +203,7 @@ export function ChronicleFilters({ gameState, filteredCount, onSelectTribute }: 
                         </button>
                     ))}
                 </div>
-                <label className="flex items-center gap-1.5 cursor-pointer text-[10px] uppercase tracking-wider text-[var(--color-ink-500)]">
+                <label className="flex items-center gap-1.5 cursor-pointer text-micro uppercase tracking-wider text-[var(--color-ink-500)]">
                     <input
                         type="checkbox"
                         checked={f.narrowMeasure}
@@ -219,7 +219,7 @@ export function ChronicleFilters({ gameState, filteredCount, onSelectTribute }: 
 
             <ChronicleExport gameState={gameState} importantOnly={f.density === 'headlines'} />
 
-            <div className="text-[10px] text-[var(--color-ink-500)]">
+            <div className="text-micro text-[var(--color-ink-500)]">
                 Showing {filteredCount} of {gameState.log.length} logged events.
             </div>
         </div>

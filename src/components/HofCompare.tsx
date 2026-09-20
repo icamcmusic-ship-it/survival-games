@@ -47,7 +47,7 @@ export function HofCompare({ a, b, onClear }: {
     // text, with no way to tell which number belonged to which Games. The grid
     // stays; the semantics are declared over it.
     const line = (label: string, left: React.ReactNode, right: React.ReactNode, changed = true) => (
-        <div role="row" className={`grid grid-cols-[7rem_1fr_1fr] gap-2 text-[11px] py-1 ${changed ? '' : 'opacity-60'}`}>
+        <div role="row" className={`grid grid-cols-[7rem_1fr_1fr] gap-2 text-mini py-1 ${changed ? '' : 'opacity-60'}`}>
             <span role="rowheader" className="eyebrow pt-px">{label}</span>
             <span role="cell" className="text-[var(--color-ink-200)] truncate">{left}</span>
             <span role="cell" className="text-[var(--color-ink-200)] truncate">{right}</span>
@@ -65,7 +65,7 @@ export function HofCompare({ a, b, onClear }: {
                 <span className="eyebrow" style={{ color: 'var(--red)' }}>Comparing two Games</span>
                 <button onClick={onClear} className="btn btn-sm btn-ghost" aria-label="Clear the comparison">Clear</button>
             </div>
-            <div role="row" className="grid grid-cols-[7rem_1fr_1fr] gap-2 text-[11px] border-b-2 border-[var(--line-soft)] pb-1">
+            <div role="row" className="grid grid-cols-[7rem_1fr_1fr] gap-2 text-mini border-b-2 border-[var(--line-soft)] pb-1">
                 <span role="columnheader" />
                 <span role="columnheader" className="font-black uppercase text-[var(--ink)] truncate">{a.winnerName} · {a.arenaName}</span>
                 <span role="columnheader" className="font-black uppercase text-[var(--ink)] truncate">{b.winnerName} · {b.arenaName}</span>
@@ -77,7 +77,7 @@ export function HofCompare({ a, b, onClear }: {
             {line('Quell', a.quellId ?? 'none', b.quellId ?? 'none')}
             {line('Forecast', estimate(a), estimate(b))}
             {rows.length === 0
-                ? <p className="text-[11px] text-[var(--color-ink-500)] pt-1">
+                ? <p className="text-mini text-[var(--color-ink-500)] pt-1">
                     Identical settings. Whatever separated these two Games, it was the seed and the cast, not the dials.
                   </p>
                 : rows.map(r => line(r.label, show(r.left), show(r.right)))}

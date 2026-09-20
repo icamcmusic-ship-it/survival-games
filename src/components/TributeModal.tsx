@@ -81,7 +81,7 @@ function VitalBar({ label, value, invert = false, explain, tribute }: {
                     : <span className="eyebrow">{label}</span>}
                 <span className="flex items-baseline gap-1.5 min-w-0">
                     <span className="text-xs font-semibold truncate" style={{ color }}>{word}</span>
-                    <span className="font-mono text-[var(--color-ink-500)] text-[11px] flex-none">{value}%</span>
+                    <span className="font-mono text-[var(--color-ink-500)] text-mini flex-none">{value}%</span>
                 </span>
             </div>
             <div className="meter">
@@ -116,7 +116,7 @@ function SponsorPanel({ tribute, gameState }: { tribute: Tribute; gameState: Gam
         <section>
             <div className="flex items-baseline justify-between gap-2 mb-2">
                 <h4 className="panel-title">Send a parachute</h4>
-                <span className="text-[11px] font-mono text-[var(--color-ink-500)]">{coins} coins</span>
+                <span className="text-mini font-mono text-[var(--color-ink-500)]">{coins} coins</span>
             </div>
             {!inArena ? (
                 <p className="text-sm text-[var(--color-ink-500)]">
@@ -124,7 +124,7 @@ function SponsorPanel({ tribute, gameState }: { tribute: Tribute; gameState: Gam
                 </p>
             ) : (
                 <>
-                    <p className="text-[11px] text-[var(--color-ink-500)] mb-2">
+                    <p className="text-mini text-[var(--color-ink-500)] mb-2">
                         Prices rise with every day of the Games and with every parachute {tribute.name} has
                         already received — from you, from the crowd, or from their mentor
                         {tribute.mentorLegacy ? `, ${tribute.mentorLegacy}` : ''}.
@@ -143,7 +143,7 @@ function SponsorPanel({ tribute, gameState }: { tribute: Tribute; gameState: Gam
                                         : `${item.name}, ${cost} — you cannot afford this`}
                                 >
                                     <span className="text-sm text-[var(--ink)] truncate">{item.name}</span>
-                                    <span className="text-[11px] font-mono flex-none" style={{ color: affordable ? 'var(--gold)' : 'var(--color-ink-500)' }}>
+                                    <span className="text-mini font-mono flex-none" style={{ color: affordable ? 'var(--gold)' : 'var(--color-ink-500)' }}>
                                         {cost}
                                     </span>
                                 </button>
@@ -417,7 +417,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                                 title={`${archetype.name} archetype`}
                             >
                                 {archetype.description}
-                                <span className="block mt-1.5 font-mono text-[10px] text-[var(--color-ink-500)]">
+                                <span className="block mt-1.5 font-mono text-micro text-[var(--color-ink-500)]">
                                     Aggression {archetype.aggression >= 0 ? '+' : ''}{archetype.aggression.toFixed(2)} ·
                                     Caution {archetype.caution >= 0 ? '+' : ''}{archetype.caution.toFixed(2)} ·
                                     Loyalty {archetype.allianceAffinity.toFixed(2)} ·
@@ -497,7 +497,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                 </div>
 
                 {/* A5: the sentence, before any number. */}
-                <p className="text-[15px] leading-snug text-[var(--ink)] font-semibold mb-3">
+                <p className="text-reading leading-snug text-[var(--ink)] font-semibold mb-3">
                     {summarySentence(gameState, tribute)}
                 </p>
 
@@ -722,7 +722,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                             <div key={t.id} className="space-y-1">
                                 <div className="font-black uppercase text-[var(--ink)] text-sm">{t.name}</div>
                                 <p className="text-[var(--color-ink-400)] leading-snug">{summarySentence(gameState, t)}</p>
-                                <dl className="grid grid-cols-2 gap-x-2 font-mono text-[11px] text-[var(--color-ink-500)] mt-1.5">
+                                <dl className="grid grid-cols-2 gap-x-2 font-mono text-mini text-[var(--color-ink-500)] mt-1.5">
                                     {([
                                         ['Health', t.status === 'alive' ? String(t.health) : '—'],
                                         ['Kills', String(t.kills)],
@@ -941,7 +941,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                             </div>
                         )}
                         {drift.length > 0 && (
-                            <p className="text-[11px] text-[var(--color-ink-500)] mt-2">
+                            <p className="text-mini text-[var(--color-ink-500)] mt-2">
                                 Sharpened by the arena itself:{' '}
                                 {drift.map(([attr, gain]) => `+${gain.toFixed(1)} ${attr}`).join(' · ')}
                             </p>
@@ -993,7 +993,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                                         {item.poison && <span className="ml-1 text-[var(--cat-death)]" role="group" aria-label="Coated with poison." title="Coated with poison.">☠</span>}
                                         {(item.bloodDrawn ?? 0) > 0 && (
                                             <span
-                                                className="ml-1 text-[11px] text-[var(--color-ink-500)]"
+                                                className="ml-1 text-mini text-[var(--color-ink-500)]"
                                                 role="group"
                                                 aria-label={`${item.bloodDrawn} taken. Lives this weapon has taken, which is what earns it a name.`}
                                                 title={`${item.bloodDrawn} taken. Lives this weapon has taken, which is what earns it a name.`}
@@ -1005,7 +1005,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                                     <span className="flex items-center gap-2 flex-none">
                                         {item.durability !== undefined && (
                                             <span
-                                                className="text-[10px] font-mono"
+                                                className="text-micro font-mono"
                                                 style={{ color: conditionOf(item) < 0.35 ? 'var(--red)' : 'var(--color-ink-500)' }}
                                                 role="group" aria-label="Condition. A worn weapon hits softer, not just closer to breaking." title="Condition. A worn weapon hits softer, not just closer to breaking."
                                             >
@@ -1047,8 +1047,8 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                                                         : r.kind === 'holed-up' ? `${gameState.tributes.find(o => o.id === r.aboutId)?.name ?? 'Somebody'} is dug in at ${r.zone}.`
                                                         : r.kind === 'cache' ? `There is a cache in ${r.zone}.`
                                                         : `${r.zone} is picked clean.`}
-                                                    {r.exposed && <span className="ml-1 font-mono text-[10px] text-[var(--red)]">exposed</span>}
-                                                    {r.plantedById === tribute.id && <span className="ml-1 font-mono text-[10px] text-[var(--color-ink-500)]">their own plant</span>}
+                                                    {r.exposed && <span className="ml-1 font-mono text-micro text-[var(--red)]">exposed</span>}
+                                                    {r.plantedById === tribute.id && <span className="ml-1 font-mono text-micro text-[var(--color-ink-500)]">their own plant</span>}
                                                 </p>
                                             ))}
                                     </div>
@@ -1167,7 +1167,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                                             {truces.map(tr => (
                                                 <div key={tr.id} className="flex justify-between items-center text-sm gap-2">
                                                     <span className="truncate text-[var(--color-ink-200)]">{tr.name}</span>
-                                                    <span className="font-mono text-[10px] flex-none text-[var(--cat-alliance)]">
+                                                    <span className="font-mono text-micro flex-none text-[var(--cat-alliance)]">
                                                         {tr.cyclesLeft} cycle{tr.cyclesLeft === 1 ? '' : 's'} left
                                                     </span>
                                                 </div>
@@ -1216,7 +1216,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                                             {owes.map(d => (
                                                 <div key={`owes-${d.id}`} className="flex justify-between items-center text-sm gap-2">
                                                     <span className="truncate text-[var(--color-ink-200)]">Owes {d.name}</span>
-                                                    <span className="font-mono text-[10px] flex-none text-[var(--cat-training)]">
+                                                    <span className="font-mono text-micro flex-none text-[var(--cat-training)]">
                                                         {Math.round(d.amount)}
                                                     </span>
                                                 </div>
@@ -1224,7 +1224,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                                             {owed.map(d => (
                                                 <div key={`owed-${d.id}`} className="flex justify-between items-center text-sm gap-2">
                                                     <span className="truncate text-[var(--color-ink-400)]">{d.name} owes them</span>
-                                                    <span className="font-mono text-[10px] flex-none text-[var(--cat-alliance)]">
+                                                    <span className="font-mono text-micro flex-none text-[var(--cat-alliance)]">
                                                         {Math.round(d.amount)}
                                                     </span>
                                                 </div>
@@ -1270,7 +1270,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                                         <span className={`truncate ${other.status === 'dead' ? 'text-[var(--color-ink-500)] line-through' : 'text-[var(--color-ink-200)]'}`}>
                                             {other.name}
                                         </span>
-                                        <span className="font-mono text-[10px] flex-none text-[var(--color-ink-400)]">
+                                        <span className="font-mono text-micro flex-none text-[var(--color-ink-400)]">
                                             {record.fights} fight{record.fights === 1 ? '' : 's'} ·
                                             {' '}{record.woundsDealt}–{record.woundsTaken} wounds
                                             {record.timesFled > 0 && ` · fled ${record.timesFled}×`}

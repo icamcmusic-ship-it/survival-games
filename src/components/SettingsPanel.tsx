@@ -285,7 +285,7 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
                                 aria-pressed={prefs.units === id}
                                 className="seg-item"
                             >
-                                {id === 'imperial' ? 'Imperial' : 'Metric'} <span className="font-mono text-[10px] text-[var(--color-ink-500)] ml-1">{sample}</span>
+                                {id === 'imperial' ? 'Imperial' : 'Metric'} <span className="font-mono text-micro text-[var(--color-ink-500)] ml-1">{sample}</span>
                             </button>
                         ))}
                     </div>
@@ -318,14 +318,14 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
                         />
                         Go fullscreen when a Games starts
                     </label>
-                    <p className="text-[10px] text-[var(--color-ink-500)]">
+                    <p className="text-micro text-[var(--color-ink-500)]">
                         Asked for on the reaping click. Some browsers refuse it — in a frame, or on iOS — and the Games run windowed instead.
                     </p>
                 </div>
 
                 <div className="space-y-1.5">
                     <span className="eyebrow">Auto-play brakes</span>
-                    <p className="text-[10px] text-[var(--color-ink-500)]">Auto-advance drops back to manual when any of these land.</p>
+                    <p className="text-micro text-[var(--color-ink-500)]">Auto-advance drops back to manual when any of these land.</p>
                     {([
                         ['pauseOnBetrayal', 'A betrayal'],
                         ['pauseOnAlliance', 'An alliance forming or breaking'],
@@ -361,7 +361,7 @@ export function SettingsPanel({ onClose }: { onClose: () => void }) {
                             </button>
                         </Hint>
                     </div>
-                    <p className="text-[10px] text-[var(--color-ink-500)]">
+                    <p className="text-micro text-[var(--color-ink-500)]">
                         Your Panem record book (achievements, records, Hall of Fame) can be exported,
                         imported or wiped from the Hall of Fame screen.
                     </p>

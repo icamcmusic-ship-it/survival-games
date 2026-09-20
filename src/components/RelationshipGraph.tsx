@@ -86,7 +86,7 @@ export function RelationshipGraph({ tribute, gameState }: { tribute: Tribute; ga
                     How {tribute.name} feels about everyone still alive, and what stands between them.
                 </caption>
                 <thead>
-                    <tr className="text-[10px] font-mono uppercase tracking-wider text-[var(--color-ink-500)]">
+                    <tr className="text-micro font-mono uppercase tracking-wider text-[var(--color-ink-500)]">
                         <th scope="col" className="text-left py-1 pr-2 font-bold">Tribute</th>
                         <th scope="col" className="text-left py-1 pr-2 font-bold">Feeling</th>
                         <th scope="col" className="text-left py-1 font-bold">Standing</th>
@@ -96,7 +96,7 @@ export function RelationshipGraph({ tribute, gameState }: { tribute: Tribute; ga
                     {rows.map(r => (
                         <tr key={r.other.id} className="border-t border-[var(--color-ink-800)]">
                             <th scope="row" className="text-left py-1.5 pr-2 font-normal">
-                                <span className="font-mono text-[10px] text-[var(--color-ink-500)] mr-1.5">D{r.other.district}</span>
+                                <span className="font-mono text-micro text-[var(--color-ink-500)] mr-1.5">D{r.other.district}</span>
                                 <span className={r.ally ? 'text-[var(--cat-alliance)] font-bold' : 'text-[var(--color-ink-200)]'}>
                                     {r.other.name}
                                 </span>
@@ -109,7 +109,7 @@ export function RelationshipGraph({ tribute, gameState }: { tribute: Tribute; ga
                                     >
                                         <span className="w-2 h-2 inline-block" style={{ background: bondColor(r.value) }} aria-hidden="true" />
                                         {bondLabel(r.value)}
-                                        <span className="text-[10px] opacity-80">{r.value > 0 ? `+${r.value}` : r.value}</span>
+                                        <span className="text-micro opacity-80">{r.value > 0 ? `+${r.value}` : r.value}</span>
                                     </span>
                                 ) : (
                                     <span className="font-mono text-[var(--color-ink-600)]">never met</span>
@@ -130,7 +130,7 @@ export function RelationshipGraph({ tribute, gameState }: { tribute: Tribute; ga
                     ))}
                 </tbody>
             </table>
-            <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] font-mono uppercase tracking-wider">
+            <div className="flex flex-wrap gap-x-3 gap-y-1 text-micro font-mono uppercase tracking-wider">
                 {(['close', 'friendly', 'neutral', 'wary', 'hostile'] as const).map((band, i) => (
                     <span key={band} className="flex items-center gap-1" style={{ color: bondColor([60, 25, 0, -25, -60][i]) }}>
                         <span className="w-2.5 h-2.5 inline-block" style={{ background: bondColor([60, 25, 0, -25, -60][i]) }} aria-hidden="true" />

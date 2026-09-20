@@ -727,7 +727,7 @@ export function GameScreen({
                 undiscoverable unless you already know to press ?. Shown once,
                 on the first run, and never again after it is dismissed. */}
             {!prefs.seenShortcutHint && (
-                <div className="panel-flush px-4 py-2 mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
+                <div className="panel-flush px-4 py-2 mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-mini">
                     <span className="eyebrow flex-none">Keyboard</span>
                     <span className="text-[var(--color-ink-300)]">
                         {/* §2.5: this line named two keys that do something
@@ -854,7 +854,7 @@ export function GameScreen({
                                 for this and shown only on the end screen. */}
                             {nearMisses.length > 0 && (
                                 <details className="text-xs">
-                                    <summary className="cursor-pointer font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-500)]">
+                                    <summary className="cursor-pointer font-mono text-micro uppercase tracking-wider text-[var(--color-ink-500)]">
                                         Within reach this Games ({nearMisses.length})
                                     </summary>
                                     <ul className="mt-2 space-y-1 list-none m-0 p-0">
@@ -991,14 +991,14 @@ export function GameScreen({
                         // lets them actually share the row instead of forcing it
                         // wider than the phone, and the 44px floor is the same
                         // touch target the arena zones are held to.
-                        className="flex-1 min-w-0 px-1 py-3 min-h-[44px] leading-tight text-[10px] font-extrabold uppercase tracking-[0.1em]"
+                        className="flex-1 min-w-0 px-1 py-3 min-h-[44px] leading-tight text-micro font-extrabold uppercase tracking-[0.1em]"
                         style={{ fontFamily: 'var(--font-mono)', color: mobilePane === tab.id ? 'var(--red-on-ink)' : '#a89a86' }}
                     >
                         {tab.label}
                     </button>
                 ))}
                 {!isOver && (
-                    <button onClick={onNextPhase} className="flex-none px-4 sm:px-5 min-h-[44px] bg-[var(--red)] text-white text-[10px] font-extrabold uppercase tracking-[0.1em]" style={{ fontFamily: 'var(--font-mono)' }}>
+                    <button onClick={onNextPhase} className="flex-none px-4 sm:px-5 min-h-[44px] bg-[var(--red)] text-white text-micro font-extrabold uppercase tracking-[0.1em]" style={{ fontFamily: 'var(--font-mono)' }}>
                         Proceed
                     </button>
                 )}
@@ -1103,10 +1103,10 @@ function HelpOverlay({ onClose }: { onClose: () => void }) {
                             </React.Fragment>
                         ))}
                     </dl>
-                    <p className="text-[11px] text-[var(--color-ink-500)]">
+                    <p className="text-mini text-[var(--color-ink-500)]">
                         On the full-page chronicle, the left and right arrows page between phases.
                     </p>
-                    <p className="text-[11px] text-[var(--color-ink-500)]">
+                    <p className="text-mini text-[var(--color-ink-500)]">
                         Shortcuts stand down while you are typing in a search box or a menu, so nothing
                         is hijacked mid-word.
                     </p>
@@ -1135,7 +1135,7 @@ function HelpOverlay({ onClose }: { onClose: () => void }) {
                     </dl>
                 </div>
 
-                <p className="text-[11px] text-[var(--color-ink-500)] italic">
+                <p className="text-mini text-[var(--color-ink-500)] italic">
                     Everything in the chronicle is generated from the simulation — no line is written in
                     advance for a particular run. The same seed and arena always produce the same Games.
                 </p>

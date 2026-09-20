@@ -71,7 +71,7 @@ export function Explainer({
                 className="tap-target-cell inline-flex items-center gap-1 border-b border-dotted border-[var(--color-ink-500)] hover:border-[var(--red)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--red)]"
             >
                 {label}
-                <span aria-hidden="true" className="text-[9px] text-[var(--color-ink-500)]">ⓘ</span>
+                <span aria-hidden="true" className="text-nano text-[var(--color-ink-500)]">ⓘ</span>
                 <span className="sr-only">— explain {title}</span>
             </button>
             {open && (

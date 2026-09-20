@@ -248,7 +248,7 @@ export default function App() {
                 href={`#${pathForView(item.id)}`}
                 onClick={() => gameActions.setView(item.id)}
                 aria-current={view === item.id ? 'page' : undefined}
-                className="px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.1em] transition-colors no-underline"
+                className="px-3 py-1.5 text-mini font-extrabold uppercase tracking-[0.1em] transition-colors no-underline"
                 style={{ fontFamily: 'var(--font-mono)', color: view === item.id ? 'var(--red-on-ink)' : '#a89a86' }}
               >
                 {item.label}

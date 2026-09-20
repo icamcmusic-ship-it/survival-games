@@ -151,7 +151,7 @@ export function PlaybackPopover({
                                     className="accent-[var(--red)]"
                                 />
                                 {label}
-                                {isDisabled && <span className="text-[10px] text-[var(--color-ink-500)]">(follow someone first)</span>}
+                                {isDisabled && <span className="text-micro text-[var(--color-ink-500)]">(follow someone first)</span>}
                             </label>
                         ))}
                     </div>

@@ -74,11 +74,11 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
                     <p className="text-sm text-[var(--ink)] font-semibold">
                         {profileHeadline(profile)}
                     </p>
-                    <p className="text-[13px] leading-relaxed text-[var(--color-ink-500)]">
+                    <p className="text-label leading-relaxed text-[var(--color-ink-500)]">
                         {profile.temperament.blurb}
                     </p>
                     {profile.castShape && profile.castShape.id !== 'ordinary' && (
-                        <p className="text-[13px] leading-relaxed text-[var(--color-ink-500)]">
+                        <p className="text-label leading-relaxed text-[var(--color-ink-500)]">
                             <strong className="text-[var(--ink)]">The draw is {profile.castShape.name}.</strong>{' '}
                             {profile.castShape.blurb}
                         </p>
@@ -88,15 +88,15 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
                         many are coming, if not exactly what they will do. */}
                     <div className="space-y-1 pt-1">
                         {calendarOf(profile).map(w => (
-                            <p key={`${w.day}-${w.kind}`} className="text-[13px] leading-relaxed text-[var(--color-ink-500)]">
-                                <span className="font-mono text-[10px] text-[var(--red)] mr-1.5">
+                            <p key={`${w.day}-${w.kind}`} className="text-label leading-relaxed text-[var(--color-ink-500)]">
+                                <span className="font-mono text-micro text-[var(--red)] mr-1.5">
                                     {w.day === 0 ? 'STANDING' : `DAY ${w.day}`}
                                 </span>
                                 {w.announcement}
                             </p>
                         ))}
                     </div>
-                    <p className="text-[11px] text-[var(--color-ink-500)] italic">
+                    <p className="text-mini text-[var(--color-ink-500)] italic">
                         Every Games is rolled from the seed — the temperament, the shape of the draw, and
                         each scheduled provision with the day it lands. Two runs on the same seed are the
                         same Games; two runs on different seeds are not.
@@ -111,17 +111,17 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
                 <div className="panel p-4 space-y-2 animate-riseIn" style={{ borderColor: 'var(--gold)', borderWidth: 3 }}>
                     <div className="eyebrow" style={{ color: 'var(--gold)' }}>Your Panem remembers</div>
                     {continuity.grudgeLine && (
-                        <p className="text-[13px] leading-relaxed text-[var(--ink)]">
+                        <p className="text-label leading-relaxed text-[var(--ink)]">
                             <strong>Grudge {continuity.grudge}/3.</strong> {continuity.grudgeLine}
                         </p>
                     )}
                     {Object.entries(continuity.standings).map(([d, standing]) => (
-                        <p key={d} className="text-[13px] leading-relaxed text-[var(--color-ink-500)]">
+                        <p key={d} className="text-label leading-relaxed text-[var(--color-ink-500)]">
                             <span className="chip mr-1.5">{standing}</span>{standingLine(Number(d), standing)}
                         </p>
                     ))}
                     {veteranCount > 0 && (
-                        <p className="text-[13px] leading-relaxed text-[var(--color-ink-500)]">
+                        <p className="text-label leading-relaxed text-[var(--color-ink-500)]">
                             <span className="chip chip-gold mr-1.5">Grudge match</span>
                             {tributes.filter(t => isVeteran(seatedVeterans, t)).map(t => `${t.name} (D${t.district})`).join(' and ')} have stood on the podium before, and are reaped again.
                         </p>
@@ -135,10 +135,10 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
                 <div className="panel p-4 space-y-2 animate-riseIn">
                     <div className="flex items-baseline justify-between flex-wrap gap-2">
                         <span className="eyebrow">Coach one tribute</span>
-                        <span className="text-[11px] text-[var(--color-ink-500)]">Pin how they train and the angle they take on the couch. Everyone else decides for themselves.</span>
+                        <span className="text-mini text-[var(--color-ink-500)]">Pin how they train and the angle they take on the couch. Everyone else decides for themselves.</span>
                     </div>
                     <div className="flex flex-wrap gap-2 items-center">
-                        <label className="text-[11px] text-[var(--color-ink-500)]">
+                        <label className="text-mini text-[var(--color-ink-500)]">
                             Tribute{' '}
                             <select className="field text-xs w-auto" value={coachId} onChange={e => { setCoachId(e.target.value); if (e.target.value) onCoach(e.target.value, { trainingStrategy: coaching?.trainingStrategy, interviewStrategy: coaching?.interviewStrategy }); }}>
                                 <option value="">— nobody —</option>
@@ -147,7 +147,7 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
                                 ))}
                             </select>
                         </label>
-                        <label className="text-[11px] text-[var(--color-ink-500)]">
+                        <label className="text-mini text-[var(--color-ink-500)]">
                             Training{' '}
                             <select className="field text-xs w-auto" disabled={!coachId} value={coaching?.tributeId === coachId ? (coaching?.trainingStrategy ?? '') : ''}
                                 onChange={e => onCoach(coachId, { trainingStrategy: (e.target.value || undefined) as 'showcase' | 'conceal' | 'balanced' | undefined, interviewStrategy: coaching?.interviewStrategy })}>
@@ -157,7 +157,7 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
                                 <option value="balanced">Balanced</option>
                             </select>
                         </label>
-                        <label className="text-[11px] text-[var(--color-ink-500)]">
+                        <label className="text-mini text-[var(--color-ink-500)]">
                             Interview{' '}
                             <select className="field text-xs w-auto" disabled={!coachId} value={coaching?.tributeId === coachId ? (coaching?.interviewStrategy ?? '') : ''}
                                 onChange={e => onCoach(coachId, { trainingStrategy: coaching?.trainingStrategy, interviewStrategy: (e.target.value || undefined) as InterviewPersona | undefined })}>
@@ -203,7 +203,7 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
                             </Explainer>
                         </div>
                         {REAPING_CROWDS[district] && (
-                            <p className="text-[11px] leading-relaxed text-[var(--color-ink-500)] italic">
+                            <p className="text-mini leading-relaxed text-[var(--color-ink-500)] italic">
                                 {REAPING_CROWDS[district]}
                             </p>
                         )}
@@ -226,12 +226,12 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
                                         )}
                                     </div>
                                     {t.reapingNote && (
-                                        <p className="text-[11px] leading-relaxed text-[var(--color-ink-500)] mt-1">
+                                        <p className="text-mini leading-relaxed text-[var(--color-ink-500)] mt-1">
                                             {t.reapingNote}
                                         </p>
                                     )}
                                 </div>
-                                <div className="text-right text-[11px] text-[var(--color-ink-500)] font-mono font-semibold leading-relaxed flex-none">
+                                <div className="text-right text-mini text-[var(--color-ink-500)] font-mono font-semibold leading-relaxed flex-none">
                                     <div>Age {t.age}</div>
                                     <div>{heightLabel(t.heightCm, units)}</div>
                                     <div>{t.build}</div>

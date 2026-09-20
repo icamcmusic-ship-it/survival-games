@@ -13,6 +13,7 @@
  *   npm run test:metrics
  */
 import { Simulator } from '../src/engine/simulator';
+import { victorsOf } from '../src/utils/notables';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { GameConfig, GameState, Stance, Tribute } from '../src/models/types';
 import { STANCES } from '../src/data/stances';
@@ -81,6 +82,8 @@ const deathsByCause: Record<string, number> = {};
 const killsByWeapon: Record<string, number> = {};
 let deaths = 0;
 let victors = 0, victorKills = 0, victorZeroKills = 0, victorHealth = 0;
+// AUDIT-10 B09: people crowned, and how often more than one was.
+let crowned = 0, dualWins = 0;
 let wipeouts = 0, careerVictors = 0;
 const victorsByDistrict: Record<number, number> = {};
 // A2: the archetype balance table the design review measured by hand. Win
@@ -316,9 +319,28 @@ for (let i = 0; i < RUNS; i++) {
         const tier = legacyOf(t.district).tier;
         tierEntrants[tier] = (tierEntrants[tier] ?? 0) + 1;
     });
-    const winner = state.tributes.find(t => t.status === 'alive');
-    if (winner) {
+    /*
+     * AUDIT-10 B09: every entrant who won, not the first row of the cast that
+     * is still breathing.
+     *
+     * The win columns here are per-*entrant* rates: an archetype's win rate is
+     * "of the N tributes who entered as this archetype, how many came home",
+     * and the denominators below count every entrant. Crediting only
+     * `find(alive)` therefore dropped a co-winner out of the numerator while
+     * leaving them in the denominator — a silent bias against whatever the cast
+     * array happened to order second, in exactly the numbers the balance pass
+     * is tuned from.
+     *
+     * `victors` stays a count of *runs that produced a victor*, because that is
+     * what the wipeout rate is measured against.
+     */
+    const winners = victorsOf(state);
+    if (winners.length > 0) {
         victors++;
+        dualWins += winners.length > 1 ? 1 : 0;
+        crowned += winners.length;
+    }
+    winners.forEach(winner => {
         victorKills += winner.kills;
         if (winner.kills === 0) victorZeroKills++;
         victorHealth += winner.health;
@@ -336,7 +358,8 @@ for (let i = 0; i < RUNS; i++) {
         winner.traits.filter(trait => !reaped.includes(trait)).forEach(trait => {
             earnedTraitWins[trait] = (earnedTraitWins[trait] ?? 0) + 1;
         });
-    } else {
+    });
+    if (winners.length === 0) {
         // Every canonical Games produces a victor. A run that ends with an
         // empty arena is the largest canon-fidelity failure the sim can have.
         wipeouts++;
@@ -795,8 +818,8 @@ const indicators: Indicator[] = [
         // 15.2% -> 4.4% at n=1600, 5.9% at the 400-run default. Guard ratcheted
         // 32% -> 12% so the number can keep falling and cannot climb back.
         label: 'victors with zero kills',
-        value: victorZeroKills / Math.max(1, victors),
-        sample: () => ({ successes: victorZeroKills, n: victors }),
+        value: victorZeroKills / Math.max(1, crowned),
+        sample: () => ({ successes: victorZeroKills, n: crowned }),
         guard: v => v <= 0.12,
         guardText: '<= 12%',
         goal: '<= 6%',
@@ -833,7 +856,7 @@ const indicators: Indicator[] = [
         // measured value; the goal stays as a reminder this could still
         // improve without pulling wipeouts back up.
         label: 'victor average end health',
-        value: victorHealth / Math.max(1, victors),
+        value: victorHealth / Math.max(1, crowned),
         guard: v => v >= 15,
         guardText: '>= 15',
         goal: '>= 30',
@@ -1071,8 +1094,8 @@ const indicators: Indicator[] = [
         // decided and no amount of tuning the last fight will move it. What
         // gets them there is a pass of its own.
         label: 'Career victors',
-        value: careerVictors / Math.max(1, victors),
-        sample: () => ({ successes: careerVictors, n: victors }),
+        value: careerVictors / Math.max(1, crowned),
+        sample: () => ({ successes: careerVictors, n: crowned }),
         // §8.1: ratcheted. Measured 52.1% at n=1,600, 47.0% at n=400.
         guard: v => v <= 0.55,
         guardText: '<= 55%',
@@ -1090,9 +1113,10 @@ Object.entries(deathsByCause)
     .forEach(([k, v]) => console.log(`  ${k.padEnd(14)} ${pct(v, deaths).padStart(6)}  (${v})`));
 
 console.log('\nvictor profile:');
-console.log(`  average kills      ${(victorKills / Math.max(1, victors)).toFixed(2)}`);
-console.log(`  zero-kill victors  ${pct(victorZeroKills, victors)}`);
-console.log(`  average end health ${(victorHealth / Math.max(1, victors)).toFixed(1)}`);
+console.log(`  average kills      ${(victorKills / Math.max(1, crowned)).toFixed(2)}`);
+console.log(`  zero-kill victors  ${pct(victorZeroKills, crowned)}`);
+console.log(`  people crowned     ${crowned} across ${victors} Games with a victor (${dualWins} dual)`);
+console.log(`  average end health ${(victorHealth / Math.max(1, crowned)).toFixed(1)}`);
 
 console.log('\nvictors by district:');
 {
@@ -1102,7 +1126,7 @@ console.log('\nvictors by district:');
         const bar = '#'.repeat(Math.round((n / Math.max(1, victors)) * 60));
         console.log(`  D${String(d).padStart(2)}  ${pct(n, victors).padStart(6)}  (${String(n).padStart(3)})  ${bar}`);
     });
-    console.log(`  Careers            ${pct(careerVictors, victors)}`);
+    console.log(`  Careers            ${pct(careerVictors, crowned)}`);
     console.log(`  top three combined ${pct(topThreeDistrictShare * victors, victors)}`);
     console.log(`  wipeouts (no victor at all) ${pct(wipeouts, runs)}`);
 }

@@ -38,7 +38,7 @@ export class ErrorBoundary extends React.Component<React.PropsWithChildren, Stat
                         ? 'The page tried to load a part of the game that no longer exists at that address — usually because the site was updated while this tab was open. Reloading fetches the current build.'
                         : 'Your run is saved up to the last phase you played. Reloading picks it back up from there; nothing in the Hall of Fame or your record book is affected.'}
                 </p>
-                <pre className="text-[11px] font-mono text-[var(--color-ink-500)] whitespace-pre-wrap panel-flush p-3 max-h-40 overflow-auto">
+                <pre className="text-mini font-mono text-[var(--color-ink-500)] whitespace-pre-wrap panel-flush p-3 max-h-40 overflow-auto">
                     {this.state.error.message}
                 </pre>
                 <div className="flex gap-2">

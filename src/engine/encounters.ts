@@ -486,34 +486,64 @@ export function pendingChain(ctx: SimContext, t: Tribute, events: ArenaEventDef[
     // Two tributes can each set the same chain up; a once-per-run payoff
     // still only pays off once. The bell does not fall twice.
     if (!event || spent(ctx, event)) return undefined;
+    /*
+     * AUDIT-10 B15: a delayed payoff is revalidated when it lands, not when it
+     * was queued.
+     *
+     * A chain is set up one cycle and collected the next, and a cycle is long
+     * enough for everything the payoff assumes to stop being true — the
+     * medical kit the second half needs gets used, the ally it names dies, the
+     * tribute climbs out of the zone it was about to happen in. Firing it
+     * anyway produced the second half of a story whose first half no longer
+     * applied.
+     */
+    if (!requirementsHold(ctx, t, event)) return undefined;
     return event;
 }
 
-export function pickTerrainEvent(ctx: SimContext, events: ArenaEventDef[], terrain: Terrain | undefined, t?: Tribute): ArenaEventDef {
+export function pickTerrainEvent(
+    ctx: SimContext,
+    events: ArenaEventDef[],
+    terrain: Terrain | undefined,
+    t?: Tribute,
+): ArenaEventDef | undefined {
     const fits = (event: ArenaEventDef) => {
         const tags = event.terrains ?? inferredTerrains(event);
         return !tags || tags.includes(terrain!);
     };
-    // §7e: state gates first — an event whose preconditions do not hold is not
-    // a worse fit for this zone, it is not an option at all.
-    const eligible = events.filter(e => !spent(ctx, e) && (!t || requirementsHold(ctx, t, e)));
-    const gated = eligible.length > 0 ? eligible : events.filter(e => !spent(ctx, e));
-    events = gated.length > 0 ? gated : events;
+    /*
+     * AUDIT-10 B15: hard gates are not preferences, and are never relaxed.
+     *
+     * The selector used to narrow the pool by eligibility and then, if nothing
+     * survived, *restore the events it had just excluded* — and if everything
+     * was spent, restore the original pool entire. So a once-per-run event
+     * fired again, and an event requiring a medical kit was handed to somebody
+     * with an empty pack, precisely on the runs where the authored content had
+     * run thin. Every conditional event added to the game inherits that hole:
+     * the rarer and more specific the condition, the likelier the fallback is
+     * the thing that actually selects it.
+     *
+     * Requirements and once-only are therefore filtered once, here, with no
+     * escape hatch. Everything after this point — cooldown, terrain fit — is a
+     * preference over the legal pool and may still be relaxed. An empty legal
+     * pool returns nothing, and the caller does something else with the cycle.
+     */
+    const legal = events.filter(e => !spent(ctx, e) && (!t || requirementsHold(ctx, t, e)));
+    if (legal.length === 0) return undefined;
     // §7 (audit): no repeats inside the cooldown, unless that would leave
     // nothing — a small pool still speaks.
     const cycle = cycleOf(ctx.state);
     const last = ctx.state.eventLastFired ?? {};
-    const fresh = events.filter(e => cycle - (last[eventKey(e)] ?? -Infinity) >= ENCOUNTERS.eventRepeatCooldown);
-    if (fresh.length > 0) events = fresh;
-    const pool = terrain ? events.filter(fits) : events;
-    const candidates = pool.length > 0 ? pool : events;
+    const fresh = legal.filter(e => cycle - (last[eventKey(e)] ?? -Infinity) >= ENCOUNTERS.eventRepeatCooldown);
+    const afterCooldown = fresh.length > 0 ? fresh : legal;
+    const pool = terrain ? afterCooldown.filter(fits) : afterCooldown;
+    const candidates = pool.length > 0 ? pool : afterCooldown;
     // §1.3: weighted, not uniform. `withUniversalEvents` marks the shared pool
     // down so an arena with five authored events still reads as itself.
     const total = candidates.reduce((sum, e) => sum + (e.weight ?? 1), 0);
     // A guard that throws is a trap: `pick` on an empty pool is the crash
-    // this line exists to avoid. Fall to the first candidate, or the universal
-    // pool's first entry if there are none at all.
-    if (total <= 0) return ctx.rng.pickOrUndefined(candidates) ?? events[0];
+    // this line exists to avoid.
+    if (total <= 0) return ctx.rng.pickOrUndefined(candidates);
     let roll = ctx.rng.nextFloat() * total;
     for (const event of candidates) {
         roll -= event.weight ?? 1;

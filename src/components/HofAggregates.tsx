@@ -165,7 +165,7 @@ export function HofAggregates({ entries }: Props) {
                     <div className="eyebrow mb-1.5">District win table</div>
                     <div className="flex flex-wrap gap-1.5">
                         {stats.districtTable.map(d => (
-                            <span key={d.label} className="chip font-mono text-[10px]">
+                            <span key={d.label} className="chip font-mono text-micro">
                                 {d.label}: {d.wins}
                             </span>
                         ))}

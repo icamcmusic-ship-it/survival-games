@@ -55,13 +55,13 @@ function Row({ label, a, b, format }: {
             {show(value)}
             {/* The lead is marked in text as well as weight — weight alone is
                 the same kind of colour-only signal §2.1 is about. */}
-            {lead === side && <span className="ml-1 text-[10px]" aria-label="higher">▲</span>}
+            {lead === side && <span className="ml-1 text-micro" aria-label="higher">▲</span>}
         </div>
     );
     return (
         <>
             {cell('a', a)}
-            <div className="text-[11px] text-[var(--color-ink-500)] text-center self-center">{label}</div>
+            <div className="text-mini text-[var(--color-ink-500)] text-center self-center">{label}</div>
             {cell('b', b)}
         </>
     );
@@ -81,9 +81,9 @@ function BetweenThem({ a, b }: { a: Tribute; b: Tribute }) {
                 <div className="eyebrow">{label}</div>
                 <div className="text-sm">
                     <span className="font-bold text-[var(--ink)]">{regardWord(regard)}</span>
-                    <span className="font-mono text-[11px] text-[var(--color-ink-500)] ml-1.5">({regard > 0 ? '+' : ''}{regard})</span>
+                    <span className="font-mono text-mini text-[var(--color-ink-500)] ml-1.5">({regard > 0 ? '+' : ''}{regard})</span>
                 </div>
-                <div className="text-[11px] text-[var(--color-ink-500)]">
+                <div className="text-mini text-[var(--color-ink-500)]">
                     {fear > 0 ? `afraid of them (${fear})` : 'not afraid of them'}
                     {heard > 0 && ` · has heard of them (${heard})`}
                 </div>
