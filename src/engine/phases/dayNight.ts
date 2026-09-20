@@ -30,6 +30,7 @@ import { isActive, isDowned } from '../downed';
 import { decayUpkeep, postActionUpkeep, preActionUpkeep } from './upkeep';
 import { resolveParachutes } from '../parachutes';
 import { appealForAid, negotiateObligations, tickObligations } from '../obligations';
+import { tickAllianceDisputes, tickDisputeAftermath } from '../allianceDispute';
 import { tickForecasts } from '../hazardChain';
 import { tickExposure } from '../survival';
 import {
@@ -330,6 +331,15 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // this cycle — both of them are already standing in the same place, which
     // is the whole reason this promise is a different shape from the others.
     appealForAid(ctx);
+    /*
+     * AUDIT-9 batch 4, pilot 2: and if what the group has will not go round,
+     * they have to decide how to be short in front of each other.
+     *
+     * After the appeals, because an appeal answered is one more thing in
+     * somebody's hands and one less reason to open the cache.
+     */
+    tickAllianceDisputes(ctx);
+    tickDisputeAftermath(ctx);
     tickObligations(ctx);
 
     // 4a. Whether anyone has stopped wanting to win. Resolve drifts on what

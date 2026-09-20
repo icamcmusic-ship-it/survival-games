@@ -297,6 +297,10 @@ let factionCoups = 0, factionExpulsions = 0, factionWalkouts = 0, expulsions = 0
 let feuds = 0, freeForAlls = 0, careerDefections = 0, cacheContributions = 0;
 // Intentions and fieldcraft.
 let objectivesFormed = 0, trapsSet = 0, trapsTriggered = 0, partialWork = 0;
+// AUDIT-9 batch 4: the three content pilots.
+let hazardAftermaths = 0, rescueLines = 0, rescueLinesHeld = 0, rescueLinesFailed = 0,
+    rescueLinesRemembered = 0, allianceDisputes = 0, allianceDisputesLost = 0,
+    allianceDisputesRemembered = 0;
 let chutesClaimed = 0, chutesStolen = 0, chutesLost = 0, chutesCollected = 0;
 let obligationsMade = 0, obligationsKept = 0, obligationsBroken = 0, obligationsLapsed = 0;
 let hazardsForecast = 0, hazardsMitigated = 0, hazardsAverted = 0, waterborneIllness = 0;
@@ -639,6 +643,23 @@ for (let i = 0; i < 400; i++) {
     if (beat(l, 'hazard-forecast')) hazardsForecast++;
     if (beat(l, 'hazard-mitigated')) hazardsMitigated++;
     if (beat(l, 'hazard-averted')) hazardsAverted++;
+    /*
+     * AUDIT-9 batch 4: the three content pilots.
+     *
+     * Counted here for the reason this file's own header gives — a type
+     * nothing emits is a promise nothing keeps, and the soak is the thing that
+     * refuses to let one sit there. Two branches of the rescue chain were dead
+     * when it was written and the sweep is how that was found; these keep it
+     * from happening again quietly.
+     */
+    if (beat(l, 'hazard-aftermath')) hazardAftermaths++;
+    if (beat(l, 'rescue-line')) rescueLines++;
+    if (beat(l, 'rescue-line-held')) rescueLinesHeld++;
+    if (beat(l, 'rescue-line-failed')) rescueLinesFailed++;
+    if (beat(l, 'rescue-line-remembered')) rescueLinesRemembered++;
+    if (beat(l, 'alliance-dispute')) allianceDisputes++;
+    if (beat(l, 'alliance-dispute-lost')) allianceDisputesLost++;
+    if (beat(l, 'alliance-dispute-remembered')) allianceDisputesRemembered++;
     if (beat(l, 'waterborne-illness')) waterborneIllness++;
     if (beat(l, 'shelter-built')) sheltersBuilt++;
     if (beat(l, 'camouflaged')) camouflaged++;
@@ -1421,6 +1442,9 @@ console.log(`fieldcraft: traps by kind ${Object.entries(trapKinds).map(([k, n]) 
 console.log(`hazard chains: forecast=${hazardsForecast} workedAgainst=${hazardsMitigated} averted=${hazardsAverted} waterborneIllness=${waterborneIllness}`);
 console.log(`obligations: made=${obligationsMade} kept=${obligationsKept} broken=${obligationsBroken} lapsed=${obligationsLapsed}`);
 console.log(`parachutes: claimed=${chutesClaimed} collectedByAlly=${chutesCollected} stolen=${chutesStolen} lost=${chutesLost}`);
+console.log(`batch-4 pilots: rescueLines=${rescueLines} held=${rescueLinesHeld} failed=${rescueLinesFailed} remembered=${rescueLinesRemembered}`
+    + ` | disputes=${allianceDisputes} lost=${allianceDisputesLost} remembered=${allianceDisputesRemembered}`
+    + ` | hazardAftermaths=${hazardAftermaths}`);
 console.log(`fieldcraft: trapsSet=${trapsSet} trapsTriggered=${trapsTriggered} fires=${firesLit} shelters=${sheltersBuilt} camouflage=${camouflaged} poisonedWeapons=${weaponsPoisoned} partialWork=${partialWork}`);
 console.log(`arena: zoneFires=${zoneFiresStarted} (spread ${zoneFiresSpread}) floods=${zoneFloods} freezes=${zoneFreezes} contaminations=${zoneContaminations} fogs=${zoneFogs} strippedZones=${zoneStripped} severed=${zoneSevered}`);
 console.log(`arena: borderTelegraphs=${borderTelegraphs} cornucopiaRestocks=${cornucopiaRestocks} muttEncounters=${muttEncounters}`);

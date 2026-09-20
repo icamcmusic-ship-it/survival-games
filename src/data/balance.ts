@@ -8090,6 +8090,16 @@ export const ARENA_SIGNATURES = {
     },
     /** The Drowned Islands: the tide comes up over a sector in the dark. */
     tide: {
+        /**
+         * AUDIT-9 batch 4, pilot 3: how long the water is audible before it
+         * arrives.
+         *
+         * The whole point of routing this signature through the forecast
+         * system: a night to move, or to spend the hours shoring the ground
+         * and avert it outright. A hazard that arrives with no warning cannot
+         * be prevented, and one that cannot be prevented is weather.
+         */
+        warnLeadCycles: 1,
         /** Chance the tide takes the busiest sector rather than a random one. */
         busiestChance: 0.6,
         swimBase: 0.3,
@@ -8594,4 +8604,151 @@ export const HAZARD_CHAIN = {
     carpentryHourRelief: 0.06,
     minSkillMultiplier: 0.5,
     carpentryTrainShare: 0.5,
+} as const;
+
+/**
+ * AUDIT-9 batch 4, pilot 1: the rescue line. See `engine/rescueLine.ts`.
+ *
+ * The chain the audit's §7 asks for: a stranded person, an anchor of knowable
+ * quality, an attempt, and three distinguishable ways it goes wrong — a bad
+ * anchor, a load nobody would let go of, and somebody cutting it.
+ */
+export const RESCUE_LINE = {
+    /** Below this health, somebody on the lower level cannot climb out alone. */
+    strandedHealth: 55,
+
+    /*
+     * Anchor quality: the base chance the line holds. This is the chain's
+     * warning, because it is visible in the line that announces the attempt —
+     * "knotted, tied off around a root" is the player being told what is about
+     * to happen, a cycle before it happens.
+     */
+    /** A proper anchor, taken by somebody who was taught how. */
+    riggedQuality: 0.92,
+    /** Real rope, made fast to the nearest thing that looks like it will hold. */
+    ropeQuality: 0.74,
+    /** Belts and a jacket. */
+    improvisedQuality: 0.5,
+    /** Climbing proficiency at or above this turns rope into a rigged anchor. */
+    /**
+     * Climbing at or above this turns rope into a properly rigged anchor.
+     *
+     * Lowered from 5 after measurement, then again: 69.1% of tributes end a
+     * run at climbing 0 and 0.7% reach 4, so this alone could never carry the
+     * `rigged` branch. `Rope-Handed` is the primary route now (see
+     * `anchorFor`); this is the secondary one, at a bar practice can actually
+     * reach.
+     */
+    goodAnchorClimbing: 2,
+    perClimbingPoint: 0.015,
+    minHold: 0.15,
+    maxHold: 0.96,
+
+    /** Encumbrance above this is a load the line has to carry too. */
+    loadLine: 0.6,
+    /** Chance the stranded person lets the pack go — the avoidance branch. */
+    dropLoadChance: 0.62,
+    /**
+     * `Overprepared`'s sharpest cost: the one moment where what they are
+     * carrying is the thing deciding whether they come up.
+     */
+    overpreparedGrip: 0.45,
+    /** What keeping hold of it costs the line. */
+    overloadedPenalty: 0.3,
+    /** Somebody unconscious is worse to haul than somebody who can help. */
+    deadWeightPenalty: 0.12,
+
+    /** Who it takes when an anchor tears out, rather than always the one below. */
+    rescuerFallsShare: 0.3,
+    fallDamage: 52,
+
+    /*
+     * Cutting the line. Deliberately hard, and deliberately deterred by having
+     * anybody nearby: this beat is at its best when it is rare and ambiguous,
+     * and it stops being either if it happens in front of four witnesses every
+     * other cycle.
+     */
+    cutTreacheryWeight: 0.55,
+    cutPerDislike: 0.004,
+    cutWitnessDeterrent: 0.02,
+    /**
+     * ...and the ceiling on that deterrent. A zone holds a dozen people on an
+     * average cycle, so an uncapped per-head term is a prohibition rather than
+     * a discouragement — which is what it was, and why the branch measured 0.
+     */
+    cutMaxDeterrent: 0.14,
+    /** What a witness who saw enough to wonder thinks of them afterwards. */
+    cutWitnessRegard: 18,
+
+    /** Whether somebody tries at all. */
+    baseWillingness: 0.35,
+    allyWillingness: 0.4,
+    /** AUDIT-9 stage D `Shared-Burden`: they volunteer for exactly this. */
+    volunteerWillingness: 0.3,
+    /**
+     * The other kind of volunteer: treachery times dislike. What makes
+     * somebody step forward to hold a rope over a person they want gone, and
+     * the term that makes the `cut` branch reachable at all.
+     */
+    opportunistWeight: 0.012,
+    perRegard: 0.004,
+    aggressionWeight: 0.25,
+    maxWillingness: 0.95,
+    /** A rescuer this wrecked is not hauling anybody anywhere. */
+    rescuerMinHealth: 35,
+
+    /** What a successful haul costs the person who did it. */
+    rescuerFatigue: 18,
+    /** ...and what it earns them. */
+    debt: 2,
+    regard: 16,
+
+    /** Cycles before the follow-up beat reads the record. */
+    aftermathCycles: 2,
+} as const;
+
+/**
+ * AUDIT-9 batch 4, pilot 2: the argument about the food.
+ * See `engine/allianceDispute.ts`.
+ *
+ * Non-fatal by construction. Everything here moves trust, regard and group
+ * membership; nothing here can kill anybody, which is the point — the audit's
+ * §10 asks for depth that is not another way to die.
+ */
+export const ALLIANCE_DISPUTE = {
+    /** Two people sharing is not a hearing. */
+    minMembers: 3,
+    /** Cycles before the same group can have this argument again. */
+    cooldownCycles: 4,
+    /** Hunger or thirst above this puts somebody in the queue. */
+    hungryLine: 50,
+    /** ...and above this, nobody is going to argue for the contributors. */
+    desperateNeed: 80,
+    /** Cache value per hungry member above which there is nothing to argue about. */
+    enoughPerHead: 6,
+
+    /*
+     * Which way a group splits. Weights, not a uniform roll: a charter that
+     * swore to share food is the single strongest term, because that is what
+     * swearing it was for.
+     */
+    equalBase: 3,
+    swornEqualBonus: 5,
+    contributionBase: 3,
+    tyrantContributionBonus: 3,
+    needBase: 3,
+    desperateNeedBonus: 4,
+
+    /** What being passed over costs the leader, in the eyes of whoever was. */
+    passedOverRegard: 14,
+    passedOverTrust: 10,
+
+    /** Whether somebody passed over actually leaves. */
+    walkoutBase: 0.12,
+    walkoutPerNeed: 0.002,
+    walkoutTreachery: 0.35,
+    walkoutPerRegard: 0.004,
+
+    /** Cycles before the follow-up beat reads the record. */
+    aftermathCycles: 2,
 } as const;

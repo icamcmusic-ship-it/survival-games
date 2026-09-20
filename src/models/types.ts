@@ -381,6 +381,14 @@ export interface Item {
      */
     legendName?: string;
     /**
+     * AUDIT-9 batch 4: whose hand it earned that name in.
+     *
+     * So that "this weapon has outlived the person who named it" is a question
+     * the game can actually answer, rather than one a card claimed to be
+     * asking while testing something else entirely.
+     */
+    legendNamedById?: string;
+    /**
      * Stackable consumables. `undefined` means a single indivisible thing; a
      * number is how many are left in the stack. Food, water and medical
      * supplies stack; a sword does not.
@@ -1577,6 +1585,49 @@ export interface TrainingPact {
  * AUDIT-10 B05: the durable trace of one alliance, written while it is alive
  * and read after it is gone.
  */
+/**
+ * AUDIT-9 batch 4, pilot 1: one attempt to get somebody out of something.
+ *
+ * `outcome` is the whole point of the record. "A rescue failed" is one fact;
+ * "the anchor tore out", "they would not drop the bag" and "he cut it" are
+ * three different stories with three different people at fault, and the
+ * audit's requirement for this chain is exactly that they be distinguishable
+ * — "distinguish bad anchor, excess load and deliberate cutting".
+ */
+export interface RescueLineRecord {
+    cycle: number;
+    zone: string;
+    rescuerId: string;
+    strandedId: string;
+    /** What the line was made fast to. Knowable before the attempt. */
+    anchor: 'rigged' | 'rope' | 'improvised';
+    /** Why they could not get themselves out. */
+    stranding: 'downed' | 'below';
+    outcome: 'clean' | 'anchor-failed' | 'overloaded' | 'cut';
+    /** Set once the follow-up beat has read this record. */
+    read?: boolean;
+}
+
+/**
+ * AUDIT-9 batch 4, pilot 2: one hearing about a cache that will not go round.
+ *
+ * The record is what makes this politics rather than a distribution function.
+ * "The group was short" is one fact; *which rule they chose*, who it fed, who
+ * it passed over and who walked out over it are four, and they are the ones
+ * the follow-up beat and the record book have anything to say about.
+ */
+export interface AllianceDisputeRecord {
+    cycle: number;
+    allianceId: string;
+    /** The three honest ways to be short, each unfair to somebody. */
+    split: 'equal' | 'by-contribution' | 'by-need';
+    fedIds: string[];
+    passedOverIds: string[];
+    /** Of those passed over, the ones who left over it. */
+    walkoutIds: string[];
+    read?: boolean;
+}
+
 export interface AllianceRecollection {
     id: string;
     name?: string;
@@ -2728,6 +2779,29 @@ export interface GameState {
      * quarry is already on the move.
      */
     timeOfDay?: 'day' | 'dusk' | 'night';
+    /** AUDIT-9 batch 4: hazards that left the ground changed behind them. */
+    hazardAftermaths?: number;
+    /**
+     * AUDIT-9 batch 4, pilot 1: every line somebody put down to somebody else.
+     *
+     * A durable record rather than a derived one, because the interesting
+     * question about a rescue is asked *afterwards* — who was there, what it
+     * was tied to, and which of the three ways it can go wrong actually
+     * happened — and none of that is recoverable from the end state. It is
+     * also what the follow-up beat reads a cycle or two later.
+     */
+    rescueLines?: RescueLineRecord[];
+    /**
+     * AUDIT-9 batch 4, pilot 2: every time a group had to decide how to be
+     * short. See `engine/allianceDispute.ts`.
+     */
+    allianceDisputes?: AllianceDisputeRecord[];
+    /**
+     * AUDIT-9 batch 4, pilot 3: zones whose forecast tide has already struck,
+     * so the impact beat fires once per flood rather than every cycle the
+     * water is up.
+     */
+    tideStruck?: string[];
     /** Aggregate audience interest in the living field, recomputed each cycle. */
     audienceInterest?: number;
     /** Zone name -> deaths that have happened there, broadcast by the sky each night. */
@@ -3314,6 +3388,21 @@ export type EventType =
     | 'hazard-forecast'
     | 'hazard-mitigated'
     | 'hazard-averted'
+    /**
+     * AUDIT-9 batch 4, pilot 3: the last stage of a hazard chain — what the
+     * ground is like once the thing that happened to it is over, and what
+     * that changes about wanting to be there.
+     */
+    | 'hazard-aftermath'
+    /** AUDIT-9 batch 4, pilot 1: the four beats of a rescue line. */
+    | 'rescue-line'
+    | 'rescue-line-held'
+    | 'rescue-line-failed'
+    | 'rescue-line-remembered'
+    /** AUDIT-9 batch 4, pilot 2: the argument about the food. */
+    | 'alliance-dispute'
+    | 'alliance-dispute-lost'
+    | 'alliance-dispute-remembered'
     | 'obligation-made'
     | 'obligation-kept'
     | 'obligation-broken'

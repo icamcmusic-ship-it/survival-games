@@ -32,6 +32,7 @@
     "test:scenarios": "tsx scripts/check-scenarios.ts",
     "test:audit10": "tsx scripts/check-audit10.ts",
     "test:batch3": "tsx scripts/check-batch3.ts",
+    "test:batch4": "tsx scripts/check-batch4.ts",
     "test:textscale": "node scripts/check-textscale.mjs",
     "diagnose:archetypes": "tsx scripts/diagnose-archetypes.ts"
   },
