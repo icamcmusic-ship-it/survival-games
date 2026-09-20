@@ -15,6 +15,7 @@ import { PARACHUTES } from '../src/data/balance';
 import { createContext } from '../src/engine/context';
 import { RNG } from '../src/utils/rng';
 import { dropParachute, resolveParachutes, pendingParachutes } from '../src/engine/parachutes';
+import { canPromise, promise, tickObligations, openObligations } from '../src/engine/obligations';
 
 console.log('action budgets');
 
@@ -258,6 +259,106 @@ scenario(
         w.state.cycle = (w.state.cycle ?? 0) + PARACHUTES.lifetimeCycles;
         resolveParachutes(ctx);
         eq(pendingParachutes(w.state).length, 0, 'and is collected once its time is up');
+    },
+);
+
+console.log('\nnegotiated obligations');
+
+const food = () => ({ ...ITEMS.find(i => i.type === 'food')! });
+
+scenario(
+    'a promise nobody can keep is refused',
+    'the capacity check: promising what you cannot deliver is not free',
+    () => {
+        const w = world('SCEN-ob-1');
+        const a = w.tribute(0), b = w.tribute(1);
+        const ctx = createContext(w.state, new RNG('SCEN-ob-1'));
+        a.inventory = [];
+        eq(canPromise(w.state, a, 'supply'), false, 'an empty pack cannot promise supplies');
+        eq(promise(ctx, a, b, 'supply'), undefined, 'and the promise is refused rather than made and broken');
+        eq(openObligations(w.state).length, 0, 'nothing is on the books');
+    },
+);
+
+scenario(
+    'a kept promise moves the goods and buys regard',
+    'discharge is physical: the food actually changes hands',
+    () => {
+        const w = world('SCEN-ob-2');
+        const a = w.tribute(0), b = w.tribute(1);
+        w.only(a, b);
+        w.place(b, a.zone);
+        const ctx = createContext(w.state, new RNG('SCEN-ob-2'));
+        a.inventory = [food(), food()];
+        b.inventory = [];
+        b.vitals.hunger = 90;
+        const before = b.relationships[a.id] ?? 0;
+        check(promise(ctx, a, b, 'supply') !== undefined, 'the promise should be makeable');
+        tickObligations(ctx);
+        check(b.inventory.length === 1, 'the food should have changed hands');
+        check((b.relationships[a.id] ?? 0) > before, 'keeping it should be worth something');
+        eq(openObligations(w.state).length, 0, 'and the obligation should be closed');
+    },
+);
+
+scenario(
+    'a promise the week made irrelevant lapses rather than counting as betrayal',
+    'broken means they could have and did not, not that the need passed',
+    () => {
+        const w = world('SCEN-ob-3');
+        const a = w.tribute(0), b = w.tribute(1);
+        w.only(a, b);
+        w.place(b, a.zone);
+        const ctx = createContext(w.state, new RNG('SCEN-ob-3'));
+        a.inventory = [food(), food()];
+        b.vitals.hunger = 90;
+        const o = promise(ctx, a, b, 'supply');
+        check(o !== undefined, 'promise made');
+        // They find their own food, and the deadline passes.
+        b.vitals.hunger = 5;
+        w.state.cycle = o!.byCycle;
+        w.state.day = o!.byCycle;
+        tickObligations(ctx);
+        eq(o!.status, 'lapsed', 'a need that went away is not a betrayal');
+    },
+);
+
+scenario(
+    'a promise they could have kept and did not is broken',
+    'standing right there, able to do it, and not doing it is the thing that costs',
+    () => {
+        const w = world('SCEN-ob-4');
+        const a = w.tribute(0), b = w.tribute(1);
+        w.only(a, b);
+        w.place(b, a.zone);
+        const ctx = createContext(w.state, new RNG('SCEN-ob-4'));
+        a.health = 100; a.vitals.fatigue = 0;
+        const somewhereElse = w.state.arena.zones.find(z => z.name !== a.zone)!.name;
+        const o = promise(ctx, a, b, 'escort', somewhereElse);
+        check(o !== undefined, 'an escort should be promisable by a fit tribute');
+        // The deadline arrives with the two of them still standing where they
+        // started: able to walk, together, and nowhere near the destination.
+        o!.byCycle = (w.state.cycle ?? 0);
+        const rel = b.relationships[a.id] ?? 0;
+        tickObligations(ctx);
+        eq(o!.status, 'broken', 'able, together, and not there: that is a broken promise');
+        check((b.relationships[a.id] ?? 0) < rel, 'and it should cost them');
+    },
+);
+
+scenario(
+    'the same promise is not made twice while it is still open',
+    'repeating a promise you have not kept is not a second promise',
+    () => {
+        const w = world('SCEN-ob-5');
+        const a = w.tribute(0), b = w.tribute(1);
+        w.place(b, a.zone);
+        const ctx = createContext(w.state, new RNG('SCEN-ob-5'));
+        a.inventory = [food(), food(), food()];
+        b.vitals.hunger = 90;
+        check(promise(ctx, a, b, 'supply') !== undefined, 'first promise stands');
+        eq(promise(ctx, a, b, 'supply'), undefined, 'the second is refused');
+        eq(openObligations(w.state).length, 1, 'one obligation, not two');
     },
 );
 

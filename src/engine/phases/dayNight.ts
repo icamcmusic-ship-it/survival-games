@@ -29,6 +29,7 @@ import { runArchetypeSignatures, tickGhosts, tickScholars } from '../archetypeHo
 import { isActive, isDowned } from '../downed';
 import { decayUpkeep, postActionUpkeep, preActionUpkeep } from './upkeep';
 import { resolveParachutes } from '../parachutes';
+import { negotiateObligations, tickObligations } from '../obligations';
 import {
     applyArenaEvent, fill, handleInsanity, idleAction, isBreakingDown,
     pendingChain, pickTerrainEvent, resolveMuttAttack, resolvePairEncounter,
@@ -316,6 +317,13 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // cycle — the ally who got there in time, the enemy who got there first,
     // or nobody at all.
     postActionUpkeep(ctx);
+    /*
+     * AUDIT-9 stage C §4: promises are made where people are standing next to
+     * each other, and discharged the same way. Both run after the cycle has
+     * settled, so "together" means together now.
+     */
+    negotiateObligations(ctx);
+    tickObligations(ctx);
 
     // 4a. Whether anyone has stopped wanting to win. Resolve drifts on what
     // this cycle actually did to them, then the ones who have run out act on it.

@@ -8391,3 +8391,26 @@ export const PARACHUTES = {
     /** Ceiling on a rival's odds, so a drop is still usually a gift. */
     contestRivalShare: 0.3,
 } as const;
+
+/**
+ * AUDIT-9 stage C §4: what a promise costs to make and to break.
+ * See `engine/obligations`.
+ */
+export const OBLIGATIONS = {
+    /** Cycles a promise stands before it is settled one way or the other. */
+    deadlineCycles: 3,
+    /** How long a settled obligation is kept on the books for reporting. */
+    rememberCycles: 4,
+    /** Spare food/water beyond this before somebody can promise supplies. */
+    supplySpareNeeded: 1,
+    supplyHungerLine: 55,
+    escortMinHealth: 55,
+    escortMaxFatigue: 70,
+    rescueMinHealth: 40,
+    supplyPromiseChance: 0.18,
+    escortPromiseChance: 0.2,
+    rescuePromiseChance: 0.12,
+    keptRegard: 14,
+    keptTrust: 6,
+    brokenRegard: 22,
+} as const;

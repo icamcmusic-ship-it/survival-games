@@ -298,6 +298,7 @@ let feuds = 0, freeForAlls = 0, careerDefections = 0, cacheContributions = 0;
 // Intentions and fieldcraft.
 let objectivesFormed = 0, trapsSet = 0, trapsTriggered = 0, partialWork = 0;
 let chutesClaimed = 0, chutesStolen = 0, chutesLost = 0, chutesCollected = 0;
+let obligationsMade = 0, obligationsKept = 0, obligationsBroken = 0, obligationsLapsed = 0;
 /**
  * Audit 3 §1.2: traps were counted as one number, so a five-kind menu that was
  * a two-kind menu in play read as a healthy 304 traps a sweep. Counted per
@@ -628,6 +629,11 @@ for (let i = 0; i < 400; i++) {
     if (beat(l, 'parachute-stolen')) chutesStolen++;
     if (beat(l, 'parachute-collected')) chutesCollected++;
     if (beat(l, 'parachute-lost')) chutesLost++;
+    // AUDIT-9 stage C §4: promises made, and how they ended.
+    if (beat(l, 'obligation-made')) obligationsMade++;
+    if (beat(l, 'obligation-kept')) obligationsKept++;
+    if (beat(l, 'obligation-broken')) obligationsBroken++;
+    if (beat(l, 'obligation-lapsed')) obligationsLapsed++;
     if (beat(l, 'shelter-built')) sheltersBuilt++;
     if (beat(l, 'camouflaged')) camouflaged++;
     if (beat(l, 'standoff')) standoffs++;
@@ -1406,6 +1412,7 @@ if (musterRuns > 0 && musterAttended === 0) {
 console.log(`zoneControl: held=${cornucopiaHeld} payouts=${cornucopiaPayouts}`);
 console.log(`schedule: signatureBeats=${signatureBeats} calendarBeats=${calendarBeats}`);
 console.log(`fieldcraft: traps by kind ${Object.entries(trapKinds).map(([k, n]) => `${k}=${n}`).join(' ')}`);
+console.log(`obligations: made=${obligationsMade} kept=${obligationsKept} broken=${obligationsBroken} lapsed=${obligationsLapsed}`);
 console.log(`parachutes: claimed=${chutesClaimed} collectedByAlly=${chutesCollected} stolen=${chutesStolen} lost=${chutesLost}`);
 console.log(`fieldcraft: trapsSet=${trapsSet} trapsTriggered=${trapsTriggered} fires=${firesLit} shelters=${sheltersBuilt} camouflage=${camouflaged} poisonedWeapons=${weaponsPoisoned} partialWork=${partialWork}`);
 console.log(`arena: zoneFires=${zoneFiresStarted} (spread ${zoneFiresSpread}) floods=${zoneFloods} freezes=${zoneFreezes} contaminations=${zoneContaminations} fogs=${zoneFogs} strippedZones=${zoneStripped} severed=${zoneSevered}`);

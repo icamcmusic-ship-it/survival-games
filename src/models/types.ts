@@ -2171,6 +2171,26 @@ export interface Arena {
  * chronicle pages them the way it pages a day and a night. `training` is kept
  * as a legacy value for saves written before the split.
  */
+/**
+ * AUDIT-9 stage C §4: a negotiated obligation.
+ *
+ * Distinct from the charters, pacts and treaties around it: those are standing
+ * conditions somebody can be found in breach of, this is a specific thing one
+ * named person owes another by a particular cycle. See `engine/obligations`.
+ */
+export interface Obligation {
+    id: string;
+    owedById: string;
+    owedToId: string;
+    /** Supplies, a walk to somewhere, or being there when they go down. */
+    kind: 'supply' | 'escort' | 'rescue';
+    byCycle: number;
+    /** `broken` means they could have and did not; `lapsed` means they could not. */
+    status: 'open' | 'kept' | 'broken' | 'lapsed';
+    /** For an escort, where to. */
+    detail?: string;
+}
+
 export type Phase = 'setup' | 'roster' | 'reaping'
     | 'square' | 'train' | 'parade'
     | 'training' | 'training1' | 'training2' | 'training3' | 'scores'
@@ -2630,6 +2650,11 @@ export interface GameState {
      * in the wrong zone or be taken by the wrong person. See
      * `engine/parachutes`.
      */
+    /**
+     * AUDIT-9 stage C §4: specific things one named tribute owes another by a
+     * particular cycle. See `engine/obligations`.
+     */
+    obligations?: Obligation[];
     parachutes?: Array<{
         id: string;
         item: Item;
@@ -3155,6 +3180,10 @@ export type EventType =
     | 'succession-split'
     | 'succession-unnamed'
     | 'trap-destroyed'
+    | 'obligation-made'
+    | 'obligation-kept'
+    | 'obligation-broken'
+    | 'obligation-lapsed'
     | 'parachute-claimed'
     | 'parachute-stolen'
     | 'parachute-collected'
