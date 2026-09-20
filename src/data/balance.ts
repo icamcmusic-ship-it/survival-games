@@ -7695,8 +7695,10 @@ export const GAMEMAKER_COSTS = {
  */
 export const ARCHETYPE_HOOKS = {
     /** AUDIT-9 stage D Courier: what counts as an ally who needs something. */
-    courierHungerLine: 45,
-    courierHurtLine: 65,
+    courierHungerLine: 35,
+    courierHurtLine: 78,
+    /** Zones a Courier must know before news is worth the walk. */
+    courierIntelZones: 2,
     /** Regard above which a Courier will take a non-ally's contract. */
     courierMinRegard: 10,
     /**
@@ -7881,7 +7883,7 @@ export const ARCHETYPE_HOOKS = {
      * AUDIT-7 §8.2: how much hungrier or thirstier than the broker somebody has
      * to be to read as a client rather than as a rival supplier.
      */
-    brokerNeedGap: 15,
+    brokerNeedGap: 5,
     /**
      * AUDIT-9: what an untreated wound is worth on the need scale.
      *
@@ -8386,11 +8388,16 @@ export const CONFUSION = {
  * priced to the minute.
  */
 export const ACTION_BUDGET = {
+    /** AUDIT-9 stage E: hours off a crossing per point of `pacing`. */
+    pacingHourRelief: 0.05,
+    minPacingMultiplier: 0.55,
+    /** Physical ceiling on crossings in one cycle, whatever the hours allow. */
+    maxCrossingsPerCycle: 2,
     /** AUDIT-9 stage D `Overprepared`: slower out of camp. */
     overpreparedTravelHours: 1.5,
     /** AUDIT-9 stage D `Exit-Minded`: scouting the way out before committing. */
     exitMindedScoutHours: 1,
-    baseHours: 12,
+    baseHours: 14,
     minHours: 3,
     /** A body at 100 fatigue loses this much of the day. */
     fatigueHourCost: 5,

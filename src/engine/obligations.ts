@@ -70,8 +70,16 @@ export function canPromise(state: GameState, t: Tribute, kind: Obligation['kind'
              * a conjunction that fired 0.0% of the time across 400 runs — a
              * dead hook of exactly the kind the stage gate exists to catch.
              */
+            /*
+             * And medicine counts, for a Courier. A courier carrying a kit to
+             * somebody who needs one is the archetypal case of the whole role,
+             * and counting only food and water held the set piece to 15.7% of
+             * its entrants against a 29% floor every other archetype clears.
+             */
             const needed = t.archetype === 'courier' ? 0 : OBLIGATIONS.supplySpareNeeded;
-            return t.inventory.filter(i => i.type === 'food' || i.type === 'water').length > needed;
+            const carried = t.inventory.filter(i => i.type === 'food' || i.type === 'water'
+                || (t.archetype === 'courier' && i.type === 'medical')).length;
+            return carried > needed;
         }
         case 'escort':
             return t.health >= OBLIGATIONS.escortMinHealth
@@ -171,8 +179,12 @@ export function tickObligations(ctx: SimContext) {
         const together = from.zone === to.zone;
 
         if (o.kind === 'supply' && together) {
-            const spare = from.inventory.find(i => i.type === 'food' || i.type === 'water');
-            if (spare && to.vitals.hunger > OBLIGATIONS.supplyHungerLine) {
+            // What they actually need: a kit for a wound, food for hunger.
+            const wants = to.health < OBLIGATIONS.escortMinHealth ? 'medical' : undefined;
+            const spare = (wants ? from.inventory.find(i => i.type === wants) : undefined)
+                ?? from.inventory.find(i => i.type === 'food' || i.type === 'water');
+            if (spare && (to.vitals.hunger > OBLIGATIONS.supplyHungerLine
+                || (wants === 'medical' && spare.type === 'medical'))) {
                 from.inventory = from.inventory.filter(i => i !== spare);
                 giveItem(to, spare);
                 keep(ctx, o, `${from.name} hands ${to.name} the ${spare.name} without being asked twice. That is the promise, discharged, in front of everybody who heard it made.`);

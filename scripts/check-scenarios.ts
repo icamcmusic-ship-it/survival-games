@@ -8,7 +8,7 @@
  */
 import { scenario, check, eq, world, report } from './scenarios';
 import { ACTION_BUDGET } from '../src/data/balance';
-import { hoursFor, hoursLeft, hoursSpent, resetBudget, spend, work, progressOf, canAfford } from '../src/engine/actionBudget';
+import { hoursFor, hoursLeft, hoursSpent, resetBudget, spend, work, progressOf, canAfford, travelHoursFor, crossingsLeft, noteCrossing, hoursToday } from '../src/engine/actionBudget';
 import { Tribute, Item } from '../src/models/types';
 import { ITEMS } from '../src/data/constants';
 import { PARACHUTES } from '../src/data/balance';
@@ -39,24 +39,36 @@ scenario(
         const day = hoursLeft(t);
         check(day >= ACTION_BUDGET.travelHours + ACTION_BUDGET.craftHours,
             `a healthy day (${day}h) should fit one crossing and one craft`);
-        check(spend(t, ACTION_BUDGET.travelHours), 'the crossing should be affordable first thing');
-        check(!canAfford(t, ACTION_BUDGET.shelterHours + ACTION_BUDGET.trapHours),
-            'after a crossing there should not still be room for a shelter AND a trap');
+        check(spend(t, travelHoursFor(t)), 'the crossing should be affordable first thing');
+        /*
+         * Restated when stage E lengthened the day from twelve hours to
+         * fourteen: a crossing plus a shelter plus a trap now fits, exactly,
+         * and the old claim that it did not became false. The proposition the
+         * scenario is actually for — that travel crowds the day — holds at the
+         * next job along, so that is what it asserts. Re-deriving the number
+         * rather than relaxing the claim: a crossing and all three of the big
+         * jobs is still more than a day.
+         */
+        check(!canAfford(t, ACTION_BUDGET.shelterHours + ACTION_BUDGET.trapHours + ACTION_BUDGET.forageHours),
+            'after a crossing there should not be room for a shelter AND a trap AND a forage');
     },
 );
 
 scenario(
-    'a second crossing does not fit in the same day',
-    'a tribute cannot cross the map and cross back in one cycle',
+    'a third crossing never fits in one cycle',
+    'travel has a physical ceiling as well as an economic one',
     () => {
         const w = world('SCEN-budget-2');
         const t = w.tribute(0);
         resetBudget(t);
-        check(spend(t, ACTION_BUDGET.travelHours), 'first crossing');
-        const second = spend(t, ACTION_BUDGET.travelHours);
-        const third = spend(t, ACTION_BUDGET.travelHours);
-        check(!third, 'three crossings in one cycle must never fit');
-        if (second) check(hoursLeft(t) < ACTION_BUDGET.travelHours, 'two crossings should leave under a crossing spare');
+        eq(crossingsLeft(t), ACTION_BUDGET.maxCrossingsPerCycle, 'a fresh day starts with the full allowance');
+        noteCrossing(t);
+        noteCrossing(t);
+        eq(crossingsLeft(t), 0, 'two crossings is the day, however many hours are left');
+        // The hours are the other constraint, and they bite first for most.
+        resetBudget(t);
+        check(spend(t, travelHoursFor(t)), 'first crossing');
+        check(hoursLeft(t) < hoursToday(t), 'and it cost something');
     },
 );
 
@@ -161,9 +173,18 @@ scenario(
             for (const t of sim.getState().tributes) {
                 if (t.status !== 'alive' || !t.transit) continue;
                 seen++;
-                // Measured against the allowance they were *given*, because
-                // `hoursFor` moves with fatigue inside the cycle.
-                if (hoursSpent(t) < ACTION_BUDGET.travelHours - 0.001) busy++;
+                /*
+                 * Measured against the allowance they were *given*, because
+                 * `hoursFor` moves with fatigue inside the cycle — and against
+                 * `travelHoursFor(t)` rather than the flat constant, because
+                 * stage E made a crossing cost a different number of hours for
+                 * different tributes (pacing buys hours back; Overprepared and
+                 * Exit-Minded spend more). Asserting against the constant
+                 * meant this failed for every tribute who was simply good at
+                 * walking, which is the scenario measuring with the wrong
+                 * ruler for the second time. The rule it states is unchanged.
+                 */
+                if (hoursSpent(t) < travelHoursFor(t) - 0.001) busy++;
             }
         }
         check(seen > 0, 'no crossings happened at all in 40 cycles — the scenario proves nothing');

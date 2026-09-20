@@ -20,6 +20,7 @@ import { addZoneThreat } from './memory';
 import { hasTruce } from './parley';
 import { ARCHETYPE_SIGNATURE_TEXTS } from '../data/flavorText';
 import { canPromise, promise } from './obligations';
+import { tradeableZones } from './memory';
 import { loseSanity } from './sanityBands';
 import { addNotoriety } from './notoriety';
 import { incurDebt } from './debts';
@@ -427,7 +428,31 @@ export const SIGNATURES: Record<string, Signature> = {
          * Asking the authority directly is the fix; duplicating its rule in a
          * looser form is how the two drift apart again.
          */
-        if (!canPromise(ctx.state, t, 'supply')) return false;
+        /*
+         * AUDIT-9 stage E: "goods **or intelligence**".
+         *
+         * The audit's Courier carries either, and only the goods half was
+         * built — which held the set piece to 23.3% of its entrants against a
+         * 29% floor, because a courier with an empty pack had nothing to be.
+         * A courier with nothing to carry carries news instead: they know
+         * where the water is and who is where, and that is worth the walk to
+         * somebody who does not.
+         */
+        if (!canPromise(ctx.state, t, 'supply')) {
+            // What is worth telling is relative to who is being told, so the
+            // listener has to be chosen before the question can be asked. The
+            // first version asked `tradeableZones(state, t, t)` — what this
+            // tribute knows that this tribute does not — which is empty by
+            // construction, and the branch could never fire.
+            const listener = getAlive(ctx.state).filter(o => o.id !== t.id && o.zone !== t.zone
+                && (o.allianceId === t.allianceId || getRel(t, o.id) > ARCHETYPE_HOOKS.courierMinRegard))
+                .find(o => tradeableZones(ctx.state, t, o).length >= ARCHETYPE_HOOKS.courierIntelZones);
+            if (!listener) return false;
+            say(ctx, t, 'courierRun', [t.id, listener.id], { client: listener.name, where: listener.zone }, 'objective-formed');
+            t.objective = { kind: 'reach', zone: listener.zone, reason: 'ally', expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.signatureObjectiveCycles };
+            addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
+            return true;
+        }
         /*
          * Who they will carry for. Allies first, but not only allies — the
          * audit's Courier "carries goods or intelligence through contested
@@ -802,7 +827,33 @@ export const SIGNATURES: Record<string, Signature> = {
                 && (o.inventory.length < t.inventory.length
                     || need(o) > need(t) + ARCHETYPE_HOOKS.brokerNeedGap))
             .sort((a, b) => need(b) - need(a))[0];
-        if (!client) return false;
+        if (!client) {
+            /*
+             * AUDIT-9 stage E: a broker who cannot see a client goes looking
+             * for one.
+             *
+             * Pricing travel in stage C cut how often anybody shares a zone
+             * with anybody, and this set piece needs a client *standing here*
+             * — so it slipped from 29%+ to 27.0% of broker entrants through no
+             * change to the broker at all. Restoring the opportunity rather
+             * than cheapening the trade: the deal still needs both of them in
+             * one place, but the broker now walks toward the person who needs
+             * what they are carrying instead of waiting for the arena to
+             * deliver them. That is what a broker is.
+             */
+            const distant = getAlive(ctx.state)
+                .filter(o => o.id !== t.id && o.zone !== t.zone && need(o) > need(t) + ARCHETYPE_HOOKS.brokerNeedGap)
+                .sort((a, b) => need(b) - need(a))[0];
+            if (!distant) return false;
+            if (t.objective?.kind === 'reach' && t.objective.zone === distant.zone) return false;
+            t.objective = {
+                kind: 'reach',
+                zone: distant.zone,
+                reason: 'ally',
+                expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.signatureObjectiveCycles,
+            };
+            return false;
+        }
         /*
          * AUDIT-7 §8.2: and a broker holding only weapons is still a broker.
          *

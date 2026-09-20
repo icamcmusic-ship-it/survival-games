@@ -97,7 +97,7 @@
     --cat-injury: #993122;
     --cat-hazard: #6d6512;
     --cat-mutt: #6b3fa0;
-    --cat-alliance: #2f7a4f;
+    --cat-alliance: #256040;  /* AUDIT-9 stage E: 4.07:1 on the dossier row, under AA. */
     --cat-betrayal: #a11d4a;
     --cat-romance: #b23e78;
     --cat-sponsor: #1f7a6c;

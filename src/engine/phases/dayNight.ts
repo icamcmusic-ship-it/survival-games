@@ -15,7 +15,7 @@ import {
 import { driftReputation, getRel } from '../relationships';
 import { clampTribute } from '../vitals';
 import { clearBleeding, healInjury, openWound } from '../wounds';
-import { canAfford, hoursLeft, resetBudget, spend, travelHoursFor } from '../actionBudget';
+import { canAfford, crossingsLeft, hoursLeft, noteCrossing, resetBudget, spend, travelHoursFor } from '../actionBudget';
 import { isNoticed } from '../stealth';
 import { pickDestination } from '../movement';
 import { objectiveHolds, objectiveLabel, objectiveStep, updateObjective } from '../objectives';
@@ -1499,7 +1499,9 @@ function beginMove(ctx: SimContext, t: Tribute, destName: string): MoveOutcome {
      * still eat, bleed, are found and fight, because none of those are things
      * they chose to spend a day on.
      */
+    if (crossingsLeft(t) <= 0) return 'no-time';
     if (!spend(t, travelHoursFor(t))) return 'no-time';
+    noteCrossing(t);
     // §11.6: a tolled edge's `timeCost` is extra cycles spent on the crossing
     // itself, on top of whatever the destination terrain already costs.
     const cost = (dest ? travelCost(t, dest) : 1) + edgeTimeCost(ctx.state, t.zone, destName);

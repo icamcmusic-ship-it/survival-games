@@ -727,6 +727,8 @@ export interface Tribute {
     hoursLeft?: number;
     /** The allowance this cycle granted, so spending can be reported. */
     hoursToday?: number;
+    /** AUDIT-9 stage E: crossings begun this cycle, capped independently of hours. */
+    crossingsThisCycle?: number;
     /**
      * AUDIT-9 stage D chain 2: bad water drunk, not yet felt. The tribute does
      * not know this is here. See `tickExposure` in `engine/survival`.

@@ -640,7 +640,7 @@ function genuinelyLoyalTo(t: Tribute, other: Tribute): boolean {
 }
 
 /** Impressions worth handing over, best first. */
-function tradeableZones(state: GameState, teller: Tribute, listener: Tribute): string[] {
+export function tradeableZones(state: GameState, teller: Tribute, listener: Tribute): string[] {
     const cycle = cycleOf(state);
     const tellerMem = ensureMemory(teller);
     const listenerMem = ensureMemory(listener);
