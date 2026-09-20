@@ -127,6 +127,9 @@ export default function App() {
         hazardRate: numParam('hazardRate', DEFAULT_GAME_CONFIG.hazardRate, 0.25, 2.5),
         betrayalRate: numParam('betrayalRate', DEFAULT_GAME_CONFIG.betrayalRate, 0, 3),
         sponsorGenerosity: numParam('sponsorGenerosity', DEFAULT_GAME_CONFIG.sponsorGenerosity, 0, 3),
+        // A shared link replays the same Games, and how hard the body is on a
+        // tribute changes a fifth of its deaths.
+        attritionRate: numParam('attritionRate', DEFAULT_GAME_CONFIG.attritionRate ?? 1, 0, 2),
         enableFeast: boolParam('enableFeast', DEFAULT_GAME_CONFIG.enableFeast),
         enableSanity: boolParam('enableSanity', DEFAULT_GAME_CONFIG.enableSanity),
         plainNames: boolParam('plainNames', !!DEFAULT_GAME_CONFIG.plainNames),

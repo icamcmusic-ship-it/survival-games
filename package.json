@@ -35,6 +35,7 @@
     "test:batch4": "tsx scripts/check-batch4.ts",
     "test:scenario-starts": "tsx scripts/check-scenario-starts.ts",
     "test:reachability": "tsx scripts/check-reachability.ts",
+    "test:attrition": "tsx scripts/check-batch5-attrition.ts",
     "test:textscale": "node scripts/check-textscale.mjs",
     "diagnose:archetypes": "tsx scripts/diagnose-archetypes.ts"
   },

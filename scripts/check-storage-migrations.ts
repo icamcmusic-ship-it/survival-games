@@ -447,6 +447,7 @@ const FULL_CONFIG: Required<GameConfig> = {
     hazardRate: 1.75,
     betrayalRate: 2,
     sponsorGenerosity: 0.5,
+    attritionRate: 0.5,
     enableFeast: false,
     enableSanity: false,
     sanityDrainRate: 2.25,

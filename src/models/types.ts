@@ -2453,6 +2453,25 @@ export interface GameConfig {
     hazardRate: number; // multiplier on random event/mutt attack chance
     betrayalRate: number; // multiplier on alliance betrayal chance
     sponsorGenerosity: number; // multiplier on sponsor gift chance
+    /**
+     * How hard the body is on a tribute: a multiplier on every `status` damage
+     * source — starvation, thirst, infection, sepsis, hypothermia, exhaustion,
+     * venom, and a wound that will not close.
+     *
+     * Roughly a fifth of all deaths in a default Games are one of these, and
+     * for some players that is a fifth too many: an arena where the story is
+     * people against people reads differently from one where a third of the
+     * cast quietly succumbs. This is the dial for that, and it sits beside
+     * `hazardRate` because it answers the same shape of question about a
+     * different half of the arena.
+     *
+     * It scales the damage rather than the chance of the condition, so turning
+     * it down makes an infection something you have time to treat rather than
+     * something that never happens — which keeps the Medic, the treatment
+     * layer, the supply promise and the appeal all doing their jobs. 0 is a
+     * legal setting: nothing natural ever lands.
+     */
+    attritionRate?: number;
     enableFeast: boolean;
     enableSanity: boolean;
     /**

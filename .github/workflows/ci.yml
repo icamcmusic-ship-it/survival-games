@@ -96,6 +96,9 @@ jobs:
       # happened not to produce it.
       - run: npm run test:scenario-starts
       - run: npm run test:reachability
+      # The attrition dial has to actually move the deaths it names, at both
+      # ends, without touching the ones somebody caused.
+      - run: npm run test:attrition
 
       # Content and structure.
       - run: npm run test:arenas

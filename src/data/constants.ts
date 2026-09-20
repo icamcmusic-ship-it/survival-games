@@ -8,6 +8,15 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
     hazardRate: 1.0,
     betrayalRate: 1.0,
     sponsorGenerosity: 1.0,
+    /*
+     * How hard the body is on a tribute. See `GameConfig.attritionRate`.
+     *
+     * Default 1.0 — the balance baseline this audit's batch 3 was tuned
+     * against, deliberately unchanged. Moving the default would silently
+     * re-tune every indicator in that pass; this is a dial the player turns,
+     * not a change to what a standard Games is.
+     */
+    attritionRate: 1.0,
     enableFeast: true,
     enableSanity: true,
     sanityDrainRate: 1,

@@ -594,6 +594,9 @@ const CONFIG_RULES: ConfigRules = {
     hazardRate: r => clamp(asNum(r.hazardRate, DEFAULT_GAME_CONFIG.hazardRate), 0.25, 2.5),
     betrayalRate: r => clamp(asNum(r.betrayalRate, DEFAULT_GAME_CONFIG.betrayalRate), 0, 3),
     sponsorGenerosity: r => clamp(asNum(r.sponsorGenerosity, DEFAULT_GAME_CONFIG.sponsorGenerosity), 0, 3),
+    // 0 is deliberately in range: an arena where nothing natural kills anybody
+    // is a setting somebody wants, and the engine handles it.
+    attritionRate: r => clamp(asNum(r.attritionRate, DEFAULT_GAME_CONFIG.attritionRate ?? 1), 0, 2),
     enableFeast: r => asBool(r.enableFeast, DEFAULT_GAME_CONFIG.enableFeast),
     enableSanity: r => asBool(r.enableSanity, DEFAULT_GAME_CONFIG.enableSanity),
     // §(requests 2): the sanity dials. A save written before they existed

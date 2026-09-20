@@ -280,6 +280,32 @@ export function applyDamage(
     // ending: rescue, execution, or the clock running out.
     if (isDowned(t)) return false;
 
+    /*
+     * The attrition dial: how hard the body itself is on a tribute.
+     *
+     * `kind: 'status'` is already the engine's marker for everything that
+     * kills somebody without anybody doing it to them — starvation, thirst,
+     * infection, sepsis, hypothermia, exhaustion, venom in the blood, a wound
+     * that will not close. Fourteen damage sites carry it, and this is the one
+     * place all fourteen pass through, which is why the dial lives here rather
+     * than as fourteen separate constants that would drift apart.
+     *
+     * Deliberately a multiplier on the *damage*, not on the chance of the
+     * condition. Turning it down does not stop tributes getting infected; it
+     * means an infection takes longer to kill them, which leaves the treatment
+     * layer, the Medic, the appeal and the supply promise all still mattering.
+     * Suppressing the conditions themselves would quietly delete the systems
+     * built around them.
+     *
+     * At 0 nothing natural ever lands. That is a legal setting and it is
+     * meant to be: some players want an arena where the only thing that kills
+     * you is another tribute.
+     */
+    if (record.kind === 'status') {
+        amount *= ctx.state.config.attritionRate ?? 1;
+        if (amount <= 0) return false;
+    }
+
     // Armour. Only against things that hit you — a padded vest does nothing
     // about thirst, venom already in the blood, or an infected wound.
     if (ARMOURED_DAMAGE.includes(record.kind)) {

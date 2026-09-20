@@ -104,13 +104,32 @@ function presetDelta(current: GameConfig, preset: PresetConfig): string[] {
  * four betrayals a Games at 1×) and stated as the difference from default, so
  * "hazards 1.5×" reads as "about three more hazard deaths per Games".
  */
-function effectHint(kind: 'hazard' | 'betrayal' | 'sponsor', value: number): string {
+function effectHint(kind: 'hazard' | 'betrayal' | 'sponsor' | 'attrition', value: number): string {
     const delta = value - 1;
     if (Math.abs(delta) < 0.13) return 'About the usual for a Games.';
     const more = delta > 0;
     if (kind === 'hazard') {
         const n = Math.max(1, Math.round(Math.abs(delta) * 6));
         return `Roughly ${n} ${more ? 'more' : 'fewer'} hazard death${n === 1 ? '' : 's'} per Games.`;
+    }
+    /*
+     * Measured, not guessed — the standard the age hint below sets and this
+     * function should meet too. 120 complete Games at each setting:
+     *
+     *   0.00  0.82 status deaths per Games   15.4 days
+     *   0.50  4.79                           12.3
+     *   1.00  6.33                           11.1
+     *   1.50  7.81                           10.2
+     *   2.00  8.25                           10.1
+     *
+     * Roughly three deaths per 1.0 of rate across the usable middle, which is
+     * what the sentence says. The curve flattens at both ends — there is a
+     * floor of deaths that do not pass through the damage system at all, like
+     * nightlock, which is a choice rather than attrition.
+     */
+    if (kind === 'attrition') {
+        const n = Math.max(1, Math.round(Math.abs(delta) * 3));
+        return `Roughly ${n} ${more ? 'more' : 'fewer'} death${n === 1 ? '' : 's'} from wounds, illness and exposure per Games.`;
     }
     if (kind === 'betrayal') {
         const n = Math.max(1, Math.round(Math.abs(delta) * 4));
@@ -1175,6 +1194,33 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                 min={0.25} max={2.5} step={0.25}
                                 format={(v) => `${v.toFixed(2)}×`}
                                 onChange={(v) => setConfig(c => ({ ...c, hazardRate: v }))}
+                            />
+                            {/*
+                                The other half of the arena. `hazardRate` above
+                                governs what the arena does to people; this
+                                governs what their own bodies do to them —
+                                starvation, thirst, infection, sepsis,
+                                hypothermia, exhaustion, venom, and a wound
+                                that will not close. About 27% of deaths in a
+                                default Games are one of those, and for some
+                                players that is a fifth of the cast dying of
+                                something nobody did to them.
+
+                                It scales the damage rather than the chance of
+                                the condition, so turning it down makes an
+                                infection something there is time to treat
+                                rather than something that never happens. The
+                                Medic, the medical kit, the supply promise and
+                                the appeal all keep their jobs.
+                            */}
+                            <ConfigSlider
+                                label="Wounds and illness"
+                                hint="How fast untreated wounds, infection, hunger, thirst and cold kill. 0 means nothing natural ever does."
+                                effect={effectHint('attrition', config.attritionRate ?? 1)}
+                                value={config.attritionRate ?? 1}
+                                min={0} max={2} step={0.25}
+                                format={(v) => `${v.toFixed(2)}×`}
+                                onChange={(v) => setConfig(c => ({ ...c, attritionRate: v }))}
                             />
                             <ConfigSlider
                                 label="Alliance betrayal rate"

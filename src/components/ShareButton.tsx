@@ -53,6 +53,7 @@ export function shareParams(
         hazardRate: String(config.hazardRate),
         betrayalRate: String(config.betrayalRate),
         sponsorGenerosity: String(config.sponsorGenerosity),
+        attritionRate: String(config.attritionRate ?? 1),
         enableFeast: String(config.enableFeast),
         enableSanity: String(config.enableSanity),
         plainNames: String(!!config.plainNames),
