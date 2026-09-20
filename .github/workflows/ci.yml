@@ -78,6 +78,11 @@ jobs:
       # moves, or the measurements that key off it go quietly blind.
       - run: npm run test:causes
       - run: npm run test:scenarios
+      # AUDIT-9 batches 1 and 2: one failure fixture per repaired defect.
+      # These are the audit's own reproductions turned around, so a failure
+      # here is a named defect from section 2 coming back rather than a
+      # drifting aggregate.
+      - run: npm run test:audit10
 
       # Content and structure.
       - run: npm run test:arenas
