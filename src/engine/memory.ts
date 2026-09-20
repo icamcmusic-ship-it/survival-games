@@ -74,6 +74,34 @@ export function noteSighting(state: GameState, t: Tribute, zone: string, rivals:
     slot.seen = cycleOf(state);
     slot.rivals = rivals;
     slot.barren = barren;
+    // AUDIT-9 stage C §3: standing in a place and looking at it is the
+    // strongest a belief gets, and it overwrites whatever they had been told.
+    slot.confidence = 1;
+    slot.hops = 0;
+    slot.hearsay = false;
+    delete slot.toldById;
+    slot.expiresCycle = cycleOf(state) + MEMORY.sightingLifetime;
+}
+
+/**
+ * AUDIT-9 stage C §3: how sure this tribute is of what they think they know.
+ *
+ * Confidence falls with age as well as with retelling, because a thing you saw
+ * a week ago is a thing that was true a week ago. Absent on old beliefs, which
+ * were all first-hand, so the default is certainty.
+ */
+export function confidenceOf(state: GameState, slot: ZoneMemory | undefined): number {
+    if (!slot) return 0;
+    const base = slot.confidence ?? 1;
+    const age = Math.max(0, cycleOf(state) - slot.seen);
+    return Math.max(0, base * Math.pow(MEMORY.confidenceDecay, age));
+}
+
+/** Whether a belief is still worth acting on at all. */
+export function stillBelieved(state: GameState, slot: ZoneMemory | undefined): boolean {
+    if (!slot) return false;
+    if (slot.expiresCycle !== undefined && cycleOf(state) > slot.expiresCycle) return false;
+    return confidenceOf(state, slot) >= MEMORY.actionableConfidence;
 }
 
 /**
@@ -192,7 +220,16 @@ export function rememberedRivals(state: GameState, t: Tribute, zone: string): nu
     const slot = ensureMemory(t).zones[zone];
     if (!slot) return 0;
     if (hearsayAge(slot, Math.max(0, cycleOf(state) - slot.seen)) > MEMORY.sightingLifetime) return 0;
-    return slot.rivals;
+    /*
+     * AUDIT-9 stage C §3: a belief you are not sure of is a smaller belief.
+     *
+     * "Three of them are in there" heard third-hand should not move a decision
+     * as hard as having counted them yourself. Scaling the *count* rather than
+     * gating on it is deliberate: a weak report still says "somebody", which
+     * is the honest shape of the information.
+     */
+    if (!stillBelieved(state, slot)) return 0;
+    return slot.rivals * confidenceOf(state, slot);
 }
 
 /** How stripped a tribute believes a zone's forage to be, decayed toward 0. */
@@ -620,7 +657,7 @@ function tradeableZones(state: GameState, teller: Tribute, listener: Tribute): s
 }
 
 /** Copies one of the teller's impressions into the listener, flagged as told. */
-function writeHearsay(state: GameState, teller: Tribute, listener: Tribute, zone: string,
+export function writeHearsay(state: GameState, teller: Tribute, listener: Tribute, zone: string,
                       threat: number, rivals: number, barren: number) {
     const slot = zoneSlot(listener, zone);
     slot.seen = cycleOf(state);
@@ -633,6 +670,20 @@ function writeHearsay(state: GameState, teller: Tribute, listener: Tribute, zone
     slot.barren = Math.max(0, Math.min(1, barren));
     slot.hearsay = true;
     slot.toldById = teller.id;
+    /*
+     * AUDIT-9 stage C §3: a retelling is weaker than what was retold.
+     *
+     * The teller's own confidence, discounted for the hop. Third-hand is
+     * therefore markedly weaker than second-hand without anybody having to
+     * model that separately — it falls out of the chain. Expiry is shorter
+     * too: hearsay about a place goes stale faster than having been there,
+     * because you cannot tell how old the original look was.
+     */
+    const tellerSlot = ensureMemory(teller).zones[zone];
+    const tellerConfidence = confidenceOf(state, tellerSlot);
+    slot.hops = (tellerSlot?.hops ?? 0) + 1;
+    slot.confidence = Math.max(0, tellerConfidence * INTEL.hopConfidenceLoss);
+    slot.expiresCycle = cycleOf(state) + Math.round(MEMORY.sightingLifetime * INTEL.hearsayLifetimeShare);
 }
 
 /**

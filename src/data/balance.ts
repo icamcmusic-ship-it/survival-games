@@ -3919,6 +3919,10 @@ export const EPILOGUE = {
 } as const;
 
 export const MEMORY = {
+    /** AUDIT-9 stage C §3: confidence retained per cycle of age. */
+    confidenceDecay: 0.88,
+    /** Below this, a belief is not worth acting on. */
+    actionableConfidence: 0.25,
     /**
      * §3.4: how badly a dissociating tribute misremembers a place. `Blank` is
      * the share of zones whose remembered threat reads as nothing at all;
@@ -7360,6 +7364,10 @@ export const EDGE_RULES = {
  * somebody where the water is — or telling them wrong — is the counterweight.
  */
 export const INTEL = {
+    /** AUDIT-9 stage C §3: confidence retained per retelling. */
+    hopConfidenceLoss: 0.65,
+    /** Hearsay goes stale faster than having been there. */
+    hearsayLifetimeShare: 0.6,
     /** Chance allies sharing a camp trade honest map knowledge in a cycle. */
     shareChance: 0.3,
     /** Zones handed over in one exchange. */

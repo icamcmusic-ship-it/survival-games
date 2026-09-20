@@ -479,6 +479,36 @@ export interface ZoneMemory {
     hearsay?: boolean;
     /** §9.7: who told them, so a lie has an author to be furious with. */
     toldById?: string;
+    /**
+     * AUDIT-9 stage C §3: how sure they are, 0 to 1.
+     *
+     * The audit asked for a belief to carry "claim, source, observed time,
+     * confidence and expiry". `hearsay` is provenance as a *boolean* — a claim
+     * heard third-hand from somebody who heard it from a liar was exactly as
+     * strong as one heard from the person who saw it — and confidence did not
+     * exist at all. It does now, and it is what separates "I know" from "I was
+     * told", and both from "somebody said they heard".
+     *
+     * Undefined on beliefs written before this existed, and on saved states;
+     * `confidenceOf` reads that as first-hand, which is what those beliefs
+     * were, so old saves lose nothing.
+     */
+    confidence?: number;
+    /**
+     * How many mouths this has been through. 0 is having seen it. Each retelling
+     * costs confidence, which is what makes a rumour weaken with distance
+     * instead of arriving as strong as the truth.
+     */
+    hops?: number;
+    /**
+     * AUDIT-9 stage C §3: when this stops being worth acting on.
+     *
+     * Expiry used to be one global constant applied at read time, so a belief
+     * could not be "I am sure of this for a long time" as distinct from "this
+     * goes stale fast" — and a sighting of a camp and a sighting of somebody
+     * walking past decayed identically.
+     */
+    expiresCycle?: number;
 }
 
 /**

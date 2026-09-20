@@ -19,6 +19,7 @@ import { canPromise, promise, tickObligations, openObligations } from '../src/en
 import { forecastHazard, tickForecasts, mitigate } from '../src/engine/hazardChain';
 import { hasEffect, effectsFor } from '../src/engine/zoneEffects';
 import { tickExposure } from '../src/engine/survival';
+import { noteSighting, confidenceOf, stillBelieved, rememberedRivals, ensureMemory, writeHearsay } from '../src/engine/memory';
 
 console.log('action budgets');
 
@@ -471,6 +472,61 @@ scenario(
         tickExposure(ctx);
         eq(t.injuries.poisoned, true, 'and then it arrives');
         eq(t.waterborne, undefined, 'spent');
+    },
+);
+
+console.log('\nbounded knowledge');
+
+scenario(
+    'seeing a place yourself is the strongest a belief gets',
+    'first-hand knowledge is certainty, and it overwrites what you were told',
+    () => {
+        const w = world('SCEN-bel-1');
+        const t = w.tribute(0);
+        const zone = w.state.arena.zones[1].name;
+        // Start them off having been told something.
+        const mem = ensureMemory(t);
+        mem.zones[zone] = { seen: w.state.cycle ?? 0, threat: 2, rivals: 3, barren: 0, hearsay: true, confidence: 0.4, hops: 2 };
+        noteSighting(w.state, t, zone, 1, 0);
+        eq(confidenceOf(w.state, mem.zones[zone]), 1, 'looking at it is certainty');
+        eq(mem.zones[zone].hearsay, false, 'and it is no longer hearsay');
+        eq(mem.zones[zone].hops, 0, 'nor second-hand');
+    },
+);
+
+scenario(
+    'a retelling is weaker than what was retold, and a third telling weaker still',
+    'confidence falls along the chain, so a rumour weakens with distance',
+    () => {
+        const w = world('SCEN-bel-2');
+        const zone = w.state.arena.zones[1].name;
+        const a = w.tribute(0), b = w.tribute(1), c = w.tribute(2);
+        noteSighting(w.state, a, zone, 2, 0);
+        const first = confidenceOf(w.state, ensureMemory(a).zones[zone]);
+        writeHearsay(w.state, a, b, zone, 2, 2, 0);
+        const second = confidenceOf(w.state, ensureMemory(b).zones[zone]);
+        writeHearsay(w.state, b, c, zone, 2, 2, 0);
+        const third = confidenceOf(w.state, ensureMemory(c).zones[zone]);
+        check(second < first, `second-hand (${second.toFixed(2)}) should be weaker than seeing it (${first.toFixed(2)})`);
+        check(third < second, `third-hand (${third.toFixed(2)}) should be weaker again`);
+        eq(ensureMemory(c).zones[zone].hops, 2, 'and the chain depth should be recorded');
+    },
+);
+
+scenario(
+    'a belief goes stale and stops being worth acting on',
+    'per-belief expiry: what was true last week is not a plan',
+    () => {
+        const w = world('SCEN-bel-3');
+        const t = w.tribute(0);
+        const zone = w.state.arena.zones[1].name;
+        noteSighting(w.state, t, zone, 3, 0);
+        check(stillBelieved(w.state, ensureMemory(t).zones[zone]), 'fresh, so believed');
+        check(rememberedRivals(w.state, t, zone) > 0, 'and acted on');
+        w.state.cycle = (w.state.cycle ?? 0) + 40;
+        w.state.day = w.state.cycle;
+        check(!stillBelieved(w.state, ensureMemory(t).zones[zone]), 'stale, so no longer believed');
+        eq(rememberedRivals(w.state, t, zone), 0, 'and no longer acted on');
     },
 );
 
