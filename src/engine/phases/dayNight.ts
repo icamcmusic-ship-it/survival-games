@@ -30,6 +30,8 @@ import { isActive, isDowned } from '../downed';
 import { decayUpkeep, postActionUpkeep, preActionUpkeep } from './upkeep';
 import { resolveParachutes } from '../parachutes';
 import { negotiateObligations, tickObligations } from '../obligations';
+import { tickForecasts } from '../hazardChain';
+import { tickExposure } from '../survival';
 import {
     applyArenaEvent, fill, handleInsanity, idleAction, isBreakingDown,
     pendingChain, pickTerrainEvent, resolveMuttAttack, resolvePairEncounter,
@@ -412,6 +414,11 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     tickZoneControl(ctx);
     tickSharedGrief(ctx);
     rollAmbientZoneEffects(ctx);
+    // AUDIT-9 stage C §5: forecasts come due before the effects tick, so a
+    // hazard that lands this cycle is a hazard this cycle.
+    tickForecasts(ctx);
+    // AUDIT-9 stage D chain 2: bad water drunk days ago, arriving now.
+    tickExposure(ctx);
     tickZoneEffects(ctx);
     // §5.8: occupation loads the arena's structures; empty ones settle back.
     tickStructuralFatigue(ctx);

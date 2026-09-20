@@ -435,6 +435,8 @@ export const NOTORIETY = {
  * you unless you can boil it.
  */
 export const WATER = {
+    /** AUDIT-9 stage D chain 2: cycles between drinking it and feeling it. */
+    waterborneIncubationCycles: 3,
     /** Thirst removed by drinking straight from a stream or a pool. */
     zoneDrinkRelief: 55,
     /** Odds foul water poisons a tribute who drinks it untreated. */
@@ -3184,6 +3186,14 @@ export const TERRAIN_DRYNESS: Record<string, number> = {
 };
 
 export const ZONE_EFFECTS = {
+    /** AUDIT-9 stage D chain 3: terrain where fire takes the air first. */
+    confinedTerrain: ['cave', 'ruins'] as const,
+    smokeLeadCycles: 1,
+    smokeSeverity: 1.4,
+    /** AUDIT-9 stage D chain 2: cycles for contamination to reach downstream. */
+    contaminationDriftCycles: 2,
+    /** AUDIT-9 stage C §5: odds a forecast hazard picks occupied ground. */
+    hazardOccupiedBias: 0.75,
     /** How long each effect lasts before lifting on its own. */
     burningDuration: 3,
     floodedDuration: 4,
@@ -3374,6 +3384,11 @@ export const ZONE_EFFECTS = {
  * mechanic is tuned.
  */
 export const LOAD_BEARING = {
+    /** AUDIT-9 stage D chain 1: load at which a building starts to sound wrong. */
+    warnAt: 0.6,
+    warnLeadCycles: 2,
+    /** How much a day's shoring takes off the collapse odds. */
+    shoredCollapseMultiplier: 0.25,
     /** Load added per occupant, per cycle, to a `ruins` zone. */
     perOccupantCycle: 0.05,
     /** Load added by a fight resolving inside one. Violence is loud. */
@@ -3844,6 +3859,9 @@ export const INVENTORY = {
 
 /** Zone economy: foraging strips a zone, and the arena grows it back slowly. */
 export const ZONES = {
+    /** AUDIT-9 stage C §5: odds a tribute acts on a hazard warning. */
+    mitigateChance: 0.25,
+    mitigatePerIntelligence: 0.04,
     /** Depletion below which a badly stripped zone visibly reads as recovered. */
     regrowthBeatBelow: 0.2,
     /** Peak depletion a zone must have hit for its recovery to be worth a line. */
@@ -8413,4 +8431,25 @@ export const OBLIGATIONS = {
     keptRegard: 14,
     keptTrust: 6,
     brokenRegard: 22,
+} as const;
+
+/**
+ * AUDIT-9 stage C §5: warning, mitigation and what a half-finished job is
+ * worth. See `engine/hazardChain`.
+ */
+export const HAZARD_CHAIN = {
+    /** Cycles between a hazard being forecast and arriving. */
+    defaultLeadCycles: 2,
+    /** How threatening a forecast makes the zone feel to whoever is in it. */
+    forecastThreat: 3,
+    /** Nobody starts a day's work on this with an hour left. */
+    minHoursToStart: 3,
+    /** Credit a single unfinished cycle of work is worth. */
+    partialCredit: 0.5,
+    /** How much of the hazard a half-finished job takes off. */
+    partialSeverityRelief: 0.6,
+    /** Hours off the job per point of carpentry. */
+    carpentryHourRelief: 0.06,
+    minSkillMultiplier: 0.5,
+    carpentryTrainShare: 0.5,
 } as const;

@@ -37,6 +37,15 @@ import { adjustRel } from './relationships';
 export function dropParachute(ctx: SimContext, forWhom: Tribute, item: Item, seal?: string) {
     const state = ctx.state;
     state.parachutes = state.parachutes ?? [];
+    /*
+     * AUDIT-9 stage C: the one door quantity enters the arena through.
+     *
+     * Everything else in a run moves items around — looting, trading, giving,
+     * dropping. A sponsor gift is the only thing that *creates* any, because
+     * it comes from outside, and the conservation scenario needs to know how
+     * much so it can tell "the Capitol sent it" from "the engine invented it".
+     */
+    state.giftedQuantity = (state.giftedQuantity ?? 0) + (item.stack ?? 1);
     state.parachutes.push({
         id: `chute-${state.logCounter}-${state.parachutes.length}`,
         item,

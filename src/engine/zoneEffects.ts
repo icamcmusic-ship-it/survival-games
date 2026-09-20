@@ -2,11 +2,12 @@ import { GameState, Terrain, Tribute, ZoneEffect, ZoneEffectKind } from '../mode
 import { injure, openWound } from './wounds';
 import { BLEEDING, TERRAIN_DRYNESS as TERRAIN_DRYNESS_TABLE, ZONE_EFFECTS } from '../data/balance';
 import { structuralFatigueOf } from './loadBearing';
-import { SimContext } from './context';
+import { forecastHazard } from './hazardChain';
+import { SimContext, getAlive } from './context';
 import { traitMod } from '../data/traits';
 import { applyDamage, checkDeath } from './combat';
 import { cycleOf } from './memory';
-import { depleteZone, getZone, hasForceField, severEdge } from './map';
+import { depleteZone, getZone, hasForceField, severEdge, zoneFeatures } from './map';
 import { clampTribute } from './vitals';
 import { climateOf } from './climate';
 import { arenaHasLaw } from './gamesProfile';
@@ -31,7 +32,7 @@ import { loseSanity } from './sanityBands';
  * environment.
  */
 
-function effectsFor(state: GameState, zone: string): ZoneEffect[] {
+export function effectsFor(state: GameState, zone: string): ZoneEffect[] {
     state.zoneEffects = state.zoneEffects ?? {};
     if (!state.zoneEffects[zone]) state.zoneEffects[zone] = [];
     return state.zoneEffects[zone];
@@ -105,6 +106,10 @@ export function startZoneEffect(ctx: SimContext, zone: string, kind: ZoneEffectK
         severity,
     });
 
+    // AUDIT-9 stage D chain 3: fire in a confined space is a smoke problem
+    // before it is a burning problem.
+    if (kind === 'burning') forecastConfinedSmoke(ctx, zone);
+
     // §5.7: contamination meeting standing floodwater is carried downstream.
     // Runs after the push so the zone already reads as contaminated — the
     // spread can't circle back through a flooded neighbour and recurse.
@@ -173,6 +178,34 @@ function resolveEffectInteraction(ctx: SimContext, zone: string, incoming: ZoneE
 }
 
 /** §5.7: floodwater carrying contamination into 1-2 neighbouring zones. */
+/**
+ * AUDIT-9 stage D, chain 3 of 3: "confined fire + poor ventilation ->
+ * smoke/asphyxiation", whose branches are "scout exits, ventilate, abandon
+ * cache; smoke also creates a detectable trail".
+ *
+ * Fire in the open is a fire. Fire in a cave, a tunnel or a chokepoint is a
+ * different problem with a different killer: the air goes before the flame
+ * reaches anybody. The engine had one fire, burning identically wherever it
+ * caught, so the most claustrophobic sectors in the game were no worse to be
+ * caught alight in than a meadow.
+ *
+ * The warning is the smoke, which is also the trail: a forecast is a public
+ * log line, so a fire in a confined space tells the whole arena roughly where
+ * the trouble is — the audit's "smoke also creates a detectable trail",
+ * arriving free because warnings are things the world says out loud.
+ */
+function forecastConfinedSmoke(ctx: SimContext, zone: string) {
+    const z = getZone(ctx.state.arena, zone);
+    if (!z) return;
+    const confined = (ZONE_EFFECTS.confinedTerrain as readonly Terrain[]).includes(z.terrain)
+        || zoneFeatures(z).chokepoint === true;
+    if (!confined) return;
+    forecastHazard(ctx, zone, 'contaminated', 'arena', {
+        leadCycles: ZONE_EFFECTS.smokeLeadCycles,
+        severity: ZONE_EFFECTS.smokeSeverity,
+    });
+}
+
 function spreadContamination(ctx: SimContext, from: string) {
     const zone = getZone(ctx.state.arena, from);
     if (!zone) return;
@@ -180,10 +213,22 @@ function spreadContamination(ctx: SimContext, from: string) {
     const candidates = zone.adjacent.filter(n => !collapsed.includes(n) && !hasEffect(ctx.state, n, 'contaminated'));
     if (candidates.length === 0) return;
     const targets = ctx.rng.shuffle(candidates).slice(0, ctx.rng.nextInt(1, Math.min(2, candidates.length)));
+    /*
+     * AUDIT-9 stage D, chain 2 of 3: "water-source contamination upstream ->
+     * cluster of delayed illness", whose stated branches are "track exposure,
+     * move source, warn others or conceal it; distinguish agents' knowledge
+     * from world truth".
+     *
+     * Forecast rather than applied. The whole point of an *upstream* problem
+     * is that there is a gap between the thing going wrong and the thing
+     * arriving where you are drinking — and that gap is the only place a
+     * warning can live. Instant spread made it a fact of the world nobody
+     * could have known before it was true.
+     */
     targets.forEach(n => {
-        startZoneEffect(ctx, n, 'contaminated', false);
+        forecastHazard(ctx, n, 'contaminated', 'weather', { leadCycles: ZONE_EFFECTS.contaminationDriftCycles });
         ctx.logEvent(
-            `The floodwater running out of ${from} carries whatever is wrong with it into ${n}.`,
+            `The floodwater running out of ${from} is carrying whatever is wrong with it, and ${n} is downhill.`,
             [],
             { important: true, zone: n, category: 'hazard' }
         );
@@ -514,6 +559,23 @@ export function severRandomEdge(ctx: SimContext, zoneName: string): string | und
  * the same point the border starts closing) — this is the Gamemakers turning
  * up the pressure everywhere at once, not background noise from day one.
  */
+/**
+ * AUDIT-9 stage C §5: a hazard nobody is near is weather, not a hazard.
+ *
+ * A uniform pick put most forecasts in empty sectors — 42 warnings across 400
+ * runs produced 2 pieces of mitigation work, because acting on a warning
+ * requires standing where the warning is. Weighting toward occupied ground is
+ * also the truer model of this particular arena: the Gamemakers are running a
+ * show, and a fire in a sector with nobody in it is not one.
+ */
+function pickWatched(ctx: SimContext, zones: string[]): string {
+    const occupied = zones.filter(z => getAlive(ctx.state).some(t => t.zone === z));
+    if (occupied.length === 0) return ctx.rng.pick(zones);
+    return ctx.rng.chance(ZONE_EFFECTS.hazardOccupiedBias)
+        ? ctx.rng.pick(occupied)
+        : ctx.rng.pick(zones);
+}
+
 export function rollAmbientZoneEffects(ctx: SimContext) {
     // §5 `deadlyNight`: whatever this arena does to people, it does twice as
     // often after dark. Applied as a multiplier on the ambient roll rather
@@ -546,13 +608,20 @@ export function rollAmbientZoneEffects(ctx: SimContext) {
     const flammable = active.filter(z =>
         (ZONE_EFFECTS.flammableTerrain as readonly Terrain[]).includes(z.terrain) && !hasEffect(state, z.name, 'burning'));
     if (flammable.length > 0 && ctx.rng.chance(ZONE_EFFECTS.ambientFireChance * darkMultiplier)) {
-        startZoneEffect(ctx, ctx.rng.pick(flammable).name, 'burning');
+        /*
+         * AUDIT-9 stage C §5: forecast rather than started. Smoke on the wind
+         * is a thing somebody can act on; a zone that is suddenly on fire is
+         * not. The hazard still arrives on its own if nobody does anything,
+         * which is what keeps the warning a warning rather than a reprieve.
+         */
+        forecastHazard(ctx, pickWatched(ctx, flammable.map(z => z.name)), 'burning', 'arena');
     }
 
     // Flooding: open water rising over its banks.
     const floodable = active.filter(z => (z.terrain === 'water' || z.terrain === 'wetland') && !hasEffect(state, z.name, 'flooded'));
     if (floodable.length > 0 && ctx.rng.chance(ZONE_EFFECTS.ambientFloodChance * darkMultiplier)) {
-        startZoneEffect(ctx, ctx.rng.pick(floodable).name, 'flooded');
+        // Water against the banks, an evening before it is over them.
+        forecastHazard(ctx, pickWatched(ctx, floodable.map(z => z.name)), 'flooded', 'weather');
     }
 
     // Freezing: a hard local freeze, likelier where the standing climate is

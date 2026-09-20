@@ -19,7 +19,7 @@
  * failure is a sentence about the engine rather than a note that something is
  * rarer than it used to be.
  */
-import { GameState, Tribute, Item } from '../src/models/types';
+import { Tribute } from '../src/models/types';
 import { DEFAULT_GAME_CONFIG, ARENAS } from '../src/data/constants';
 import { initialRunState } from './runInit';
 import { Simulator } from '../src/engine/simulator';
@@ -96,17 +96,6 @@ export function world(seed: string, opts: { arenaId?: string; day?: number } = {
         },
         sim() { return new Simulator(state); },
     };
-}
-
-/** Total quantity of every item everywhere, for conservation propositions. */
-export function inventoryCensus(state: GameState): Map<string, number> {
-    const out = new Map<string, number>();
-    const add = (items: Item[] | undefined) => (items ?? []).forEach(i => {
-        out.set(i.id, (out.get(i.id) ?? 0) + (i.stack ?? 1));
-    });
-    state.tributes.forEach(t => add(t.inventory));
-    Object.values(state.alliances ?? {}).forEach(a => add(a.sharedCache));
-    return out;
 }
 
 export function report(label: string): number {

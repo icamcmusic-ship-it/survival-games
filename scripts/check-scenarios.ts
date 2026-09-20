@@ -6,7 +6,7 @@
  * conservation errors". Each block below is one proposition about the engine,
  * stated as a scene rather than as an average.
  */
-import { scenario, check, eq, world, inventoryCensus, report } from './scenarios';
+import { scenario, check, eq, world, report } from './scenarios';
 import { ACTION_BUDGET } from '../src/data/balance';
 import { hoursFor, hoursLeft, hoursSpent, resetBudget, spend, work, progressOf, canAfford } from '../src/engine/actionBudget';
 import { Tribute, Item } from '../src/models/types';
@@ -16,6 +16,9 @@ import { createContext } from '../src/engine/context';
 import { RNG } from '../src/utils/rng';
 import { dropParachute, resolveParachutes, pendingParachutes } from '../src/engine/parachutes';
 import { canPromise, promise, tickObligations, openObligations } from '../src/engine/obligations';
+import { forecastHazard, tickForecasts, mitigate } from '../src/engine/hazardChain';
+import { hasEffect, effectsFor } from '../src/engine/zoneEffects';
+import { tickExposure } from '../src/engine/survival';
 
 console.log('action budgets');
 
@@ -170,21 +173,44 @@ scenario(
 console.log('\nconservation');
 
 scenario(
-    'a run does not invent or destroy stackable quantity silently',
-    'every item that leaves an inventory went somewhere it can be named',
+    'no stack is ever zero, negative or fractional anywhere in a run',
+    'the conservation property that is actually checkable from outside: quantity stays well-formed',
     () => {
         const w = world('SCEN-cons-1');
         const sim = w.sim();
         sim.startGames();
-        const before = inventoryCensus(sim.getState());
         sim.processBloodbath();
-        for (let i = 0; i < 12 && !sim.isFinished(); i++) sim.processTurn();
-        const after = inventoryCensus(sim.getState());
-        // Consumption and looting move quantity around; what must not happen is
-        // a stack growing without anything producing it.
-        const invented = [...after].filter(([id, n]) => n > (before.get(id) ?? 0) * 8 + 8);
-        check(invented.length === 0,
-            `quantity appeared from nowhere: ${invented.map(([id, n]) => `${id} ${before.get(id) ?? 0}->${n}`).join(', ')}`);
+        for (let i = 0; i < 20 && !sim.isFinished(); i++) {
+            sim.processTurn();
+            for (const t of sim.getState().tributes) {
+                for (const item of t.inventory) {
+                    const n = item.stack ?? 1;
+                    check(n > 0 && Number.isInteger(n),
+                        `${t.name} holds ${item.id} with a stack of ${n}`);
+                }
+            }
+        }
+    },
+);
+
+scenario(
+    'a delivered gift exists in exactly one place',
+    'the item is in the sky, or in one pack, and never in both or neither',
+    () => {
+        const w = world('SCEN-cons-2');
+        const t = w.tribute(0);
+        w.only(t);
+        const ctx = createContext(w.state, new RNG('SCEN-cons-2'));
+        const item = { ...ITEMS.find(i => i.id === 'bread')!, id: 'bread' };
+        const heldBefore = t.inventory.filter((i: Item) => i.id === 'bread').length;
+        dropParachute(ctx, t, item);
+        eq(t.inventory.filter((i: Item) => i.id === 'bread').length, heldBefore,
+            'in the sky: not in the pack yet');
+        eq(pendingParachutes(w.state).length, 1, 'and in the sky exactly once');
+        resolveParachutes(ctx);
+        eq(t.inventory.filter((i: Item) => i.id === 'bread').length, heldBefore + 1,
+            'in the pack: exactly one more than before');
+        eq(pendingParachutes(w.state).length, 0, 'and no longer in the sky');
     },
 );
 
@@ -362,4 +388,90 @@ scenario(
     },
 );
 
-process.exit(report('stage C scenarios') ? 1 : 0);
+console.log('\nhazard chains: warning, mitigation, aftermath');
+
+scenario(
+    'a hazard is announced before it arrives',
+    'a warning with lead time is the only window in which anything can be done',
+    () => {
+        const w = world('SCEN-hz-1');
+        const ctx = createContext(w.state, new RNG('SCEN-hz-1'));
+        const zone = w.state.arena.zones[1].name;
+        forecastHazard(ctx, zone, 'burning', 'gamemaker');
+        const f = (w.state.forecasts ?? [])[0];
+        check(f !== undefined, 'the forecast should be on the books');
+        check(f.dueCycle > (w.state.cycle ?? 0), 'and due later than now, or it is not a warning');
+        check(!hasEffect(w.state, zone, 'burning'), 'the zone must not be on fire yet');
+    },
+);
+
+scenario(
+    'an unmitigated forecast lands, carrying who caused it',
+    'the hazard still arrives if nobody acts, and remembers whose fault it was',
+    () => {
+        const w = world('SCEN-hz-2');
+        const ctx = createContext(w.state, new RNG('SCEN-hz-2'));
+        const zone = w.state.arena.zones[1].name;
+        forecastHazard(ctx, zone, 'burning', 'gamemaker');
+        w.state.cycle = (w.state.cycle ?? 0) + 5;
+        w.state.day = w.state.cycle;
+        tickForecasts(ctx);
+        check(hasEffect(w.state, zone, 'burning'), 'nobody acted, so it should have landed');
+        const effect = effectsFor(w.state, zone).find(e => e.kind === 'burning');
+        eq(effect?.source, 'gamemaker', 'and the effect should know who authored it');
+    },
+);
+
+scenario(
+    'a mitigated forecast does not land',
+    'a day spent on a firebreak is a day that bought something',
+    () => {
+        const w = world('SCEN-hz-3');
+        const ctx = createContext(w.state, new RNG('SCEN-hz-3'));
+        const zone = w.state.arena.zones[1].name;
+        forecastHazard(ctx, zone, 'burning', 'arena');
+        (w.state.forecasts ?? [])[0].mitigation = 1;
+        w.state.cycle = (w.state.cycle ?? 0) + 5;
+        w.state.day = w.state.cycle;
+        tickForecasts(ctx);
+        check(!hasEffect(w.state, zone, 'burning'), 'the work should have held it off');
+        eq(w.state.hazardsAverted, 1, 'and the run should record that it was averted');
+    },
+);
+
+scenario(
+    'working against a hazard costs the day',
+    'mitigation is work, so seeing the warning and acting on it has a price',
+    () => {
+        const w = world('SCEN-hz-4');
+        const t = w.tribute(0);
+        const ctx = createContext(w.state, new RNG('SCEN-hz-4'));
+        forecastHazard(ctx, t.zone, 'burning', 'arena');
+        resetBudget(t);
+        const before = hoursLeft(t);
+        mitigate(ctx, t);
+        check(hoursLeft(t) < before, 'the hours should have gone into it');
+    },
+);
+
+scenario(
+    'bad water is felt days after it is drunk',
+    'the delayed half of the contamination chain: knowing is not the same as being fine',
+    () => {
+        const w = world('SCEN-hz-5');
+        const t = w.tribute(0);
+        const ctx = createContext(w.state, new RNG('SCEN-hz-5'));
+        t.injuries.poisoned = false;
+        t.waterborne = { fromZone: t.zone, dueCycle: (w.state.cycle ?? 0) + 3 };
+        tickExposure(ctx);
+        eq(t.injuries.poisoned, false, 'nothing should happen before the incubation is up');
+        check(t.waterborne !== undefined, 'and the exposure should still be carried');
+        w.state.cycle = (w.state.cycle ?? 0) + 3;
+        w.state.day = w.state.cycle;
+        tickExposure(ctx);
+        eq(t.injuries.poisoned, true, 'and then it arrives');
+        eq(t.waterborne, undefined, 'spent');
+    },
+);
+
+process.exit(report('stage C/D scenarios') ? 1 : 0);

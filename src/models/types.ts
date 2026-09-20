@@ -681,6 +681,11 @@ export interface Tribute {
     /** The allowance this cycle granted, so spending can be reported. */
     hoursToday?: number;
     /**
+     * AUDIT-9 stage D chain 2: bad water drunk, not yet felt. The tribute does
+     * not know this is here. See `tickExposure` in `engine/survival`.
+     */
+    waterborne?: { fromZone: string; dueCycle: number };
+    /**
      * Work carried across cycles: a half-set trap, a half-built shelter.
      * One at a time — starting something else abandons it.
      */
@@ -1777,7 +1782,21 @@ export interface ZoneEffect {
     chainLength?: number;
     /** Multiplier on this instance's per-tick damage/chance constants. Defaults to 1 where absent. */
     severity?: number;
+    /**
+     * AUDIT-9 stage C §5: who or what authored this.
+     *
+     * A fire started by a Gamemaker, by somebody's camp fire getting away from
+     * them, and by an ambient roll used to be indistinguishable the moment
+     * they existed — so nobody could be blamed and no belief about who did it
+     * could form. See `engine/hazardChain`.
+     */
+    source?: HazardSource;
+    /** The tribute whose fault it was, where one is known. */
+    byId?: string;
 }
+
+/** AUDIT-9 stage C §5: where a hazard came from. */
+export type HazardSource = 'arena' | 'gamemaker' | 'tribute' | 'weather';
 
 /** A snare, deadfall or tripline left in a zone, waiting for whoever walks into it. */
 export interface Trap {
@@ -2655,6 +2674,30 @@ export interface GameState {
      * particular cycle. See `engine/obligations`.
      */
     obligations?: Obligation[];
+    /**
+     * AUDIT-9 stage C §5: hazards that have been announced but have not
+     * arrived, which is the only window in which anybody can do anything
+     * about them. See `engine/hazardChain`.
+     */
+    forecasts?: Array<{
+        zone: string;
+        kind: ZoneEffectKind;
+        source: HazardSource;
+        byId?: string;
+        dueCycle: number;
+        severity: number;
+        /** 0 to 1. A partly dug firebreak still takes the edge off. */
+        mitigation: number;
+        mitigatedById?: string;
+    }>;
+    /** Run-level count, for the achievement layer and the harnesses. */
+    hazardsAverted?: number;
+    /**
+     * AUDIT-9 stage C: total quantity the sponsors have put into the arena.
+     * The only legitimate source of new items in a run. See
+     * `engine/parachutes`.
+     */
+    giftedQuantity?: number;
     parachutes?: Array<{
         id: string;
         item: Item;
@@ -3180,6 +3223,10 @@ export type EventType =
     | 'succession-split'
     | 'succession-unnamed'
     | 'trap-destroyed'
+    | 'waterborne-illness'
+    | 'hazard-forecast'
+    | 'hazard-mitigated'
+    | 'hazard-averted'
     | 'obligation-made'
     | 'obligation-kept'
     | 'obligation-broken'
