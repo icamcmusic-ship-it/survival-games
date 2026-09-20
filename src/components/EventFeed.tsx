@@ -187,7 +187,7 @@ function DeathCard({ log, tribute, animate, cast, onSelectTribute }: {
                     className="flex-none w-11 h-11 flex items-center justify-center border-2 border-[var(--ink)] bg-[var(--paper-flush)]"
                     aria-hidden="true"
                 >
-                    <span className="font-mono text-[11px] font-black text-[var(--color-ink-500)]">
+                    <span className="font-mono text-mini font-black text-[var(--color-ink-500)]">
                         {tribute ? `D${tribute.district}` : '—'}
                     </span>
                 </div>
@@ -199,7 +199,7 @@ function DeathCard({ log, tribute, animate, cast, onSelectTribute }: {
                         {tribute && (
                             <span className="font-black uppercase text-sm text-[var(--ink)]">
                                 {tribute.name}
-                                <span className="font-mono font-bold text-[10px] text-[var(--color-ink-500)] ml-1.5">
+                                <span className="font-mono font-bold text-micro text-[var(--color-ink-500)] ml-1.5">
                                     District {tribute.district} · {tribute.gender === 'Male' ? 'M' : 'F'} · age {tribute.age}
                                 </span>
                             </span>
@@ -283,7 +283,7 @@ export function withTributeLinks(
                     `aria-label` instead, spelled out, where they belong. */}
                 <span
                     aria-hidden="true"
-                    className="font-mono text-[9px] font-black text-[var(--color-ink-500)] ml-0.5 align-super"
+                    className="font-mono text-nano font-black text-[var(--color-ink-500)] ml-0.5 align-super"
                 >
                     {person.district}{person.gender === 'Male' ? 'M' : 'F'}
                 </span>
@@ -341,7 +341,7 @@ export function FeedLine({ log, showTag = true, animate = true, cast, onSelectTr
                 style={{ ['--cat' as string]: meta.color }}
             >
                 {log.clock && <span className="feed-clock">{log.clock}</span>}
-                <span className="font-mono text-[13px]">
+                <span className="font-mono text-label">
                     {spoilerSafe && !revealed && (log.category === 'death' || log.category === 'kill')
                         ? 'DEATH · withheld while spoiler-safe viewing is on'
                         : factLineOf(log, byId)}
@@ -391,7 +391,7 @@ export function FeedLine({ log, showTag = true, animate = true, cast, onSelectTr
     return (
         <div
             data-log-id={log.id}
-            className={`feed-item ${animate ? 'animate-riseIn' : ''} ${log.important ? 'is-important' : ''} ${continuation ? 'ml-4 text-[13px] opacity-90' : ''}`}
+            className={`feed-item ${animate ? 'animate-riseIn' : ''} ${log.important ? 'is-important' : ''} ${continuation ? 'ml-4 text-label opacity-90' : ''}`}
             style={{ ['--cat' as string]: meta.color }}
         >
             {/* §13 (requests): the arena clock. Every line is stamped with the
@@ -472,20 +472,20 @@ function AnthemCard({ day, fallen }: { day: number; fallen: Tribute[] }) {
         <div className="panel p-4 my-3" style={{ background: 'var(--ink)', borderColor: 'var(--red)' }}>
             <div className="text-center space-y-1 mb-3">
                 <div className="eyebrow" style={{ color: 'var(--red)' }}>The anthem plays</div>
-                <div className="text-[11px] font-mono uppercase tracking-widest text-[#a89a86]">
+                <div className="text-mini font-mono uppercase tracking-widest text-[#a89a86]">
                     Day {day} · {fallen.length} fallen
                 </div>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {fallen.map(t => (
                     <div key={t.id} className="text-center border border-[#3a332c] py-2 px-1">
-                        <div className="font-mono text-[10px] font-black text-[var(--red)]">D{t.district}</div>
+                        <div className="font-mono text-micro font-black text-[var(--red)]">D{t.district}</div>
                         <div className="text-xs font-bold text-white truncate">{t.name}</div>
-                        <div className="text-[9px] font-mono uppercase tracking-wider text-[#a89a86] truncate">
+                        <div className="text-nano font-mono uppercase tracking-wider text-[#a89a86] truncate">
                             {t.gender === 'Male' ? 'Male' : 'Female'} · {t.age}
                         </div>
                         {t.causeOfDeath && (
-                            <div className="text-[9px] text-[#8a7d6d] mt-0.5 leading-tight">{t.causeOfDeath}</div>
+                            <div className="text-nano text-[#8a7d6d] mt-0.5 leading-tight">{t.causeOfDeath}</div>
                         )}
                     </div>
                 ))}
@@ -514,7 +514,7 @@ function BeatBlock({ beat, showTags, cast, onSelectTribute, newIds, hideZones, r
     return (
         <div className="space-y-1">
             {showHeader && (
-                <div className="font-mono text-[9px] font-black uppercase tracking-[0.12em] text-[var(--color-ink-500)] pt-1">
+                <div className="font-mono text-nano font-black uppercase tracking-[0.12em] text-[var(--color-ink-500)] pt-1">
                     {beat.zone}
                 </div>
             )}
@@ -606,7 +606,7 @@ function PhaseSection({ sectionKey, entries, density, showTags, cast, onSelectTr
                 {hidden > 0 && !expanded && (
                     <button
                         onClick={() => (ceremonyCollapse ? setShowCeremony(true) : setShowQuiet(true))}
-                        className="btn btn-sm btn-ghost w-full justify-center text-[10px]"
+                        className="btn btn-sm btn-ghost w-full justify-center text-micro"
                     >
                         {ceremonyCollapse
                             ? `Show the ceremonies — ${hidden} more moments`
@@ -614,7 +614,7 @@ function PhaseSection({ sectionKey, entries, density, showTags, cast, onSelectTr
                     </button>
                 )}
                 {expanded && (
-                    <button onClick={() => setShowQuiet(false)} className="btn btn-sm btn-ghost w-full justify-center text-[10px]">
+                    <button onClick={() => setShowQuiet(false)} className="btn btn-sm btn-ghost w-full justify-center text-micro">
                         Hide the quiet moments
                     </button>
                 )}
@@ -735,7 +735,7 @@ export function EventFeed({ logs, showTags = true, cast, onSelectTribute, defaul
                     {days.map(d => (
                         <button
                             key={d}
-                            className="btn btn-sm btn-ghost font-mono text-[10px]"
+                            className="btn btn-sm btn-ghost font-mono text-micro"
                             aria-label={d === 0 ? 'Jump to before the Games' : `Jump to day ${d}`}
                             onClick={() => {
                                 // Scoped to this feed's own container — EndScreen

@@ -210,13 +210,13 @@ export function CommandPalette({ gameState, onSelectTribute }: {
                             <span className="min-w-0 flex-1">
                                 <span className="block text-sm text-[var(--ink)] truncate">{r.label}</span>
                                 {r.detail && (
-                                    <span className="block text-[11px] text-[var(--color-ink-500)] truncate">{r.detail}</span>
+                                    <span className="block text-mini text-[var(--color-ink-500)] truncate">{r.detail}</span>
                                 )}
                             </span>
                         </button>
                     ))}
                 </div>
-                <div className="px-4 py-2 text-[10px] font-mono uppercase tracking-wider text-[var(--color-ink-500)] flex gap-3 flex-wrap">
+                <div className="px-4 py-2 text-micro font-mono uppercase tracking-wider text-[var(--color-ink-500)] flex gap-3 flex-wrap">
                     <span>↑↓ move</span><span>⏎ open</span><span>Esc close</span>
                 </div>
         </PaletteDialog>

@@ -406,6 +406,8 @@ export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]
             { type: 'pact-declared', important: true, category: 'alliance' }
         );
     }
+    // AUDIT-10 B05: the group exists from here; the chronicle starts with it.
+    recordAllianceState(ctx.state, record);
     return record;
 }
 
@@ -441,6 +443,9 @@ export function mergeAllianceRecords(ctx: SimContext, keepId: string, absorbedId
         Object.entries(absorbed.cacheContributions ?? {}).forEach(([id, n]) => { pooled[id] = (pooled[id] ?? 0) + n; });
         keep.cacheContributions = pooled;
     }
+    // AUDIT-10 B05: a merge is how packs reach their largest, so the chronicle
+    // has to see the moment rather than waiting for the next reconcile.
+    recordAllianceState(ctx.state, keep);
     return keep;
 }
 
@@ -606,10 +611,40 @@ export function fractureBlocs(ctx: SimContext) {
     });
 }
 
+/**
+ * AUDIT-10 B05: fold one alliance's current state into the durable chronicle.
+ *
+ * Called every cycle for every living group, so the peak is the peak as it
+ * happened rather than whatever the group was holding when it came apart. The
+ * roster is a union: somebody who joined on day two and died on day four was
+ * in the pack, and a record that forgot them would misreport its own size.
+ */
+export function recordAllianceState(state: GameState, record: Alliance) {
+    state.allianceChronicle = state.allianceChronicle ?? [];
+    const cycle = cycleOf(state);
+    let entry = state.allianceChronicle.find(e => e.id === record.id);
+    if (!entry) {
+        entry = {
+            id: record.id,
+            name: record.name,
+            peakSize: 0,
+            memberIds: [],
+            formedCycle: record.formedCycle ?? cycle,
+            lastCycle: cycle,
+        };
+        state.allianceChronicle.push(entry);
+    }
+    if (record.name) entry.name = record.name;
+    record.memberIds.forEach(mid => { if (!entry!.memberIds.includes(mid)) entry!.memberIds.push(mid); });
+    entry.peakSize = Math.max(entry.peakSize, record.memberIds.length);
+    entry.lastCycle = cycle;
+}
+
 export function reconcileAlliances(ctx: SimContext) {
     const records = allianceRecords(ctx.state);
 
     Object.keys(records).forEach(id => {
+        recordAllianceState(ctx.state, records[id]);
         const members = membersOf(ctx.state, id);
         if (members.length < 2) {
             // A one-person alliance is not an alliance. This also cleans up the

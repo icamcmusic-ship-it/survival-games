@@ -58,7 +58,7 @@ export function ZoneDossier({ gameState, zone }: { gameState: GameState; zone: s
     const stripped = depletion >= 1 - ZONES.minYieldFraction - 0.01;
 
     const row = (label: string, value: React.ReactNode) => (
-        <div role="row" className="flex gap-3 text-[11px]">
+        <div role="row" className="flex gap-3 text-mini">
             <span role="rowheader" className="eyebrow flex-none w-24 pt-px">{label}</span>
             <span role="cell" className="text-[var(--color-ink-200)] min-w-0">{value}</span>
         </div>

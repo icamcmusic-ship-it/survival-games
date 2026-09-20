@@ -109,7 +109,7 @@ export function BroadcastBar({
                         {arenaSealed ? '❓ Arena sealed' : gameState.arena.name}
                     </span>
                 </div>
-                <div className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-500)] mt-0.5">
+                <div className="font-mono text-micro uppercase tracking-wider text-[var(--color-ink-500)] mt-0.5">
                     <span className={aliveDelta !== 0 ? 'text-[var(--red)] font-black' : ''}>
                         {aliveCount} alive
                         {aliveDelta !== 0 && <span> ({aliveDelta > 0 ? '+' : ''}{aliveDelta})</span>}
@@ -217,17 +217,17 @@ export function BroadcastBar({
                                         className="btn btn-sm btn-ghost w-full justify-start text-left"
                                         onClick={() => { gameActions.rewindTo(c.index); setCheckpointsOpen(false); }}
                                     >
-                                        <span className="font-mono text-[10px] mr-2">
+                                        <span className="font-mono text-micro mr-2">
                                             {c.day === 0 ? '—' : `d${c.day}`}
                                         </span>
                                         {c.phase}
-                                        <span className="ml-auto text-[10px] text-[var(--color-ink-500)]">
+                                        <span className="ml-auto text-micro text-[var(--color-ink-500)]">
                                             {c.alive} alive
                                         </span>
                                     </button>
                                 ))}
                                 {checkpoints.length > 0 && (
-                                    <p className="px-1.5 pt-1.5 mt-1 border-t border-[var(--line-soft)] text-[10px] leading-snug text-[var(--color-ink-500)]">
+                                    <p className="px-1.5 pt-1.5 mt-1 border-t border-[var(--line-soft)] text-micro leading-snug text-[var(--color-ink-500)]">
                                         {rewind.atCap
                                             ? `Holding the last ${rewind.cap} phases — anything earlier has been let go.`
                                             : `${rewind.depth} of ${rewind.cap} phases held.`}
@@ -334,7 +334,7 @@ export function BroadcastBar({
 
             {runProgress && (
                 <div
-                    className="w-full font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-500)] leading-tight"
+                    className="w-full font-mono text-micro uppercase tracking-wider text-[var(--color-ink-500)] leading-tight"
                     role="status"
                     aria-live="polite"
                 >
@@ -353,7 +353,7 @@ export function BroadcastBar({
             )}
 
             {pauseNotice && (
-                <span role="status" aria-live="polite" className="w-full text-[10px] uppercase tracking-wider text-[var(--red)] font-bold">
+                <span role="status" aria-live="polite" className="w-full text-micro uppercase tracking-wider text-[var(--red)] font-bold">
                     {pauseNotice}
                     <button className="underline ml-1.5" onClick={onDismissNotice}>Dismiss</button>
                 </span>

@@ -109,7 +109,7 @@ export function StandingsTable({
         <div className="space-y-3">
             <div className="flex items-center justify-between gap-3 flex-wrap">
                 <h3 className="panel-title">Standings</h3>
-                <label className="flex items-center gap-1.5 cursor-pointer text-[10px] uppercase tracking-wider text-[var(--color-ink-500)]">
+                <label className="flex items-center gap-1.5 cursor-pointer text-micro uppercase tracking-wider text-[var(--color-ink-500)]">
                     <input
                         type="checkbox"
                         checked={aliveOnly}
@@ -207,7 +207,7 @@ export function StandingsTable({
                                             style={accent ? { borderLeft: `3px solid ${accent}`, paddingLeft: 4 } : undefined}
                                         >
                                             {t.name}
-                                            {t.epithet && <span className="ml-1 text-[10px] font-normal text-[var(--gold)]">{t.epithet}</span>}
+                                            {t.epithet && <span className="ml-1 text-micro font-normal text-[var(--gold)]">{t.epithet}</span>}
                                         </button>
                                     </td>
                                     <td className="p-1 text-right font-mono">{t.district}</td>

@@ -197,7 +197,7 @@ export function DossierPanel({
             {/* ---------- tributes (default open) ---------- */}
             <Section id="tributes" title={`Tributes · ${aliveCount}`} defaultOpen>
                 {!isOver && (
-                    <p className="text-[10px] text-[var(--color-ink-500)] mb-2">
+                    <p className="text-micro text-[var(--color-ink-500)] mb-2">
                         Open any living tribute to send a sponsor parachute. The star pins them: the feed
                         foregrounds their story and the playback brakes can stop on their events.
                     </p>
@@ -240,7 +240,7 @@ export function DossierPanel({
                                                 </span>
                                             )}
                                         </span>
-                                        <span className="block text-[10px] uppercase tracking-wider text-[var(--color-ink-500)] flex flex-wrap gap-2 mt-1">
+                                        <span className="block text-micro uppercase tracking-wider text-[var(--color-ink-500)] flex flex-wrap gap-2 mt-1">
                                             {dead ? (
                                                 <span className="truncate">Day {t.dayOfDeath ?? '—'} · {t.causeOfDeath ?? 'Eliminated'}</span>
                                             ) : (
@@ -374,15 +374,15 @@ export function DossierPanel({
                                     className="w-full text-left flex items-center gap-2 px-1.5 py-1 hover:bg-[var(--paper-flush)] transition-colors"
                                     aria-label={`${tribute.name} — ${pct}% survival chance, ${mult.toFixed(1)}× payout. ${oddsFactors(tribute).slice(0, 3).map(f => `${f.delta > 0 ? '+' : ''}${Math.round(f.delta)} ${f.label}`).join(', ')}`}
                                 >
-                                    <span className="font-mono text-[10px] text-[var(--color-ink-500)] w-4 flex-none">{i + 1}</span>
+                                    <span className="font-mono text-micro text-[var(--color-ink-500)] w-4 flex-none">{i + 1}</span>
                                     <span className="text-xs font-bold text-[var(--color-ink-100)] truncate flex-1 min-w-0">
                                         {tribute.name}
                                         {bets[tribute.id] && <span className="ml-1 text-[var(--red)]" role="group" aria-label="Your wager" title="Your wager">●</span>}
                                     </span>
                                     {/* §2.8: `oddsHistory` was stored every day and never once drawn. */}
                                     <OddsSparkline history={gameState.oddsHistory} tributeId={tribute.id} />
-                                    <span className="font-mono text-[11px] font-bold text-[var(--ink)] flex-none">{pct}%</span>
-                                    <span className="flex items-center gap-0.5 font-mono text-[10px] flex-none w-10 justify-end" style={{ color: moveColor }}>
+                                    <span className="font-mono text-mini font-bold text-[var(--ink)] flex-none">{pct}%</span>
+                                    <span className="flex items-center gap-0.5 font-mono text-micro flex-none w-10 justify-end" style={{ color: moveColor }}>
                                         <MoveIcon className="w-3 h-3" />
                                         {move !== 0 && (move > 0 ? `+${move}` : move)}
                                     </span>
@@ -433,7 +433,7 @@ export function DossierPanel({
                         <div className="border-t border-[var(--color-ink-800)] pt-3 space-y-2">
                             <div className="flex items-baseline justify-between">
                                 <span className="eyebrow">Arena controls</span>
-                                <span className="font-mono text-[11px] text-[var(--color-ink-500)]">{coins} coins</span>
+                                <span className="font-mono text-mini text-[var(--color-ink-500)]">{coins} coins</span>
                             </div>
                             <div className="space-y-1">
                                 <label className="eyebrow" htmlFor="gm-zone">Target zone</label>
@@ -469,7 +469,7 @@ export function DossierPanel({
                                             className="btn btn-sm w-full"
                                             disabled={disabled}
                                         >
-                                            {label} <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{cost}</span>
+                                            {label} <span className="font-mono text-micro text-[var(--color-ink-500)]">{cost}</span>
                                         </button>
                                     </Hint>
                                     );
@@ -481,7 +481,7 @@ export function DossierPanel({
                                     className="btn btn-sm w-full"
                                     disabled={leverState('drop', GAMEMAKER_COSTS.drop, 'Restock the Cornucopia with a supply drop').disabled}
                                 >
-                                    Supply drop <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{priceOf('drop', GAMEMAKER_COSTS.drop)}</span>
+                                    Supply drop <span className="font-mono text-micro text-[var(--color-ink-500)]">{priceOf('drop', GAMEMAKER_COSTS.drop)}</span>
                                 </button>
                             </Hint>
                             <Hint className="w-full" text={leverState('strip', GAMEMAKER_COSTS.strip, "Strip the zone's forage — nothing edible left in it for days").title}>
@@ -490,7 +490,7 @@ export function DossierPanel({
                                     className="btn btn-sm w-full"
                                     disabled={leverState('strip', GAMEMAKER_COSTS.strip, "Strip the zone's forage — nothing edible left in it for days").disabled}
                                 >
-                                    Strip zone <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{priceOf('strip', GAMEMAKER_COSTS.strip)}</span>
+                                    Strip zone <span className="font-mono text-micro text-[var(--color-ink-500)]">{priceOf('strip', GAMEMAKER_COSTS.strip)}</span>
                                 </button>
                             </Hint>
                             <div className="grid grid-cols-2 gap-1.5">
@@ -500,7 +500,7 @@ export function DossierPanel({
                                         className="btn btn-sm w-full"
                                         disabled={leverState('mercy', GAMEMAKER_COSTS.mercy, 'Send an unrequested medical parachute to the selected tribute (or the most hurt) — and let the whole field see who you favour').disabled}
                                     >
-                                        Mercy <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{priceOf('mercy', GAMEMAKER_COSTS.mercy)}</span>
+                                        Mercy <span className="font-mono text-micro text-[var(--color-ink-500)]">{priceOf('mercy', GAMEMAKER_COSTS.mercy)}</span>
                                     </button>
                                 </Hint>
                                 <Hint align="right" className="w-full" text={leverState('reveal', GAMEMAKER_COSTS.reveal, 'Put the selected tribute (or the best hidden one) on every screen in the arena').title}>
@@ -509,7 +509,7 @@ export function DossierPanel({
                                         className="btn btn-sm w-full"
                                         disabled={leverState('reveal', GAMEMAKER_COSTS.reveal, 'Put the selected tribute (or the best hidden one) on every screen in the arena').disabled}
                                     >
-                                        Reveal <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{priceOf('reveal', GAMEMAKER_COSTS.reveal)}</span>
+                                        Reveal <span className="font-mono text-micro text-[var(--color-ink-500)]">{priceOf('reveal', GAMEMAKER_COSTS.reveal)}</span>
                                     </button>
                                 </Hint>
                             </div>
@@ -524,7 +524,7 @@ export function DossierPanel({
                                     className="btn btn-sm w-full"
                                     disabled={leverState('bounty', GAMEMAKER_COSTS.bounty, '').disabled || !!gameState.bountyTargetId}
                                 >
-                                    Place bounty <span className="font-mono text-[10px] text-[var(--color-ink-500)]">{priceOf('bounty', GAMEMAKER_COSTS.bounty)}</span>
+                                    Place bounty <span className="font-mono text-micro text-[var(--color-ink-500)]">{priceOf('bounty', GAMEMAKER_COSTS.bounty)}</span>
                                 </button>
                             </Hint>
                         </div>
@@ -535,7 +535,7 @@ export function DossierPanel({
             {/* ---------- your bets and coins ---------- */}
             <Section id="bets" title={`Your bets · ${coins} ⨷`}>
                 {Object.keys(bets).length === 0 ? (
-                    <p className="text-[11px] text-[var(--color-ink-500)]">
+                    <p className="text-mini text-[var(--color-ink-500)]">
                         No wagers standing. Bets are placed on the roster screen before the gong.
                     </p>
                 ) : (
@@ -545,7 +545,7 @@ export function DossierPanel({
                             if (!t) return null;
                             const live = oddsLadder.find(o => o.tribute.id === id);
                             return (
-                                <div key={id} className={`text-[11px] font-mono flex justify-between gap-2 items-center ${t.status === 'dead' ? 'line-through text-[var(--color-ink-500)]' : 'text-[var(--color-ink-200)]'}`}>
+                                <div key={id} className={`text-mini font-mono flex justify-between gap-2 items-center ${t.status === 'dead' ? 'line-through text-[var(--color-ink-500)]' : 'text-[var(--color-ink-200)]'}`}>
                                     <span className="truncate">{bet.stake} on {t.name} @ {bet.mult.toFixed(1)}×</span>
                                     <span className="flex-none">
                                         {t.status === 'dead' ? 'lost' : live ? `now ${live.mult.toFixed(1)}×` : ''}
@@ -570,7 +570,7 @@ export function DossierPanel({
             {/* ---------- sponsor blocs ---------- */}
             {gameState.sponsorBlocBudgets && (
                 <Section id="blocs" title="Sponsor blocs">
-                    <p className="text-[11px] text-[var(--color-ink-500)] mb-2">
+                    <p className="text-mini text-[var(--color-ink-500)] mb-2">
                         Every parachute is paid for by one of four crowds, each with its own taste and its own purse. A bloc that has
                         spent out stops giving — late-run scarcity that the seal on each crate only hinted at.
                     </p>
@@ -608,7 +608,7 @@ export function DossierPanel({
                     </div>
                 </div>
                 {gameState.gamesProfile && (
-                    <p className="text-[11px] text-[var(--color-ink-500)] mt-3" role="group" aria-label={gameState.gamesProfile.temperament.blurb} title={gameState.gamesProfile.temperament.blurb}>
+                    <p className="text-mini text-[var(--color-ink-500)] mt-3" role="group" aria-label={gameState.gamesProfile.temperament.blurb} title={gameState.gamesProfile.temperament.blurb}>
                         <span className="text-[var(--ink)] font-semibold">{ordinal(gameState.gamesProfile.gamesNumber)} Games</span>
                         {' — '}{gameState.gamesProfile.temperament.name}
                         {gameState.gamesProfile.wildcard.kind !== 'nothing' && (
@@ -620,7 +620,7 @@ export function DossierPanel({
                     </p>
                 )}
                 {gameState.headGamemaker && (
-                    <p className="text-[11px] text-[var(--color-ink-500)] mt-2" role="group" aria-label="Chosen at the reaping. Their patience and their hazard appetite shape the whole run." title="Chosen at the reaping. Their patience and their hazard appetite shape the whole run.">
+                    <p className="text-mini text-[var(--color-ink-500)] mt-2" role="group" aria-label="Chosen at the reaping. Their patience and their hazard appetite shape the whole run." title="Chosen at the reaping. Their patience and their hazard appetite shape the whole run.">
                         Head Gamemaker: <span className="text-[var(--ink)] font-semibold">{gameState.headGamemaker}</span>
                     </p>
                 )}
@@ -633,7 +633,7 @@ export function DossierPanel({
                   know how many were left or that any had fired.
                 */}
                 {onceOnly.total >= 2 && (
-                    <p className="text-[11px] text-[var(--color-ink-500)] mt-2">
+                    <p className="text-mini text-[var(--color-ink-500)] mt-2">
                         <Glossed text={`${onceOnly.fired} of this arena's ${onceOnly.total} once-only events have happened this Games. Triggering every one of them is 'Every Door'.`}>
                             <span>
                                 Once-only events:{' '}
@@ -661,7 +661,7 @@ export function DossierPanel({
                                         {gameState.audienceInterest}
                                     </span>
                                 </div>
-                                <div className="text-[10px] text-[var(--color-ink-500)] mt-1">
+                                <div className="text-micro text-[var(--color-ink-500)] mt-1">
                                     {gameState.escalationDay !== undefined
                                         ? `Arena closing since day ${gameState.escalationDay}`
                                         : gameState.audienceInterest < ESCALATION.boredomThreshold

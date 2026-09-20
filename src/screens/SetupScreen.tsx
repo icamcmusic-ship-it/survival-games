@@ -181,7 +181,7 @@ function ConfigSlider({ label, hint, effect, value, min, max, step, format, onCh
         <div className="space-y-1.5">
             <div className="flex justify-between items-baseline text-xs gap-3">
                 <span className="text-[var(--color-ink-200)] font-bold">{label}</span>
-                <span className="text-[var(--ink)] font-mono text-[11px] font-bold">{format(value)}</span>
+                <span className="text-[var(--ink)] font-mono text-mini font-bold">{format(value)}</span>
             </div>
             <input
                 type="range"
@@ -192,8 +192,8 @@ function ConfigSlider({ label, hint, effect, value, min, max, step, format, onCh
                 onChange={(e) => onChange(Number(e.target.value))}
                 className="w-full accent-[var(--red)] cursor-pointer"
             />
-            {hint && <p className="text-[10px] text-[var(--color-ink-500)]">{hint}</p>}
-            {effect && <p className="text-[10px] text-[var(--color-ink-400)] font-mono">{effect}</p>}
+            {hint && <p className="text-micro text-[var(--color-ink-500)]">{hint}</p>}
+            {effect && <p className="text-micro text-[var(--color-ink-400)] font-mono">{effect}</p>}
         </div>
     );
 }
@@ -214,7 +214,7 @@ function ArenaBriefing({ arenaId }: { arenaId: string }) {
     const climate = CLIMATE_LABELS[arena.id];
     const eventPack = packFor(arena);
     const row = (label: string, value: React.ReactNode) => (
-        <div className="flex gap-3 text-[11px]">
+        <div className="flex gap-3 text-mini">
             <span className="eyebrow flex-none w-20 pt-px">{label}</span>
             <span className="text-[var(--color-ink-200)] min-w-0">{value}</span>
         </div>
@@ -527,12 +527,12 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                         />
                         <button
                             onClick={() => setSeed(randomSeed())}
-                            className="px-3 sm:px-4 font-mono text-[11px] font-extrabold uppercase tracking-wider text-[var(--red)] hover:bg-[var(--paper-flush)] transition-colors flex-none"
+                            className="px-3 sm:px-4 font-mono text-mini font-extrabold uppercase tracking-wider text-[var(--red)] hover:bg-[var(--paper-flush)] transition-colors flex-none"
                         >
                             Randomize
                         </button>
                     </div>
-                    <p className="text-[10px] text-[var(--color-ink-500)]">
+                    <p className="text-micro text-[var(--color-ink-500)]">
                         The same seed and arena always produce the same Games — share the link afterwards to let someone else watch the identical run.
                     </p>
 
@@ -547,13 +547,13 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                 <div className="text-xs font-bold text-[var(--ink)]">
                                     Grudge Match &mdash; {grudgeNames.join(' vs ')}
                                 </div>
-                                <div className="text-[10px] text-[var(--color-ink-500)] mt-0.5">
+                                <div className="text-micro text-[var(--color-ink-500)] mt-0.5">
                                     {grudgeIds.length === 1
                                         ? 'One past victor will be reaped again into this Games. Pick a second in the Hall of Fame.'
                                         : 'Both of them will be reaped again into this Games, into their own districts, carrying the traits they won with.'}
                                 </div>
                             </div>
-                            <button onClick={() => gameActions.clearGrudgeMatch()} className="btn btn-ghost text-[11px] flex-none">
+                            <button onClick={() => gameActions.clearGrudgeMatch()} className="btn btn-ghost text-mini flex-none">
                                 Clear
                             </button>
                         </div>
@@ -567,12 +567,12 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                     <div className="panel-flush p-3 mt-2 flex items-center justify-between gap-3 flex-wrap">
                         <div className="min-w-0">
                             <div className="text-xs font-bold text-[var(--ink)]">Today&rsquo;s Games</div>
-                            <div className="text-[10px] text-[var(--color-ink-500)] mt-0.5">
+                            <div className="text-micro text-[var(--color-ink-500)] mt-0.5">
                                 Everybody who plays the daily today gets the same arena and the same cast — <span className="font-mono">{todaySeed}</span>.
                                 {isDaily ? ' Loaded.' : ''}
                             </div>
                             {dailyBest && (
-                                <div className="text-[10px] text-[var(--color-ink-200)] mt-0.5" role="status">
+                                <div className="text-micro text-[var(--color-ink-200)] mt-0.5" role="status">
                                     Your best today: {dailyBest.victorName
                                         ? `${dailyBest.victorName} of District ${dailyBest.victorDistrict} crowned on day ${dailyBest.day}`
                                         : `no victor, ${dailyBest.day} days`}.
@@ -581,7 +581,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                         </div>
                         <button
                             onClick={() => { setSeed(todaySeed); setArenaId(dailyArenaId(todaySeed)); setConfig(dailyConfig()); }}
-                            className="btn btn-ghost text-[11px] flex-none"
+                            className="btn btn-ghost text-mini flex-none"
                         >
                             {isDaily ? 'Reload daily' : 'Play the daily'}
                         </button>
@@ -598,7 +598,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                         return (
                             <div className="panel-flush p-3 mt-2">
                                 <div className="text-xs font-bold text-[var(--ink)]">{profileHeadline(preview)}</div>
-                                <div className="text-[10px] text-[var(--color-ink-500)] mt-0.5">
+                                <div className="text-micro text-[var(--color-ink-500)] mt-0.5">
                                     {t.blurb}{mults.length > 0 ? ` (${mults.join(', ')})` : ''}
                                     {' '}· The Capitol has something planned: “{preview.wildcard.name}”.
                                 </div>
@@ -706,7 +706,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                     <div>
                 <div className="p-5 space-y-2">
                     <span className="eyebrow">Mutators</span>
-                    <p className="text-[10px] text-[var(--color-ink-500)]">
+                    <p className="text-micro text-[var(--color-ink-500)]">
                         One click for a whole lopsided year. Nothing here is a new rule — each one is a combination of the settings below.
                     </p>
                     <div className="grid sm:grid-cols-2 gap-2 mt-2">
@@ -726,9 +726,9 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                 >
                                     <div className="text-xs font-bold text-[var(--ink)]">
                                         {m.name}
-                                        {on && <span className="ml-2 text-[10px] font-mono uppercase text-[var(--red)]">Active</span>}
+                                        {on && <span className="ml-2 text-micro font-mono uppercase text-[var(--red)]">Active</span>}
                                     </div>
-                                    <div className="text-[10px] text-[var(--color-ink-500)] mt-0.5">{m.blurb}</div>
+                                    <div className="text-micro text-[var(--color-ink-500)] mt-0.5">{m.blurb}</div>
                                 </button>
                             );
                         })}
@@ -753,15 +753,15 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                             <div className="min-w-0">
                                 <div className="text-xs font-bold text-[var(--ink)]">
                                     Featured today: {featured.name}
-                                    {featured.unseen && <span className="ml-2 text-[10px] text-[var(--red)] font-mono uppercase">New to you</span>}
+                                    {featured.unseen && <span className="ml-2 text-micro text-[var(--red)] font-mono uppercase">New to you</span>}
                                 </div>
-                                <div className="text-[10px] text-[var(--color-ink-500)] mt-0.5">
+                                <div className="text-micro text-[var(--color-ink-500)] mt-0.5">
                                     {featured.unseen
                                         ? 'One you have never run. The roster is wider than anybody\u2019s five favourites.'
                                         : 'A different corner of the roster, rotating every day.'}
                                 </div>
                             </div>
-                            <button onClick={() => setArenaId(featured.id)} className="btn btn-ghost text-[11px] flex-none">
+                            <button onClick={() => setArenaId(featured.id)} className="btn btn-ghost text-mini flex-none">
                                 {arenaId === featured.id ? 'Selected' : 'Take me there'}
                             </button>
                         </div>
@@ -773,7 +773,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                 type="button"
                                 onClick={() => setArenaFacet(f.id)}
                                 aria-pressed={arenaFacet === f.id}
-                                className={`btn btn-sm ${arenaFacet === f.id ? '' : 'btn-ghost'} text-[11px]`}
+                                className={`btn btn-sm ${arenaFacet === f.id ? '' : 'btn-ghost'} text-mini`}
                             >
                                 {f.label}
                             </button>
@@ -782,7 +782,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                             <button
                                 type="button"
                                 onClick={surpriseWithin}
-                                className="btn btn-sm btn-ghost text-[11px]"
+                                className="btn btn-sm btn-ghost text-mini"
                             >
                                 Surprise me within this
                             </button>
@@ -807,11 +807,11 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                 >
                                     <div className="min-w-0 w-full">
                                         <div className="flex items-baseline justify-between gap-2">
-                                            <span className={`font-black uppercase leading-tight ${selected ? 'text-white text-base' : 'text-[var(--ink)] text-[13px]'}`}>
+                                            <span className={`font-black uppercase leading-tight ${selected ? 'text-white text-base' : 'text-[var(--ink)] text-label'}`}>
                                                 {a.name}
                                             </span>
                                             {unseenArena(a.id, a.name) && (
-                                                <span className={`flex-none align-middle font-mono text-[9px] font-extrabold uppercase tracking-wider px-1 border ${selected ? 'text-[#c9b8a0] border-[#c9b8a0]' : 'text-[var(--red)] border-[var(--red)]'}`}>
+                                                <span className={`flex-none align-middle font-mono text-nano font-extrabold uppercase tracking-wider px-1 border ${selected ? 'text-[#c9b8a0] border-[#c9b8a0]' : 'text-[var(--red)] border-[var(--red)]'}`}>
                                                     New
                                                 </span>
                                             )}
@@ -821,7 +821,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                             there is one, the description otherwise — and
                                             nothing else. The full description and the
                                             briefing belong to the selection. */}
-                                        <div className={`text-[11px] mt-0.5 leading-snug ${selected ? 'text-[#c9b8a0]' : 'text-[var(--color-ink-500)] line-clamp-2'}`}>
+                                        <div className={`text-mini mt-0.5 leading-snug ${selected ? 'text-[#c9b8a0]' : 'text-[var(--color-ink-500)] line-clamp-2'}`}>
                                             {selected ? a.description : (SIGNATURE_BLURBS[a.id] ?? a.description)}
                                         </div>
                                         {/* §(requests): the long-form reveal, for a player
@@ -830,12 +830,12 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                             list would be unreadable, which is exactly why
                                             `description` stays a catalogue line. */}
                                         {selected && ARENA_REVEALS[a.id] && (
-                                            <p className="text-[11px] mt-1.5 leading-relaxed text-[#c9b8a0] m-0">
+                                            <p className="text-mini mt-1.5 leading-relaxed text-[#c9b8a0] m-0">
                                                 {ARENA_REVEALS[a.id]}
                                             </p>
                                         )}
                                         {selected && SIGNATURE_BLURBS[a.id] && (
-                                            <div className="text-[10px] mt-1 font-mono text-[var(--red)]">
+                                            <div className="text-micro mt-1 font-mono text-[var(--red)]">
                                                 ⚙ {SIGNATURE_BLURBS[a.id]}
                                             </div>
                                         )}
@@ -851,7 +851,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                         })}
                     </div>
                     {arenaOptions.length <= 1 && hiddenByFacet > 0 && (
-                        <p className="text-[11px] text-[var(--color-ink-500)] italic mt-2">
+                        <p className="text-mini text-[var(--color-ink-500)] italic mt-2">
                             None of the arenas you have unlocked match this filter. {hiddenByFacet} of them match a different one.
                         </p>
                     )}
@@ -866,7 +866,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                     <Lock className="w-3.5 h-3.5 flex-none text-[var(--color-ink-500)]" aria-hidden="true" />
                                     {lockedArenas.length} undiscovered {lockedArenas.length === 1 ? 'arena' : 'arenas'}
                                 </div>
-                                <div className="text-[10px] text-[var(--color-ink-500)] mt-0.5">
+                                <div className="text-micro text-[var(--color-ink-500)] mt-0.5">
                                     Take a sealed draw and one of them may be where you land — play it once and it is yours to pick. Or buy one outright below.
                                 </div>
                             </div>
@@ -949,7 +949,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                     </option>
                                 ))}
                             </select>
-                            <p className="text-[11px] text-[var(--color-ink-500)]">
+                            <p className="text-mini text-[var(--color-ink-500)]">
                                 {(panem.quellsSeen ?? []).length} of {QUELLS.length} seen. Pinning one still rolls
                                 everything else — the arena, the cast, the calendar — from your seed, so the run
                                 replays and shares exactly as any other does.
@@ -995,9 +995,9 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                     <div className="panel-flush p-4 space-y-2">
                         <div className="flex items-baseline justify-between flex-wrap gap-2">
                             <span className="eyebrow">Patron of a district</span>
-                            <span className="font-mono text-[11px] text-[var(--color-ink-500)]">{coins} coins held</span>
+                            <span className="font-mono text-mini text-[var(--color-ink-500)]">{coins} coins held</span>
                         </div>
-                        <p className="text-[11px] text-[var(--color-ink-500)]">
+                        <p className="text-mini text-[var(--color-ink-500)]">
                             {patronDistricts.length > 0
                                 ? `You are the standing patron of ${patronDistricts.map(d => `District ${d}`).join(', ')}: their tributes begin every Games with sponsors already warm.`
                                 : `Spend ${nextPatronCost} coins to become the standing patron of a district — its tributes begin every future Games with a sponsor-trust head start.`}
@@ -1030,7 +1030,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                         </div>
                         {patronPending !== null && (
                             <div className="flex flex-wrap items-center gap-2 pt-1" role="group" aria-label="Confirm patronage">
-                                <span className="text-[11px] text-[var(--color-ink-200)]">
+                                <span className="text-mini text-[var(--color-ink-200)]">
                                     {patronDistricts.includes(patronPending)
                                         ? `Give up your patronage of District ${patronPending}? The coins you spent on it are not returned.`
                                         : `Spend ${nextPatronCost} coins to become District ${patronPending}'s standing patron? There is no refund.`}
@@ -1058,22 +1058,22 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                     <div className="panel-flush p-4 space-y-2 mt-3">
                         <div className="flex items-baseline justify-between flex-wrap gap-2">
                             <span className="eyebrow">Buy a map</span>
-                            <span className="font-mono text-[11px] text-[var(--color-ink-500)]">{lockedArenas.length} still undiscovered</span>
+                            <span className="font-mono text-mini text-[var(--color-ink-500)]">{lockedArenas.length} still undiscovered</span>
                         </div>
-                        <p className="text-[11px] text-[var(--color-ink-500)]">
+                        <p className="text-mini text-[var(--color-ink-500)]">
                             {lockedArenas.length === 0
                                 ? 'You have seen every arena the Capitol has. There is nothing left to sell you.'
                                 : `For ${arenaUnlockCost} coins a clerk in the Gamemakers' archive will lose one undiscovered map where you can find it. Which one is not yours to choose.`}
                         </p>
                         {arenaBought !== null && (
-                            <p className="text-[11px] text-[var(--color-ink-200)]" role="status">
+                            <p className="text-mini text-[var(--color-ink-200)]" role="status">
                                 The archive gives up <strong>{arenaBought}</strong>. It is yours to pick from now on.
                             </p>
                         )}
                         <div className="flex flex-wrap items-center gap-2">
                             {arenaBuyPending ? (
                                 <>
-                                    <span className="text-[11px] text-[var(--color-ink-200)]">Spend {arenaUnlockCost} coins on a map you have not chosen? There is no refund.</span>
+                                    <span className="text-mini text-[var(--color-ink-200)]">Spend {arenaUnlockCost} coins on a map you have not chosen? There is no refund.</span>
                                     <button
                                         className="btn btn-primary btn-sm"
                                         onClick={() => {
@@ -1148,7 +1148,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                         const deltas = presetDelta(config, p.config);
                                         const active = PRESET_KEYS.every(k => config[k] === p.config[k]);
                                         return (
-                                            <div key={p.name} className="text-[10px] leading-snug">
+                                            <div key={p.name} className="text-micro leading-snug">
                                                 <span className="font-mono font-extrabold uppercase text-[var(--ink)]">{p.name}</span>
                                                 <span className="text-[var(--color-ink-500)]">
                                                     {' — '}
@@ -1238,7 +1238,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                         />
                                     </>
                                 ) : (
-                                    <p className="text-[10px] text-[var(--color-ink-500)] -mt-1">
+                                    <p className="text-micro text-[var(--color-ink-500)] -mt-1">
                                         The bowl decides: one slip per year of age, plus a slip for every tessera taken. The field skews older, and oldest in the poorest districts.
                                     </p>
                                 )}
@@ -1254,7 +1254,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                     />
                                     <span>
                                         One victor only
-                                        <span className="block font-normal text-[10px] text-[var(--color-ink-500)]">
+                                        <span className="block font-normal text-micro text-[var(--color-ink-500)]">
                                             Closes every route to two survivors: the two-may-win rule change, the district-pairs Quell, and the lovers&rsquo; exemption at the finale.
                                         </span>
                                     </span>
@@ -1382,7 +1382,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                 to start would run. Deliberately a range: a forecast, not a
                 promise. The cast itself can still be re-drawn on the reaping
                 screen without losing the arena. */}
-            <div className="text-center text-[11px] text-[var(--color-ink-500)] -mb-4">
+            <div className="text-center text-mini text-[var(--color-ink-500)] -mb-4">
                 {config.districtCount * 2} tributes · this configuration {lengthEstimate(config.districtCount, config.hazardRate, config.betrayalRate)}
                 {' · '}you can re-draw the cast at the reaping without losing the arena
             </div>

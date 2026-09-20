@@ -87,7 +87,7 @@ export function HowToPlayScreen() {
                 <div className="overflow-x-auto">
                     <table className="w-full text-xs">
                         <thead>
-                            <tr className="text-[10px] font-mono uppercase tracking-wider text-[var(--color-ink-500)]">
+                            <tr className="text-micro font-mono uppercase tracking-wider text-[var(--color-ink-500)]">
                                 <th scope="col" className="text-left py-1 pr-3">Layer</th>
                                 <th scope="col" className="text-left py-1 pr-3">Where it comes from</th>
                                 <th scope="col" className="text-left py-1 pr-3">How often it changes</th>

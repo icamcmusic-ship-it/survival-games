@@ -194,7 +194,7 @@ export function ReplayScrubber({
                         {playing ? 'Pause' : 'Play'}
                     </button>
                 </div>
-                <p className="text-[11px] text-[var(--color-ink-500)]">
+                <p className="text-mini text-[var(--color-ink-500)]">
                     Left and right arrow keys scrub. Health, supplies and alliances aren't recorded per day, so this
                     shows only what the chronicle can prove: who was standing, where they were last seen, and their kills.
                 </p>

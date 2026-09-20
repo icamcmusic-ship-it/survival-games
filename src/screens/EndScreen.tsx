@@ -212,7 +212,7 @@ export function EndScreen({
                             {outcome.nearMisses.map(m => (
                                 <div key={m.id} className="panel-flush p-2.5">
                                     <div className="text-sm font-bold text-[var(--ink)]">{m.name}</div>
-                                    <div className="text-[11px] text-[var(--color-ink-500)]">{m.detail}</div>
+                                    <div className="text-mini text-[var(--color-ink-500)]">{m.detail}</div>
                                 </div>
                             ))}
                         </div>
@@ -282,11 +282,11 @@ export function EndScreen({
                                                     {rarity === 'possible' ? 'Possible?' : rarity}
                                                 </span>
                                             )}
-                                            <span className="text-[10px] font-mono text-[var(--gold-deep)]">
+                                            <span className="text-micro font-mono text-[var(--gold-deep)]">
                                                 +{COIN_ECONOMY.achievementReward[rarity ?? 'common']} ⨷
                                             </span>
                                         </div>
-                                        <div className="text-[11px] text-[var(--color-ink-500)]">{found.hint}</div>
+                                        <div className="text-mini text-[var(--color-ink-500)]">{found.hint}</div>
                                     </div>
                                 );
                             })}
@@ -299,7 +299,7 @@ export function EndScreen({
                                         <div className="text-sm font-bold text-[var(--ink)]">
                                             New record — {def.label}
                                         </div>
-                                        <div className="text-[11px] text-[var(--color-ink-500)]">
+                                        <div className="text-mini text-[var(--color-ink-500)]">
                                             {held.name} (D{held.district}) · {def.format(held.value)}
                                         </div>
                                     </div>

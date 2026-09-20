@@ -1041,8 +1041,23 @@ export const ACHIEVEMENTS: Achievement[] = [
     },
     {
         id: 'bloodbath-massacre',
-        name: 'The Cornucopia',
-        hint: 'See half the field or more die in the bloodbath.',
+        /*
+         * AUDIT-10 B03: this and `a7-half-at-the-horn` advertised the *same*
+         * condition — "half the field in the bloodbath" — while testing two
+         * different things: this one counted every death stamped day 1, that
+         * one counted the phase flag. A 24-tribute fixture with 3 deaths at the
+         * horn and 9 more later on day 1 awarded this and not that, so the
+         * player was being paid twice for one idea and inconsistently for the
+         * other.
+         *
+         * The predicate is unchanged, so nothing already unlocked is disturbed
+         * and no migration is needed — what changes is the advertised claim,
+         * which now matches what is measured. The horn itself belongs to
+         * `a7-half-at-the-horn`; this is the opening *day*, which includes
+         * everything the survivors did to each other after the horn cleared.
+         */
+        name: 'The First Day',
+        hint: 'See half the field or more die before the first night.',
         category: 'combat',
         rarity: 'rare',
         test: state => {
@@ -1053,7 +1068,7 @@ export const ACHIEVEMENTS: Achievement[] = [
             const day1 = dead(state).filter(t => t.dayOfDeath === 1).length;
             const needed = Math.ceil(state.tributes.length / 2);
             return day1 > 0 && needed - day1 <= 3 && day1 < needed
-                ? `the bloodbath took ${day1} — ${needed - day1} short of half the field`
+                ? `the first day took ${day1} — ${needed - day1} short of half the field`
                 : undefined;
         },
     },

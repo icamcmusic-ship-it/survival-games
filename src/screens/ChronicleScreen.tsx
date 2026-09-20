@@ -120,7 +120,7 @@ function CopyPageLink({ page }: { page: Page }) {
     return (
         <button
             type="button"
-            className="btn btn-sm btn-ghost text-[11px]"
+            className="btn btn-sm btn-ghost text-mini"
             aria-label={`Copy a link to ${page.label}`}
             onClick={() => {
                 navigator.clipboard?.writeText(url).then(() => setState('ok')).catch(() => setState('fail'));
@@ -545,7 +545,7 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                         design. "Page one of none" is arithmetic that cannot be
                         true, and it sat directly under the empty-state copy
                         that correctly explains there is nothing here yet. */}
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-[var(--color-ink-500)]">
+                    <span className="font-mono text-micro uppercase tracking-wider text-[var(--color-ink-500)]">
                         {pages.length === 0 ? 'No pages yet' : `${clamped + 1} / ${pages.length}`}
                     </span>
                 </div>

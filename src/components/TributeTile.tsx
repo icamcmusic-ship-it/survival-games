@@ -39,7 +39,7 @@ export function TributeTile({
      * surfaces already renders through.
      */
     const downed = !dead && !!tribute.downed;
-    const box = size === 'sm' ? 'w-8 h-8 text-[9px]' : 'w-11 h-11 text-[11px]';
+    const box = size === 'sm' ? 'w-8 h-8 text-nano' : 'w-11 h-11 text-mini';
     const body = (
         <>
             <span
@@ -50,16 +50,16 @@ export function TributeTile({
                 D{tribute.district}
             </span>
             <span className="min-w-0 text-left">
-                <span className={`block font-black uppercase leading-tight truncate ${size === 'sm' ? 'text-[11px]' : 'text-sm'} ${dead && dimDead ? 'line-through text-[var(--color-ink-500)]' : 'text-[var(--ink)]'}`}>
+                <span className={`block font-black uppercase leading-tight truncate ${size === 'sm' ? 'text-mini' : 'text-sm'} ${dead && dimDead ? 'line-through text-[var(--color-ink-500)]' : 'text-[var(--ink)]'}`}>
                     {tribute.name}
                     {/* §11.5: the name the country gave them. Awarded once and
                         permanent, and until now visible only in the line that
                         awarded it. */}
                     {tribute.epithet && size !== 'sm' && (
-                        <span className="ml-1 font-bold normal-case text-[10px] text-[var(--gold)]">{tribute.epithet}</span>
+                        <span className="ml-1 font-bold normal-case text-micro text-[var(--gold)]">{tribute.epithet}</span>
                     )}
                 </span>
-                <span className="block font-mono font-bold text-[9px] uppercase tracking-wider text-[var(--color-ink-500)] truncate">
+                <span className="block font-mono font-bold text-nano uppercase tracking-wider text-[var(--color-ink-500)] truncate">
                     D{tribute.district} · {tribute.gender === 'Male' ? 'M' : 'F'} · {tribute.age}
                     {dead ? ' · †' : ''}
                     {downed && (

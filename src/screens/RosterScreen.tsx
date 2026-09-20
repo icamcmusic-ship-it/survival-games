@@ -220,7 +220,7 @@ export function RosterPanel({
                 <div className="panel p-4 space-y-2">
                     <div className="flex items-baseline justify-between flex-wrap gap-2">
                         <span className="eyebrow">Proposition board</span>
-                        <div className="flex items-center gap-1.5 text-[11px] text-[var(--color-ink-500)]">
+                        <div className="flex items-center gap-1.5 text-mini text-[var(--color-ink-500)]">
                             Stake
                             <div className="seg" role="group" aria-label="Side bet stake">
                                 {[25, 50, 100, 200].map(s => (
@@ -229,7 +229,7 @@ export function RosterPanel({
                             </div>
                         </div>
                     </div>
-                    <p className="text-[11px] text-[var(--color-ink-500)]">
+                    <p className="text-mini text-[var(--color-ink-500)]">
                         Settled from what the run does, not who wins. Prices come off the live book — the field's own odds, the book's
                         margin, and a line that moves with the field — and lock the moment you place them. A line the result lands
                         exactly on is a push and returns the stake.
@@ -242,7 +242,7 @@ export function RosterPanel({
                                 <div key={key} className="panel-flush p-2.5 flex items-center justify-between gap-2">
                                     <div className="min-w-0">
                                         <div className="text-xs text-[var(--ink)] font-semibold truncate">{q.label.charAt(0).toUpperCase() + q.label.slice(1)}</div>
-                                        <div className="font-mono text-[10px] text-[var(--color-ink-500)]">{q.pct}% · pays {q.mult.toFixed(1)}×{held ? ` · ${held.stake} staked @ ${held.mult.toFixed(1)}×` : ''}</div>
+                                        <div className="font-mono text-micro text-[var(--color-ink-500)]">{q.pct}% · pays {q.mult.toFixed(1)}×{held ? ` · ${held.stake} staked @ ${held.mult.toFixed(1)}×` : ''}</div>
                                     </div>
                                     <button
                                         className="btn btn-sm flex-none"
@@ -256,7 +256,7 @@ export function RosterPanel({
                             );
                         })}
                     </div>
-                    <p className="text-[10px] text-[var(--color-ink-500)] italic">
+                    <p className="text-micro text-[var(--color-ink-500)] italic">
                         First blood and top-three are named markets — the buttons on each tribute card below place those.
                     </p>
                 </div>
@@ -307,7 +307,7 @@ export function RosterPanel({
                 {active.size > 0 && (
                     <button className="btn btn-sm btn-ghost" onClick={() => setActive(new Set())}>Clear</button>
                 )}
-                <span className="text-[10px] text-[var(--color-ink-500)] ml-auto">
+                <span className="text-micro text-[var(--color-ink-500)] ml-auto">
                     {visible.length} of {tributes.length}
                 </span>
             </div>
@@ -351,7 +351,7 @@ export function RosterPanel({
                                                     title={`${ARCHETYPES[t.archetype].name} archetype`}
                                                 >
                                                     {ARCHETYPES[t.archetype].description}
-                                                    <span className="block mt-1.5 font-mono text-[10px] text-[var(--color-ink-500)]">
+                                                    <span className="block mt-1.5 font-mono text-micro text-[var(--color-ink-500)]">
                                                         Aggression {ARCHETYPES[t.archetype].aggression >= 0 ? '+' : ''}{ARCHETYPES[t.archetype].aggression.toFixed(2)} ·
                                                         Caution {ARCHETYPES[t.archetype].caution >= 0 ? '+' : ''}{ARCHETYPES[t.archetype].caution.toFixed(2)}
                                                     </span>
@@ -413,20 +413,20 @@ export function RosterPanel({
                                                             />
                                                         ))}
                                                     </span>
-                                                    <span className="font-mono text-[10px] text-[var(--color-ink-400)] w-20 text-right flex-none">
+                                                    <span className="font-mono text-micro text-[var(--color-ink-400)] w-20 text-right flex-none">
                                                         {band.label}
                                                     </span>
                                                 </div>
                                             );
                                         })}
-                                        <p className="text-[10px] text-[var(--color-ink-500)] pt-0.5">
+                                        <p className="text-micro text-[var(--color-ink-500)] pt-0.5">
                                             The Gamemakers publish an assessment, not a sheet.
                                         </p>
                                     </div>
                                 ) : (
                                     <div className="panel-flush p-3 text-center">
                                         <div className="eyebrow text-[var(--color-ink-500)]">⧗ Not yet assessed</div>
-                                        <p className="text-[10px] text-[var(--color-ink-500)] mt-1">
+                                        <p className="text-micro text-[var(--color-ink-500)] mt-1">
                                             Only the public record is available before training: district, gender,
                                             age, height and build.
                                         </p>
@@ -450,7 +450,7 @@ export function RosterPanel({
 
                                 {bettingOpen && (
                                     <div className="pt-3 border-t-2 border-[var(--line-soft)] space-y-2">
-                                        <div className="flex justify-between text-[10px] font-mono text-[var(--color-ink-500)]">
+                                        <div className="flex justify-between text-micro font-mono text-[var(--color-ink-500)]">
                                             <span>SURVIVAL ODDS / PAYOUT</span>
                                             <span className="text-[var(--ink)] font-bold">{pct}% · {mult.toFixed(1)}×</span>
                                         </div>
