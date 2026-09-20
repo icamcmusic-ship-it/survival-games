@@ -19,6 +19,7 @@ import { getZone, zoneNames, zoneFeatures } from './map';
 import { addZoneThreat } from './memory';
 import { hasTruce } from './parley';
 import { ARCHETYPE_SIGNATURE_TEXTS } from '../data/flavorText';
+import { canPromise, promise } from './obligations';
 import { loseSanity } from './sanityBands';
 import { addNotoriety } from './notoriety';
 import { incurDebt } from './debts';
@@ -407,6 +408,50 @@ export const SIGNATURES: Record<string, Signature> = {
     // ---- Audit 5 §12.4 ----
 
     /** Scavenger: a cannon fires nearby and they are already walking towards it. */
+    /*
+     * AUDIT-9 stage D: the Courier's signature is a contract, not a mood.
+     *
+     * They find an ally who is somewhere else and needs something they are
+     * carrying, promise it, and set out. The promise is a real obligation with
+     * a deadline, so the walk can fail and be seen to fail — which is the
+     * "enforceable rewards" half of the audit's description, and the reason
+     * this could not have been built before stage C.
+     */
+    courierRun: (ctx, t) => {
+        /*
+         * The same capacity test the promise itself will apply. The first
+         * version asked for "a spare of any of food, water or medical" and
+         * then called `promise`, which counts only food and water and wants
+         * two of them — so the signature could pass its own check and be
+         * refused by the obligation layer, and it fired 0.0% of the time.
+         * Asking the authority directly is the fix; duplicating its rule in a
+         * looser form is how the two drift apart again.
+         */
+        if (!canPromise(ctx.state, t, 'supply')) return false;
+        /*
+         * Who they will carry for. Allies first, but not only allies — the
+         * audit's Courier "carries goods or intelligence through contested
+         * routes for enforceable rewards", and a contract with somebody you
+         * merely get on with is the more interesting half of that.
+         *
+         * Requiring an *ally in another zone* was the second thing keeping
+         * this at 0.5%: allies mostly travel together, so the archetype's set
+         * piece needed the one state its own alliance behaviour avoids.
+         */
+        const clients = getAlive(ctx.state).filter(o => o.id !== t.id
+            && (o.allianceId !== undefined && o.allianceId === t.allianceId
+                ? true
+                : getRel(t, o.id) > ARCHETYPE_HOOKS.courierMinRegard)
+            && (o.vitals.hunger > ARCHETYPE_HOOKS.courierHungerLine || o.health < ARCHETYPE_HOOKS.courierHurtLine));
+        if (clients.length === 0) return false;
+        // The far one is the run worth narrating; a neighbour is just sharing.
+        const client = clients.find(o => o.zone !== t.zone) ?? clients[0];
+        if (!promise(ctx, t, client, 'supply')) return false;
+        say(ctx, t, 'courierRun', [t.id, client.id], { client: client.name, where: client.zone }, 'objective-formed');
+        t.objective = { kind: 'reach', zone: client.zone, reason: 'ally', expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.signatureObjectiveCycles };
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
+        return true;
+    },
     scavengerClaim: (ctx, t) => {
         const recent = (ctx.state.recentCannonZones ?? []).filter(c => c.cycle >= (ctx.state.cycle ?? 0) - 2 && c.zone !== t.zone);
         if (recent.length === 0) return false;

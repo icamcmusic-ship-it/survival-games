@@ -4302,6 +4302,23 @@ export const ARCHETYPE_SIGNATURE_TEXTS: Record<string, string[]> = {
         'What {tribute} notices in {zone} is small, and it changes everything they do afterwards.',
     ],
     // Audit 5 §12.4
+    // AUDIT-9 stage D: the Courier taking on a delivery. Twelve, because the
+    // flavour-pool floor is twelve and a signature that repeats inside one run
+    // is a signature nobody believes.
+    courierRun: [
+        '{tribute} shoulders the pack and says they will get it to {client} in {where}. Nobody asks how.',
+        '{tribute} hears where {client} is and starts walking before anybody has finished telling them.',
+        '{tribute} checks the load twice, says {where} out loud once, and goes.',
+        'It is a long way to {where} and {tribute} has agreed to walk it with somebody else\'s supper on their back.',
+        '{tribute} does not much like {client}. {tribute} does not much like leaving a thing half done either, and sets off for {where}.',
+        '"They need it more than the walk costs," {tribute} says, to nobody, and takes the road to {where}.',
+        '{tribute} has carried worse than this further than {where}, and says so, and goes.',
+        'The deal is struck in about four words. {tribute} is on their way to {where} inside a minute.',
+        '{tribute} works out the route to {where} in their head, does not like it, and takes it anyway.',
+        'Somebody in {where} is going to eat tonight because {tribute} decided the walk was worth it.',
+        '{tribute} ties the load down properly, which takes a while, and then makes better time to {where} than anyone expected.',
+        '{tribute} promises {client} it will be there by dark. It is a long way to {where} and they meant it when they said it.',
+    ],
     scavengerClaim: [
         'A cannon goes in {site}, and {tribute} is already moving towards it before the echo has finished. They did not need to see who it was.',
         '{tribute} hears the cannon from {zone}, works out the direction, and sets off for {site} at a walk. Whoever it was will not be needing their pack.',

@@ -3,7 +3,7 @@ import { FEAR, HUNTING, INTEL, MEMORY, RELATIONSHIPS, RIVAL_READ, SANITY_BANDS, 
 import { arenaHasLaw } from './gamesProfile';
 import { profOf } from './proficiency';
 import { ARCHETYPES } from '../data/archetypes';
-import { traitMod } from '../data/traits';
+import { needsSecondSource, traitMod } from '../data/traits';
 import { addFear } from './fear';
 import { getZone } from './map';
 import { believes } from './rapport';
@@ -97,11 +97,22 @@ export function confidenceOf(state: GameState, slot: ZoneMemory | undefined): nu
     return Math.max(0, base * Math.pow(MEMORY.confidenceDecay, age));
 }
 
-/** Whether a belief is still worth acting on at all. */
-export function stillBelieved(state: GameState, slot: ZoneMemory | undefined): boolean {
+/**
+ * Whether a belief is still worth acting on at all.
+ *
+ * AUDIT-9 stage D: `Evidence-Hungry` raises this bar rather than lowering a
+ * roll. A single second-hand report clears the ordinary threshold and does not
+ * clear theirs, so they sit on information everybody else is already moving
+ * on — which is the cost the audit names, "slower response to genuine
+ * single-source warnings". Having seen it themselves always clears it.
+ */
+export function stillBelieved(state: GameState, slot: ZoneMemory | undefined, t?: Tribute): boolean {
     if (!slot) return false;
     if (slot.expiresCycle !== undefined && cycleOf(state) > slot.expiresCycle) return false;
-    return confidenceOf(state, slot) >= MEMORY.actionableConfidence;
+    const bar = t !== undefined && needsSecondSource(t)
+        ? MEMORY.evidenceHungryConfidence
+        : MEMORY.actionableConfidence;
+    return confidenceOf(state, slot) >= bar;
 }
 
 /**
@@ -228,7 +239,7 @@ export function rememberedRivals(state: GameState, t: Tribute, zone: string): nu
      * gating on it is deliberate: a weak report still says "somebody", which
      * is the honest shape of the information.
      */
-    if (!stillBelieved(state, slot)) return 0;
+    if (!stillBelieved(state, slot, t)) return 0;
     return slot.rivals * confidenceOf(state, slot);
 }
 

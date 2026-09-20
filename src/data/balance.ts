@@ -3919,6 +3919,8 @@ export const EPILOGUE = {
 } as const;
 
 export const MEMORY = {
+    /** AUDIT-9 stage D `Evidence-Hungry`: will not move on one report. */
+    evidenceHungryConfidence: 0.75,
     /** AUDIT-9 stage C §3: confidence retained per cycle of age. */
     confidenceDecay: 0.88,
     /** Below this, a belief is not worth acting on. */
@@ -7692,6 +7694,11 @@ export const GAMEMAKER_COSTS = {
  * the same undeclared-knob problem the stance table just got out of.
  */
 export const ARCHETYPE_HOOKS = {
+    /** AUDIT-9 stage D Courier: what counts as an ally who needs something. */
+    courierHungerLine: 45,
+    courierHurtLine: 65,
+    /** Regard above which a Courier will take a non-ally's contract. */
+    courierMinRegard: 10,
     /**
      * Audit 4 §8.3: cycles a Scholar must hold one zone before they have read
      * it well enough to renew `arenaForeknowledge`. The cost of the renewal is
@@ -8379,6 +8386,10 @@ export const CONFUSION = {
  * priced to the minute.
  */
 export const ACTION_BUDGET = {
+    /** AUDIT-9 stage D `Overprepared`: slower out of camp. */
+    overpreparedTravelHours: 1.5,
+    /** AUDIT-9 stage D `Exit-Minded`: scouting the way out before committing. */
+    exitMindedScoutHours: 1,
     baseHours: 12,
     minHours: 3,
     /** A body at 100 fatigue loses this much of the day. */
@@ -8435,6 +8446,8 @@ export const OBLIGATIONS = {
     rescueMinHealth: 40,
     supplyPromiseChance: 0.18,
     escortPromiseChance: 0.2,
+    /** AUDIT-9 stage D `Shared-Burden`: how much likelier they volunteer. */
+    sharedBurdenMultiplier: 3,
     rescuePromiseChance: 0.12,
     keptRegard: 14,
     keptTrust: 6,

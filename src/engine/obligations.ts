@@ -5,6 +5,7 @@ import { cycleOf } from './memory';
 import { adjustRel, adjustTrust } from './relationships';
 import { isActive, isDowned } from './downed';
 import { giveItem } from './items';
+import { refusesCredit, volunteersToCarry } from '../data/traits';
 
 /**
  * AUDIT-9 stage C §4: negotiated obligations.
@@ -56,10 +57,22 @@ export function obligationsOf(state: GameState, t: Tribute): Obligation[] {
 export function canPromise(state: GameState, t: Tribute, kind: Obligation['kind']): boolean {
     if (!isActive(t)) return false;
     switch (kind) {
-        case 'supply':
-            // Something to give that they are not relying on themselves.
-            return t.inventory.filter(i => i.type === 'food' || i.type === 'water').length
-                > OBLIGATIONS.supplySpareNeeded;
+        case 'supply': {
+            /*
+             * Something to give that they are not relying on themselves — so
+             * ordinarily a spare *beyond* the one they are living on.
+             *
+             * AUDIT-9 stage D: a Courier is the exception, and it is the
+             * archetype's whole identity rather than a discount. What they are
+             * carrying is not their reserve; it is somebody else's, and they
+             * are carrying it because that is the job. Without this the
+             * signature needed two spares *and* a needy ally in another zone,
+             * a conjunction that fired 0.0% of the time across 400 runs — a
+             * dead hook of exactly the kind the stage gate exists to catch.
+             */
+            const needed = t.archetype === 'courier' ? 0 : OBLIGATIONS.supplySpareNeeded;
+            return t.inventory.filter(i => i.type === 'food' || i.type === 'water').length > needed;
+        }
         case 'escort':
             return t.health >= OBLIGATIONS.escortMinHealth
                 && t.vitals.fatigue <= OBLIGATIONS.escortMaxFatigue;
@@ -78,6 +91,13 @@ export function promise(
 ): Obligation | undefined {
     const state = ctx.state;
     if (from.id === to.id) return undefined;
+    /*
+     * AUDIT-9 stage D `Bargain-Shy`: "prefers verifiable immediate exchanges
+     * to promises". Not a penalty on promising — a refusal to. They trade what
+     * is in their hands now and are correspondingly impossible to defraud on
+     * credit, and correspondingly short of favours owed when it matters.
+     */
+    if (refusesCredit(from)) return undefined;
     if (!canPromise(state, from, kind)) return undefined;
     // One of each kind between the same two people at a time: repeating a
     // promise you have not kept is not a second promise.
@@ -233,6 +253,16 @@ export function negotiateObligations(ctx: SimContext) {
 
         const hungry = mate.vitals.hunger > OBLIGATIONS.supplyHungerLine;
         const hurt = mate.health < OBLIGATIONS.escortMinHealth;
+        /*
+         * AUDIT-9 stage D `Shared-Burden`: "volunteers for transport of an
+         * injured ally". They promise the hard ones — the escort and the
+         * rescue — far more readily than anybody else, and the exhaustion is
+         * the cost, arriving through the escort itself rather than as a flat
+         * fatigue tax.
+         */
+        const volunteers = volunteersToCarry(t)
+            ? OBLIGATIONS.sharedBurdenMultiplier
+            : 1;
 
         if (hungry && canPromise(state, t, 'supply') && ctx.rng.chance(OBLIGATIONS.supplyPromiseChance)) {
             promise(ctx, t, mate, 'supply');
@@ -245,14 +275,14 @@ export function negotiateObligations(ctx: SimContext) {
          * was already trying to go, so it is help with their plan rather than
          * a detour invented for the promise.
          */
-        if (hurt && canPromise(state, t, 'escort') && ctx.rng.chance(OBLIGATIONS.escortPromiseChance)) {
+        if (hurt && canPromise(state, t, 'escort') && ctx.rng.chance(OBLIGATIONS.escortPromiseChance * volunteers)) {
             const where = mate.objective?.kind === 'reach' ? mate.objective.zone : undefined;
             if (where && where !== t.zone) {
                 promise(ctx, t, mate, 'escort', where);
                 return;
             }
         }
-        if (hurt && canPromise(state, t, 'rescue') && ctx.rng.chance(OBLIGATIONS.rescuePromiseChance)) {
+        if (hurt && canPromise(state, t, 'rescue') && ctx.rng.chance(OBLIGATIONS.rescuePromiseChance * volunteers)) {
             promise(ctx, t, mate, 'rescue');
         }
     });

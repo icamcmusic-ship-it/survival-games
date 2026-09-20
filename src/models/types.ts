@@ -71,6 +71,23 @@ export type ArchetypeId =
     // A2: eight archetypes with behavioural hooks rather than four more bias
     // scalars. See `data/archetypes.ts`.
     | 'mercenary' | 'zealot' | 'medic' | 'saboteur' | 'beast' | 'diplomat' | 'scholar' | 'ghost'
+    /*
+     * AUDIT-9 stage D: the audit proposed five archetypes and said to
+     * "prototype two, not all five", with the test that a new role must not be
+     * "only a renamed existing signature". Courier is the one the stage C work
+     * made possible: "carries goods or intelligence through contested routes
+     * for enforceable rewards", with the weakness "load and interception;
+     * requires real delivery/contracts". Before obligations and physical
+     * parachutes there was nothing to deliver and no contract to enforce, so
+     * it would have been a Scavenger with a different tagline. Now there is.
+     *
+     * The second prototype the audit allows is deliberately not taken: Ferryman,
+     * Engineer, Steward and Counterfeiter each need a system this PR does not
+     * build (persistent transport, repairable infrastructure, renewable camp
+     * resources, inspectable evidence), and shipping one against a system that
+     * does not exist is exactly the dead hook the stage gate exists to stop.
+     */
+    | 'courier'
     // Audit 5 §12.4: four more, each holding a stance/objective/target
     // combination no existing archetype does.
     | 'scavenger' | 'captor' | 'bellwether' | 'confessor'
@@ -2722,6 +2739,8 @@ export interface GameState {
     }>;
     /** Run-level count, for the achievement layer and the harnesses. */
     hazardsAverted?: number;
+    /** Which kinds of hazard were headed off, for the cards that ask. */
+    avertedKinds?: string[];
     /**
      * AUDIT-9 stage C: total quantity the sponsors have put into the arena.
      * The only legitimate source of new items in a run. See

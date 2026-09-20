@@ -178,6 +178,11 @@ export function tickForecasts(ctx: SimContext) {
                 { type: 'hazard-averted', zone: f.zone, important: true, category: 'hazard' },
             );
             state.hazardsAverted = (state.hazardsAverted ?? 0) + 1;
+            // AUDIT-9 stage D: which kind, so a card about a shored building
+            // is not the same card as one about any averted hazard at all.
+            // The achievement check caught those two unlocking on identical
+            // runs, which they did because averting *requires* mitigating.
+            state.avertedKinds = [...new Set([...(state.avertedKinds ?? []), f.kind])];
             return;
         }
 

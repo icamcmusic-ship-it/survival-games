@@ -15,7 +15,7 @@ import {
 import { driftReputation, getRel } from '../relationships';
 import { clampTribute } from '../vitals';
 import { clearBleeding, healInjury, openWound } from '../wounds';
-import { canAfford, hoursLeft, resetBudget, spend } from '../actionBudget';
+import { canAfford, hoursLeft, resetBudget, spend, travelHoursFor } from '../actionBudget';
 import { isNoticed } from '../stealth';
 import { pickDestination } from '../movement';
 import { objectiveHolds, objectiveLabel, objectiveStep, updateObjective } from '../objectives';
@@ -1499,7 +1499,7 @@ function beginMove(ctx: SimContext, t: Tribute, destName: string): MoveOutcome {
      * still eat, bleed, are found and fight, because none of those are things
      * they chose to spend a day on.
      */
-    if (!spend(t, ACTION_BUDGET.travelHours)) return 'no-time';
+    if (!spend(t, travelHoursFor(t))) return 'no-time';
     // §11.6: a tolled edge's `timeCost` is extra cycles spent on the crossing
     // itself, on top of whatever the destination terrain already costs.
     const cost = (dest ? travelCost(t, dest) : 1) + edgeTimeCost(ctx.state, t.zone, destName);
@@ -1556,7 +1556,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
              * with an unspent day. Spending the hours here is what makes a
              * long crossing cost what it says it costs.
              */
-            spend(t, ACTION_BUDGET.travelHours);
+            spend(t, travelHoursFor(t));
             if (remaining - 1 > 0) {
                 t.transit.remaining = remaining - 1;
                 return;
@@ -1657,7 +1657,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
                         m.transit = { ...t.transit! };
                         // The group pays the leader's crossing each, not once
                         // between them: everybody walking it is walking it.
-                        spend(m, ACTION_BUDGET.travelHours);
+                        spend(m, travelHoursFor(m));
                     });
                 }
                 return;

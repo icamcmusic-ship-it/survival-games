@@ -1,6 +1,7 @@
 import { Tribute, attr } from '../models/types';
 import { ACTION_BUDGET } from '../data/balance';
 import { injuryGrade } from './wounds';
+import { isOverprepared, scoutsTheExit } from '../data/traits';
 
 /**
  * AUDIT-9 stage C §3: "time and action budgets".
@@ -87,6 +88,22 @@ export function hoursFor(t: Tribute): number {
     // rather than a modifier on each thing those hours buy.
     hours += (attr(t, 'endurance') - ACTION_BUDGET.enduranceMidpoint) * ACTION_BUDGET.enduranceHourBonus;
     return Math.max(ACTION_BUDGET.minHours, hours);
+}
+
+/**
+ * AUDIT-9 stage D: what a crossing costs *this* tribute.
+ *
+ * `Overprepared` carries the spare and the spare's spare, and the audit's cost
+ * for it is "increased load and slower departure" — so the pack is bigger
+ * (a `capacity` mod) and getting it moving takes longer. `Exit-Minded` spends
+ * part of the day finding the way out before committing to ground, which is
+ * the same shape: the preparation is real hours, and it buys a real thing.
+ */
+export function travelHoursFor(t: Tribute): number {
+    let hours = ACTION_BUDGET.travelHours;
+    if (isOverprepared(t)) hours += ACTION_BUDGET.overpreparedTravelHours;
+    if (scoutsTheExit(t)) hours += ACTION_BUDGET.exitMindedScoutHours;
+    return hours;
 }
 
 /** Hours remaining, defaulting for a tribute who predates the budget. */
