@@ -142,8 +142,14 @@ function holdHearing(ctx: SimContext, record: Alliance, members: Tribute[]) {
         fed.push(m.id);
     });
 
+    /*
+     * Everybody standing round it is named: `check-unnamed`'s rule is that
+     * every tribute a line is about appears in it, and a hearing is about all
+     * of them — that is what makes it a hearing rather than a hand-out.
+     */
+    const present = members.map(m => m.name).join(', ');
     ctx.logEvent(
-        `${record.name ?? 'The group'} opens what is left of the cache in front of everybody, and it is not enough. `
+        `${present} stand round what is left of ${record.name ?? 'the group'}'s cache, and it is not enough. `
         + (split === 'equal'
             ? 'They go round the circle and stop when it runs out, which is the fairest way and helps nobody in particular.'
             : split === 'by-contribution'

@@ -318,8 +318,16 @@ function attemptRescueLine(
             outcome === 'overloaded'
                 ? `${stranded.name} will not let go of the pack, and the pack is heavier than they are strong. `
                   + `${rescuer.name} holds on for as long as anybody could.`
+                /*
+                 * Both of them are named, because the line is about both of
+                 * them — `check-unnamed`'s rule, and it caught this one at 51
+                 * occurrences: the anchor tearing out is as much a thing that
+                 * happened to the person braced against it as to the person
+                 * on the end of it.
+                 */
                 : `The anchor comes out of the ground with a sound like a tooth coming loose. `
-                  + `${victim.name} goes with it.`,
+                  + `${victim.name} goes with it, and ${victim.id === rescuer.id ? stranded.name : rescuer.name} `
+                  + 'is left holding a line with nothing on the end of it.',
             [rescuer.id, stranded.id],
             { type: 'rescue-line-failed', important: true, zone: stranded.zone, category: 'survival' },
         );
