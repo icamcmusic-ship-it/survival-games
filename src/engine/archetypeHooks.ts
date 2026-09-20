@@ -19,6 +19,8 @@ import { getZone, zoneNames, zoneFeatures } from './map';
 import { addZoneThreat } from './memory';
 import { hasTruce } from './parley';
 import { ARCHETYPE_SIGNATURE_TEXTS } from '../data/flavorText';
+import { canPromise, promise } from './obligations';
+import { tradeableZones } from './memory';
 import { loseSanity } from './sanityBands';
 import { addNotoriety } from './notoriety';
 import { incurDebt } from './debts';
@@ -407,6 +409,74 @@ export const SIGNATURES: Record<string, Signature> = {
     // ---- Audit 5 §12.4 ----
 
     /** Scavenger: a cannon fires nearby and they are already walking towards it. */
+    /*
+     * AUDIT-9 stage D: the Courier's signature is a contract, not a mood.
+     *
+     * They find an ally who is somewhere else and needs something they are
+     * carrying, promise it, and set out. The promise is a real obligation with
+     * a deadline, so the walk can fail and be seen to fail — which is the
+     * "enforceable rewards" half of the audit's description, and the reason
+     * this could not have been built before stage C.
+     */
+    courierRun: (ctx, t) => {
+        /*
+         * The same capacity test the promise itself will apply. The first
+         * version asked for "a spare of any of food, water or medical" and
+         * then called `promise`, which counts only food and water and wants
+         * two of them — so the signature could pass its own check and be
+         * refused by the obligation layer, and it fired 0.0% of the time.
+         * Asking the authority directly is the fix; duplicating its rule in a
+         * looser form is how the two drift apart again.
+         */
+        /*
+         * AUDIT-9 stage E: "goods **or intelligence**".
+         *
+         * The audit's Courier carries either, and only the goods half was
+         * built — which held the set piece to 23.3% of its entrants against a
+         * 29% floor, because a courier with an empty pack had nothing to be.
+         * A courier with nothing to carry carries news instead: they know
+         * where the water is and who is where, and that is worth the walk to
+         * somebody who does not.
+         */
+        if (!canPromise(ctx.state, t, 'supply')) {
+            // What is worth telling is relative to who is being told, so the
+            // listener has to be chosen before the question can be asked. The
+            // first version asked `tradeableZones(state, t, t)` — what this
+            // tribute knows that this tribute does not — which is empty by
+            // construction, and the branch could never fire.
+            const listener = getAlive(ctx.state).filter(o => o.id !== t.id && o.zone !== t.zone
+                && (o.allianceId === t.allianceId || getRel(t, o.id) > ARCHETYPE_HOOKS.courierMinRegard))
+                .find(o => tradeableZones(ctx.state, t, o).length >= ARCHETYPE_HOOKS.courierIntelZones);
+            if (!listener) return false;
+            say(ctx, t, 'courierRun', [t.id, listener.id], { client: listener.name, where: listener.zone }, 'objective-formed');
+            t.objective = { kind: 'reach', zone: listener.zone, reason: 'ally', expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.signatureObjectiveCycles };
+            addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
+            return true;
+        }
+        /*
+         * Who they will carry for. Allies first, but not only allies — the
+         * audit's Courier "carries goods or intelligence through contested
+         * routes for enforceable rewards", and a contract with somebody you
+         * merely get on with is the more interesting half of that.
+         *
+         * Requiring an *ally in another zone* was the second thing keeping
+         * this at 0.5%: allies mostly travel together, so the archetype's set
+         * piece needed the one state its own alliance behaviour avoids.
+         */
+        const clients = getAlive(ctx.state).filter(o => o.id !== t.id
+            && (o.allianceId !== undefined && o.allianceId === t.allianceId
+                ? true
+                : getRel(t, o.id) > ARCHETYPE_HOOKS.courierMinRegard)
+            && (o.vitals.hunger > ARCHETYPE_HOOKS.courierHungerLine || o.health < ARCHETYPE_HOOKS.courierHurtLine));
+        if (clients.length === 0) return false;
+        // The far one is the run worth narrating; a neighbour is just sharing.
+        const client = clients.find(o => o.zone !== t.zone) ?? clients[0];
+        if (!promise(ctx, t, client, 'supply')) return false;
+        say(ctx, t, 'courierRun', [t.id, client.id], { client: client.name, where: client.zone }, 'objective-formed');
+        t.objective = { kind: 'reach', zone: client.zone, reason: 'ally', expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.signatureObjectiveCycles };
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
+        return true;
+    },
     scavengerClaim: (ctx, t) => {
         const recent = (ctx.state.recentCannonZones ?? []).filter(c => c.cycle >= (ctx.state.cycle ?? 0) - 2 && c.zone !== t.zone);
         if (recent.length === 0) return false;
@@ -757,7 +827,33 @@ export const SIGNATURES: Record<string, Signature> = {
                 && (o.inventory.length < t.inventory.length
                     || need(o) > need(t) + ARCHETYPE_HOOKS.brokerNeedGap))
             .sort((a, b) => need(b) - need(a))[0];
-        if (!client) return false;
+        if (!client) {
+            /*
+             * AUDIT-9 stage E: a broker who cannot see a client goes looking
+             * for one.
+             *
+             * Pricing travel in stage C cut how often anybody shares a zone
+             * with anybody, and this set piece needs a client *standing here*
+             * — so it slipped from 29%+ to 27.0% of broker entrants through no
+             * change to the broker at all. Restoring the opportunity rather
+             * than cheapening the trade: the deal still needs both of them in
+             * one place, but the broker now walks toward the person who needs
+             * what they are carrying instead of waiting for the arena to
+             * deliver them. That is what a broker is.
+             */
+            const distant = getAlive(ctx.state)
+                .filter(o => o.id !== t.id && o.zone !== t.zone && need(o) > need(t) + ARCHETYPE_HOOKS.brokerNeedGap)
+                .sort((a, b) => need(b) - need(a))[0];
+            if (!distant) return false;
+            if (t.objective?.kind === 'reach' && t.objective.zone === distant.zone) return false;
+            t.objective = {
+                kind: 'reach',
+                zone: distant.zone,
+                reason: 'ally',
+                expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.signatureObjectiveCycles,
+            };
+            return false;
+        }
         /*
          * AUDIT-7 §8.2: and a broker holding only weapons is still a broker.
          *

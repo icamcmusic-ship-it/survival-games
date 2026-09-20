@@ -5,6 +5,8 @@ import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
 import { applyExposure } from './exposure';
 import { getZone, zoneFeatures } from './map';
+import { hasEffect } from './zoneEffects';
+import { cycleOf } from './memory';
 import { consumeOne, encumbranceOf, hasTool, spoilageBonus } from './items';
 import { clampTribute } from './vitals';
 import { warmthOf } from './composure';
@@ -446,7 +448,20 @@ function drinkFromZone(ctx: SimContext, t: Tribute) {
     // `noWaterExceptZone`: nothing to drink anywhere but the designated zone.
     if (arenaHasLaw(ctx.state, 'noWaterExceptZone') && t.zone !== ctx.state.arena.lawZone) return;
 
-    const foul = climateOf(ctx.state.arena.id)?.foulWater === true;
+    /*
+     * AUDIT-9 stage D chain 2: "getting away with it" is a belief, not a fact.
+     *
+     * The audit asks this chain for "a cluster of delayed illness" and for the
+     * agent's knowledge to be told apart from the world's. A contaminated
+     * water source is the vector, whatever the climate does — the first
+     * version of this gated on the arena's `foulWater` flag *and* on
+     * contamination, which is two rare things at once and fired exactly zero
+     * times in 400 runs. Anybody drinking here without something to treat it
+     * walks away feeling fine; `tickExposure` decides days later whether they
+     * were.
+     */
+    const contaminated = hasEffect(ctx.state, t.zone, 'contaminated');
+    const foul = climateOf(ctx.state.arena.id)?.foulWater === true || contaminated;
     // Purification is a property of the item now, not a hardcoded id list, so
     // tablets and a fire-and-a-pot both answer the same question.
     const purifier = t.inventory.find(i =>
@@ -469,6 +484,11 @@ function drinkFromZone(ctx: SimContext, t: Tribute) {
         // Desperate enough to drink it anyway — the thirst is the more urgent
         // problem, and the venom is a chance rather than a certainty.
         t.vitals.thirst = Math.max(0, t.vitals.thirst - WATER.zoneDrinkRelief);
+        // AUDIT-9 stage D chain 2: whatever was in it is in them now, felt or
+        // not. Set here because this branch returns before the general one.
+        if (contaminated && !t.waterborne) {
+            t.waterborne = { fromZone: t.zone, dueCycle: cycleOf(ctx.state) + WATER.waterborneIncubationCycles };
+        }
         if (!t.injuries.poisoned && ctx.rng.chance(WATER.foulPoisonChance)) {
             injure(t, 'poisoned');
             ctx.logEvent(
@@ -1106,5 +1126,34 @@ export function processVitals(ctx: SimContext, time: 'day' | 'night') {
         clampTribute(t);
         // No priority-chain guessing: the obituary names whatever landed last.
         checkDeath(ctx, t);
+    });
+}
+
+/**
+ * AUDIT-9 stage D chain 2: the delayed half of waterborne illness.
+ *
+ * The chain the audit specified is "water-source contamination upstream ->
+ * cluster of delayed illness", and *delayed* is the whole of it. An instant
+ * poison roll at the moment of drinking is a tax on being thirsty; an illness
+ * that arrives three cycles later, in a tribute who has since walked two
+ * zones and does not necessarily connect it to the water, is a consequence
+ * with a history. It also produces the cluster: several tributes who drank
+ * from the same bad source fall ill within a cycle of each other, which is
+ * the pattern a Gamemaker — or a player — can actually read.
+ */
+export function tickExposure(ctx: SimContext) {
+    const cycle = cycleOf(ctx.state);
+    getAlive(ctx.state).forEach(t => {
+        const exposure = t.waterborne;
+        if (!exposure || cycle < exposure.dueCycle) return;
+        delete t.waterborne;
+        if (t.injuries.poisoned) return;
+        injure(t, 'poisoned');
+        ctx.logEvent(
+            `${t.name} goes down on one knee in ${t.zone} with something that started three days ago in ${exposure.fromZone}. `
+            + 'Whatever was in that water took its time.',
+            [t.id],
+            { type: 'waterborne-illness', important: true, category: 'injury' },
+        );
     });
 }

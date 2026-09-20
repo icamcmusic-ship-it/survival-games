@@ -1,4 +1,5 @@
 import { GameState, Terrain } from '../models/types';
+import { forecastHazard } from './hazardChain';
 import { SimContext } from './context';
 import { LOAD_BEARING } from '../data/balance';
 import { getZone } from './map';
@@ -69,9 +70,31 @@ export function tickStructuralFatigue(ctx: SimContext) {
         // it is why "load-bearing" was a shipped mechanic that fired once in
         // 400 runs. Rolled before the occupation load so a zone that has just
         // tipped over the line gets its first chance next cycle, not this one.
-        if (structuralFatigueOf(state, zone.name) >= LOAD_BEARING.collapseAt) {
+        const fatigue = structuralFatigueOf(state, zone.name);
+        /*
+         * AUDIT-9 stage D, chain 1 of 3: "unstable shelter after weather
+         * damage -> collapse", whose stated non-fatal branches are
+         * "inspect/repair/relocate; reveal the structural warning before
+         * committing".
+         *
+         * The structural warning existed as a number and was revealed to
+         * nobody. A building loaded past `warnAt` now *sounds* like it, a
+         * cycle or more before it is loaded past `collapseAt` — which is the
+         * difference between a death nobody could have avoided and one
+         * somebody chose not to. Shoring it up is `mitigate`, which is a
+         * day's work, so the choice has a price.
+         */
+        if (fatigue >= LOAD_BEARING.warnAt && occupants > 0) {
+            forecastHazard(ctx, zone.name, 'quaking', 'arena', { leadCycles: LOAD_BEARING.warnLeadCycles });
+        }
+        if (fatigue >= LOAD_BEARING.collapseAt) {
+            // A shored structure is one somebody spent a day on. It is not
+            // safe; it is not the thing that kills them this cycle.
+            const shored = (state.forecasts ?? []).some(f =>
+                f.zone === zone.name && f.kind === 'quaking' && f.mitigation >= 1);
             const odds = LOAD_BEARING.collapseChancePerCycle
-                * (occupants > 0 ? LOAD_BEARING.collapseOccupiedMultiplier : 1);
+                * (occupants > 0 ? LOAD_BEARING.collapseOccupiedMultiplier : 1)
+                * (shored ? LOAD_BEARING.shoredCollapseMultiplier : 1);
             if (ctx.rng.chance(odds)) {
                 collapseStructure(ctx, zone.name);
                 return;

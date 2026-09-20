@@ -225,6 +225,37 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         // Audit 4 §8.3: Familiarity. Most of what frightens the field is weather to them.
         fearScale: 0.85,
     },
+    /*
+     * AUDIT-9 stage D. The signature is a delivery: they take on a supply
+     * obligation to an ally who is somewhere else and walk it to them. That is
+     * a thing the engine can now express and could not before — it needs
+     * obligations with deadlines and an actual handover to discharge against.
+     *
+     * The weakness is the one the audit names, and it is not a stat: the route
+     * is contested and they are carrying, so a Courier is a tribute who is
+     * repeatedly in transit with a full pack, which is the most interceptable
+     * state in the game. `Overprepared` and `Shared-Burden` are their
+     * preferred traits because both make that worse and better at once.
+     */
+    courier: {
+        id: 'courier',
+        name: 'Courier',
+        description: 'Moves what other people need to where they need it, and expects to be paid for the walk.',
+        statBias: { endurance: 2, agility: 1 },
+        preferredTraits: ['Overprepared', 'Shared-Burden', 'Bookkeeper'],
+        aggression: -0.15,
+        allianceAffinity: 0.3,
+        treachery: -0.15,
+        caution: 0.1,
+        stanceBias: { Evasive: 0.4, Scavenging: 0.2 },
+        objectiveBias: { reach: 0.5, survive: 0.2 },
+        targetPreference: 'weakest',
+        riskCurve: 'flat',
+        signature: 'courierRun',
+        tagline: 'The walk is the job.',
+        targetDraw: -0.2,
+        fearScale: 0.95,
+    },
     protector: {
         id: 'protector',
         name: 'Protector',
@@ -1272,6 +1303,11 @@ const BASE_WEIGHTS: ArchetypeWeights = {
      */
     strategist: 1,
     survivalist: 1,
+    // AUDIT-9 stage D: weighted with the other mid-tier roles rather than
+    // added at the bottom, because an archetype drawn under 500 entrants in
+    // 1,600 runs is one `metrics.ts` will not render a verdict on — which is
+    // exactly the "no dead hooks" the stage gate asks for.
+    courier: 1,
     protector: 1,
     trickster: 1,
     wildcard: 1,
@@ -1328,7 +1364,7 @@ export const DISTRICT_ARCHETYPE_WEIGHTS: Record<number, ArchetypeWeights> = {
     3:  { strategist: 4, trickster: 2, underdog: 1.5, saboteur: 1.5, scholar: 1.5, broker: 1.2 },
     4:  { career: 6, survivalist: 2, protector: 1.5, medic: 1.2, forager: 1.5 },
     5:  { strategist: 2.5, trickster: 2, wildcard: 1.5, mercenary: 1.5, scholar: 1.5, broker: 1.5 },
-    6:  { wildcard: 2.5, underdog: 2, trickster: 1.5, mercenary: 1.5, ghost: 1.5, broker: 1.2 },
+    6:  { wildcard: 2.5, underdog: 2, trickster: 1.5, mercenary: 1.5, ghost: 1.5, broker: 1.2, courier: 3 },
     7:  { protector: 2.5, survivalist: 2, wildcard: 1.5, beast: 1.2, warden: 1.5, forager: 1.2 },
     8:  { underdog: 2.5, trickster: 2, protector: 1.5, saboteur: 1.5, broker: 1.2 },
     9:  { survivalist: 2.5, underdog: 2, protector: 1.5, ghost: 1.5, forager: 2 },

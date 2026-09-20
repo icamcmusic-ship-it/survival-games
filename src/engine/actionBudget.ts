@@ -1,6 +1,8 @@
 import { Tribute, attr } from '../models/types';
 import { ACTION_BUDGET } from '../data/balance';
 import { injuryGrade } from './wounds';
+import { isOverprepared, scoutsTheExit } from '../data/traits';
+import { profOf } from './proficiency';
 
 /**
  * AUDIT-9 stage C §3: "time and action budgets".
@@ -45,6 +47,27 @@ import { injuryGrade } from './wounds';
  */
 
 /**
+ * AUDIT-9 stage E: a hard ceiling on crossings, on top of the hours.
+ *
+ * Hours alone stopped being a sufficient constraint once the day lengthened
+ * and `pacing` started buying hours back: a fit, well-practised tribute could
+ * afford four or five crossings in a cycle, which is not a long day, it is a
+ * different map. The budget is the *economic* limit and this is the physical
+ * one — there are only so many hours of daylight and only so far a body goes
+ * in them, however good at walking it is.
+ *
+ * Caught by the scenario "a second crossing does not fit in the same day",
+ * which had quietly become false for the toughest tributes.
+ */
+export function crossingsLeft(t: Tribute): number {
+    return Math.max(0, ACTION_BUDGET.maxCrossingsPerCycle - (t.crossingsThisCycle ?? 0));
+}
+
+export function noteCrossing(t: Tribute) {
+    t.crossingsThisCycle = (t.crossingsThisCycle ?? 0) + 1;
+}
+
+/**
  * A fresh cycle: everybody gets the day back, minus what their body costs.
  *
  * `hoursToday` records the allowance as granted. `hoursFor` is recomputed from
@@ -56,6 +79,7 @@ import { injuryGrade } from './wounds';
  * budget leaking when it was the measurement that was moving.
  */
 export function resetBudget(t: Tribute) {
+    t.crossingsThisCycle = 0;
     t.hoursToday = hoursFor(t);
     t.hoursLeft = t.hoursToday;
 }
@@ -87,6 +111,35 @@ export function hoursFor(t: Tribute): number {
     // rather than a modifier on each thing those hours buy.
     hours += (attr(t, 'endurance') - ACTION_BUDGET.enduranceMidpoint) * ACTION_BUDGET.enduranceHourBonus;
     return Math.max(ACTION_BUDGET.minHours, hours);
+}
+
+/**
+ * AUDIT-9 stage D: what a crossing costs *this* tribute.
+ *
+ * `Overprepared` carries the spare and the spare's spare, and the audit's cost
+ * for it is "increased load and slower departure" — so the pack is bigger
+ * (a `capacity` mod) and getting it moving takes longer. `Exit-Minded` spends
+ * part of the day finding the way out before committing to ground, which is
+ * the same shape: the preparation is real hours, and it buys a real thing.
+ */
+export function travelHoursFor(t: Tribute): number {
+    /*
+     * AUDIT-9 stage E: `pacing` is the proficiency for covering ground, and
+     * it buys hours back.
+     *
+     * Added as a controlled balance experiment rather than a guess. Pricing
+     * travel halved the Broker's win rate (4.33% -> 2.29% at n=1,600) and put
+     * its set piece under the firing floor, because a broker needs a client
+     * *in the same zone* and a field that moves less meets less. The lever
+     * that fixes it has to give the walking back to the people whose job is
+     * walking, not make walking cheap for everyone — which is what a
+     * proficiency does and a flat reduction does not.
+     */
+    let hours = ACTION_BUDGET.travelHours
+        * Math.max(ACTION_BUDGET.minPacingMultiplier, 1 - profOf(t, 'pacing') * ACTION_BUDGET.pacingHourRelief);
+    if (isOverprepared(t)) hours += ACTION_BUDGET.overpreparedTravelHours;
+    if (scoutsTheExit(t)) hours += ACTION_BUDGET.exitMindedScoutHours;
+    return hours;
 }
 
 /** Hours remaining, defaulting for a tribute who predates the budget. */

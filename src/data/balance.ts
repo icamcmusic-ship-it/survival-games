@@ -435,6 +435,8 @@ export const NOTORIETY = {
  * you unless you can boil it.
  */
 export const WATER = {
+    /** AUDIT-9 stage D chain 2: cycles between drinking it and feeling it. */
+    waterborneIncubationCycles: 3,
     /** Thirst removed by drinking straight from a stream or a pool. */
     zoneDrinkRelief: 55,
     /** Odds foul water poisons a tribute who drinks it untreated. */
@@ -3184,6 +3186,14 @@ export const TERRAIN_DRYNESS: Record<string, number> = {
 };
 
 export const ZONE_EFFECTS = {
+    /** AUDIT-9 stage D chain 3: terrain where fire takes the air first. */
+    confinedTerrain: ['cave', 'ruins'] as const,
+    smokeLeadCycles: 1,
+    smokeSeverity: 1.4,
+    /** AUDIT-9 stage D chain 2: cycles for contamination to reach downstream. */
+    contaminationDriftCycles: 2,
+    /** AUDIT-9 stage C §5: odds a forecast hazard picks occupied ground. */
+    hazardOccupiedBias: 0.75,
     /** How long each effect lasts before lifting on its own. */
     burningDuration: 3,
     floodedDuration: 4,
@@ -3374,6 +3384,11 @@ export const ZONE_EFFECTS = {
  * mechanic is tuned.
  */
 export const LOAD_BEARING = {
+    /** AUDIT-9 stage D chain 1: load at which a building starts to sound wrong. */
+    warnAt: 0.6,
+    warnLeadCycles: 2,
+    /** How much a day's shoring takes off the collapse odds. */
+    shoredCollapseMultiplier: 0.25,
     /** Load added per occupant, per cycle, to a `ruins` zone. */
     perOccupantCycle: 0.05,
     /** Load added by a fight resolving inside one. Violence is loud. */
@@ -3844,6 +3859,9 @@ export const INVENTORY = {
 
 /** Zone economy: foraging strips a zone, and the arena grows it back slowly. */
 export const ZONES = {
+    /** AUDIT-9 stage C §5: odds a tribute acts on a hazard warning. */
+    mitigateChance: 0.25,
+    mitigatePerIntelligence: 0.04,
     /** Depletion below which a badly stripped zone visibly reads as recovered. */
     regrowthBeatBelow: 0.2,
     /** Peak depletion a zone must have hit for its recovery to be worth a line. */
@@ -3901,6 +3919,12 @@ export const EPILOGUE = {
 } as const;
 
 export const MEMORY = {
+    /** AUDIT-9 stage D `Evidence-Hungry`: will not move on one report. */
+    evidenceHungryConfidence: 0.75,
+    /** AUDIT-9 stage C §3: confidence retained per cycle of age. */
+    confidenceDecay: 0.88,
+    /** Below this, a belief is not worth acting on. */
+    actionableConfidence: 0.25,
     /**
      * §3.4: how badly a dissociating tribute misremembers a place. `Blank` is
      * the share of zones whose remembered threat reads as nothing at all;
@@ -7342,6 +7366,10 @@ export const EDGE_RULES = {
  * somebody where the water is — or telling them wrong — is the counterweight.
  */
 export const INTEL = {
+    /** AUDIT-9 stage C §3: confidence retained per retelling. */
+    hopConfidenceLoss: 0.65,
+    /** Hearsay goes stale faster than having been there. */
+    hearsayLifetimeShare: 0.6,
     /** Chance allies sharing a camp trade honest map knowledge in a cycle. */
     shareChance: 0.3,
     /** Zones handed over in one exchange. */
@@ -7666,6 +7694,13 @@ export const GAMEMAKER_COSTS = {
  * the same undeclared-knob problem the stance table just got out of.
  */
 export const ARCHETYPE_HOOKS = {
+    /** AUDIT-9 stage D Courier: what counts as an ally who needs something. */
+    courierHungerLine: 35,
+    courierHurtLine: 78,
+    /** Zones a Courier must know before news is worth the walk. */
+    courierIntelZones: 2,
+    /** Regard above which a Courier will take a non-ally's contract. */
+    courierMinRegard: 10,
     /**
      * Audit 4 §8.3: cycles a Scholar must hold one zone before they have read
      * it well enough to renew `arenaForeknowledge`. The cost of the renewal is
@@ -7848,7 +7883,7 @@ export const ARCHETYPE_HOOKS = {
      * AUDIT-7 §8.2: how much hungrier or thirstier than the broker somebody has
      * to be to read as a client rather than as a rival supplier.
      */
-    brokerNeedGap: 15,
+    brokerNeedGap: 5,
     /**
      * AUDIT-9: what an untreated wound is worth on the need scale.
      *
@@ -8353,7 +8388,16 @@ export const CONFUSION = {
  * priced to the minute.
  */
 export const ACTION_BUDGET = {
-    baseHours: 12,
+    /** AUDIT-9 stage E: hours off a crossing per point of `pacing`. */
+    pacingHourRelief: 0.05,
+    minPacingMultiplier: 0.55,
+    /** Physical ceiling on crossings in one cycle, whatever the hours allow. */
+    maxCrossingsPerCycle: 2,
+    /** AUDIT-9 stage D `Overprepared`: slower out of camp. */
+    overpreparedTravelHours: 1.5,
+    /** AUDIT-9 stage D `Exit-Minded`: scouting the way out before committing. */
+    exitMindedScoutHours: 1,
+    baseHours: 14,
     minHours: 3,
     /** A body at 100 fatigue loses this much of the day. */
     fatigueHourCost: 5,
@@ -8409,8 +8453,31 @@ export const OBLIGATIONS = {
     rescueMinHealth: 40,
     supplyPromiseChance: 0.18,
     escortPromiseChance: 0.2,
+    /** AUDIT-9 stage D `Shared-Burden`: how much likelier they volunteer. */
+    sharedBurdenMultiplier: 3,
     rescuePromiseChance: 0.12,
     keptRegard: 14,
     keptTrust: 6,
     brokenRegard: 22,
+} as const;
+
+/**
+ * AUDIT-9 stage C §5: warning, mitigation and what a half-finished job is
+ * worth. See `engine/hazardChain`.
+ */
+export const HAZARD_CHAIN = {
+    /** Cycles between a hazard being forecast and arriving. */
+    defaultLeadCycles: 2,
+    /** How threatening a forecast makes the zone feel to whoever is in it. */
+    forecastThreat: 3,
+    /** Nobody starts a day's work on this with an hour left. */
+    minHoursToStart: 3,
+    /** Credit a single unfinished cycle of work is worth. */
+    partialCredit: 0.5,
+    /** How much of the hazard a half-finished job takes off. */
+    partialSeverityRelief: 0.6,
+    /** Hours off the job per point of carpentry. */
+    carpentryHourRelief: 0.06,
+    minSkillMultiplier: 0.5,
+    carpentryTrainShare: 0.5,
 } as const;

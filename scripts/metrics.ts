@@ -358,9 +358,49 @@ const pct = (n: number, d: number) => d === 0 ? '—' : `${(n / d * 100).toFixed
  * `baseline` is the measured pre-overhaul value, kept so the direction and size
  * of each change is legible without digging through git history.
  */
+/**
+ * AUDIT-9 stage E: how wide the error bar is on a proportion.
+ *
+ * The stage's completion gate is "improvements hold across explicit coverage
+ * cells; uncertainty and regression budgets reported". Every indicator here
+ * has been a point estimate with no error bar since the file was written,
+ * which is why the comments around `GUARD_MIN_SAMPLE` read like a
+ * three-audit-long argument with the instrument: guards flipping on one
+ * victor, a spread of 2.94x in one audit and 4.35x in the next "without a
+ * single archetype changing", indicators that "fell back to 0 and failed a
+ * guard no measurement had been taken for". Every one of those is the same
+ * bug — a number reported to three significant figures that was never that
+ * precise.
+ *
+ * Wilson rather than the normal approximation, because the rates that matter
+ * most here are the small ones (a 0.4% achievement, a 3% archetype) and the
+ * normal interval is worst exactly there — it happily runs below zero.
+ */
+function wilson(successes: number, n: number, z = 1.96): { lo: number; hi: number } {
+    if (n <= 0) return { lo: 0, hi: 1 };
+    const p = successes / n;
+    const d = 1 + (z * z) / n;
+    const centre = p + (z * z) / (2 * n);
+    const spread = z * Math.sqrt((p * (1 - p) + (z * z) / (4 * n)) / n);
+    return { lo: Math.max(0, (centre - spread) / d), hi: Math.min(1, (centre + spread) / d) };
+}
+
+/** The half-width of that interval, in percentage points. */
+function marginPct(successes: number, n: number): number {
+    const { lo, hi } = wilson(successes, n);
+    return ((hi - lo) / 2) * 100;
+}
+
 interface Indicator {
     label: string;
     value: number;
+    /**
+     * AUDIT-9 stage E: the sample behind this indicator, where it is a
+     * proportion. Present means an error bar is printed and the guard is
+     * annotated when the interval straddles it — which is the difference
+     * between "this regressed" and "this moved less than the noise".
+     */
+    sample?: () => { successes: number; n: number };
     /** Regression bound. Failing this fails the build. */
     guard: (v: number) => boolean;
     guardText: string;
@@ -639,6 +679,7 @@ const indicators: Indicator[] = [
         // to offer a fight survived it to die of thirst on day six instead.
         label: 'share of the field lost in the bloodbath',
         value: bloodbathDeaths / Math.max(1, bloodbathFields),
+        sample: () => ({ successes: bloodbathDeaths, n: bloodbathFields }),
         guard: v => v >= 0.25 && v <= 0.62,
         guardText: '25%-62%',
         goal: '33%-50%',
@@ -652,6 +693,7 @@ const indicators: Indicator[] = [
         // never met another person.
         label: 'deaths from untreated bleeding',
         value: (deathsByCause.bleeding || 0) / deaths,
+        sample: () => ({ successes: deathsByCause.bleeding || 0, n: deaths }),
         guard: v => v <= 0.13,
         guardText: '<= 13%',
         goal: '<= 10%',
@@ -665,6 +707,7 @@ const indicators: Indicator[] = [
         // 40% is the author's judgement of where it ought to end up.
         label: 'deaths caused by another tribute',
         value: (deathsByCause.tribute || 0) / deaths,
+        sample: () => ({ successes: deathsByCause.tribute || 0, n: deaths }),
         guard: v => v >= 0.33,
         guardText: '>= 33%',
         goal: '>= 40%',
@@ -753,6 +796,7 @@ const indicators: Indicator[] = [
         // 32% -> 12% so the number can keep falling and cannot climb back.
         label: 'victors with zero kills',
         value: victorZeroKills / Math.max(1, victors),
+        sample: () => ({ successes: victorZeroKills, n: victors }),
         guard: v => v <= 0.12,
         guardText: '<= 12%',
         goal: '<= 6%',
@@ -803,6 +847,7 @@ const indicators: Indicator[] = [
         // before either tribute had done anything for the other.
         label: 'runs with star-crossed lovers',
         value: runsWithLovers / runs,
+        sample: () => ({ successes: runsWithLovers, n: runs }),
         guard: v => v >= 0.05 && v <= 0.22,
         guardText: '5%-22%',
         goal: '10%-15%',
@@ -878,6 +923,7 @@ const indicators: Indicator[] = [
         // but only covers the border-collapse damage vector.
         label: 'runs ending with no victor',
         value: wipeouts / Math.max(1, runs),
+        sample: () => ({ successes: wipeouts, n: runs }),
         guard: v => v <= 0.05,
         guardText: '<= 5%',
         goal: '<= 2%',
@@ -924,6 +970,7 @@ const indicators: Indicator[] = [
         // lower one.
         label: 'deaths from mutts and hazards',
         value: ((deathsByCause['mutts'] ?? 0) + (deathsByCause['arena/hazard'] ?? 0)) / Math.max(1, deaths),
+        sample: () => ({ successes: (deathsByCause['mutts'] ?? 0) + (deathsByCause['arena/hazard'] ?? 0), n: deaths }),
         /*
          * AUDIT-6 §7: the ceiling goes 18% to 20%, and the reason is that the
          * ceiling and the work now disagree.
@@ -1025,6 +1072,7 @@ const indicators: Indicator[] = [
         // gets them there is a pass of its own.
         label: 'Career victors',
         value: careerVictors / Math.max(1, victors),
+        sample: () => ({ successes: careerVictors, n: victors }),
         // §8.1: ratcheted. Measured 52.1% at n=1,600, 47.0% at n=400.
         guard: v => v <= 0.55,
         guardText: '<= 55%',
@@ -1248,6 +1296,7 @@ Object.keys(allianceSizeHistogram).map(Number).sort((a, b) => a - b).forEach(k =
 console.log('\nindicators (guard = regression bound, goal = design intent):');
 let failed = 0;
 let shortOfGoal = 0;
+let indecisive = 0;
 indicators.forEach(ind => {
     const judgeable = ind.judgeable ? ind.judgeable() : true;
     const ok = ind.guard(ind.value);
@@ -1263,12 +1312,44 @@ indicators.forEach(ind => {
         );
         return;
     }
+    /*
+     * AUDIT-9 stage E: the error bar, and whether the guard is inside it.
+     *
+     * A PASS whose confidence interval straddles the guard is not evidence
+     * that the guard holds; it is evidence that this run count cannot tell.
+     * Saying so is the whole of the "uncertainty reported" gate — the number
+     * is unchanged, what changes is how much weight a reader gives it.
+     */
+    let uncertainty = '';
+    if (ind.sample) {
+        const { successes, n } = ind.sample();
+        const margin = marginPct(successes, n);
+        const { lo, hi } = wilson(successes, n);
+        const straddles = !ind.guard(lo) || !ind.guard(hi);
+        uncertainty = `  [+/-${margin.toFixed(1)}pp, n=${n}${straddles ? ', guard inside the interval — not decisive at this run count' : ''}]`;
+        if (straddles) indecisive++;
+    }
     console.log(
         `  ${ok ? 'PASS' : 'FAIL'}  ${ind.label.padEnd(36)} ${shown.padStart(7)}` +
-        `  (was ${ind.baseline}, guard ${ind.guardText}${goalNote})`
+        `  (was ${ind.baseline}, guard ${ind.guardText}${goalNote})${uncertainty}`
     );
     if (!metGoal) shortOfGoal++;
 });
+
+/*
+ * AUDIT-9 stage E: the regression budget, stated rather than implied.
+ *
+ * An indicator whose confidence interval contains its own guard has not been
+ * tested by this run: it would read PASS on a simulation that had genuinely
+ * regressed past the bound, and FAIL on one that had not, and which it does is
+ * a coin flip on the seeds. Naming those rows is the difference between a
+ * green suite and a green suite you can act on.
+ */
+if (indecisive > 0) {
+    console.log(`\n${indecisive} indicator(s) cannot be decided at ${runs} runs: the guard lies inside the `
+        + '95% interval, so the verdict is noise either way. Re-run with METRICS_RUNS=1600 before '
+        + 'concluding anything from them.');
+}
 
 // The goals are deliberately still printed when unmet. A design target that
 // quietly disappears once it is inconvenient is worse than no target at all.

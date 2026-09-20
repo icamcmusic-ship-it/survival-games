@@ -1,10 +1,11 @@
-import { Terrain, Tribute } from '../models/types';
+import { Terrain, Tribute, attr } from '../models/types';
 import { ITEMS } from '../data/constants';
-import { ACTION_BUDGET, BLEEDING, COMPOSURE, CRAFTING, DESPERATION, ENCOUNTERS, ENCOUNTER_BRANCH, ESCALATION, HUNTING, MEMORY, POISONING, PROFICIENCY, ROMANCE, SANITY_BANDS, TOOLS, VITALS, ZONES, STANCE_MODES } from '../data/balance';
+import { ACTION_BUDGET, HAZARD_CHAIN, BLEEDING, COMPOSURE, CRAFTING, DESPERATION, ENCOUNTERS, ENCOUNTER_BRANCH, ESCALATION, HUNTING, MEMORY, POISONING, PROFICIENCY, ROMANCE, SANITY_BANDS, TOOLS, VITALS, ZONES, STANCE_MODES } from '../data/balance';
 import { ALLIANCE_TEXTS, ENCOUNTER_TEXTS, SANITY_TEXTS } from '../data/flavorText';
 import { ArenaActionKey, ArenaEventDef, actionPool, arenaFlavor } from '../data/arenaFlavor';
 import { QUIRKS, quirkLine } from '../data/quirks';
 import { spend } from './actionBudget';
+import { mitigate } from './hazardChain';
 import { SimContext , getAlive } from './context';
 import { applyDamage, checkDeath, resolveCombat } from './combat';
 import { depleteZone, depletionOf, effectiveResources, getZone, zoneFeatures , reachableZones } from './map';
@@ -15,7 +16,7 @@ import { isSeptic, syncInfectedFlag, treatInfection } from './infection';
 import { tradeReputations } from './notoriety';
 import { tradeRumours } from './rumours';
 import { sleepForagePenalty } from './survival';
-import { cycleOf, addZoneThreat, hasVengeanceAgainst, noteContact, noteSighting, raiseSuspicion } from './memory';
+import { cycleOf, addZoneThreat, rememberedThreat, hasVengeanceAgainst, noteContact, noteSighting, raiseSuspicion } from './memory';
 import { adjustMutual, adjustRel, getRel } from './relationships';
 import { hasTruce, tryParley } from './parley';
 import { areLovers, maintainPerformance } from './alliance';
@@ -866,6 +867,22 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
     // it needs no item and it is available to everyone.
     if (shouldDressWound(t)) {
         attemptFieldDressing(ctx, t);
+        return;
+    }
+
+    /*
+     * AUDIT-9 stage C §5: acting on a warning.
+     *
+     * Second only to a running wound, because a tribute who knows the ground
+     * they are standing on is about to burn and spends the day foraging on it
+     * is not a tribute with priorities, they are a tribute with no model of
+     * the future. Gated on believing the warning — the forecast writes zone
+     * threat into memory, so somebody who was elsewhere when it was announced
+     * has nothing to act on, which is the bounded-knowledge rule holding.
+     */
+    if (rememberedThreat(ctx.state, t, t.zone) >= HAZARD_CHAIN.forecastThreat
+        && ctx.rng.chance(ZONES.mitigateChance + attr(t, 'intelligence') * ZONES.mitigatePerIntelligence)
+        && mitigate(ctx, t)) {
         return;
     }
 

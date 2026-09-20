@@ -71,6 +71,23 @@ export type ArchetypeId =
     // A2: eight archetypes with behavioural hooks rather than four more bias
     // scalars. See `data/archetypes.ts`.
     | 'mercenary' | 'zealot' | 'medic' | 'saboteur' | 'beast' | 'diplomat' | 'scholar' | 'ghost'
+    /*
+     * AUDIT-9 stage D: the audit proposed five archetypes and said to
+     * "prototype two, not all five", with the test that a new role must not be
+     * "only a renamed existing signature". Courier is the one the stage C work
+     * made possible: "carries goods or intelligence through contested routes
+     * for enforceable rewards", with the weakness "load and interception;
+     * requires real delivery/contracts". Before obligations and physical
+     * parachutes there was nothing to deliver and no contract to enforce, so
+     * it would have been a Scavenger with a different tagline. Now there is.
+     *
+     * The second prototype the audit allows is deliberately not taken: Ferryman,
+     * Engineer, Steward and Counterfeiter each need a system this PR does not
+     * build (persistent transport, repairable infrastructure, renewable camp
+     * resources, inspectable evidence), and shipping one against a system that
+     * does not exist is exactly the dead hook the stage gate exists to stop.
+     */
+    | 'courier'
     // Audit 5 §12.4: four more, each holding a stance/objective/target
     // combination no existing archetype does.
     | 'scavenger' | 'captor' | 'bellwether' | 'confessor'
@@ -479,6 +496,36 @@ export interface ZoneMemory {
     hearsay?: boolean;
     /** §9.7: who told them, so a lie has an author to be furious with. */
     toldById?: string;
+    /**
+     * AUDIT-9 stage C §3: how sure they are, 0 to 1.
+     *
+     * The audit asked for a belief to carry "claim, source, observed time,
+     * confidence and expiry". `hearsay` is provenance as a *boolean* — a claim
+     * heard third-hand from somebody who heard it from a liar was exactly as
+     * strong as one heard from the person who saw it — and confidence did not
+     * exist at all. It does now, and it is what separates "I know" from "I was
+     * told", and both from "somebody said they heard".
+     *
+     * Undefined on beliefs written before this existed, and on saved states;
+     * `confidenceOf` reads that as first-hand, which is what those beliefs
+     * were, so old saves lose nothing.
+     */
+    confidence?: number;
+    /**
+     * How many mouths this has been through. 0 is having seen it. Each retelling
+     * costs confidence, which is what makes a rumour weaken with distance
+     * instead of arriving as strong as the truth.
+     */
+    hops?: number;
+    /**
+     * AUDIT-9 stage C §3: when this stops being worth acting on.
+     *
+     * Expiry used to be one global constant applied at read time, so a belief
+     * could not be "I am sure of this for a long time" as distinct from "this
+     * goes stale fast" — and a sighting of a camp and a sighting of somebody
+     * walking past decayed identically.
+     */
+    expiresCycle?: number;
 }
 
 /**
@@ -680,6 +727,13 @@ export interface Tribute {
     hoursLeft?: number;
     /** The allowance this cycle granted, so spending can be reported. */
     hoursToday?: number;
+    /** AUDIT-9 stage E: crossings begun this cycle, capped independently of hours. */
+    crossingsThisCycle?: number;
+    /**
+     * AUDIT-9 stage D chain 2: bad water drunk, not yet felt. The tribute does
+     * not know this is here. See `tickExposure` in `engine/survival`.
+     */
+    waterborne?: { fromZone: string; dueCycle: number };
     /**
      * Work carried across cycles: a half-set trap, a half-built shelter.
      * One at a time — starting something else abandons it.
@@ -1777,7 +1831,21 @@ export interface ZoneEffect {
     chainLength?: number;
     /** Multiplier on this instance's per-tick damage/chance constants. Defaults to 1 where absent. */
     severity?: number;
+    /**
+     * AUDIT-9 stage C §5: who or what authored this.
+     *
+     * A fire started by a Gamemaker, by somebody's camp fire getting away from
+     * them, and by an ambient roll used to be indistinguishable the moment
+     * they existed — so nobody could be blamed and no belief about who did it
+     * could form. See `engine/hazardChain`.
+     */
+    source?: HazardSource;
+    /** The tribute whose fault it was, where one is known. */
+    byId?: string;
 }
+
+/** AUDIT-9 stage C §5: where a hazard came from. */
+export type HazardSource = 'arena' | 'gamemaker' | 'tribute' | 'weather';
 
 /** A snare, deadfall or tripline left in a zone, waiting for whoever walks into it. */
 export interface Trap {
@@ -2655,6 +2723,32 @@ export interface GameState {
      * particular cycle. See `engine/obligations`.
      */
     obligations?: Obligation[];
+    /**
+     * AUDIT-9 stage C §5: hazards that have been announced but have not
+     * arrived, which is the only window in which anybody can do anything
+     * about them. See `engine/hazardChain`.
+     */
+    forecasts?: Array<{
+        zone: string;
+        kind: ZoneEffectKind;
+        source: HazardSource;
+        byId?: string;
+        dueCycle: number;
+        severity: number;
+        /** 0 to 1. A partly dug firebreak still takes the edge off. */
+        mitigation: number;
+        mitigatedById?: string;
+    }>;
+    /** Run-level count, for the achievement layer and the harnesses. */
+    hazardsAverted?: number;
+    /** Which kinds of hazard were headed off, for the cards that ask. */
+    avertedKinds?: string[];
+    /**
+     * AUDIT-9 stage C: total quantity the sponsors have put into the arena.
+     * The only legitimate source of new items in a run. See
+     * `engine/parachutes`.
+     */
+    giftedQuantity?: number;
     parachutes?: Array<{
         id: string;
         item: Item;
@@ -3180,6 +3274,10 @@ export type EventType =
     | 'succession-split'
     | 'succession-unnamed'
     | 'trap-destroyed'
+    | 'waterborne-illness'
+    | 'hazard-forecast'
+    | 'hazard-mitigated'
+    | 'hazard-averted'
     | 'obligation-made'
     | 'obligation-kept'
     | 'obligation-broken'

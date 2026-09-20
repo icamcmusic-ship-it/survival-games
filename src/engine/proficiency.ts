@@ -72,6 +72,8 @@ const ARCHETYPE_SPECIALITY: Record<ArchetypeId, Proficiency> = {
     understudy: 'forage',
     archivist: 'oratory',
     quiet: 'stealth',
+    // AUDIT-9 stage D: the walk is the job.
+    courier: 'pacing',
 };
 
 /**

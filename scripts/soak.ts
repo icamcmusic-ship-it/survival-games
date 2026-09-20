@@ -299,6 +299,7 @@ let feuds = 0, freeForAlls = 0, careerDefections = 0, cacheContributions = 0;
 let objectivesFormed = 0, trapsSet = 0, trapsTriggered = 0, partialWork = 0;
 let chutesClaimed = 0, chutesStolen = 0, chutesLost = 0, chutesCollected = 0;
 let obligationsMade = 0, obligationsKept = 0, obligationsBroken = 0, obligationsLapsed = 0;
+let hazardsForecast = 0, hazardsMitigated = 0, hazardsAverted = 0, waterborneIllness = 0;
 /**
  * Audit 3 §1.2: traps were counted as one number, so a five-kind menu that was
  * a two-kind menu in play read as a healthy 304 traps a sweep. Counted per
@@ -634,6 +635,11 @@ for (let i = 0; i < 400; i++) {
     if (beat(l, 'obligation-kept')) obligationsKept++;
     if (beat(l, 'obligation-broken')) obligationsBroken++;
     if (beat(l, 'obligation-lapsed')) obligationsLapsed++;
+    // AUDIT-9 stage C §5: a hazard announced, worked against, and averted.
+    if (beat(l, 'hazard-forecast')) hazardsForecast++;
+    if (beat(l, 'hazard-mitigated')) hazardsMitigated++;
+    if (beat(l, 'hazard-averted')) hazardsAverted++;
+    if (beat(l, 'waterborne-illness')) waterborneIllness++;
     if (beat(l, 'shelter-built')) sheltersBuilt++;
     if (beat(l, 'camouflaged')) camouflaged++;
     if (beat(l, 'standoff')) standoffs++;
@@ -1412,6 +1418,7 @@ if (musterRuns > 0 && musterAttended === 0) {
 console.log(`zoneControl: held=${cornucopiaHeld} payouts=${cornucopiaPayouts}`);
 console.log(`schedule: signatureBeats=${signatureBeats} calendarBeats=${calendarBeats}`);
 console.log(`fieldcraft: traps by kind ${Object.entries(trapKinds).map(([k, n]) => `${k}=${n}`).join(' ')}`);
+console.log(`hazard chains: forecast=${hazardsForecast} workedAgainst=${hazardsMitigated} averted=${hazardsAverted} waterborneIllness=${waterborneIllness}`);
 console.log(`obligations: made=${obligationsMade} kept=${obligationsKept} broken=${obligationsBroken} lapsed=${obligationsLapsed}`);
 console.log(`parachutes: claimed=${chutesClaimed} collectedByAlly=${chutesCollected} stolen=${chutesStolen} lost=${chutesLost}`);
 console.log(`fieldcraft: trapsSet=${trapsSet} trapsTriggered=${trapsTriggered} fires=${firesLit} shelters=${sheltersBuilt} camouflage=${camouflaged} poisonedWeapons=${weaponsPoisoned} partialWork=${partialWork}`);

@@ -120,6 +120,44 @@ export interface TraitDef {
  * A trait with no `mods` has bespoke logic somewhere and says so in its `info`.
  */
 export const TRAIT_DEFS: Record<string, TraitDef> = {
+    /*
+     * AUDIT-9 stage D: five traits from the audit's §9 table.
+     *
+     * Chosen on one rule, which the audit states plainly: "Avoid making every
+     * drawback a tiny numeric penalty. A changed choice is a stronger identity
+     * than +3% to an existing roll." Every one of these hooks into a system
+     * stage C built, because that is where the choices now are — hours in a
+     * day, a promise with a deadline, a warning you can act on, and a belief
+     * that knows how sure it is. A trait that could only have been a modifier
+     * was not worth adding.
+     *
+     * Overlap with `Paranoid`, `Rope-Handed`, `Bookkeeper` and `Reads The Sky`
+     * was checked first, as the audit asks. `Evidence-Hungry` is the closest
+     * call and is deliberately the opposite axis to `Paranoid`: Paranoid
+     * distrusts *people*, Evidence-Hungry distrusts *single reports*, and a
+     * Paranoid tribute will act on one sighting instantly where this one will
+     * not act until a second source agrees.
+     */
+    'Exit-Minded': {
+        info: 'Finds the way out before they need it. Spends part of the day scouting a route off dangerous ground, and is much harder to catch when it goes wrong.',
+        mods: { retreat: 0.25 },
+    },
+    'Evidence-Hungry': {
+        info: 'Will not move on one person\'s word. Needs a second source before acting on a report, which costs them time when the first source was telling the truth.',
+    },
+    'Overprepared': {
+        info: 'Carries the spare and the spare\'s spare. Never short of what a situation needs, and slower out of camp than anybody who is not.',
+        mods: { capacity: 2 },
+    },
+    'Bargain-Shy': {
+        info: 'Takes the deal in front of them over the promise of a better one. Hard to defraud on credit, and never has anybody owing them a favour when it matters.',
+        mods: { haggle: 0.25 },
+    },
+    'Shared-Burden': {
+        info: 'Will carry somebody. Volunteers for the injured ally and the long way round, and pays for it in exhaustion.',
+        mods: { allianceAffinity: 0.2 },
+    },
+
     // ---- deprivation and the body -------------------------------------
     'Hydrophilic': {
         info: 'At home in water. Loses less to thirst every cycle, and prefers wet ground when choosing where to go.',
@@ -1150,4 +1188,41 @@ export function traitProficiencyFloor(t: Tribute, skill: Proficiency): number {
 /** Documentation lookup, tolerating a trait from an older save. */
 export function traitInfo(trait: string): string {
     return TRAIT_DEFS[trait]?.info ?? 'No recorded effect.';
+}
+
+/*
+ * AUDIT-9 stage D: named predicates for the five traits added here.
+ *
+ * `check-predicates` ratchets hard-coded `traits.includes('X')` sites outside
+ * this file, and it is right to: a disposition scattered as a string literal
+ * across four engine modules is four places to misspell it and no place to
+ * document it. These traits are behavioural rather than numeric — the whole
+ * point of picking them was that they change a choice rather than a roll — so
+ * a `mods` row is not available, and a named predicate is what the check asks
+ * for instead. The name is also the explanation.
+ */
+
+/** Will not act on a single report; wants a second source. */
+export function needsSecondSource(t: { traits: string[] }): boolean {
+    return t.traits.includes('Evidence-Hungry');
+}
+
+/** Carries the spare and the spare's spare, and is slower out of camp for it. */
+export function isOverprepared(t: { traits: string[] }): boolean {
+    return t.traits.includes('Overprepared');
+}
+
+/** Finds the way out before committing to dangerous ground. */
+export function scoutsTheExit(t: { traits: string[] }): boolean {
+    return t.traits.includes('Exit-Minded');
+}
+
+/** Takes the deal in hand over the promise of a better one. */
+export function refusesCredit(t: { traits: string[] }): boolean {
+    return t.traits.includes('Bargain-Shy');
+}
+
+/** Volunteers for the injured ally and the long way round. */
+export function volunteersToCarry(t: { traits: string[] }): boolean {
+    return t.traits.includes('Shared-Burden');
 }

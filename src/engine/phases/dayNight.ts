@@ -15,7 +15,7 @@ import {
 import { driftReputation, getRel } from '../relationships';
 import { clampTribute } from '../vitals';
 import { clearBleeding, healInjury, openWound } from '../wounds';
-import { canAfford, hoursLeft, resetBudget, spend } from '../actionBudget';
+import { canAfford, crossingsLeft, hoursLeft, noteCrossing, resetBudget, spend, travelHoursFor } from '../actionBudget';
 import { isNoticed } from '../stealth';
 import { pickDestination } from '../movement';
 import { objectiveHolds, objectiveLabel, objectiveStep, updateObjective } from '../objectives';
@@ -30,6 +30,8 @@ import { isActive, isDowned } from '../downed';
 import { decayUpkeep, postActionUpkeep, preActionUpkeep } from './upkeep';
 import { resolveParachutes } from '../parachutes';
 import { negotiateObligations, tickObligations } from '../obligations';
+import { tickForecasts } from '../hazardChain';
+import { tickExposure } from '../survival';
 import {
     applyArenaEvent, fill, handleInsanity, idleAction, isBreakingDown,
     pendingChain, pickTerrainEvent, resolveMuttAttack, resolvePairEncounter,
@@ -412,6 +414,11 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     tickZoneControl(ctx);
     tickSharedGrief(ctx);
     rollAmbientZoneEffects(ctx);
+    // AUDIT-9 stage C §5: forecasts come due before the effects tick, so a
+    // hazard that lands this cycle is a hazard this cycle.
+    tickForecasts(ctx);
+    // AUDIT-9 stage D chain 2: bad water drunk days ago, arriving now.
+    tickExposure(ctx);
     tickZoneEffects(ctx);
     // §5.8: occupation loads the arena's structures; empty ones settle back.
     tickStructuralFatigue(ctx);
@@ -1492,7 +1499,9 @@ function beginMove(ctx: SimContext, t: Tribute, destName: string): MoveOutcome {
      * still eat, bleed, are found and fight, because none of those are things
      * they chose to spend a day on.
      */
-    if (!spend(t, ACTION_BUDGET.travelHours)) return 'no-time';
+    if (crossingsLeft(t) <= 0) return 'no-time';
+    if (!spend(t, travelHoursFor(t))) return 'no-time';
+    noteCrossing(t);
     // §11.6: a tolled edge's `timeCost` is extra cycles spent on the crossing
     // itself, on top of whatever the destination terrain already costs.
     const cost = (dest ? travelCost(t, dest) : 1) + edgeTimeCost(ctx.state, t.zone, destName);
@@ -1549,7 +1558,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
              * with an unspent day. Spending the hours here is what makes a
              * long crossing cost what it says it costs.
              */
-            spend(t, ACTION_BUDGET.travelHours);
+            spend(t, travelHoursFor(t));
             if (remaining - 1 > 0) {
                 t.transit.remaining = remaining - 1;
                 return;
@@ -1650,7 +1659,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
                         m.transit = { ...t.transit! };
                         // The group pays the leader's crossing each, not once
                         // between them: everybody walking it is walking it.
-                        spend(m, ACTION_BUDGET.travelHours);
+                        spend(m, travelHoursFor(m));
                     });
                 }
                 return;
