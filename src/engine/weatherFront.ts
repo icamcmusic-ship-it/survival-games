@@ -245,6 +245,6 @@ export function tickWeatherFront(ctx: SimContext) {
         `A front builds on the edge of the arena: ${FRONTS[kind].name}, coming in over ${start}. It will not stay there.`
         + (settled ? ` ${SEASON_NOTE[drift!.toward]}` : ''),
         [],
-        { important: true, zone: start, category: 'arena' }
+        { type: 'weather-fronts', important: true, zone: start, category: 'arena' }
     );
 }

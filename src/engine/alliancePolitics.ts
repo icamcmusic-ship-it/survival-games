@@ -1,4 +1,4 @@
-import { Alliance, CharterRule, Tribute } from '../models/types';
+import { Alliance, CharterRule, EventType, Tribute } from '../models/types';
 import { ALLIANCES, PROFICIENCY } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { allianceRecords, membersOf, pickLeader, registerAlliance } from './alliance';
@@ -100,7 +100,7 @@ function resolveFactions(ctx: SimContext, record: Alliance, members: Tribute[]) 
             `${names} have been talking without ${target.name} for days, and this morning they simply stop pretending. `
             + `${replacement.name} is giving the orders now; ${target.name} is still in the group, which may be worse.`,
             members.map(m => m.id),
-            { important: true, category: 'alliance' }
+            { type: 'faction-coups', important: true, category: 'alliance' }
         );
         return;
     }
@@ -120,7 +120,8 @@ function resolveFactions(ctx: SimContext, record: Alliance, members: Tribute[]) 
     if (rest.length >= 1 && bloc.length > rest.length) {
         record.factions = (record.factions ?? []).filter(f => f !== faction);
         expel(ctx, record, target, members,
-            `${names} have been talking about ${target.name} for days and this morning they say it to their face.`);
+            `${names} have been talking about ${target.name} for days and this morning they say it to their face.`,
+            'faction-expulsions');
         return;
     }
 
@@ -140,7 +141,7 @@ function resolveFactions(ctx: SimContext, record: Alliance, members: Tribute[]) 
         + (stayed.length > 0 ? ` ${stayed.join(', ')} stay.` : '')
         + ' There are two groups now.',
         members.map(m => m.id),
-        { important: true, category: 'alliance' }
+        { type: 'faction-walkouts', important: true, category: 'alliance' }
     );
 }
 
@@ -194,7 +195,7 @@ export function noteBreach(ctx: SimContext, record: Alliance, offender: Tribute,
             `Somebody ought to say something to ${offender.name} about it. Nobody does. `
             + 'The group carries on with the thing unsaid in it, which is heavier than carrying it said.',
             members.map(m => m.id),
-            { important: true, category: 'alliance' }
+            { type: 'hearing', important: true, category: 'alliance' }
         );
         others.forEach(m => adjustRel(m, offender.id, -ALLIANCES.expulsionRegardCost / 3));
         // ...and they trust the person who did not deal with it a little less too.
@@ -233,7 +234,7 @@ export function noteBreach(ctx: SimContext, record: Alliance, offender: Tribute,
                 `The group sits ${offender.name} down about it — the second time, now — and takes the ${held} job off them. `
                 + `${replacement.name} holds it from here. Nobody is thrown out. Nobody forgets either.`,
                 members.map(m => m.id),
-                { important: true, category: 'alliance' }
+                { type: 'hearing', important: true, category: 'alliance' }
             );
             return;
         }
@@ -242,7 +243,7 @@ export function noteBreach(ctx: SimContext, record: Alliance, offender: Tribute,
         `${offender.name} is made to stand there and account for it in front of everyone. They are forgiven, out loud, `
         + 'in the tone people use when it is the last time.',
         members.map(m => m.id),
-        { important: true, category: 'alliance' }
+        { type: 'hearing', important: true, category: 'alliance' }
     );
     others.forEach(m => adjustRel(m, offender.id, -ALLIANCES.expulsionRegardCost / 2));
 }
@@ -254,7 +255,7 @@ export function noteBreach(ctx: SimContext, record: Alliance, offender: Tribute,
  * hand them back their place next cycle, and they leave with whatever claim
  * their contributions to the cache earned them.
  */
-export function expel(ctx: SimContext, record: Alliance, offender: Tribute, members: Tribute[], because: string) {
+export function expel(ctx: SimContext, record: Alliance, offender: Tribute, members: Tribute[], because: string, type: EventType = 'expulsion') {
     const others = members.filter(m => m.id !== offender.id);
     if (others.length < 2) return;
 
@@ -300,7 +301,7 @@ export function expel(ctx: SimContext, record: Alliance, offender: Tribute, memb
             ? ` ${silent.map(m => m.name).join(', ')} ${silent.length > 1 ? 'say' : 'says'} nothing, which is its own kind of vote.`
             : ''),
         members.map(m => m.id),
-        { important: true, category: 'alliance' }
+        { type, important: true, category: 'alliance' }
     );
 }
 

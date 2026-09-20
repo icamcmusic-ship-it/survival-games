@@ -311,7 +311,7 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
         ctx.logEvent(
             fill(ctx.pickText(PARLEY_TEXTS.truceHeld), { t1: t.name, t2: other.name, zone: t.zone }),
             [t.id, other.id],
-            { category: 'alliance' }
+            { type: 'truce-held', category: 'alliance' }
         );
         return 'truce';
     }
@@ -440,7 +440,7 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
                         told: worst ? worst.zone : told.join(' and '),
                     }),
                     [weaker.id, stronger.id],
-                    { important: true, category: 'alliance' }
+                    { type: 'tribute-paid-information', important: true, category: 'alliance' }
                 );
                 return 'tribute';
             }
@@ -461,7 +461,7 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
                     weak: weaker.name, strong: stronger.name, zone: weaker.zone, item: itemPhrase(payment),
                 }),
                 [weaker.id, stronger.id],
-                { important: true, category: 'loot' }
+                { type: 'tribute-paid', important: true, category: 'loot' }
             );
             return 'tribute';
         }
@@ -508,7 +508,7 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
         ctx.logEvent(
             fill(ctx.pickText(PARLEY_TEXTS.truce), { t1: t.name, t2: other.name, zone: t.zone }),
             [t.id, other.id],
-            { important: true, category: 'alliance' }
+            { type: 'truce', important: true, category: 'alliance' }
         );
         return 'truce';
     }
@@ -536,7 +536,7 @@ export function tryParley(ctx: SimContext, t: Tribute, other: Tribute): ParleyOu
         ctx.logEvent(
             fill(ctx.pickText(PARLEY_TEXTS.standoff), { t1: t.name, t2: other.name, zone: t.zone }),
             [t.id, other.id],
-            { important: true, category: 'combat' }
+            { type: 'standoff', important: true, category: 'combat' }
         );
         return 'standoff';
     }
@@ -603,7 +603,7 @@ export function resolveTruces(ctx: SimContext) {
                         `The agreement between ${survivor.name} and ${fallen.name} ends the way most of them do: `
                         + `${fallen.name} is dead, and ${survivor.name} never once broke it.`,
                         [survivor.id, fallen.id],
-                        { category: 'alliance' }
+                        { type: 'truce-outlived', category: 'alliance' }
                     );
                 } else if (other && !survivor) {
                     truceLedger(ctx.state).buried++;
@@ -611,7 +611,7 @@ export function resolveTruces(ctx: SimContext) {
                         `The agreement between ${t.name} and ${other.name} is buried with both of them. `
                         + 'Neither broke it; the arena did not need them to.',
                         [t.id, other.id],
-                        { category: 'alliance' }
+                        { type: 'truce-outlived', category: 'alliance' }
                     );
                 }
                 if (!other) truceLedger(ctx.state).buried++;
@@ -636,7 +636,7 @@ export function resolveTruces(ctx: SimContext) {
                     ctx.logEvent(
                         fill(ctx.pickText(PARLEY_TEXTS.truceHeld), { t1: t.name, t2: other.name, zone: t.zone }),
                         [t.id, other.id],
-                        { category: 'alliance', zone: t.zone }
+                        { type: 'truce-held', category: 'alliance', zone: t.zone }
                     );
                 }
                 return;
@@ -688,7 +688,7 @@ export function closeTrucesAtEnd(ctx: SimContext) {
                         `The truce between ${survivor.name} and ${fallen.name} is down to one. `
                         + `${survivor.name} kept it to the end, and there is nobody left to keep it with.`,
                         [survivor.id, fallen.id],
-                        { category: 'alliance' }
+                        { type: 'truce-outlived', category: 'alliance' }
                     );
                 } else {
                     truceLedger(ctx.state).buried++;
@@ -696,7 +696,7 @@ export function closeTrucesAtEnd(ctx: SimContext) {
                         `The agreement between ${t.name} and ${other.name} is buried with both of them. `
                         + 'Neither broke it; the arena did not need them to.',
                         [t.id, other.id],
-                        { category: 'alliance' }
+                        { type: 'truce-outlived', category: 'alliance' }
                     );
                 }
             } else {
@@ -747,7 +747,7 @@ function creditBroker(ctx: SimContext, a: Tribute, b: Tribute, outcome: BrokerOu
                     + 'One of them is dead now and it held to the end anyway.'
                 : `${a.name} and ${b.name} part without a shot fired, and the agreement that held them apart was ${broker.name}'s. `
                     + 'The Capitol notices who does that; it is the rarest kind of work anyone does in there.';
-        ctx.logEvent(line, [broker.id, a.id, b.id], { important: true, category: 'alliance' });
+        ctx.logEvent(line, [broker.id, a.id, b.id], { type: 'brokered-held', important: true, category: 'alliance' });
     });
 }
 
@@ -820,7 +820,7 @@ function attemptBluff(ctx: SimContext, bluffer: Tribute, mark: Tribute): boolean
                 : `${bluffer.name} lets their hand rest on the pack as though there were something in it worth reaching for. `
                     + `${mark.name} does not call it, and the moment passes.`,
             [bluffer.id, mark.id],
-            { important: true, category: 'alliance' }
+            { type: 'bluff-landed', important: true, category: 'alliance' }
         );
         return true;
     }
@@ -836,7 +836,7 @@ function attemptBluff(ctx: SimContext, bluffer: Tribute, mark: Tribute): boolean
             : `${bluffer.name} reaches for the pack like there is something in it. ${mark.name} watches the hand, not the pack, and sees it. `
                 + 'It is a worse position than the one they started in.',
         [bluffer.id, mark.id],
-        { important: true, category: 'betrayal' }
+        { type: 'bluff-caught', important: true, category: 'betrayal' }
     );
     return false;
 }

@@ -124,7 +124,7 @@ export function detectTriangles(ctx: SimContext) {
         ctx.logEvent(
             fill(ctx.pickText(TRIANGLE_TEXTS.formed), { apex: apex.name, a: a.name, b: b.name }),
             [apex.id, a.id, b.id],
-            { important: true, category: 'romance' }
+            { type: 'triangle-formed', important: true, category: 'romance' }
         );
     });
 }
@@ -194,7 +194,7 @@ export function tickTriangles(ctx: SimContext) {
             ctx.logEvent(
                 fill(ctx.pickText(TRIANGLE_TEXTS.jealousy), { apex: apex.name, a: a.name, b: b.name }),
                 [a.id, b.id, apex.id],
-                { important: true, category: 'romance' }
+                { type: 'triangle-jealousy', important: true, category: 'romance' }
             );
         }
 
@@ -262,6 +262,6 @@ function resolveChoice(ctx: SimContext, tri: LoveTriangle, byId: Map<string, Tri
             ? `${fill(ctx.pickText(TRIANGLE_TEXTS.choiceBitter), vars)} ${tail}`
             : fill(ctx.pickText(TRIANGLE_TEXTS.choiceGracious), vars),
         [apex.id, chosen.id, passed.id],
-        { important: true, category: 'romance' }
+        { type: 'triangle-choices', important: true, category: 'romance' }
     );
 }

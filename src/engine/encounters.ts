@@ -696,7 +696,7 @@ export function resolvePairEncounter(ctx: SimContext, t: Tribute, other: Tribute
         ctx.logEvent(
             fill(ctx.pickText(ENCOUNTER_TEXTS.desperation), vars),
             [t.id, other.id],
-            { important: true, category: 'combat' }
+            { type: 'desperation-fights', important: true, category: 'combat' }
         );
         resolveCombat(ctx, t, other);
     } else if (isAggressiveStance(t.stance) || isAggressiveStance(other.stance) || relationship < ENCOUNTER_BRANCH.hostileRegard) {
@@ -818,7 +818,7 @@ function huntAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeof arena
         ctx.logEvent(
             `${t.name} runs down something small in ${t.zone} and eats it where it fell.`,
             [t.id],
-            { category: 'survival' }
+            { type: 'hunt-or-craft', category: 'survival' }
         );
         return;
     }

@@ -285,7 +285,7 @@ function attemptStation(
     ctx.logEvent(
         fillLine(ctx.pickText(variantPool(TRAINING_FAILURE, t)), { tribute: t.name, station }),
         [t.id],
-        { important: true, category: 'training' }
+        { type: 'tribute-paid', important: true, category: 'training' }
     );
     loseSanity(t, TRAINING.failureSanity);
     clampTribute(t);

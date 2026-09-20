@@ -1,4 +1,4 @@
-import { Tribute } from '../models/types';
+import { EventType, Tribute } from '../models/types';
 import { SimContext, getAlive } from './context';
 import { EARNED_TRAIT_RULES } from '../data/balance';
 import { TRAIT_DEFS } from '../data/traits';
@@ -53,7 +53,7 @@ export function shedTrait(ctx: SimContext, t: Tribute, trait: string, line: stri
  * the evolution rules — the predecessor is removed first so `traitFits` inside
  * `earnTrait` sees a list the successor can actually join.
  */
-function transformTrait(ctx: SimContext, t: Tribute, from: string[], to: string, line: string): boolean {
+function transformTrait(ctx: SimContext, t: Tribute, from: string[], to: string, line: string, type: EventType): boolean {
     if (!TRAIT_DEFS[to] || t.traits.includes(to)) return false;
     const held = from.filter(trait => t.traits.includes(trait));
     if (held.length !== from.length) return false;
@@ -74,7 +74,7 @@ function transformTrait(ctx: SimContext, t: Tribute, from: string[], to: string,
         t.shedTraits = (t.shedTraits ?? []).filter(trait => !held.includes(trait));
         return false;
     }
-    ctx.logEvent(line, [t.id], { important: true, category: 'sanity' });
+    ctx.logEvent(line, [t.id], { type, important: true, category: 'sanity' });
     return true;
 }
 
@@ -93,7 +93,7 @@ function tickOne(ctx: SimContext, t: Tribute) {
     // whose account of themselves has failed. That is Broken, and it is worse
     // for them than either trait was.
     if (transformTrait(ctx, t, ['Pacifist', 'Bloodied'], 'Broken',
-        `${t.name} said, on Caesar's couch, that they would not do this. The Capitol has the tape. Something in how they hold themselves has given up arguing with it.`)) {
+        `${t.name} said, on Caesar's couch, that they would not do this. The Capitol has the tape. Something in how they hold themselves has given up arguing with it.`, 'pacifist-broke')) {
         return;
     }
 
@@ -109,7 +109,8 @@ function tickOne(ctx: SimContext, t: Tribute) {
         && (t.betrayalsCommitted ?? 0) + (t.faithBroken ?? 0) >= EARNED_TRAIT_RULES.loyalBreaksAt) {
         if (transformTrait(ctx, t, ['Loyal'], 'Treacherous',
             `${t.name} gave their word and then went back on it, and everybody who was standing near enough saw. `
-            + 'Whatever they used to be to the people who trusted them, they are not that any more, and they know it before anyone tells them.')) {
+            + 'Whatever they used to be to the people who trusted them, they are not that any more, and they know it before anyone tells them.',
+            'loyal-broke')) {
             return;
         }
     }
@@ -120,7 +121,7 @@ function tickOne(ctx: SimContext, t: Tribute) {
     if (t.traits.includes('Merciful')
         && (t.finishingBlows ?? 0) >= EARNED_TRAIT_RULES.mercifulBreaksAt) {
         if (transformTrait(ctx, t, ['Merciful'], 'Ruthless',
-            `${t.name} does not hesitate over this one at all. There was a version of them that would have, and it did not survive the week.`)) {
+            `${t.name} does not hesitate over this one at all. There was a version of them that would have, and it did not survive the week.`, 'mercy-broke')) {
             return;
         }
     }
@@ -138,7 +139,7 @@ function tickOne(ctx: SimContext, t: Tribute) {
         // of the four jobs sanity was doing that belongs on the social axis.
         && poiseOf(t) <= EARNED_TRAIT_RULES.hollowSanity) {
         if (transformTrait(ctx, t, ['Haunted'], 'Hollow',
-            `${t.name} has stopped flinching at the cannons. They watch the sky the way somebody watches weather in a country they no longer live in.`)) {
+            `${t.name} has stopped flinching at the cannons. They watch the sky the way somebody watches weather in a country they no longer live in.`, 'hollow-grants')) {
             return;
         }
     }

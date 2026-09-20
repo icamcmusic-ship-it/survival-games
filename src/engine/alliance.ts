@@ -1,6 +1,6 @@
 import { traitMod } from '../data/traits';
 import { ARCHETYPES } from '../data/archetypes';
-import { Alliance, GameState, Item, Tribute } from '../models/types';
+import { Alliance, EventType, GameState, Item, Tribute } from '../models/types';
 import { ALLIANCES, PROFICIENCY, RELATIONSHIPS, ROMANCE } from '../data/balance';
 import { announceCharter, rollCharter } from './allianceCharter';
 import { SimContext, getAlive } from './context';
@@ -403,7 +403,7 @@ export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]
         ctx.logEvent(
             `${members.map(m => m.name).join(' and ')} shake on it: they ${oath}.`,
             members.map(m => m.id),
-            { important: true, category: 'alliance' }
+            { type: 'pact-declared', important: true, category: 'alliance' }
         );
     }
     return record;
@@ -469,14 +469,14 @@ function resolveSuccession(ctx: SimContext, record: Alliance, members: Tribute[]
         : undefined;
     const favourite = pickLeader(members);
 
-    const install = (next: Tribute, line: string) => {
+    const install = (next: Tribute, line: string, type: EventType) => {
         record.leaderId = next.id;
         if (heir && next.id === heir.id) next.succeededAsHeir = true;
         record.successorId = undefined;
         // §12: 'Understudy' — they are running this group because the person
         // who was running it is dead.
         noteTookOverLead(next);
-        ctx.logEvent(line, members.map(m => m.id), { important: true, category: 'alliance' });
+        ctx.logEvent(line, members.map(m => m.id), { type, important: true, category: 'alliance' });
     };
 
     // No heir was ever named, or they did not outlive the leader either.
@@ -484,14 +484,16 @@ function resolveSuccession(ctx: SimContext, record: Alliance, members: Tribute[]
         install(favourite,
             // §22: "the group" is this line's own cast list.
             `${favourite.name} takes over the group. No heir was named and nobody objects.`
-            + ` The rest of it is ${members.filter(m => m.id !== favourite.id).map(m => m.name).join(', ')}.`);
+            + ` The rest of it is ${members.filter(m => m.id !== favourite.id).map(m => m.name).join(', ')}.`,
+            'succession-unnamed');
         return;
     }
 
     if (heir.id === favourite.id) {
         install(heir,
             `${heir.name} takes over the group, having been named for it.`
-            + ` ${members.filter(m => m.id !== heir.id).map(m => m.name).join(', ')} accept it.`)
+            + ` ${members.filter(m => m.id !== heir.id).map(m => m.name).join(', ')} accept it.`,
+            'succession-heir')
         return;
     }
 
@@ -530,14 +532,15 @@ function resolveSuccession(ctx: SimContext, record: Alliance, members: Tribute[]
                     `The leader named ${heir.name}; the group would rather have ${favourite.name}; and there is nobody left `
                     + 'with the standing to settle it. By the afternoon there are two camps and neither of them is going to be the one that apologises.',
                     members.map(m => m.id),
-                    { important: true, category: 'alliance' }
+                    { type: 'succession-split', important: true, category: 'alliance' }
                 );
                 return;
             }
         }
         install(heir,
             `${heir.name} was named, ${favourite.name} is what the group would have chosen, and the argument goes on long enough `
-            + 'that having been named turns out to be the only thing anybody can point at. It is not a mandate.');
+            + 'that having been named turns out to be the only thing anybody can point at. It is not a mandate.',
+            'succession-heir');
         adjustRel(favourite, heir.id, -ALLIANCES.successionLoserRegard);
         return;
     }
@@ -545,7 +548,8 @@ function resolveSuccession(ctx: SimContext, record: Alliance, members: Tribute[]
     // The group is not close on it at all: the heir is simply passed over.
     install(favourite,
         `The leader named ${heir.name}. The group, without ever putting it to a vote, follows ${favourite.name} instead. `
-        + `${heir.name} does not make anything of it, and does not forget it either.`);
+        + `${heir.name} does not make anything of it, and does not forget it either.`,
+        'succession-passed-over');
     adjustRel(heir, favourite.id, -ALLIANCES.successionLoserRegard);
 }
 
@@ -597,7 +601,7 @@ export function fractureBlocs(ctx: SimContext) {
             `The big pack stops being one. ${leader.name} keeps ${loyal.filter(m => m.id !== leader.id).map(m => m.name).join(', ')}; `
             + `${rest.map(m => m.name).join(', ')} walk off together. Everybody had known for days that a group that size was only ever an arrangement.`,
             members.map(m => m.id),
-            { important: true, category: 'alliance' }
+            { type: 'fracture', important: true, category: 'alliance' }
         );
     });
 }
@@ -681,7 +685,7 @@ export function reconcileAlliances(ctx: SimContext) {
                     + ` ${members.filter(m => m.id !== challenger.id && m.id !== leader.id).map(m => m.name).join(', ') || 'Nobody else'}`
                     + ` ${members.length > 3 ? 'have' : 'has'} a new leader by the end of the sentence.`,
                     members.map(m => m.id),
-                    { important: true, category: 'alliance' }
+                    { type: 'leadership-changes', important: true, category: 'alliance' }
                 );
             }
         }
@@ -757,7 +761,7 @@ export function contributeToCache(ctx: SimContext, record: Alliance, members: Tr
         ctx.logEvent(
             `${m.name} adds their ${spare.name} to the group's stash in ${record.campZone ?? m.zone}.`,
             [m.id],
-            { category: 'alliance' }
+            { type: 'cache-contributions', category: 'alliance' }
         );
     });
 }

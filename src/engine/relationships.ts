@@ -263,7 +263,7 @@ function inheritFrom(ctx: SimContext, victim: Tribute, killer?: Tribute) {
                 ? `${heir.name} goes through what ${victim.name} left and takes ${taken.join(', ')}. Nobody who saw it thinks less of them for it.`
                 : `Whatever ${victim.name} had sworn, ${heir.name} heard it often enough to carry it on for them.`,
         [heir.id, victim.id],
-        { category: 'alliance', zone: victim.zone }
+        { type: 'inheritance', category: 'alliance', zone: victim.zone }
     );
 }
 
@@ -415,7 +415,7 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
                 ctx.logEvent(
                     `TRAGEDY: ${other.name} hears the cannon and knows. Their star-crossed lover ${victim.name} is gone, and something in them goes with it.`,
                     [other.id, victim.id],
-                    { important: true, category: 'romance' }
+                    { type: 'romance-tragedy', important: true, category: 'romance' }
                 );
             } else if (isPartner) {
                 ctx.logEvent(
@@ -433,7 +433,7 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
                 ctx.logEvent(
                     fill(ctx.pickText(GRIEF_TEXTS), { mourner: other.name, victim: victim.name, zone: other.zone }),
                     [other.id, victim.id],
-                    { important: true, category: 'sanity' }
+                    { type: 'grief-events', important: true, category: 'sanity' }
                 );
             }
         } else if (ensureMemory(other).vengeance.includes(victim.id)) {

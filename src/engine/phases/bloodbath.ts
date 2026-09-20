@@ -497,7 +497,7 @@ export function processBloodbath(ctx: SimContext) {
                 `The Careers reach ${ctx.state.arena.zones[0]?.name ?? 'the Cornucopia'} together and get no further than that. `
                 + `${careers.map(c => c.name).join(', ')} scatter before the bloodbath is finished — there is no pack this year.`,
                 careers.map(c => c.id),
-                { important: true, category: 'alliance' }
+                { type: 'career-defections', important: true, category: 'alliance' }
             );
         }
     } else if (pack.length > 1) {

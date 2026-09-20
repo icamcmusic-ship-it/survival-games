@@ -326,7 +326,7 @@ export function attemptFieldDressing(ctx: SimContext, patient: Tribute, medic: T
                 ? `${medic.name} packs and binds ${patient.name}'s wound properly. The bleeding stops.`
                 : `${patient.name} tears a strip off and binds their wound tight. The bleeding stops.`,
             isAlly ? [patient.id, medic.id] : [patient.id],
-            { important: true, category: 'survival' }
+            { type: 'field-dressings', important: true, category: 'survival' }
         );
     } else {
         patient.bleedSeverity = next;
@@ -335,7 +335,7 @@ export function attemptFieldDressing(ctx: SimContext, patient: Tribute, medic: T
                 ? `${medic.name} gets a dressing onto ${patient.name}'s wound. It is still running, but slower.`
                 : `${patient.name} gets a rough dressing onto the wound. It is still running, but slower.`,
             isAlly ? [patient.id, medic.id] : [patient.id],
-            { category: 'survival' }
+            { type: 'field-dressings', category: 'survival' }
         );
     }
     return true;

@@ -173,7 +173,7 @@ export function repayDebts(ctx: SimContext) {
                     debtor: debtor.name, creditor: creditor.name, zone: debtor.zone, item: gift.name,
                 }),
                 [debtor.id, creditor.id],
-                { important: true, category: 'alliance' }
+                { type: 'debt-repaid', important: true, category: 'alliance' }
             );
         } else {
             // Nothing to give but the watch. It still counts.
@@ -183,7 +183,7 @@ export function repayDebts(ctx: SimContext) {
                     debtor: debtor.name, creditor: creditor.name, zone: debtor.zone,
                 }),
                 [debtor.id, creditor.id],
-                { important: true, category: 'alliance' }
+                { type: 'debt-repaid', important: true, category: 'alliance' }
             );
         }
 
@@ -240,7 +240,7 @@ export function tickDistrictBonds(ctx: SimContext) {
                 `${t.name} and ${partner.name} are both still standing, and they are both from District ${t.district}. ` +
                 `Nobody in the Capitol is saying out loud what that is going to mean.`,
                 [t.id, partner.id],
-                { important: true, category: 'alliance' }
+                { type: 'district-bonds', important: true, category: 'alliance' }
             );
         }
     });
@@ -308,7 +308,7 @@ export function offerLoans(ctx: SimContext) {
             `${lender.name} hands ${borrower.name} the spare ${spare.name}. "Until you find your own," they say, `
             + 'and both of them hear the word "until".',
             [lender.id, borrower.id],
-            { category: 'alliance' }
+            { type: 'loan-made', category: 'alliance' }
         );
     });
 }
@@ -352,7 +352,7 @@ export function settleLoans(ctx: SimContext) {
                 ctx.logEvent(
                     `${borrower.name} has to tell ${lender.name} that the ${loan.itemName} is gone. ${lender.name} nods, and files it.`,
                     [borrower.id, lender.id],
-                    { category: 'alliance' }
+                    { type: 'loan-lost', category: 'alliance' }
                 );
                 return;
             }
@@ -374,7 +374,7 @@ export function settleLoans(ctx: SimContext) {
                     `${borrower.name} gives ${lender.name} their ${loan.itemName} back without being asked for it. `
                     + 'It is a small thing and neither of them treats it as one.',
                     [borrower.id, lender.id],
-                    { category: 'alliance' }
+                    { type: 'loan-returned', category: 'alliance' }
                 );
                 return;
             }
@@ -388,7 +388,7 @@ export function settleLoans(ctx: SimContext) {
                     `${lender.name} has stopped thinking of the ${loan.itemName} as lent. `
                     + `${borrower.name} has not mentioned it in days, and that is its own kind of answer.`,
                     [lender.id, borrower.id],
-                    { category: 'alliance' }
+                    { type: 'loan-defaulted', category: 'alliance' }
                 );
                 return;
             }
@@ -429,7 +429,7 @@ export function resolveLoansOnDeath(ctx: SimContext, victim: Tribute) {
             `${lender.name} lent ${victim.name} that ${loan.itemName}. It is out there somewhere in ${victim.zone} now, `
             + 'and so is everything else they were going to say to them.',
             [lender.id, victim.id],
-            { category: 'alliance' }
+            { type: 'loan-borrower-died', category: 'alliance' }
         );
     });
     delete victim.loans;
@@ -451,6 +451,6 @@ function writeOffToDeadLender(ctx: SimContext, borrower: Tribute, lenderId: stri
         `${borrower.name} is still carrying ${lender.name}'s ${itemName}. There is nobody left to give it back to, `
         + 'and they stop thinking of it as borrowed the same day they stop saying the name.',
         [borrower.id, lender.id],
-        { category: 'alliance' }
+        { type: 'loan-lender-died', category: 'alliance' }
     );
 }

@@ -68,21 +68,23 @@ const CATEGORY_LABEL: Record<EventLog['category'], string> = {
  * the facts register and the telemetry agree on what happened by
  * construction rather than by two people writing similar regexes.
  */
-const TYPE_LABEL: Record<NonNullable<EventLog['type']>, string> = {
+/*
+ * The label is derived from the type, because the type is already the words:
+ * `loan-returned` is `LOAN RETURNED`. Hand-writing a hundred-odd labels that
+ * each restate their own key would be a second place to keep in step with the
+ * first, which is the failure this whole pass exists to remove. Only the
+ * handful where the derived form reads worse than the intended one are listed.
+ */
+const TYPE_LABEL: Partial<Record<NonNullable<EventLog['type']>, string>> = {
     'vengeance-sworn': 'VENGEANCE',
-    'group-fight': 'GROUP FIGHT',
-    ambush: 'AMBUSH',
-    betrayal: 'BETRAYAL',
-    truce: 'TRUCE',
-    standoff: 'STANDOFF',
-    romance: 'ROMANCE',
-    bond: 'BOND',
-    'border-warning': 'BORDER WARNING',
-    'border-collapse': 'BORDER COLLAPSE',
 };
 
+function labelOfType(type: NonNullable<EventLog['type']>): string {
+    return TYPE_LABEL[type] ?? type.replace(/-/g, ' ').toUpperCase();
+}
+
 export function factLineOf(entry: EventLog, byId: Map<string, Tribute>): string {
-    const label = (entry.type && TYPE_LABEL[entry.type]) ?? CATEGORY_LABEL[entry.category] ?? 'NOTE';
+    const label = (entry.type && labelOfType(entry.type)) ?? CATEGORY_LABEL[entry.category] ?? 'NOTE';
     const cast = entry.tributesInvolved
         .map(id => byId.get(id))
         .filter((t): t is Tribute => t !== undefined)

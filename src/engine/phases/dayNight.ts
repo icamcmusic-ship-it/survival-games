@@ -1352,7 +1352,7 @@ function craft(ctx: SimContext, t: Tribute) {
             ctx.logEvent(
                 fill(ctx.pickText(SURVIVAL_TEXTS.craftSling), { tribute: t.name, zone: t.zone }),
                 [t.id],
-                { category: 'loot' }
+                { type: 'hunt-or-craft', category: 'loot' }
             );
         } else {
             const zone = getZone(ctx.state.arena, t.zone);
@@ -1374,7 +1374,7 @@ function craft(ctx: SimContext, t: Tribute) {
             ctx.logEvent(
                 fill(ctx.pickText(pool), { tribute: t.name, zone: t.zone }),
                 [t.id],
-                { category: 'loot' }
+                { type: 'hunt-or-craft', category: 'loot' }
             );
         }
     }
@@ -1737,7 +1737,7 @@ function resolveEncounters(
             ctx.logEvent(
                 fill(ctx.pickText(ENCOUNTER_TEXTS.unnoticed), { t1: t.name, t2: missed[0].name, zone: t.zone }),
                 [t.id, missed[0].id],
-                { category: 'survival' }
+                { type: 'hidden-moments', category: 'survival' }
             );
         }
 

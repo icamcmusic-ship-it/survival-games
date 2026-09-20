@@ -152,7 +152,7 @@ export function maybeMuster(ctx: SimContext) {
         // particular tribute — an empty cast keeps it out of the naming audit
         // for lines that are *about* people, which this one is not.
         [],
-        { important: true, category: 'gamemaker' },
+        { type: 'muster-calls', important: true, category: 'gamemaker' },
     );
 }
 
@@ -237,7 +237,7 @@ export function tickMuster(ctx: SimContext) {
             : `${paid.map(t => t.name).join(', ')} are all in ${zone} with the whole Capitol watching, and all of them know `
                 + 'exactly why the others came.',
         paid.map(t => t.id),
-        { important: true, category: 'sponsor' },
+        { type: 'muster-scenes', important: true, category: 'sponsor' },
     );
 }
 

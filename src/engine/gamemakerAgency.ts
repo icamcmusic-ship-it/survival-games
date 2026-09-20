@@ -141,7 +141,7 @@ export function runGamemakerSignature(ctx: SimContext) {
 
     const profile = gamemakerProfile(ctx.state.headGamemaker);
     ctx.state.gamemakerSignatureFired = true;
-    ctx.logEvent(profile.signatureLine, [], { important: true, category: 'gamemaker' });
+    ctx.logEvent(profile.signatureLine, [], { type: 'gamemaker-signatures', important: true, category: 'gamemaker' });
 
     switch (profile.signature) {
         case 'release-mutts':

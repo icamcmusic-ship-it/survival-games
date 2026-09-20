@@ -165,7 +165,7 @@ export function proposeBlocTreaties(ctx: SimContext) {
                 `${aSpeaker.name} and ${bSpeaker.name} agree a truce between their groups and take it back to them.`
                 + ` ${aMembers.map(m => m.name).join(', ')} on one side; ${bMembers.map(m => m.name).join(', ')} on the other.`,
                 [...aMembers.map(m => m.id), ...bMembers.map(m => m.id)],
-                { important: true, category: 'alliance' }
+                { type: 'treaty-sworn', important: true, category: 'alliance' }
             );
         }
     }
@@ -265,7 +265,7 @@ export function tickBlocTreaties(ctx: SimContext) {
                     + `${survivors.map(m => m.name).join(', ')} are released from a promise by the deaths of the people they made it to, `
                     + 'which is not the same as being let out of it.',
                     survivors.map(m => m.id),
-                    { important: true, category: 'alliance' },
+                    { type: 'treaty-outlived-a-side', important: true, category: 'alliance' },
                 );
             }
             return false;
@@ -279,7 +279,7 @@ export function tickBlocTreaties(ctx: SimContext) {
                 `There are ${fieldSize} tributes left and two groups holding an agreement not to fight each other, `
                 + 'which is an arithmetic problem rather than a moral one. Both sides work it out on the same morning.',
                 [...aMembers.map(m => m.id), ...bMembers.map(m => m.id)],
-                { important: true, category: 'alliance' }
+                { type: 'treaty-outgrown', important: true, category: 'alliance' }
             );
             return false;
         }
@@ -316,7 +316,7 @@ export function tickBlocTreaties(ctx: SimContext) {
                     + `again. It runs for another ${BLOC_TREATY.cycles} cycles, and it is the ${
                         treaty.renewals === 1 ? 'second' : `${treaty.renewals + 1}th`} time neither of them has had to think hard about it.`,
                     [...aMembers.map(m => m.id), ...bMembers.map(m => m.id)],
-                    { important: true, category: 'alliance' }
+                    { type: 'treaty-renewed', important: true, category: 'alliance' }
                 );
                 return true;
             }
@@ -328,7 +328,7 @@ export function tickBlocTreaties(ctx: SimContext) {
                 // Audit 5 §4.2: the one non-violent ending, and it was the only
                 // one filed as ambient — so a treaty read as formed and then
                 // forgotten in three runs out of four.
-                { important: true, category: 'alliance' }
+                { type: 'treaty-lapsed', important: true, category: 'alliance' }
             );
             return false;
         }

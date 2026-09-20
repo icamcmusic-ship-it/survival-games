@@ -106,7 +106,7 @@ export function tickZoneControl(ctx: SimContext) {
             `${members.map(m => m.name).join(', ')} are camped on ${zone} and not moving. `
             + `${previous ? 'The horn has changed hands.' : 'The horn belongs to somebody now.'}`,
             members.map(m => m.id),
-            { important: true, zone, category: 'alliance' }
+            { type: 'cornucopia-held', important: true, zone, category: 'alliance' }
         );
         // Everybody watching learns whose ground this is.
         getAlive(ctx.state).forEach(t => {
@@ -161,6 +161,6 @@ export function tickZoneControl(ctx: SimContext) {
             ? ` ${absent.map(m => m.name).join(', ')} ${absent.length === 1 ? 'is' : 'are'} somewhere else and ${absent.length === 1 ? 'eats' : 'eat'} none of it.`
             : ''),
         roster.map(m => m.id),
-        { important: true, zone, category: 'loot' }
+        { type: 'cornucopia-payouts', important: true, zone, category: 'loot' }
     );
 }

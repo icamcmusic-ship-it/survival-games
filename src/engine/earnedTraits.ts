@@ -208,6 +208,8 @@ export function earnTrait(ctx: SimContext, t: Tribute, trait: string, converted 
     const line = pool
         ? ctx.pickText(pool).split('{name}').join(t.name).split('{zone}').join(t.zone)
         : `${t.name} is not the same person who came off the plate. [${trait}]`;
-    ctx.logEvent(line, [t.id], { important: true, category: 'sanity' });
+    // Only the grant the soak measures is typed, per `EventType`'s policy:
+    // the set that is typed is the set something counts.
+    ctx.logEvent(line, [t.id], { type: trait === 'Haunted' ? 'haunted-grants' : undefined, important: true, category: 'sanity' });
     return true;
 }
