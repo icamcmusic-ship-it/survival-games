@@ -13,7 +13,7 @@
  * has come back.
  */
 import { scenario, check, eq, world, report } from './scenarios';
-import { ITEMS, ARENAS, DEFAULT_GAME_CONFIG } from '../src/data/constants';
+import { ITEMS } from '../src/data/constants';
 import { Item } from '../src/models/types';
 import { createContext } from '../src/engine/context';
 import { RNG } from '../src/utils/rng';
