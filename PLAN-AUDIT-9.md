@@ -227,7 +227,36 @@ Readability, in the same batch:
 **Exit:** target movement reported *with sample sizes and intervals*; a
 completed browser/phone pass rather than a static check standing in for one.
 
-## Batch 4 — three deep content pilots
+## Done — batch 4: three deep content pilots
+
+All three built, each measured, each with fixtures in `npm run test:batch4`.
+
+| Pilot | What it is | Measured |
+|---|---|---|
+| **Rescue line** | A stranded person, an anchor of knowable quality, and three distinguishable failures — bad anchor, excess load, deliberate cutting | 182 of 200 runs have one; clean 244 / anchor-failed 290 / overloaded 23 / cut 23; 338 follow-up beats; 11 deaths |
+| **The argument about the food** | A group too short to go round decides *how* to be short: equally, by contribution, or by need. Non-fatal by construction | 36 disputes per 400 runs, all three splits used, 35 lost-side beats, 31 follow-ups |
+| **The tide** | The Tempest Reach's signature moved onto the forecast system: warning → source → growth → mitigation → impact → aftermath | 41 strikes, 73 mitigations, 70 averted, 88 flood aftermaths per 150 runs |
+
+**The gate caught two dead branches**, which is the thing it exists for. The
+rescue line's `cut` fired 0 times in 200 runs because the rescuer was selected
+as the friendliest person present — a selection rule that quietly guarantees
+somebody who wants the rescue to work. And `rigged` fired 0 times because it
+gated on climbing proficiency, which 69.1% of tributes end a run at zero. Both
+were found by measuring, not by reading the code.
+
+**The aftermath stage did not exist for water at all.** Fire already burned out
+into stripped ground; a flood simply stopped. That was the whole of the audit's
+"opportunity after damage" point, unbuilt — hazards changed health and never
+changed anybody's reasons.
+
+Also caught here, by `check-achievements` on this batch's sample: two pairs of
+cards unlocking on exactly the same runs. Both predicates predate this work;
+the check could not see them until there were enough observations to cross its
+threshold. `it-changed-hands` promised one thing and tested another, and
+`one-wound`/`scarred-and-standing` are B03's defect a third time — merged, with
+the unlocks migrated.
+
+## Batch 4 — the original plan
 
 Three chains, not twelve. The audit is specific that the minimum useful package
 is setup → choice → consequence → remembered result, and that twelve new
