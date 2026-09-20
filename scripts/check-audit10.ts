@@ -24,7 +24,7 @@ import { samePlace } from '../src/engine/verticality';
 import { pickTerrainEvent, pendingChain } from '../src/engine/encounters';
 import { allNotables, bloodbathDeathCount, runNotables, victorsOf } from '../src/utils/notables';
 import { chronicleMarkdown, chronicleText, chronicleProse, arenaTitle, outcomeOf } from '../src/utils/chronicle';
-import { EMPTY_PANEM } from '../src/utils/panemStorage';
+import { EMPTY_PANEM, RETIRED_ACHIEVEMENT_IDS, migrateUnlocks } from '../src/utils/panemStorage';
 import { ACHIEVEMENTS } from '../src/data/achievements';
 import { recordAllianceState } from '../src/engine/alliance';
 
@@ -97,23 +97,97 @@ scenario(
 console.log('B03 — one idea, one achievement');
 
 scenario(
-    'the horn achievement and the opening-day achievement measure what they claim',
-    'B03: two entries advertised the same condition and tested different things',
+    'the two duplicate entries are one entry, on the predicate that means what both claimed',
+    'B03: two ids advertised "half the field in the bloodbath" and tested different things',
     () => {
         const w = world('A10-B03');
+        // The audit's fixture exactly: 24 tributes, 3 down at the horn and 9
+        // more later on the opening day. The old pair split on this — the
+        // day-counting entry awarded, the flag-counting one did not.
         w.state.tributes.forEach((t, i) => {
             t.status = i < 12 ? 'dead' : 'alive';
             t.dayOfDeath = i < 12 ? 1 : undefined;
             t.diedInBloodbath = i < 3;
         });
         const victor = w.state.tributes.find(t => t.status === 'alive');
-        const test = (id: string) => ACHIEVEMENTS.find(a => a.id === id)!.test(w.state, victor);
-        const horn = ACHIEVEMENTS.find(a => a.id === 'a7-half-at-the-horn')!;
-        const day = ACHIEVEMENTS.find(a => a.id === 'bloodbath-massacre')!;
-        check(!test('a7-half-at-the-horn'), '3 of 24 at the horn is not half the field at the horn');
-        check(test('bloodbath-massacre'), '12 of 24 on the opening day is half the field on the opening day');
-        check(horn.hint !== day.hint, 'and the two no longer advertise the same condition');
-        check(day.hint.includes('first night'), 'the day one card says so in its hint');
+        eq(ACHIEVEMENTS.filter(a => a.id === 'a7-half-at-the-horn').length, 0, 'the duplicate is retired');
+        const horn = ACHIEVEMENTS.find(a => a.id === 'bloodbath-massacre')!;
+        check(!horn.test(w.state, victor), '3 of 24 at the horn is not half the field at the horn');
+        eq(horn.hint, 'See half the field or more die in the bloodbath.', 'and it claims the bloodbath');
+        // And it does award when the horn itself takes half the field.
+        w.state.tributes.forEach((t, i) => { t.diedInBloodbath = i < 12; });
+        check(horn.test(w.state, victor), '12 of 24 at the horn is half the field at the horn');
+    },
+);
+
+scenario(
+    'no two achievements advertise the same condition',
+    'B03: the class of defect, not just the instance',
+    () => {
+        const byHint = new Map<string, string[]>();
+        ACHIEVEMENTS.forEach(a => {
+            const key = a.hint.trim().toLowerCase();
+            byHint.set(key, [...(byHint.get(key) ?? []), a.id]);
+        });
+        const shared = [...byHint.entries()].filter(([, ids]) => ids.length > 1);
+        eq(shared.length, 0, `shared hints: ${shared.map(([h, ids]) => `${ids.join(' + ')} both say "${h}"`).join('; ')}`);
+    },
+);
+
+scenario(
+    'a player who had earned the retired card still has it',
+    'B03: retiring an id is a rename with a forwarding address, not a delete',
+    () => {
+        const out = migrateUnlocks(['first-blood-victor', 'a7-half-at-the-horn'], {
+            'first-blood-victor': { run: 2, date: 'x' },
+            'a7-half-at-the-horn': { run: 5, date: 'y' },
+        });
+        check(out.unlocked.includes('bloodbath-massacre'), 'the card is on the survivor now');
+        check(!out.unlocked.includes('a7-half-at-the-horn'), 'and the retired id is gone');
+        eq(out.unlocked.length, 2, 'nothing else moved');
+        eq(out.unlockedAt!['bloodbath-massacre'].run, 5, 'and it carries the run they earned it in');
+        eq(out.unlockedAt!['first-blood-victor'].run, 2, 'other stamps are untouched');
+    },
+);
+
+scenario(
+    'a player who had earned both ends up holding it once, stamped the first time they did it',
+    'B03: do not pay the same discovery twice — and do not move the date later either',
+    () => {
+        const out = migrateUnlocks(['bloodbath-massacre', 'a7-half-at-the-horn'], {
+            'bloodbath-massacre': { run: 9, date: 'later' },
+            'a7-half-at-the-horn': { run: 4, date: 'earlier' },
+        });
+        eq(out.unlocked.length, 1, 'one idea, one card');
+        eq(out.unlocked[0], 'bloodbath-massacre', 'the surviving id');
+        eq(out.unlockedAt!['bloodbath-massacre'].date, 'earlier', 'stamped when they first did it');
+    },
+);
+
+scenario(
+    'the migration is idempotent and leaves an untouched store alone',
+    'B03: it runs on every read, so running it twice must not differ from running it once',
+    () => {
+        const clean = ['first-blood-victor', 'bloodbath-massacre'];
+        const once = migrateUnlocks(clean, undefined);
+        eq(once.unlocked, clean, 'a store with no retired ids is returned as it came in');
+        const twice = migrateUnlocks(
+            migrateUnlocks(['a7-half-at-the-horn'], { 'a7-half-at-the-horn': { run: 3, date: 'd' } }).unlocked,
+            migrateUnlocks(['a7-half-at-the-horn'], { 'a7-half-at-the-horn': { run: 3, date: 'd' } }).unlockedAt,
+        );
+        eq(twice.unlocked.join(','), 'bloodbath-massacre', 'and a second pass changes nothing');
+        eq(twice.unlockedAt!['bloodbath-massacre'].run, 3, 'including the stamp');
+    },
+);
+
+scenario(
+    'every retired id forwards to an achievement that exists',
+    'B03: a forwarding address that points nowhere is worse than no map',
+    () => {
+        Object.entries(RETIRED_ACHIEVEMENT_IDS).forEach(([from, to]) => {
+            check(ACHIEVEMENTS.every(a => a.id !== from), `${from} is actually retired`);
+            check(ACHIEVEMENTS.some(a => a.id === to), `${from} forwards to ${to}, which exists`);
+        });
     },
 );
 

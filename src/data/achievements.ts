@@ -128,6 +128,17 @@ const EARNED_TRAIT_NAMES = Object.keys(TRAIT_DEFS).filter(name => TRAIT_DEFS[nam
 const dead = (state: GameState) => state.tributes.filter(t => t.status === 'dead');
 
 /**
+ * AUDIT-9 B01/B03: how many went down at the Cornucopia.
+ *
+ * The bloodbath is a *phase*, not a calendar day — `startGames()` sets
+ * `day = 1` before it runs, so a horn death and a death at dusk on the first
+ * evening are both stamped day 1 and only the flag tells them apart. Anything
+ * asking about the horn asks this, so that two predicates about the same thing
+ * cannot drift into meaning two different things again.
+ */
+const atTheHorn = (state: GameState) => state.tributes.filter(t => t.diedInBloodbath === true).length;
+
+/**
  * Audit 3 §11: every way of breaking your word, not just the one the alliance
  * layer logs.
  *
@@ -1042,33 +1053,36 @@ export const ACHIEVEMENTS: Achievement[] = [
     {
         id: 'bloodbath-massacre',
         /*
-         * AUDIT-10 B03: this and `a7-half-at-the-horn` advertised the *same*
-         * condition — "half the field in the bloodbath" — while testing two
-         * different things: this one counted every death stamped day 1, that
-         * one counted the phase flag. A 24-tribute fixture with 3 deaths at the
-         * horn and 9 more later on day 1 awarded this and not that, so the
-         * player was being paid twice for one idea and inconsistently for the
-         * other.
+         * AUDIT-9 B03: one idea, one card.
          *
-         * The predicate is unchanged, so nothing already unlocked is disturbed
-         * and no migration is needed — what changes is the advertised claim,
-         * which now matches what is measured. The horn itself belongs to
-         * `a7-half-at-the-horn`; this is the opening *day*, which includes
-         * everything the survivors did to each other after the horn cleared.
+         * This and `a7-half-at-the-horn` advertised the *same* condition —
+         * "half the field in the bloodbath" — while testing two different
+         * things. This one counted every death stamped day 1; that one counted
+         * the phase flag. A 24-tribute fixture with 3 deaths at the horn and 9
+         * more later on day 1 awarded this and not that, so the player was
+         * paid twice for one discovery and inconsistently for the other.
+         *
+         * They are now one entry, on the predicate that actually means what
+         * both of them claimed: the *bloodbath*, which is a phase, and not the
+         * opening day, which is a phase plus everything the survivors did to
+         * each other afterwards. `a7-half-at-the-horn` is retired, and
+         * `RETIRED_ACHIEVEMENT_IDS` in `utils/panemStorage` carries anybody
+         * who had earned it onto this one.
+         *
+         * The surviving id is the older of the two. An id is a permanent key
+         * into somebody's saved store; the name and the shelf are what the
+         * player sees, and both of those come from the entry that was right.
          */
-        name: 'The First Day',
-        hint: 'See half the field or more die before the first night.',
+        name: 'Half at the Horn',
+        hint: 'See half the field or more die in the bloodbath.',
         category: 'combat',
         rarity: 'rare',
-        test: state => {
-            const day1 = dead(state).filter(t => t.dayOfDeath === 1).length;
-            return day1 >= state.tributes.length / 2;
-        },
+        test: state => atTheHorn(state) >= state.tributes.length / 2,
         nearMiss: state => {
-            const day1 = dead(state).filter(t => t.dayOfDeath === 1).length;
+            const n = atTheHorn(state);
             const needed = Math.ceil(state.tributes.length / 2);
-            return day1 > 0 && needed - day1 <= 3 && day1 < needed
-                ? `the first day took ${day1} — ${needed - day1} short of half the field`
+            return n > 0 && needed - n <= 3 && n < needed
+                ? `the horn took ${n} — ${needed - n} short of half the field`
                 : undefined;
         },
     },
@@ -4755,19 +4769,6 @@ export const ACHIEVEMENTS: Achievement[] = [
             return fell > 0 && fell <= 2
                 ? `only ${fell} fell at the horn this year`
                 : undefined;
-        },
-    },
-    {
-        id: 'a7-half-at-the-horn',
-        name: 'Half at the Horn',
-        hint: 'See half the field or more die in the bloodbath.',
-        category: 'games',
-        rarity: 'rare',
-        test: state => state.tributes.filter(t => t.diedInBloodbath).length >= state.tributes.length / 2,
-        nearMiss: state => {
-            const n = state.tributes.filter(t => t.diedInBloodbath).length;
-            const half = state.tributes.length / 2;
-            return n >= half - 2 && n < half ? `${n} of ${state.tributes.length} went down at the horn` : undefined;
         },
     },
     {
