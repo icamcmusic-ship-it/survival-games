@@ -29,7 +29,7 @@ import { runArchetypeSignatures, tickGhosts, tickScholars } from '../archetypeHo
 import { isActive, isDowned } from '../downed';
 import { decayUpkeep, postActionUpkeep, preActionUpkeep } from './upkeep';
 import { resolveParachutes } from '../parachutes';
-import { negotiateObligations, tickObligations } from '../obligations';
+import { appealForAid, negotiateObligations, tickObligations } from '../obligations';
 import { tickForecasts } from '../hazardChain';
 import { tickExposure } from '../survival';
 import {
@@ -325,6 +325,11 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
      * settled, so "together" means together now.
      */
     negotiateObligations(ctx);
+    // AUDIT-9 batch 3: and the ask that does not need an alliance behind it.
+    // Runs before the tick so an appeal answered this cycle can be discharged
+    // this cycle — both of them are already standing in the same place, which
+    // is the whole reason this promise is a different shape from the others.
+    appealForAid(ctx);
     tickObligations(ctx);
 
     // 4a. Whether anyone has stopped wanting to win. Resolve drifts on what

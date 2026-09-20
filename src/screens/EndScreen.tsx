@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Hint } from '../components/Hint';
+import { NotableEvidence } from '../utils/notables';
 import { GameState } from '../models/types';
 import { EventFeed } from '../components/EventFeed';
 import { ReplayScrubber } from '../components/ReplayScrubber';
@@ -45,7 +46,8 @@ export function EndScreen({
     onReplaySeed,
     onHallOfFame,
     coins,
-    betWonMessage
+    betWonMessage,
+    onOpenEvidence,
 }: {
     gameState: GameState,
     onRestart: () => void,
@@ -55,7 +57,14 @@ export function EndScreen({
     onReplaySeed?: () => void,
     onHallOfFame?: () => void,
     coins: number,
-    betWonMessage: string | null
+    betWonMessage: string | null,
+    /**
+     * AUDIT-9 batch 3: open the events a highlight was derived from.
+     *
+     * Optional, so a caller that has nowhere to jump to simply does not offer
+     * the link rather than offering one that goes nowhere.
+     */
+    onOpenEvidence?: (evidence: NotableEvidence) => void,
 }) {
     const [activeTab, setActiveTab] = useState<'stats' | 'replay' | 'logs'>('stats');
     // Full chronicle: clicking a linked name opens the same tribute profile
@@ -243,11 +252,37 @@ export function EndScreen({
                     {outcome && outcome.notables && outcome.notables.length > 0 && (
                         <div className="md:col-span-2 panel p-5 space-y-2"
                             style={{ borderColor: 'var(--red)', borderWidth: '3px' }}>
+                            {/* AUDIT-9 batch 3: the heading used to read "What made
+                                these Games unusual", which is a claim about a
+                                baseline — and most of these lines never had one.
+                                They are notable, which is a different kind of true;
+                                the ones that genuinely compare against the player's
+                                own history say so on the line itself. */}
                             <span className="eyebrow" style={{ color: 'var(--red)' }}>
-                                What made these Games unusual
+                                What stood out about these Games
                             </span>
                             {outcome.notables.map(n => (
-                                <p key={n.text} className="text-sm text-[var(--color-ink-200)] leading-relaxed">{n.text}</p>
+                                <div key={n.text} className="space-y-0.5">
+                                    <p className="text-sm text-[var(--color-ink-200)] leading-relaxed">{n.text}</p>
+                                    {/* AUDIT-9 batch 3 P1: "each highlight can open
+                                        the exact event, phase and people supporting
+                                        it". A line derived from the whole run has
+                                        nothing to open and says nothing here, rather
+                                        than offering a link to a fact with no
+                                        moment behind it. */}
+                                    {n.evidence && (
+                                        <button
+                                            type="button"
+                                            className="text-mini underline underline-offset-2 text-[var(--color-ink-500)] hover:text-[var(--red)]"
+                                            onClick={() => onOpenEvidence?.(n.evidence!)}
+                                        >
+                                            {n.evidence.day !== undefined
+                                                ? `see it — day ${n.evidence.day}, ${n.evidence.phase ?? 'the arena'}`
+                                                : 'see it'}
+                                            {n.evidence.logIds.length > 1 ? ` (${n.evidence.logIds.length} entries)` : ''}
+                                        </button>
+                                    )}
+                                </div>
                             ))}
                         </div>
                     )}

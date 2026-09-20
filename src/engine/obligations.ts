@@ -2,7 +2,9 @@ import { GameState, Obligation, Tribute } from '../models/types';
 import { SimContext, getAlive } from './context';
 import { OBLIGATIONS } from '../data/balance';
 import { cycleOf } from './memory';
-import { adjustRel, adjustTrust } from './relationships';
+import { adjustRel, adjustTrust, getRel } from './relationships';
+import { hasTruce } from './parley';
+import { ARCHETYPES } from '../data/archetypes';
 import { isActive, isDowned } from './downed';
 import { giveItem } from './items';
 import { refusesCredit, volunteersToCarry } from '../data/traits';
@@ -338,4 +340,81 @@ export function negotiateObligations(ctx: SimContext) {
             promise(ctx, t, mate, 'rescue');
         }
     });
+}
+
+/**
+ * AUDIT-9 batch 3: asking somebody who is not on your side.
+ *
+ * `negotiateObligations` above requires an alliance and a mate inside it, so
+ * every promise in the game was made between two people who had already
+ * agreed to help each other. The audit names that failure directly — "protect
+ * against a social role being valuable only when everyone nearby is already
+ * friendly" — and the measurement is unambiguous about who it costs: the
+ * Confessor, whose entire description is "wins by being the person nobody can
+ * justify killing", has the most company of any archetype in the game (13.38
+ * others in the zone, alone in only 3.8% of cycles), dies of body causes more
+ * than any other archetype measured, and had the second-worst win rate. It was
+ * standing in a crowd of people carrying food, with no way to ask.
+ *
+ * An appeal is the general form of asking. Anybody in visible need can make
+ * one; whether it is answered turns on standing — the charisma to ask well, a
+ * truce or regard already in place, and whether the person being asked is the
+ * sort to step over somebody, or has been killing people. That makes this the
+ * Confessor's engine without being a Confessor branch: they are simply the
+ * best in the game at the thing everybody can now do.
+ *
+ * The promise runs the giver -> asker, and both of them are standing in the
+ * same place when it is made, so it is immediately attemptable. That matters:
+ * the audit's other note on this system is that the ledger fills with promises
+ * nobody could have kept, and an appeal is the opposite shape — the supplies
+ * and the need are within arm's reach at the moment the words are said.
+ */
+export function appealForAid(ctx: SimContext) {
+    const state = ctx.state;
+    getAlive(state).forEach(asker => {
+        if (!isActive(asker)) return;
+        // Visible need. Not "would like more" — the kind somebody standing
+        // next to them can see.
+        const need = Math.max(asker.vitals.hunger, asker.vitals.thirst);
+        if (need < OBLIGATIONS.appealNeedLine) return;
+        if (!ctx.rng.chance(OBLIGATIONS.appealChance)) return;
+
+        // Somebody who is not already on their side, is here, and has it spare.
+        const candidates = getAlive(state).filter(o =>
+            o.id !== asker.id
+            && isActive(o)
+            && samePlace(state.arena, asker, o)
+            && !(asker.allianceId !== undefined && o.allianceId === asker.allianceId)
+            && canPromise(state, o, 'supply'));
+        if (candidates.length === 0) return;
+
+        // Who is likeliest to say yes, asked first — one ask per cycle, so it
+        // is the best prospect rather than a canvass of the whole zone.
+        const scored = candidates
+            .map(giver => ({ giver, chance: appealChance(ctx, asker, giver) }))
+            .sort((a, b) => b.chance - a.chance)[0];
+        if (!ctx.rng.chance(scored.chance)) return;
+
+        const made = promise(ctx, scored.giver, asker, 'supply');
+        if (!made) return;
+        ctx.logEvent(
+            `${asker.name} asks ${scored.giver.name} outright, in front of whoever is watching. `
+            + `${scored.giver.name} says yes — which is a thing the arena will remember about both of them.`,
+            [asker.id, scored.giver.id],
+            { type: 'obligation-made', important: true, category: 'alliance', zone: asker.zone },
+        );
+    });
+}
+
+/** How likely this particular person is to answer this particular asker. */
+function appealChance(ctx: SimContext, asker: Tribute, giver: Tribute): number {
+    let chance = OBLIGATIONS.appealPerCharisma
+        * (asker.attributes.charisma - OBLIGATIONS.appealCharismaMidpoint);
+    if (hasTruce(ctx.state, asker, giver.id)) chance += OBLIGATIONS.appealTruceBonus;
+    chance += Math.max(0, getRel(giver, asker.id)) * OBLIGATIONS.appealPerRegard;
+    // Somebody who turns on people does not stop to hand over their water.
+    chance -= Math.max(0, ARCHETYPES[giver.archetype].treachery) * OBLIGATIONS.appealTreacheryWeight;
+    // And nobody gives to somebody who has been killing people.
+    chance -= asker.kills * OBLIGATIONS.appealPerKill;
+    return Math.max(0, Math.min(OBLIGATIONS.appealMaxChance, chance));
 }

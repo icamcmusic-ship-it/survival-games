@@ -433,7 +433,30 @@ export function processBloodbath(ctx: SimContext) {
         fightChance += (t.attributes.agility - 5) * BLOODBATH.fightChanceAgility;
         if (t.attributes.strength > 7) fightChance += 0.15;
         fightChance += traitMod(t, 'hornCommitment');
-        fightChance += ARCHETYPES[t.archetype].aggression - ARCHETYPES[t.archetype].caution * 0.5;
+        /*
+         * AUDIT-9 batch 3: an archetype with a creed does not charge the horn
+         * for a rucksack.
+         *
+         * Aggression minus caution is the right reading for almost everybody:
+         * the eager and the incautious go for the Cornucopia. It is the wrong
+         * reading for an archetype whose `disengage` rule says it declines
+         * fights that are not the point, because the bloodbath is the least
+         * meaningful fight in the Games — twenty-four people grabbing bags,
+         * settled by who started closest. The Zealot was getting +0.45 of
+         * fight chance from a temperament that is about *people*, and spending
+         * it on luggage: 44.2% of all Zealot deaths happened at the horn
+         * against a field near a third, and it lived 3.51 days against 4.28.
+         *
+         * So the eagerness does not apply here. They keep their caution, their
+         * plate, their body and their traits — everything that is about this
+         * specific moment — and lose only the part that was about wanting a
+         * fight in general. They are still the most aggressive thing in the
+         * arena on every other cycle of the run, which is where the fights are
+         * about somebody.
+         */
+        const arch = ARCHETYPES[t.archetype];
+        const eagerness = arch.disengage === 'unworthy' ? 0 : arch.aggression;
+        fightChance += eagerness - arch.caution * 0.5;
         // The persona sold on the interview couch is a promise the crowd — and
         // everyone else on the plates — remembers.
         fightChance += personaThreat(t) * 0.6;

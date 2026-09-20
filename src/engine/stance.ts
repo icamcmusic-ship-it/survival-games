@@ -187,6 +187,22 @@ export interface StanceSignals {
     /** Total value of everything they are carrying. */
     kit: number;
     broken: boolean;
+    /**
+     * AUDIT-9 batch 3: bodies in this zone still carrying something.
+     *
+     * Scavenging measured 1.3% of stance-time, the rarest in the game and
+     * under its 1.5% floor, and its eligibility was the reason: unarmed *and*
+     * carrying almost nothing, or a cannon next door. That is a stance you
+     * fall into when you have already lost, which is not a reason anybody
+     * chooses anything — and the audit's question about the low-use stances is
+     * exactly "explain why Patrolling, Tending or Scavenging would be chosen".
+     *
+     * This is the answer for this one. `tickScavenge` already loots the dead
+     * in the zone; the opportunity existed and nothing let a tribute notice
+     * it. Three bodies with their packs still on them is a reason to work this
+     * ground whether or not you are destitute.
+     */
+    bodiesHere: number;
 }
 
 function buildSignals(ctx: SimContext, t: Tribute, occupants: Tribute[]): StanceSignals {
@@ -200,6 +216,12 @@ function buildSignals(ctx: SimContext, t: Tribute, occupants: Tribute[]): Stance
         : [];
     const cannonNearby = (ctx.state.recentCannonZones ?? [])
         .some(c => c.cycle >= cycle - 1 && (neighbours.includes(c.zone) || c.zone === t.zone));
+
+    // AUDIT-9 batch 3: what is actually lying on this ground. The same test
+    // `tickScavenge` uses to decide there is anything to take, so the reason
+    // to adopt the stance and the payoff for adopting it agree.
+    const bodiesHere = ctx.state.tributes.filter(o =>
+        o.status === 'dead' && o.zone === t.zone && o.inventory.length > 0).length;
 
     // Shadowing needs someone worth trailing: hostile, one zone over, and
     // currently unaware they are being trailed at all.
@@ -242,6 +264,7 @@ function buildSignals(ctx: SimContext, t: Tribute, occupants: Tribute[]): Stance
         chokepoint: !!features?.chokepoint,
         elevation: !!features?.elevation,
         cannonNearby,
+        bodiesHere,
         shadowTarget,
         kit: inventoryValue(t),
         broken: hasBroken(t),
@@ -326,8 +349,10 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
         // Same exit band: picking up one knife should not end a scavenging
         // run mid-sweep.
         const band = t.stance === 'Scavenging' ? STANCE_MODES.scavenging.exitBand : 1;
+        // AUDIT-9 batch 3: ...or there is simply something here worth taking.
         return (!sig.hasWeapon && sig.kit < STANCE_MODES.scavenging.inventoryValue * band)
-            || sig.cannonNearby;
+            || sig.cannonNearby
+            || sig.bodiesHere > 0;
     },
 
     // A trail already underway survives a cycle in which the quarry briefly
@@ -774,6 +799,11 @@ function stanceReasons(ctx: SimContext, t: Tribute, sig: StanceSignals, stance: 
     } else if (stance === 'Scavenging') {
         if (!sig.hasWeapon) push('unarmed', STANCE_MODES.scavenging.unarmedBonus);
         if (sig.cannonNearby) push('a cannon just went off nearby', STANCE_MODES.scavenging.cannonBonus);
+        if (sig.bodiesHere > 0) {
+            push(sig.bodiesHere === 1 ? 'somebody died here and is still carrying it'
+                : `${sig.bodiesHere} bodies here, still carrying it`,
+            sig.bodiesHere * STANCE_MODES.scavenging.perBodyHere);
+        }
         push('travelling light', Math.max(0, STANCE_MODES.scavenging.inventoryValue - sig.kit) * STANCE_MODES.scavenging.perMissingValue);
     }
 

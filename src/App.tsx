@@ -314,6 +314,19 @@ export default function App() {
               onHallOfFame={() => gameActions.setView('hallOfFame')}
               coins={coins}
               betWonMessage={betWonMessage}
+              /*
+               * AUDIT-9 batch 3 P1: a highlight opens the moment it was
+               * derived from. The chronicle already deep-links by day and
+               * phase — `#/chronicle?day=4&phase=night` — so the receipt on
+               * the end screen lands on the page where it happened rather
+               * than at the top of the log.
+               */
+              onOpenEvidence={evidence => {
+                if (evidence.day !== undefined && evidence.phase) {
+                  window.location.hash = `#/chronicle?day=${evidence.day}&phase=${evidence.phase}`;
+                }
+                gameActions.setView('chronicle');
+              }}
             />
           ) : gameState.phase === 'epilogue' ? (
             <VictorInterviewScreen gameState={gameState} onProceed={gameActions.nextPhase} />

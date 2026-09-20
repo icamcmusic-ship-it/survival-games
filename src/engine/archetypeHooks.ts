@@ -1,4 +1,5 @@
-import { EventType, Objective, Tribute } from '../models/types';
+import { samePlace } from './verticality';
+import { EventType, Item, Objective, Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { severRandomEdge } from './zoneEffects';
 import { ARCHETYPE_HOOKS, EARNED_TRAIT_RULES, HUNTING, MEMORY } from '../data/balance';
@@ -822,10 +823,89 @@ export const SIGNATURES: Record<string, Signature> = {
          * of broker entrants to comfortably over the floor, and it is the more
          * characterful reading besides.
          */
-        const client = getAlive(ctx.state)
-            .filter(o => o.id !== t.id && o.zone === t.zone
-                && (o.inventory.length < t.inventory.length
-                    || need(o) > need(t) + ARCHETYPE_HOOKS.brokerNeedGap))
+        /*
+         * AUDIT-9 batch 3: a client is somebody who needs a thing this broker
+         * is actually holding.
+         *
+         * The test used to be comparative — more need than the broker, by a
+         * margin, or a smaller pack. Measured over 1,298 broker-cycles, that
+         * found nobody in the zone **77.7%** of the time, against only 10.2%
+         * where the broker had nothing to trade. The set piece was not short
+         * of goods, it was short of anybody who counted as a customer, and
+         * that is what held the archetype to a 31.6% firing rate and 67.2% of
+         * brokers dying without ever having brokered.
+         *
+         * The comparative test has a specific perverse case behind that
+         * number: a hungry broker cannot find a client, because everybody's
+         * need is measured against *theirs*. A broker who is hungry and
+         * holding a spare kit, standing next to somebody bleeding, had no
+         * client. That is precisely backwards — a broker does not need to be
+         * comfortable to sell you something, they need to be holding the thing
+         * you are short of. Which is also the archetype's actual description.
+         *
+         * So the question is matched rather than comparative: does anybody
+         * here need something in this pack? The inventory-count clause is kept
+         * as a second route, because a broker standing next to somebody with
+         * nothing is still a broker.
+         */
+        const wants = (o: Tribute): Item['type'][] => {
+            const list: Item['type'][] = [];
+            if (o.injuries.bleeding || o.injuries.infected || o.injuries.poisoned) list.push('medical');
+            if (o.vitals.hunger > ARCHETYPE_HOOKS.brokerClientNeedLine) list.push('food');
+            if (o.vitals.thirst > ARCHETYPE_HOOKS.brokerClientNeedLine) list.push('water');
+            /*
+             * ...and the broader reading, which is the one that actually makes
+             * this archetype what it is: you do not have one of these, and I
+             * do. A broker does not wait for somebody to be desperate. They
+             * sell to the person who is walking around with no water at all
+             * and has not thought about it yet, which is most of the arena for
+             * most of the run — and, measured, the difference between a set
+             * piece that fires for 29% of its entrants and one that fires for
+             * a third of them.
+             *
+             * Deliberately "none at all" rather than "fewer than me": holding
+             * zero of something in an arena is a real and visible shortage,
+             * and it does not depend on how the broker's own pack is doing.
+             */
+            (['food', 'water', 'medical'] as Item['type'][]).forEach(type => {
+                if (!list.includes(type) && !o.inventory.some(i => i.type === type)) list.push(type);
+            });
+            return list;
+        };
+        /*
+         * ...but a broker is a businessman, not a martyr. They do not sell the
+         * last of the thing they are themselves in trouble over — that is not
+         * a trade, it is a donation with extra steps, and it would make this
+         * set piece a way for the archetype to kill itself.
+         */
+        const critical = (type: Item['type']) => {
+            const held = t.inventory.filter(i => i.type === type).length;
+            if (held > 1) return false;
+            if (type === 'food') return t.vitals.hunger > ARCHETYPE_HOOKS.brokerKeepNeedLine;
+            if (type === 'water') return t.vitals.thirst > ARCHETYPE_HOOKS.brokerKeepNeedLine;
+            if (type === 'medical') return t.injuries.bleeding || t.injuries.infected;
+            return false;
+        };
+        const sellable = (o: Tribute) =>
+            wants(o).filter(type => !critical(type) && t.inventory.some(i => i.type === type));
+
+        // `samePlace`, not zone equality — AUDIT-9 B12's rule. Handing
+        // somebody a flask is exactly the kind of act it governs.
+        const here = getAlive(ctx.state).filter(o =>
+            o.id !== t.id && samePlace(ctx.state.arena, t, o));
+        /*
+         * A union, not a replacement. The first attempt at this swapped the
+         * comparative test out for the matched one and measured *worse* —
+         * 31.6% to 28.8%, under the 29% floor — because the old clause was
+         * catching a case the new one does not: somebody in real trouble whose
+         * particular shortage this pack cannot cover, whom a broker will still
+         * sell something to. Both are real clients. Adding a route to a set
+         * piece means adding it.
+         */
+        const client = here
+            .filter(o => sellable(o).length > 0
+                || need(o) > need(t) + ARCHETYPE_HOOKS.brokerNeedGap
+                || o.inventory.length < t.inventory.length)
             .sort((a, b) => need(b) - need(a))[0];
         if (!client) {
             /*
@@ -869,7 +949,24 @@ export const SIGNATURES: Record<string, Signature> = {
          * they can; a weapon only when it is all they have, and never their
          * last one.
          */
-        let idx = t.inventory.findIndex(i => i.type !== 'weapon');
+        /*
+         * AUDIT-9 batch 3: hand over the thing they were short of, first.
+         *
+         * Selling somebody a spare knife when they are bleeding and this pack
+         * has a kit in it is the wrong trade, and it is the one the old
+         * "first non-weapon item" scan made. What the client actually needs
+         * comes first; the old order is the fallback for a client who
+         * qualified on pack size rather than on need.
+         */
+        const needed = sellable(client);
+        let idx = needed.length > 0
+            ? t.inventory.findIndex(i => needed.includes(i.type))
+            : -1;
+        if (idx < 0) idx = t.inventory.findIndex(i => i.type !== 'weapon' && !critical(i.type));
+        // Last resort before the weapon rule: the old scan, unchanged. The
+        // `critical` guard is about not selling your own last flask while
+        // dying of thirst; it is not a reason to fail to trade at all.
+        if (idx < 0) idx = t.inventory.findIndex(i => i.type !== 'weapon');
         if (idx < 0 && t.inventory.filter(i => i.type === 'weapon').length > ARCHETYPE_HOOKS.brokerSpareWeapons) {
             idx = t.inventory.findIndex(i => i.type === 'weapon');
         }

@@ -2633,9 +2633,40 @@ export const COMBAT = {
     /** Below this health fraction a tribute will always try to run. */
     routHealthFraction: 0.22,
 
+    /*
+     * AUDIT-9 batch 3: the Zealot's creed, priced.
+     *
+     * `ArchetypeDef.disengage: 'unworthy'` breaks off a fight whose opponent
+     * is not the one this archetype came for. Two dials keep it a judgement
+     * made at the start of an exchange rather than a way to walk out of a
+     * losing one:
+     */
+    /**
+     * How much stronger somebody else present has to be before the fight in
+     * front of them counts as the wrong fight. A margin, not a tie-break — at
+     * 0 a Zealot would disengage from anybody who was not the single strongest
+     * person in the zone by any amount, which is not a creed, it is a twitch.
+     */
+    unworthyTargetMargin: 12,
+    /**
+     * Only in the opening rounds. Past this, they are committed: a Zealot who
+     * has been trading blows for three rounds and then decides the opponent
+     * was beneath them is just fleeing with extra words, which is the exact
+     * thing this archetype does not do.
+     */
+    unworthyMaxRounds: 1,
+
     /** Numbers advantage in a group brawl. */
     outnumberPowerPerAlly: 2.4,
     outnumberMaxBonus: 7,
+    /*
+     * AUDIT-9 batch 3: how fast the numbers bonus loses value to a side that
+     * was already winning. See the note at the call site in `combatPower`.
+     */
+    /** Points of health-and-training edge that halve the numbers bonus. */
+    outnumberEdgeScale: 60,
+    /** ...and the floor: numbers never stop being worth something. */
+    outnumberMinShare: 0.4,
     /** Chance per round a gang-up focuses everything on one target. */
     focusFireChance: 0.6,
     /** Group encounters run for at most this many rounds. */
@@ -4320,6 +4351,17 @@ export const STANCE_MODES = {
         combatPenalty: 1.5,
         /** Pull from carrying no weapon at all. */
         unarmedBonus: 0.8,
+        /**
+         * AUDIT-9 batch 3: pull per body in this zone still carrying
+         * something.
+         *
+         * The reason to work this ground, as opposed to the reason to give up
+         * and work any ground. Scavenging held 1.3% of stance-time, under its
+         * 1.5% floor, because it was only ever reachable by the destitute —
+         * and `tickScavenge` was already looting corpses for anybody who got
+         * there, so the payoff existed and nothing let a tribute see it.
+         */
+        perBodyHere: 0.7,
         /** Pull per point of kit value they are short of the threshold. */
         perMissingValue: 0.08,
         /** ...and the discount for a cannon site with people still on it. */
@@ -7906,6 +7948,26 @@ export const ARCHETYPE_HOOKS = {
      * most broker-ish client in the arena, and `need` could not see them.
      */
     brokerWoundNeed: 70,
+    /*
+     * AUDIT-9 batch 3: the matched client test, and the line a broker will
+     * not sell across.
+     *
+     * `brokerNeedGap` above is the old comparative question — "hungrier than
+     * me, by a margin" — which found no client in the zone 77.7% of the time
+     * because a hungry broker measures everybody against their own hunger. It
+     * is retained for the distant-client search, where ranking by relative
+     * need is still the right way to choose which way to walk.
+     */
+    /** Hunger or thirst above this reads as a need somebody could sell into. */
+    brokerClientNeedLine: 50,
+    /**
+     * ...and above this, on their *own* vitals, a broker stops selling the
+     * last of that thing. A broker is a businessman, not a martyr: trading
+     * away their own last flask while dying of thirst is not a deal, it is a
+     * donation with extra steps, and it would turn this set piece into a way
+     * for the archetype to kill itself.
+     */
+    brokerKeepNeedLine: 65,
     /**
      * AUDIT-7 §8.2: how many weapons a broker keeps before they will trade one.
      *
@@ -8474,6 +8536,43 @@ export const OBLIGATIONS = {
     keptRegard: 14,
     keptTrust: 6,
     brokenRegard: 22,
+
+    /*
+     * AUDIT-9 batch 3: asking somebody who is not on your side.
+     *
+     * `negotiateObligations` requires `t.allianceId` and a mate in the same
+     * alliance, so every promise in the game is made between people who had
+     * already agreed to help each other. That is precisely the failure the
+     * audit names — "a social role being valuable only when everyone nearby is
+     * already friendly" — and it is measurable on the archetype built for it:
+     * the Confessor has the most company of anybody in the game (13.38 others
+     * in the zone, alone in only 3.8% of cycles) and the second-worst win
+     * rate, dying of body causes more than any other focus archetype. It is
+     * surrounded by people with food and cannot ask any of them.
+     *
+     * An appeal is the general form of asking: visible need, somebody standing
+     * there who can spare it, and enough standing to be given it rather than
+     * stepped over. Everybody can make one. A tribute with charisma, a truce
+     * and no blood on them is far likelier to be answered, which is what makes
+     * this the Confessor's engine without being a Confessor carve-out.
+     */
+    /** Need on the 0-100 vitals scale before somebody will ask a non-ally. */
+    appealNeedLine: 62,
+    /** Base chance per cycle that a tribute in need makes the ask at all. */
+    appealChance: 0.16,
+    /** Per point of the asker's charisma above the midpoint. */
+    appealPerCharisma: 0.035,
+    appealCharismaMidpoint: 5,
+    /** A standing truce is most of why a stranger listens. */
+    appealTruceBonus: 0.22,
+    /** Per point of positive regard the giver already holds for the asker. */
+    appealPerRegard: 0.004,
+    /** How much the giver's own treachery makes them step over somebody. */
+    appealTreacheryWeight: 0.25,
+    /** Nobody gives to somebody who has been killing people. */
+    appealPerKill: 0.06,
+    /** Ceiling, so an appeal is never a certainty. */
+    appealMaxChance: 0.6,
 } as const;
 
 /**
