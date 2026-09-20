@@ -1,5 +1,6 @@
+import { spendUpTo } from './actionBudget';
 import { InjurySite, Tribute } from '../models/types';
-import { BLEEDING, PROFICIENCY, SCARRING, VITALS, WOUND_RECOVERY } from '../data/balance';
+import { ACTION_BUDGET, BLEEDING, PROFICIENCY, SCARRING, VITALS, WOUND_RECOVERY } from '../data/balance';
 import { SimContext } from './context';
 import { profOf, trainProficiency, observeProficiency } from './proficiency';
 import { traitMod } from '../data/traits';
@@ -287,6 +288,14 @@ function dressChance(medic: Tribute, isAlly: boolean): number {
 export function attemptFieldDressing(ctx: SimContext, patient: Tribute, medic: Tribute = patient): boolean {
     const severity = bleedSeverity(patient);
     if (severity <= 0) return false;
+    /*
+     * AUDIT-9 stage C §3: an hour, and deliberately the cheapest thing in the
+     * budget. A wound that is running is the most urgent thing in somebody's
+     * life, and a model where a tired tribute cannot stop to tie it off is
+     * worse than one with no budget at all. It costs time; it is never
+     * refused for want of time, because `spendUpTo` takes what is there.
+     */
+    spendUpTo(medic, ACTION_BUDGET.dressingHours);
     // §3.1: a dressing is attention paid to the wound, so it restarts the
     // neglect clock on every open site whether or not the roll lands. It
     // deliberately does *not* touch an infection that has already taken hold —

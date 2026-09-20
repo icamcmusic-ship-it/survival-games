@@ -670,6 +670,22 @@ export interface Tribute {
     memory: TributeMemory;
     /** The last thing that hurt them — the real cause of death, not a guess. */
     lastDamage?: DamageRecord;
+    /**
+     * AUDIT-9 stage C §3: hours left in this cycle. See `engine/actionBudget`.
+     *
+     * Undefined before the first cycle and on states saved before budgets
+     * existed; `hoursLeft()` treats that as a full day rather than an empty
+     * one, so an old save resumes with everybody able to act.
+     */
+    hoursLeft?: number;
+    /** The allowance this cycle granted, so spending can be reported. */
+    hoursToday?: number;
+    /**
+     * Work carried across cycles: a half-set trap, a half-built shelter.
+     * One at a time — starting something else abandons it.
+     */
+    partialWork?: { kind: string; hoursDone: number };
+
     /** Cycles the current stance has been held, for hysteresis. */
     stanceHeld: number;
     /** Pre-Games audience darling. Starts with sponsor trust and draws envy. */
@@ -2155,6 +2171,26 @@ export interface Arena {
  * chronicle pages them the way it pages a day and a night. `training` is kept
  * as a legacy value for saves written before the split.
  */
+/**
+ * AUDIT-9 stage C §4: a negotiated obligation.
+ *
+ * Distinct from the charters, pacts and treaties around it: those are standing
+ * conditions somebody can be found in breach of, this is a specific thing one
+ * named person owes another by a particular cycle. See `engine/obligations`.
+ */
+export interface Obligation {
+    id: string;
+    owedById: string;
+    owedToId: string;
+    /** Supplies, a walk to somewhere, or being there when they go down. */
+    kind: 'supply' | 'escort' | 'rescue';
+    byCycle: number;
+    /** `broken` means they could have and did not; `lapsed` means they could not. */
+    status: 'open' | 'kept' | 'broken' | 'lapsed';
+    /** For an escort, where to. */
+    detail?: string;
+}
+
 export type Phase = 'setup' | 'roster' | 'reaping'
     | 'square' | 'train' | 'parade'
     | 'training' | 'training1' | 'training2' | 'training3' | 'scores'
@@ -2606,6 +2642,29 @@ export interface GameState {
     traps?: Trap[];
     /** Alliance id -> its structure. See `Alliance`. */
     alliances?: Record<string, Alliance>;
+    /**
+     * AUDIT-9 stage C §4: sponsor gifts in the air and on the ground.
+     *
+     * A gift exists here between the moment somebody pays for it and the
+     * moment somebody picks it up, which is the window in which it can land
+     * in the wrong zone or be taken by the wrong person. See
+     * `engine/parachutes`.
+     */
+    /**
+     * AUDIT-9 stage C §4: specific things one named tribute owes another by a
+     * particular cycle. See `engine/obligations`.
+     */
+    obligations?: Obligation[];
+    parachutes?: Array<{
+        id: string;
+        item: Item;
+        zone: string;
+        /** Who it was bought for. Not necessarily who gets it. */
+        forId: string;
+        landedCycle: number;
+        seal?: string;
+    }>;
+
     /**
      * Movement along each edge of the zone graph, keyed by the two zone names
      * sorted and joined with '|'. Decays every cycle, so it reads as "where the
@@ -3121,6 +3180,15 @@ export type EventType =
     | 'succession-split'
     | 'succession-unnamed'
     | 'trap-destroyed'
+    | 'obligation-made'
+    | 'obligation-kept'
+    | 'obligation-broken'
+    | 'obligation-lapsed'
+    | 'parachute-claimed'
+    | 'parachute-stolen'
+    | 'parachute-collected'
+    | 'parachute-lost'
+    | 'partial-work'
     | 'trap-set-snare'
     | 'trap-set-deadfall'
     | 'trap-set-pit'

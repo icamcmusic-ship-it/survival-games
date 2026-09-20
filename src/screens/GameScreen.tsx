@@ -680,12 +680,18 @@ export function GameScreen({
     // remains the only writer — so removing the live evaluation changes what
     // the player is told and not what they earn.
 
-    const urgentAnnouncement = useMemo(() => {
-        const lastDeath = [...gameState.log]
-            .reverse()
-            .find(l => l.day === gameState.day && (l.category === 'death' || l.category === 'kill'));
-        return `${phaseLabel}.${lastDeath ? ` ${lastDeath.text}` : ''}`;
-    }, [phaseLabel, gameState.log, gameState.day]);
+    /*
+     * AUDIT-9 §7: this was `aria-live="assertive"` carrying the phase label
+     * *and* the last death's full prose, found by the browser acceptance pass.
+     * Two things were wrong with it. Assertive interrupts a screen reader
+     * mid-sentence, and nothing here is an emergency — a phase turning over is
+     * exactly the routine update `polite` exists for. And the death text was
+     * already going out on the headline region two lines below, so a reader
+     * heard every death twice, the second time by having the first one cut off.
+     *
+     * The phase alone, politely. The headline region keeps announcing events.
+     */
+    const phaseAnnouncement = `${phaseLabel}.`;
 
     const selectMobilePane = (pane: MobilePane) => {
         setMobilePane(pane);
@@ -1004,7 +1010,7 @@ export function GameScreen({
             <div role="status" aria-live="polite" className="sr-only">
                 {newEventCount > 0 ? `${newEventCount} new event${newEventCount === 1 ? '' : 's'}` : ''}
             </div>
-            <div aria-live="assertive" className="sr-only">{urgentAnnouncement}</div>
+            <div aria-live="polite" className="sr-only">{phaseAnnouncement}</div>
             <div ref={shortcutHintRef} role="status" aria-live="polite" className="sr-only" />
 
             {showHelp && <HelpOverlay onClose={() => setShowHelp(false)} />}

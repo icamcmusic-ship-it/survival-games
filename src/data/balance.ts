@@ -8343,3 +8343,74 @@ export const CONFUSION = {
      */
     destinationFlattening: 0.9,
 } as const;
+
+/**
+ * AUDIT-9 stage C §3: what a cycle's hours buy. See `engine/actionBudget`.
+ *
+ * `baseHours` is a waking day rather than 24, and the costs below are
+ * deliberately coarse: the point is that travelling a long way and building a
+ * shelter and setting a trap do not all fit, not that any one of them is
+ * priced to the minute.
+ */
+export const ACTION_BUDGET = {
+    baseHours: 12,
+    minHours: 3,
+    /** A body at 100 fatigue loses this much of the day. */
+    fatigueHourCost: 5,
+    legInjuryHourCost: 1.5,
+    hurtHealthLine: 40,
+    hurtHourCost: 2,
+    enduranceMidpoint: 5,
+    /** Hours per point of endurance above the midpoint. */
+    enduranceHourBonus: 0.4,
+    /** Improvising a weapon out of what is in the pack. */
+    craftHours: 3,
+    /** One leg of a crossing. Travel is the expensive thing a day holds. */
+    travelHours: 5,
+    /** Searching ground for food or water. */
+    forageHours: 3,
+    /** Setting a trap properly, which is why a rushed one is a bad one. */
+    trapHours: 4,
+    shelterHours: 5,
+    fireHours: 2,
+    /** Dressing a wound: urgent, and cheap enough to always be possible. */
+    dressingHours: 1,
+} as const;
+
+/**
+ * AUDIT-9 stage C §4: how long a gift stays in the arena, and what it costs
+ * to watch somebody else take yours. See `engine/parachutes`.
+ */
+export const PARACHUTES = {
+    /** Cycles an unclaimed parachute sits before the Capitol collects it. */
+    lifetimeCycles: 2,
+    /** Regard lost toward whoever took a crate with your name on it. */
+    stolenRegard: 18,
+    /** How much reading the drop matters next to plain speed. */
+    contestWitWeight: 0.5,
+    /** Ceiling on a rival's odds, so a drop is still usually a gift. */
+    contestRivalShare: 0.3,
+} as const;
+
+/**
+ * AUDIT-9 stage C §4: what a promise costs to make and to break.
+ * See `engine/obligations`.
+ */
+export const OBLIGATIONS = {
+    /** Cycles a promise stands before it is settled one way or the other. */
+    deadlineCycles: 3,
+    /** How long a settled obligation is kept on the books for reporting. */
+    rememberCycles: 4,
+    /** Spare food/water beyond this before somebody can promise supplies. */
+    supplySpareNeeded: 1,
+    supplyHungerLine: 55,
+    escortMinHealth: 55,
+    escortMaxFatigue: 70,
+    rescueMinHealth: 40,
+    supplyPromiseChance: 0.18,
+    escortPromiseChance: 0.2,
+    rescuePromiseChance: 0.12,
+    keptRegard: 14,
+    keptTrust: 6,
+    brokenRegard: 22,
+} as const;

@@ -1,6 +1,7 @@
 import { Item, Tribute, Trap } from '../models/types';
-import { BLEEDING, CRAFTING, EARNED_TRAIT_RULES, ENDGAME, HUNTING, POISONING, PROFICIENCY, TRAPS, STANCE_MODES } from '../data/balance';
+import { ACTION_BUDGET, BLEEDING, CRAFTING, EARNED_TRAIT_RULES, ENDGAME, HUNTING, POISONING, PROFICIENCY, TRAPS, STANCE_MODES } from '../data/balance';
 import { SimContext } from './context';
+import { canAfford, progressOf, work } from './actionBudget';
 import { applyDamage, checkDeath } from './combat';
 import { addZoneThreat, cycleOf, rattle, noteSighting } from './memory';
 import { endgameEdge } from './objectives';
@@ -156,6 +157,22 @@ export function setTrap(ctx: SimContext, t: Tribute) {
                     : canWhittle ? 'stake'
                         : diggable && t.attributes.strength >= TRAPS.pitStrength ? 'pit'
                             : 'deadfall';
+
+    /*
+     * AUDIT-9 stage C §3: a trap set properly takes most of an afternoon, and
+     * a half-set trap is not a trap. Same partial-work rule as the shelter:
+     * the hours carry, changing your mind loses them.
+     */
+    if (!work(t, `trap:${kind}`, ACTION_BUDGET.trapHours)) {
+        if (progressOf(t, `trap:${kind}`, ACTION_BUDGET.trapHours) > 0) {
+            ctx.logEvent(
+                `${t.name} works on a ${kind} in ${t.zone} until the light goes, and leaves it unset rather than leave it badly set.`,
+                [t.id],
+                { type: 'partial-work', category: 'survival' }
+            );
+        }
+        return;
+    }
 
     /*
      * AUDIT-6 §12.4 `carpentry`: the build. `crafting` was doing this *and*
@@ -579,6 +596,8 @@ function buildChance(t: Tribute): number {
  */
 export function lightFire(ctx: SimContext, t: Tribute): boolean {
     if (hasCamp(ctx, t, 'fire')) return false;
+    // AUDIT-9 stage C §3: gathering fuel and getting it lit is an evening.
+    if (!canAfford(t, ACTION_BUDGET.fireHours)) return false;
     // `fireImpossible`: no dry fuel anywhere in this arena — every warmth,
     // cooking and signalling use fire would have provided simply isn't available.
     if (arenaHasLaw(ctx.state, 'fireImpossible')) return false;
@@ -621,6 +640,30 @@ export function buildShelter(ctx: SimContext, t: Tribute): boolean {
     const zone = getZone(ctx.state.arena, t.zone);
     if (!zone || (zone.terrain !== 'forest' && zone.terrain !== 'ruins' && zone.terrain !== 'highland')) return false;
     if (!ctx.rng.chance(buildChance(t))) return false;
+    /*
+     * AUDIT-9 stage C §3: "interruptions leave partial work".
+     *
+     * A shelter is most of a day. A tribute who has spent the morning walking
+     * does not finish one by evening — they get it half up, and if they are
+     * still there tomorrow they finish it. Before budgets this was one roll
+     * that either produced a whole shelter or produced nothing, which is why
+     * travel and building never competed for anything.
+     *
+     * `work` also abandons progress if they start building something else, so
+     * a tribute who keeps changing their mind ends the week with no shelter —
+     * which is the cost of indecision the audit asked to be legible.
+     */
+    if (!work(t, 'shelter', ACTION_BUDGET.shelterHours)) {
+        const done = progressOf(t, 'shelter', ACTION_BUDGET.shelterHours);
+        if (done > 0) {
+            ctx.logEvent(
+                `${t.name} gets the frame of a shelter up in ${t.zone} before the light goes. It is not weatherproof yet.`,
+                [t.id],
+                { type: 'partial-work', category: 'survival' }
+            );
+        }
+        return false;
+    }
 
     campOf(ctx, t).shelter = cycleOf(ctx.state) + CRAFTING.shelterCycles;
     /*

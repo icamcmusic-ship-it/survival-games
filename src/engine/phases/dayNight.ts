@@ -2,7 +2,7 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { IMPROVISED_ITEMS, ITEMS } from '../../data/constants';
-import { ARENA_LAWS, BLEEDING, ACHIEVEMENT_BARS, ANTHEM, CRAFTING, EARNED_TRAIT_RULES, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, PROFICIENCY, QUELL_MECHANICS, RESOLVE, SANITY_BANDS, SPONSORS, STANCE_MODES, ZONE_EFFECTS } from '../../data/balance';
+import { ACTION_BUDGET, ARENA_LAWS, BLEEDING, ACHIEVEMENT_BARS, ANTHEM, CRAFTING, EARNED_TRAIT_RULES, ENCOUNTERS, ESCALATION, HUNTING, MEMORY, MOVEMENT, OBJECTIVES, PROFICIENCY, QUELL_MECHANICS, RESOLVE, SANITY_BANDS, SPONSORS, STANCE_MODES, ZONE_EFFECTS } from '../../data/balance';
 import { traitMod } from '../../data/traits';
 import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SURVIVAL_TEXTS } from '../../data/flavorText';
 import { arenaFlavor } from '../../data/arenaFlavor';
@@ -15,6 +15,7 @@ import {
 import { driftReputation, getRel } from '../relationships';
 import { clampTribute } from '../vitals';
 import { clearBleeding, healInjury, openWound } from '../wounds';
+import { canAfford, hoursLeft, resetBudget, spend } from '../actionBudget';
 import { isNoticed } from '../stealth';
 import { pickDestination } from '../movement';
 import { objectiveHolds, objectiveLabel, objectiveStep, updateObjective } from '../objectives';
@@ -27,6 +28,8 @@ import { runStanceBeats } from '../stanceBeats';
 import { runArchetypeSignatures, tickGhosts, tickScholars } from '../archetypeHooks';
 import { isActive, isDowned } from '../downed';
 import { decayUpkeep, postActionUpkeep, preActionUpkeep } from './upkeep';
+import { resolveParachutes } from '../parachutes';
+import { negotiateObligations, tickObligations } from '../obligations';
 import {
     applyArenaEvent, fill, handleInsanity, idleAction, isBreakingDown,
     pendingChain, pickTerrainEvent, resolveMuttAttack, resolvePairEncounter,
@@ -214,6 +217,10 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         // thing that resolves them.
         if (!isActive(t)) return;
 
+        // AUDIT-9 stage C §3: a new cycle is a new day's hours. Everything
+        // below competes for them — see `engine/actionBudget`.
+        resetBudget(t);
+
         craft(ctx, t);
 
         // What they can see from where they stand, before they decide anything.
@@ -254,6 +261,13 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
 
         if (isBreakingDown(ctx, t)) {
             handleInsanity(ctx, t);
+            // AUDIT-9 stage C §3: a breakdown costs the cycle. Found by the
+            // "a tribute in transit is not also building things" scenario:
+            // somebody who came apart mid-crossing kept a full untouched day,
+            // because the breakdown branch returns before `move` and `move`
+            // was the only thing charging for the crossing. Losing the day is
+            // what a breakdown *is*.
+            spend(t, hoursLeft(t));
             acted.add(t.id);
             return;
         }
@@ -303,6 +317,13 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // cycle — the ally who got there in time, the enemy who got there first,
     // or nobody at all.
     postActionUpkeep(ctx);
+    /*
+     * AUDIT-9 stage C §4: promises are made where people are standing next to
+     * each other, and discharged the same way. Both run after the cycle has
+     * settled, so "together" means together now.
+     */
+    negotiateObligations(ctx);
+    tickObligations(ctx);
 
     // 4a. Whether anyone has stopped wanting to win. Resolve drifts on what
     // this cycle actually did to them, then the ones who have run out act on it.
@@ -574,6 +595,18 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     }
 
     processSponsors(ctx);
+    /*
+     * AUDIT-9 stage C §4: the parachute comes down in the zone it was sent to,
+     * in the same cycle, and whoever is standing in that zone opens it.
+     *
+     * Resolved here rather than a cycle later on purpose. A full cycle of
+     * delay meant the addressee had usually walked off before their own gift
+     * arrived — 42% of parachutes were taken by somebody else, which is not a
+     * dramatic arena, it is a broken postal service. Landing it now means
+     * interception happens for the reason it should: they were not alone when
+     * their sponsors came through.
+     */
+    resolveParachutes(ctx);
 
     // The anthem closes the night. Every tribute learns exactly who died today,
     // wherever they were standing when it happened — which is the single most
@@ -1326,6 +1359,10 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
 
 /** Field-expedient weapons from whatever is in the pack. */
 function craft(ctx: SimContext, t: Tribute) {
+    // Improvising a weapon is a morning's work with a knife, not something
+    // that happens for free on the way past. A tribute who has spent the day
+    // crossing a river has not also lashed a spear together.
+    if (!canAfford(t, ACTION_BUDGET.craftHours)) return;
     const hasRope = t.inventory.findIndex(i => i.id === 'rope');
     const hasKnife = t.inventory.findIndex(i => i.id === 'knife');
     if (hasRope >= 0 && hasKnife >= 0 && !t.inventory.some(i => i.id === 'spear')) {
@@ -1420,12 +1457,42 @@ function wanderChanceFor(ctx: SimContext, t: Tribute): number {
 }
 
 /**
- * §5.3: routes a decided move through its traversal cost. A one-cost move
- * happens now (returns true); a costlier one begins a transit and the
- * tribute holds their ground this cycle (returns false).
+ * §5.3: routes a decided move through its traversal cost.
+ *
+ * Three outcomes, not two. This returned a boolean when there were only two
+ * things that could happen — arrived, or started a crossing — and one caller
+ * relied on `false` meaning "there is now a `t.transit` to copy onto the rest
+ * of the group" (`{ ...t.transit! }`, non-null assertion and all). Adding a
+ * third outcome to the boolean made that spread `{...undefined}`, which is
+ * `{}`, which is a transit to `undefined` — and the group-arrival filter then
+ * matched two of those against each other and read `.remaining` off a tribute
+ * who was never crossing anything. A named outcome cannot be misread that way.
  */
-function beginMove(ctx: SimContext, t: Tribute, destName: string): boolean {
+type MoveOutcome =
+    /** Arrived this cycle. */
+    | 'arrived'
+    /** A multi-cycle crossing has begun; `t.transit` is set. */
+    | 'crossing'
+    /** AUDIT-9 stage C: no hours left to spend on going anywhere. */
+    | 'no-time';
+
+function beginMove(ctx: SimContext, t: Tribute, destName: string): MoveOutcome {
     const dest = getZone(ctx.state.arena, destName);
+    /*
+     * AUDIT-9 stage C §3: walking somewhere is the expensive thing a day
+     * holds, and this is where it stops being free.
+     *
+     * Charged before the crossing starts rather than per leg, because the
+     * decision being priced is "I am spending today going there" — a tribute
+     * who commits to a two-cycle crossing has spent this cycle on it whether
+     * or not they arrive. What they cannot then do is spend the same hours
+     * building a shelter at the far end.
+     *
+     * A tribute with no hours left does not travel. They are not frozen: they
+     * still eat, bleed, are found and fight, because none of those are things
+     * they chose to spend a day on.
+     */
+    if (!spend(t, ACTION_BUDGET.travelHours)) return 'no-time';
     // §11.6: a tolled edge's `timeCost` is extra cycles spent on the crossing
     // itself, on top of whatever the destination terrain already costs.
     const cost = (dest ? travelCost(t, dest) : 1) + edgeTimeCost(ctx.state, t.zone, destName);
@@ -1443,7 +1510,7 @@ function beginMove(ctx: SimContext, t: Tribute, destName: string): boolean {
         t.waterCrossings = (t.waterCrossings ?? 0) + 1;
         if (t.waterCrossings >= EARNED_TRAIT_RULES.waterbornCrossings) earnTrait(ctx, t, 'Waterborn');
     }
-    if (cost <= 1) return true;
+    if (cost <= 1) return 'arrived';
     t.transit = { to: destName, remaining: cost - 1 };
     ctx.logEvent(
         dest?.terrain === 'highland'
@@ -1452,7 +1519,7 @@ function beginMove(ctx: SimContext, t: Tribute, destName: string): boolean {
         [t.id],
         { category: 'travel' }
     );
-    return false;
+    return 'crossing';
 }
 
 function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: string[], flavor: ReturnType<typeof arenaFlavor>, severed: Set<string>, crossed: Set<string>, time: 'day' | 'night') {
@@ -1472,6 +1539,17 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
             const from = t.zone;
             const dest = t.transit.to;
             const remaining = t.transit.remaining;
+            /*
+             * AUDIT-9 stage C §3: the *continuing* legs cost the day too.
+             *
+             * `beginMove` charged the hours that start a crossing and nothing
+             * charged the ones that finish it, so day two of a three-day ford
+             * came with a full budget: the scenario "a tribute in transit is
+             * not also building things" caught 23 of 44 mid-crossing tributes
+             * with an unspent day. Spending the hours here is what makes a
+             * long crossing cost what it says it costs.
+             */
+            spend(t, ACTION_BUDGET.travelHours);
             if (remaining - 1 > 0) {
                 t.transit.remaining = remaining - 1;
                 return;
@@ -1562,8 +1640,19 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
             // back rather than being snapped across the map for free.
             const present = allianceMembers.filter(m => m.zone === t.zone);
             // §5.3: the group pays the leader's traversal cost together.
-            if (!beginMove(ctx, t, newZone)) {
-                present.forEach(m => { if (m.id !== t.id) m.transit = { ...t.transit! }; });
+            const outcome = beginMove(ctx, t, newZone);
+            if (outcome !== 'arrived') {
+                // Only a real crossing is copied onto the group. Out of hours,
+                // the group simply stays where it is.
+                if (outcome === 'crossing') {
+                    present.forEach(m => {
+                        if (m.id === t.id) return;
+                        m.transit = { ...t.transit! };
+                        // The group pays the leader's crossing each, not once
+                        // between them: everybody walking it is walking it.
+                        spend(m, ACTION_BUDGET.travelHours);
+                    });
+                }
                 return;
             }
             const departed = t.zone;
@@ -1591,7 +1680,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
     if (objectiveHolds(t)) return;
     const step = objectiveStep(ctx, t, options);
     if (step && step.name !== t.zone) {
-        if (!beginMove(ctx, t, step.name)) return;
+        if (beginMove(ctx, t, step.name) !== 'arrived') return;
         const from = t.zone;
         t.zone = step.name;
         enterVerticalZone(ctx.state.arena, t);
@@ -1607,7 +1696,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
         if (t.stance === 'Hunting' && !t.transit) {
             const onward = reachableZones(ctx.state.arena, t.zone, collapsed, severed, time, { state: ctx.state, tribute: t });
             const second = objectiveStep(ctx, t, onward);
-            if (second && second.name !== t.zone && beginMove(ctx, t, second.name)) {
+            if (second && second.name !== t.zone && beginMove(ctx, t, second.name) === 'arrived') {
                 const midpoint = t.zone;
                 t.zone = second.name;
                 enterVerticalZone(ctx.state.arena, t);
@@ -1625,7 +1714,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
     if (!ctx.rng.chance(wanderChanceFor(ctx, t))) return;
     const newZone = pickDestination(ctx, t, options).name;
     if (t.zone === newZone) return;
-    if (!beginMove(ctx, t, newZone)) return;
+    if (beginMove(ctx, t, newZone) !== 'arrived') return;
 
     const oldZone = t.zone;
     t.zone = newZone;

@@ -1,9 +1,10 @@
 import { Terrain, Tribute } from '../models/types';
 import { ITEMS } from '../data/constants';
-import { BLEEDING, COMPOSURE, CRAFTING, DESPERATION, ENCOUNTERS, ENCOUNTER_BRANCH, ESCALATION, HUNTING, MEMORY, POISONING, PROFICIENCY, ROMANCE, SANITY_BANDS, TOOLS, VITALS, ZONES, STANCE_MODES } from '../data/balance';
+import { ACTION_BUDGET, BLEEDING, COMPOSURE, CRAFTING, DESPERATION, ENCOUNTERS, ENCOUNTER_BRANCH, ESCALATION, HUNTING, MEMORY, POISONING, PROFICIENCY, ROMANCE, SANITY_BANDS, TOOLS, VITALS, ZONES, STANCE_MODES } from '../data/balance';
 import { ALLIANCE_TEXTS, ENCOUNTER_TEXTS, SANITY_TEXTS } from '../data/flavorText';
 import { ArenaActionKey, ArenaEventDef, actionPool, arenaFlavor } from '../data/arenaFlavor';
 import { QUIRKS, quirkLine } from '../data/quirks';
+import { spend } from './actionBudget';
 import { SimContext , getAlive } from './context';
 import { applyDamage, checkDeath, resolveCombat } from './combat';
 import { depleteZone, depletionOf, effectiveResources, getZone, zoneFeatures , reachableZones } from './map';
@@ -735,6 +736,9 @@ function attemptForage(
     flavor: ReturnType<typeof arenaFlavor>,
     chance: number,
 ): boolean {
+    // AUDIT-9 stage C §3: searching ground takes hours. A tribute who has
+    // spent the day crossing does not also comb this zone for food.
+    if (!spend(t, ACTION_BUDGET.forageHours)) return false;
     // §5 `noForage`: nothing edible grows here. Everything anybody eats in
     // this arena came out of the horn, which makes the horn the only pantry
     // and going back to it the only plan.
