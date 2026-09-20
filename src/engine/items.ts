@@ -233,7 +233,7 @@ function mergeable(existing: Item, incoming: Item): boolean {
     // Spoilage is the one that bites. Round to a band rather than demanding
     // exact equality, so a bag of food does not shatter into a stack per hour
     // while still never laundering a nearly-spoiled batch into a fresh one.
-    const band = (i: Item) => Math.floor((i.spoilage ?? 0) / STACK_SPOILAGE_BAND);
+    const band = (i: Item) => Math.floor((i.spoilage ?? 0) / INVENTORY.stackSpoilageBand);
     if (band(existing) !== band(incoming)) return false;
     if ((existing.quality ?? undefined) !== (incoming.quality ?? undefined)) return false;
     if ((existing.poison ?? false) !== (incoming.poison ?? false)) return false;
@@ -243,11 +243,6 @@ function mergeable(existing: Item, incoming: Item): boolean {
     return true;
 }
 
-/**
- * How coarse the spoilage bands are. One band is "about as fresh as each
- * other"; two batches in different bands stay separate.
- */
-const STACK_SPOILAGE_BAND = 3;
 
 export function giveItem(t: Tribute, ...items: Item[]): Item[] {
     // §10.1: 'Nothing but Hands' needs to know whether a weapon ever passed
