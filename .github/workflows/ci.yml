@@ -83,6 +83,9 @@ jobs:
       # here is a named defect from section 2 coming back rather than a
       # drifting aggregate.
       - run: npm run test:audit10
+      # AUDIT-9 batch 3: the behaviour changes, as positioned scenes. A win
+      # rate cannot say whether a mechanism fires; these can.
+      - run: npm run test:batch3
 
       # Content and structure.
       - run: npm run test:arenas
@@ -163,3 +166,9 @@ jobs:
       # Drives every screen, tab, dialog and keyboard shortcut, fails on any
       # console or page error, and censuses tap targets at 380px.
       - run: npm run test:ui
+      # AUDIT-9 batch 3: the text-size preference across every setting, at
+      # phone and desktop width, inside a live run. The audit could not launch
+      # a browser, so B16 shipped as a static finding; this is the acceptance
+      # pass, and it found three real defects the single-viewport measurement
+      # missed.
+      - run: npm run test:textscale

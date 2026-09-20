@@ -6,6 +6,7 @@ import { SimContext } from './context';
 import { WEAPON_KILL_TEMPLATES, DEATH_TEXTS, DUEL_TEXTS, GROUP_COMBAT_TEXTS } from '../data/flavorText';
 import { ARCHETYPES } from '../data/archetypes';
 import { dissolveBrokeredTruces, effectiveCaution } from './archetypeHooks';
+import { samePlace } from './verticality';
 import { ARCHETYPE_HOOKS, ARENA_DEATH_BUDGET, BLEEDING, RELATIONSHIPS as REL_KNOBS, COMBAT, DEBTS, DOWNED, EARNED_TRAIT_RULES, ESCALATION, FEAR, HUNTING, INVENTORY, LOOTING, MEMORY, NOTORIETY, INJURY_BEHAVIOUR, PROFICIENCY, QUALITY, RISK, SHOCK, QUELL_MECHANICS, RIVALRY, STANCE_MODES, STEALTH, SOCIAL_AXES, UNIVERSAL_DEATHS, ARENA_LAWS } from '../data/balance';
 import { goDown, isActive, isDowned } from './downed';
 import { clampTribute } from './vitals';
@@ -567,7 +568,35 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
     // decays with the group's own trust, which is the mechanic the alliance
     // layer already simulates and combat never read.
     const cohesion = packCohesion(ctx, t);
-    power += Math.min(COMBAT.outnumberMaxBonus, allies * COMBAT.outnumberPowerPerAlly) * cohesion;
+    /*
+     * AUDIT-9 batch 3: numbers are worth most to the side that needs them.
+     *
+     * The audit's instruction on the Career is not "make them weaker" — it is
+     * that "starting attributes, equipment, training, alliance formation and
+     * sponsors should not each independently assume the others provide no
+     * advantage". The numbers bonus is the clearest case left: it was the same
+     * flat quantity whether the pack was three evenly-matched tributes or
+     * three academy graduates with the Cornucopia's weapons standing over
+     * somebody who started eight metres further out.
+     *
+     * Three-on-one decides an even fight. It adds much less to a fight that
+     * was already decided, because the second and third attacker are getting
+     * in each other's way over somebody who was losing regardless. So the
+     * bonus is scaled down by however much of an edge this tribute already
+     * brought — measured on the same health-and-training reading the target
+     * picker and the creed clause use, so every part of the engine that asks
+     * "who is the stronger person here" gets one answer.
+     *
+     * Deliberately not Career-specific. It is a rule about packs, and the
+     * Career is simply the archetype that has the most of everything else to
+     * stack it on — which is the audit's actual point.
+     */
+    let numbers = Math.min(COMBAT.outnumberMaxBonus, allies * COMBAT.outnumberPowerPerAlly) * cohesion;
+    if (opponent) {
+        const edge = (targetWorth(t) - targetWorth(opponent)) / COMBAT.outnumberEdgeScale;
+        numbers *= Math.max(COMBAT.outnumberMinShare, 1 - Math.max(0, edge));
+    }
+    power += numbers;
 
     // Bloodlust. A tribute who has just killed is keyed up and dangerous — this
     // is what lets a hunter snowball instead of every fight starting from zero.
@@ -646,6 +675,18 @@ function contestedPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, 
  * this function — `combatPower` folds it into `edge` — it just is not also
  * substituted for it.
  */
+/**
+ * AUDIT-9 batch 3: how much of a point somebody is worth making.
+ *
+ * The same two things `targetPreferenceScore` reads for `'strongest'` — what
+ * they can still take, and what the Capitol scored them at — so the creed
+ * clause below and the target picker agree about who the fight is with.
+ */
+function targetWorth(o: Tribute): number {
+    return o.health * ARCHETYPE_HOOKS.strongestHealthWeight
+        + o.trainingScore * ARCHETYPE_HOOKS.strongestPerTrainingPoint;
+}
+
 function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, roundsFought: number, opponent?: Tribute): boolean {
     // §7: once the Gamemakers have forced the finale, there is nowhere to
     // retreat *to* — the arena has been drained down to the horn. Without
@@ -665,6 +706,35 @@ function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, round
     if (t.stance === 'Desperate') return false;
 
     const arch = ARCHETYPES[t.archetype];
+
+    /*
+     * AUDIT-9 batch 3: the creed clause — a break-off that is not fear.
+     *
+     * Everything else in this function is fear, caution, health or risk
+     * tolerance, and an archetype can be built so that none of them ever fire.
+     * The Zealot is: `fearScale: 0`, caution -0.3, a flat risk curve and the
+     * highest aggression on the sheet. Measured, that archetype dies at the
+     * Cornucopia — 44.2% of its deaths at the horn against a field near a
+     * third, and 60.5% of them at another tribute's hands.
+     *
+     * So it gets a reason to walk away that belongs to it. A Zealot is not
+     * here to win a scrum; they are here to make a point, and a point needs
+     * the right person to make it to. If somebody meaningfully stronger is
+     * standing in this zone, the person currently swinging at them is not the
+     * fight — and they leave it, early, before they are committed.
+     *
+     * Deliberately *not* a health check. This fires at full health, which is
+     * what makes it a creed rather than a survival instinct wearing one.
+     */
+    if (arch.disengage === 'unworthy' && opponent && roundsFought <= COMBAT.unworthyMaxRounds) {
+        const worthier = ctx.state.tributes.some(o =>
+            o.status === 'alive'
+            && o.id !== t.id
+            && o.id !== opponent.id
+            && samePlace(ctx.state.arena, t, o)
+            && targetWorth(o) > targetWorth(opponent) + COMBAT.unworthyTargetMargin);
+        if (worthier) return true;
+    }
     const healthFraction = t.health / 100;
     if (healthFraction <= COMBAT.routHealthFraction) return true;
 

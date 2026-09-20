@@ -49,7 +49,7 @@
   "src/engine/phases/bloodbath.ts :: accumulate :: fightChance += (proximity - 0.5": 1,
   "src/engine/phases/bloodbath.ts :: accumulate :: fightChance += (t.attributes.agility - 5": 1,
   "src/engine/phases/bloodbath.ts :: accumulate :: fightChance += 0.15": 1,
-  "src/engine/phases/bloodbath.ts :: accumulate :: fightChance += ARCHETYPES[t.archetype].aggression - ARCHETYPES[t.archetype].caution * 0.5": 1,
+  "src/engine/phases/bloodbath.ts :: accumulate :: fightChance += eagerness - arch.caution * 0.5": 1,
   "src/engine/phases/bloodbath.ts :: accumulate :: weight += (10 - target.attributes.strength": 1,
   "src/engine/phases/bloodbath.ts :: chance :: chance(0.8": 1,
   "src/engine/phases/bloodbath.ts :: threshold :: t.attributes.strength > 7": 1,

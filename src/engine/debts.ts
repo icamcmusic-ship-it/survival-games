@@ -123,23 +123,45 @@ export function repayDebts(ctx: SimContext) {
 
     alive.forEach(debtor => {
         if (!debtor.debts) return;
-        const creditorId = Object.keys(debtor.debts)
-            .sort((a, b) => debtTo(debtor, b) - debtTo(debtor, a))[0];
-        if (!creditorId) return;
-        const creditor = alive.find(o => o.id === creditorId);
         /*
-         * A debt to the dead cannot be paid, only carried.
+         * AUDIT-9 batch 3: the largest debt they can actually pay, not the
+         * largest debt they have.
          *
-         * AUDIT-9 B10: and a debt cannot be paid across a two-hundred-metre
-         * shaft either. `zone === zone` ignores vertical level, so repayment
-         * transferred bread and cleared the debt between a tribute on the rim
-         * and a tribute at the bottom of it — `samePlace` returned false for
-         * the pair at the same moment the handover happened. `samePlace` is
-         * the engine's existing answer to "are these two in the same place",
-         * and physically handing somebody a loaf is exactly the kind of act it
-         * governs.
+         * This used to sort every creditor by size, take the top one, and
+         * return if that creditor turned out to be dead or somewhere else —
+         * without ever looking at the rest. A debt to the dead is never
+         * cleared and never shrinks, so one big unpayable debt permanently
+         * blocked every smaller payable one behind it. A tribute owing 9 to
+         * somebody who died at the horn and 5 to the person standing next to
+         * them paid the person standing next to them nothing, for the whole
+         * run, every run.
+         *
+         * That is not a small accounting quirk. It is the Broker's entire
+         * economy: the archetype's set piece *is* creating a debt, and the
+         * measured consequence was a 3.28% win rate on a 66.8% chance of
+         * never getting to trade at all. The audit asked whether stubborn
+         * fixation on one creditor was intended personality or an accidental
+         * universal policy — it is plainly the second, because nothing chose
+         * it and it applied to everybody.
+         *
+         * Preference for the biggest debt is kept, because settling the
+         * largest obligation first is the right instinct. It just no longer
+         * counts obligations that cannot be settled at all.
+         *
+         * A debt to the dead is still never cleared. It is carried, which is
+         * what `debtor.debts` retaining it means, and several systems read it
+         * as a thing the tribute is still carrying.
          */
-        if (!creditor || !samePlace(ctx.state.arena, debtor, creditor)) return;
+        const payable = Object.keys(debtor.debts)
+            .map(id => ({ id, creditor: alive.find(o => o.id === id) }))
+            // `samePlace`, not zone equality: AUDIT-9 B12's rule, because
+            // physically handing somebody a loaf is exactly the kind of act it
+            // governs and the rim of a shaft is not the bottom of it.
+            .filter(c => c.creditor !== undefined && samePlace(ctx.state.arena, debtor, c.creditor))
+            .sort((a, b) => debtTo(debtor, b.id) - debtTo(debtor, a.id))[0];
+        if (!payable || !payable.creditor) return;
+        const creditorId = payable.id;
+        const creditor = payable.creditor;
         if (debtTo(debtor, creditorId) < DEBTS.repayThreshold) return;
         // AUDIT-6 §12.2 `debtHonour`: a Bookkeeper pays what they owe.
         /*

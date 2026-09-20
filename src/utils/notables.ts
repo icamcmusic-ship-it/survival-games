@@ -1,5 +1,5 @@
 import { CAUSE_FAMILY, deathCodeOf } from '../engine/causes';
-import { GameState, Tribute } from '../models/types';
+import { EventLog, GameState, Tribute } from '../models/types';
 import { PanemRecords } from './panemStorage';
 import { areLovers, isStarCrossed } from '../engine/alliance';
 
@@ -17,11 +17,64 @@ import { areLovers, isStarCrossed } from '../engine/alliance';
  * from state the run already holds; nothing new is tracked for it.
  */
 
+/**
+ * AUDIT-9 batch 3: which part of the run a highlight is about.
+ *
+ * Used for diversity in selection. Three true sentences about the same thing
+ * are a worse summary than three about different things, and the old selector
+ * — sort by weight, take three — had no way to know it was doing that.
+ */
+export type NotableCategory =
+    | 'victor'      // who won and what it cost them
+    | 'shape'       // the run's overall arc: length, mortality, the horn
+    | 'deaths'      // how people died
+    | 'social'      // alliances, betrayal, love, vengeance
+    | 'capitol';    // sponsors, Quells, the Gamemakers, the odds board
+
+/**
+ * AUDIT-9 batch 3: what a highlight is standing on.
+ *
+ * The audit's P1 for the end screen is that "each highlight can open the exact
+ * event, phase and people supporting it", and that "invalid or unknown facts
+ * are omitted". The second half shipped in batch 1 — B01's repair reports an
+ * unreconstructible bloodbath count as unknown rather than as zero. This is
+ * the first half: a line that makes a claim about something that happened
+ * carries the log entries it read, so the player can go and look.
+ *
+ * Absent means "derived from the whole run rather than from particular
+ * events" — a mortality rate has no single moment to open — not "unverified".
+ */
+export interface NotableEvidence {
+    /** Log entry ids this line was derived from. */
+    logIds: string[];
+    /** Everyone the line is about, so the UI can open their dossiers. */
+    tributeIds: string[];
+    /** Where in the run to jump to. */
+    day?: number;
+    phase?: string;
+}
+
 export interface Notable {
     /** One sentence, already phrased for the end screen. */
     text: string;
     /** Rough interest, used only for ordering. */
     weight: number;
+    /** Which part of the run this is about. See `NotableCategory`. */
+    category: NotableCategory;
+    /**
+     * AUDIT-9 batch 3: a measured comparison against the player's own history,
+     * or a thing that is simply notable about this run.
+     *
+     * The audit's objection: "Several summary lines are threshold-based
+     * flavour, although the UI describes them as measured against personal
+     * history." The panel is headed "What made these Games unusual", which is
+     * a claim about a baseline — and most of these lines never had one. They
+     * are not wrong, they are a different kind of true, and the two are now
+     * labelled apart so the heading can stop overclaiming.
+     */
+    kind: 'moment' | 'comparison';
+    /** What it read, when it can name it. See `NotableEvidence`. */
+    evidence?: NotableEvidence;
 }
 
 /**
@@ -58,6 +111,25 @@ export function victorsOf(state: GameState): Tribute[] {
  * a fabricated zero, and the caller says nothing instead of saying something
  * false.
  */
+/**
+ * AUDIT-9 batch 3: turn the log entries a line was derived from into the
+ * receipt the end screen can open.
+ *
+ * Capped, because a highlight about nine betrayals does not need to hand the
+ * UI nine jump targets — the first few are what somebody actually wants to
+ * look at, and the sentence already carries the count.
+ */
+function evidenceFrom(logs: EventLog[]): NotableEvidence | undefined {
+    if (logs.length === 0) return undefined;
+    const shown = logs.slice(0, 4);
+    return {
+        logIds: shown.map(l => l.id),
+        tributeIds: [...new Set(shown.flatMap(l => l.tributesInvolved))],
+        day: shown[0].day,
+        phase: shown[0].phase,
+    };
+}
+
 export function bloodbathDeathCount(state: GameState): number | undefined {
     const dead = state.tributes.filter(t => t.status === 'dead');
     if (dead.length === 0) return 0;
@@ -101,17 +173,16 @@ export function allNotables(state: GameState, records: PanemRecords): Notable[] 
             notables.push({
                 weight: 9,
                 text: `${victor.name} won ${gamesName} without killing anybody.`
-                    + (prior > 0 ? ` You have seen that ${prior === 1 ? 'once' : `${prior} times`} before in your recent Games.` : ' That is a first in your recent Games.'),
-            });
+                    + (prior > 0 ? ` You have seen that ${prior === 1 ? 'once' : `${prior} times`} before in your recent Games.` : ' That is a first in your recent Games.'), category: 'victor', kind: 'comparison' });
         }
         if (victor.age <= 13) {
-            notables.push({ weight: 10, text: `${victor.name} was ${victor.age} years old. The Capitol will be talking about this one for a long time.` });
+            notables.push({ weight: 10, text: `${victor.name} was ${victor.age} years old. The Capitol will be talking about this one for a long time.`, category: 'victor', kind: 'moment' });
         }
         if (victor.health <= 15) {
-            notables.push({ weight: 8, text: `${victor.name} came out of the arena on ${Math.round(victor.health)} health. Another exchange either way and there is no victor at all.` });
+            notables.push({ weight: 8, text: `${victor.name} came out of the arena on ${Math.round(victor.health)} health. Another exchange either way and there is no victor at all.`, category: 'victor', kind: 'moment' });
         }
         if (victor.kills >= 6) {
-            notables.push({ weight: 8, text: `${victor.name} finished with ${victor.kills} kills — a body count the Capitol has to edit down for the recap.` });
+            notables.push({ weight: 8, text: `${victor.name} finished with ${victor.kills} kills — a body count the Capitol has to edit down for the recap.`, category: 'victor', kind: 'moment' });
         }
         // The odds board, actually read: where the book had them on day one.
         const history = state.oddsHistory ?? {};
@@ -123,8 +194,7 @@ export function allNotables(state: GameState, records: PanemRecords): Notable[] 
             if (rank > Math.ceil(ranked.length / 2)) {
                 notables.push({
                     weight: 7,
-                    text: `The book opened ${victor.name} ${ordinalSuffix(rank)} of ${ranked.length} at ${opening[victor.id]}%. Nobody in the Capitol had money on this.`,
-                });
+                    text: `The book opened ${victor.name} ${ordinalSuffix(rank)} of ${ranked.length} at ${opening[victor.id]}%. Nobody in the Capitol had money on this.`, category: 'capitol', kind: 'moment' });
             }
         }
         // AUDIT-10 B04: "came out of them alone" is a claim about a specific
@@ -135,9 +205,9 @@ export function allNotables(state: GameState, records: PanemRecords): Notable[] 
             const partner = state.tributes.find(o => areLovers(victor, o));
             const bothWon = partner !== undefined && winners.some(w => w.id === partner.id);
             if (bothWon) {
-                notables.push({ weight: 11, text: `${victor.name} and ${partner!.name} both came out. The Capitol wanted the romance and got it, and is now working out what to do about having promised one victor.` });
+                notables.push({ weight: 11, text: `${victor.name} and ${partner!.name} both came out. The Capitol wanted the romance and got it, and is now working out what to do about having promised one victor.`, category: 'social', kind: 'moment' });
             } else if (partner && partner.status === 'dead') {
-                notables.push({ weight: 9, text: `${victor.name} went into these Games in love with ${partner.name} and came out of them alone. The broadcast will not dwell on the arithmetic of that.` });
+                notables.push({ weight: 9, text: `${victor.name} went into these Games in love with ${partner.name} and came out of them alone. The broadcast will not dwell on the arithmetic of that.`, category: 'social', kind: 'moment' });
             }
         }
     } else {
@@ -145,22 +215,21 @@ export function allNotables(state: GameState, records: PanemRecords): Notable[] 
         notables.push({
             weight: 12,
             text: `Nobody won ${gamesName}. ${cast} went in and the arena kept all of them`
-                + (priorWipeouts > 0 ? `, which has happened ${priorWipeouts === 1 ? 'once' : `${priorWipeouts} times`} before in your recent Games.` : '.'),
-        });
+                + (priorWipeouts > 0 ? `, which has happened ${priorWipeouts === 1 ? 'once' : `${priorWipeouts} times`} before in your recent Games.` : '.'), category: 'shape', kind: 'comparison' });
     }
 
     // --- The shape of the run --- counted from who actually died at the horn.
     const bloodbathDeaths = bloodbathDeathCount(state);
     if (bloodbathDeaths !== undefined && bloodbathDeaths >= Math.ceil(cast * 0.55)) {
-        notables.push({ weight: 7, text: `The bloodbath took ${bloodbathDeaths} of ${cast}. More than half the cast never got clear of the Cornucopia.` });
+        notables.push({ weight: 7, text: `The bloodbath took ${bloodbathDeaths} of ${cast}. More than half the cast never got clear of the Cornucopia.`, category: 'shape', kind: 'moment' });
     } else if (bloodbathDeaths !== undefined && bloodbathDeaths <= 2 && cast >= 12) {
-        notables.push({ weight: 7, text: `${bloodbathDeaths === 0 ? 'Nobody' : bloodbathDeaths === 1 ? 'Only one tribute' : 'Only two tributes'} died at the Cornucopia. A bloodbath that quiet usually means the Gamemakers have to work harder later.` });
+        notables.push({ weight: 7, text: `${bloodbathDeaths === 0 ? 'Nobody' : bloodbathDeaths === 1 ? 'Only one tribute' : 'Only two tributes'} died at the Cornucopia. A bloodbath that quiet usually means the Gamemakers have to work harder later.`, category: 'shape', kind: 'moment' });
     }
 
     if (state.day >= 14) {
-        notables.push({ weight: 6, text: `These Games ran ${state.day} days. The Capitol schedules a fortnight and hates being made to keep to it.` });
+        notables.push({ weight: 6, text: `These Games ran ${state.day} days. The Capitol schedules a fortnight and hates being made to keep to it.`, category: 'shape', kind: 'moment' });
     } else if (state.day <= 4 && victor) {
-        notables.push({ weight: 6, text: `Over in ${state.day} days. Somebody in programming is being asked why the broadcast window was booked for two weeks.` });
+        notables.push({ weight: 6, text: `Over in ${state.day} days. Somebody in programming is being asked why the broadcast window was booked for two weeks.`, category: 'shape', kind: 'moment' });
     }
 
     // --- The longest feud, from the rivalry ledger. Stated as this run's, not "on record". ---
@@ -173,7 +242,7 @@ export function allNotables(state: GameState, records: PanemRecords): Notable[] 
         });
     });
     if (worstFeud && worstFeud.fights >= 3) {
-        notables.push({ weight: 7, text: `${worstFeud.a.name} and ${worstFeud.b.name} fought each other ${worstFeud.fights} separate times — the longest feud in these Games.` });
+        notables.push({ weight: 7, text: `${worstFeud.a.name} and ${worstFeud.b.name} fought each other ${worstFeud.fights} separate times — the longest feud in these Games.`, category: 'social', kind: 'moment' });
     }
 
     // --- How people actually died. A tribute-dealt death is "Killed by" or a
@@ -188,7 +257,7 @@ export function allNotables(state: GameState, records: PanemRecords): Notable[] 
         return CAUSE_FAMILY[code] === 'arena' || CAUSE_FAMILY[code] === 'body';
     }).length;
     if (dead.length >= 6 && arenaDeaths >= Math.ceil(dead.length * 0.5)) {
-        notables.push({ weight: 6, text: `${arenaDeaths} of the ${dead.length} dead were killed by the arena rather than by each other. This was a Games about supplies.` });
+        notables.push({ weight: 6, text: `${arenaDeaths} of the ${dead.length} dead were killed by the arena rather than by each other. This was a Games about supplies.`, category: 'deaths', kind: 'moment' });
     }
     // AUDIT-9: both chosen endings, by code. `nightlock` and `self-inflicted`
     // are separate codes because they are separate beats, and this line is
@@ -198,15 +267,21 @@ export function allNotables(state: GameState, records: PanemRecords): Notable[] 
         return code === 'nightlock' || code === 'self-inflicted';
     }).length;
     if (nightlock > 0) {
-        notables.push({ weight: 11, text: `${nightlock === 1 ? 'One tribute' : `${nightlock} tributes`} chose to end it rather than keep playing. The Capitol cut away and had to cut back.` });
+        notables.push({ weight: 11, text: `${nightlock === 1 ? 'One tribute' : `${nightlock} tributes`} chose to end it rather than keep playing. The Capitol cut away and had to cut back.`, category: 'deaths', kind: 'moment' });
     }
 
     // --- Social ---
-    const betrayals = state.log.filter(l => l.category === 'betrayal').length;
+    const betrayalLogs = state.log.filter(l => l.category === 'betrayal');
+    const betrayals = betrayalLogs.length;
     if (betrayals === 0 && cast >= 12) {
-        notables.push({ weight: 8, text: 'Not one tribute betrayed an ally this year. In an arena built to make that happen, nobody did.' });
+        notables.push({ weight: 8, text: 'Not one tribute betrayed an ally this year. In an arena built to make that happen, nobody did.', category: 'social', kind: 'moment' });
     } else if (betrayals >= 5) {
-        notables.push({ weight: 6, text: `${betrayals} separate betrayals. Nobody in this arena could afford to sleep.` });
+        notables.push({
+            weight: 6,
+            text: `${betrayals} separate betrayals. Nobody in this arena could afford to sleep.`,
+            category: 'social', kind: 'moment',
+            evidence: evidenceFrom(betrayalLogs),
+        });
     }
     /*
      * AUDIT-10 B05: a historical statement read from a historical record.
@@ -222,16 +297,15 @@ export function allNotables(state: GameState, records: PanemRecords): Notable[] 
         const held = Math.max(1, peak.lastCycle - peak.formedCycle + 1);
         notables.push({
             weight: 5,
-            text: `${peak.name ? `${peak.name} ran ${peak.peakSize} deep` : `A pack of ${peak.peakSize} held together`} in there, for ${held === 1 ? 'a single cycle' : `${held} cycles`}. Groups that size usually eat themselves long before the final eight.`,
-        });
+            text: `${peak.name ? `${peak.name} ran ${peak.peakSize} deep` : `A pack of ${peak.peakSize} held together`} in there, for ${held === 1 ? 'a single cycle' : `${held} cycles`}. Groups that size usually eat themselves long before the final eight.`, category: 'social', kind: 'moment' });
     }
     const allianceLines = state.log.filter(l => l.category === 'alliance').length;
     if (allianceLines === 0 && cast >= 12) {
-        notables.push({ weight: 8, text: 'Not one alliance formed this year. Every tribute in that arena played it completely alone.' });
+        notables.push({ weight: 8, text: 'Not one alliance formed this year. Every tribute in that arena played it completely alone.', category: 'social', kind: 'moment' });
     }
     const lovers = state.tributes.filter(t => isStarCrossed(t));
     if (lovers.length >= 2 && lovers.every(l => l.status === 'dead')) {
-        notables.push({ weight: 9, text: 'The romance the Capitol built its broadcast around ended with neither of them coming home.' });
+        notables.push({ weight: 9, text: 'The romance the Capitol built its broadcast around ended with neither of them coming home.', category: 'social', kind: 'moment' });
     }
     /*
      * AUDIT-10 B06: the sentence claims a pursuit was carried out, so it reads
@@ -241,22 +315,34 @@ export function allNotables(state: GameState, records: PanemRecords): Notable[] 
      * *oath* — sworn in 120 of 120 probe runs, and paid in 32. It was reporting
      * a completed hunt every single time somebody said they would.
      */
-    if (state.log.some(l => l.type === 'vengeance-paid')) {
-        notables.push({ weight: 7, text: 'Somebody in that arena did not just survive — they went and found the specific person who took someone from them.' });
-    } else if (state.log.some(l => l.type === 'vengeance-sworn')) {
-        notables.push({ weight: 4, text: 'An oath was sworn over a body in there, and the arena ended before anybody collected on it.' });
+    const paid = state.log.filter(l => l.type === 'vengeance-paid');
+    const sworn = state.log.filter(l => l.type === 'vengeance-sworn');
+    if (paid.length > 0) {
+        notables.push({
+            weight: 7,
+            text: 'Somebody in that arena did not just survive — they went and found the specific person who took someone from them.',
+            category: 'social', kind: 'moment',
+            evidence: evidenceFrom(paid),
+        });
+    } else if (sworn.length > 0) {
+        notables.push({
+            weight: 4,
+            text: 'An oath was sworn over a body in there, and the arena ended before anybody collected on it.',
+            category: 'social', kind: 'moment',
+            evidence: evidenceFrom(sworn),
+        });
     }
 
     // --- What the Capitol had planned before the gong ---
     const profile = state.gamesProfile;
     if (profile?.quell) {
-        notables.push({ weight: 13, text: `This was ${profile.quell.name} — a Quarter Quell. ${profile.quell.announcement.replace(/^QUARTER QUELL:\s*/i, '')}` });
+        notables.push({ weight: 13, text: `This was ${profile.quell.name} — a Quarter Quell. ${profile.quell.announcement.replace(/^QUARTER QUELL:\s*/i, '')}`, category: 'capitol', kind: 'moment' });
     }
     if (profile && profile.temperament.id !== 'standard') {
-        notables.push({ weight: 4, text: `The Capitol billed this as ${profile.temperament.name}. ${profile.temperament.blurb}` });
+        notables.push({ weight: 4, text: `The Capitol billed this as ${profile.temperament.name}. ${profile.temperament.blurb}`, category: 'capitol', kind: 'moment' });
     }
     if (profile?.castShape && profile.castShape.id !== 'ordinary' && profile.castShape.id !== 'victors-field') {
-        notables.push({ weight: 4, text: `The reaping itself was unusual: ${profile.castShape.name}. ${profile.castShape.blurb}` });
+        notables.push({ weight: 4, text: `The reaping itself was unusual: ${profile.castShape.name}. ${profile.castShape.blurb}`, category: 'capitol', kind: 'moment' });
     }
 
     // --- The mentor who mattered ---
@@ -264,7 +350,7 @@ export function allNotables(state: GameState, records: PanemRecords): Notable[] 
         const landed = state.log.some(l =>
             l.category === 'sponsor' && l.important && l.tributesInvolved.includes(victor.id) && l.text.includes(victor.mentorLegacy!));
         if (landed) {
-            notables.push({ weight: 7, text: `${victor.mentorLegacy} spent everything they had on ${victor.name}, and it is the reason there was a victor to talk about at all.` });
+            notables.push({ weight: 7, text: `${victor.mentorLegacy} spent everything they had on ${victor.name}, and it is the reason there was a victor to talk about at all.`, category: 'capitol', kind: 'moment' });
         }
     }
 
@@ -273,15 +359,40 @@ export function allNotables(state: GameState, records: PanemRecords): Notable[] 
     // calendar day, so this never found anybody.
     const earlyFavourite = dead.find(t => t.fanFavourite && t.diedInBloodbath === true);
     if (earlyFavourite) {
-        notables.push({ weight: 8, text: `${earlyFavourite.name} was supposed to be this year's story. The bloodbath did not care.` });
+        notables.push({ weight: 8, text: `${earlyFavourite.name} was supposed to be this year's story. The bloodbath did not care.`, category: 'capitol', kind: 'moment' });
     }
 
     return notables.sort((a, b) => b.weight - a.weight);
 }
 
-/** The three the end screen shows. */
+/**
+ * The three the end screen shows — chosen for spread, not just for weight.
+ *
+ * AUDIT-9 batch 3: "avoid selecting three variations of the same story".
+ *
+ * `sort by weight, take three` has no way to notice that it has picked the
+ * victor's kill count, the victor's health and the victor's age, and in a run
+ * with a dramatic victor that is exactly what it picked — three sentences
+ * about one person, while the pack that ran the arena for five days and the
+ * betrayal that ended it went unmentioned.
+ *
+ * So: the strongest line wins outright, and each subsequent slot prefers the
+ * best line from a category not already used. Weight still decides inside a
+ * category, and a run that genuinely only has one kind of story to tell still
+ * fills its three slots from that kind rather than padding with nothing.
+ */
 export function runNotables(state: GameState, records: PanemRecords): Notable[] {
-    return allNotables(state, records).slice(0, 3);
+    const pool = allNotables(state, records);
+    const picked: Notable[] = [];
+    const used = new Set<NotableCategory>();
+    while (picked.length < 3) {
+        const fresh = pool.find(n => !picked.includes(n) && !used.has(n.category))
+            ?? pool.find(n => !picked.includes(n));
+        if (!fresh) break;
+        picked.push(fresh);
+        used.add(fresh.category);
+    }
+    return picked;
 }
 
 /**

@@ -97,6 +97,37 @@ export interface ArchetypeDef {
      * counterpart for the other extreme-variance ones.
      */
     fearScale?: number;
+    /**
+     * AUDIT-9 batch 3: a named reason to break off a fight that is not fear.
+     *
+     * The retreat roll is built out of fear, caution, health and risk
+     * tolerance, and an archetype can be written so that none of those ever
+     * fire: the Zealot has `fearScale: 0`, negative caution, a flat risk
+     * curve and the highest aggression on the sheet, so nothing short of being
+     * routed at `routHealthFraction` takes it out of a fight. The measured
+     * result is that it dies at the Cornucopia — 44.2% of Zealot deaths happen
+     * at the horn against a field average near a third, 3.51 days lived
+     * against 4.28, and 60.5% of them killed by another tribute. It loses the
+     * fights it picks, and it picks all of them.
+     *
+     * The wrong repair is a health or combat subsidy, which would make the
+     * archetype survive by being quietly better at the thing its character
+     * says it does not care about. The right one is a *creed*: a condition on
+     * which this archetype deliberately walks away, consistent with who it is.
+     *
+     * 'unworthy' is the Zealot's: they are not here to win a scrum, they are
+     * here to make a point, and a point needs the right person to make it to.
+     * Somebody unremarkable swinging at them in a crowd is a distraction from
+     * the one that matters — so they disengage, and the horn stops taking
+     * nearly half of them. They still walk toward the strongest thing in the
+     * arena; they just stop dying to the fourth-strongest on the way.
+     *
+     * Deliberately a declared property rather than an `archetype === 'zealot'`
+     * branch in combat, for the reason the `fearScale` note above gives: the
+     * last extreme carve-out was hardcoded, and it was the only one, and that
+     * is how it stayed invisible.
+     */
+    disengage?: 'unworthy';
     /** Sponsor-facing: how the Capitol markets them. */
     tagline?: string;
 }
@@ -443,6 +474,9 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         signature: 'zealotSermon',
         hatesArchetypes: ['mercenary', 'ghost', 'medic'],
         fearScale: 0,
+        // AUDIT-9 batch 3: the creed. Not fear — see `disengage` on the
+        // interface above. They leave a fight that was never the point.
+        disengage: 'unworthy',
         tagline: 'It means something.',
         // Audit 4 §8.3: Loud, certain and unignorable. Nobody wants to be near it when it goes.
         targetDraw: 1.0,

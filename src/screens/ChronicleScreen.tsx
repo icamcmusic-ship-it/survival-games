@@ -525,7 +525,12 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                         })}
                     </div>
                     <select
-                        className="field text-xs w-auto"
+                        /* AUDIT-9 batch 3: `w-auto` sizes this to its widest
+                           option — "Before the Games" — which at the largest
+                           text setting is wider than the room left beside the
+                           pager buttons on a 380px phone, and pushed the whole
+                           row 29px past the viewport. It may shrink now. */
+                        className="field text-xs w-auto max-w-full min-w-0"
                         hidden={pages.length === 0}
                         aria-label="Jump to a day"
                         value={page?.day ?? ''}

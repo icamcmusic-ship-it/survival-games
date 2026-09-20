@@ -30,7 +30,10 @@
     "fix:rarity": "ACHIEVEMENT_EMIT_RARITY=1 tsx scripts/check-achievements.ts",
     "audit": "npm audit --audit-level=high",
     "test:scenarios": "tsx scripts/check-scenarios.ts",
-    "test:audit10": "tsx scripts/check-audit10.ts"
+    "test:audit10": "tsx scripts/check-audit10.ts",
+    "test:batch3": "tsx scripts/check-batch3.ts",
+    "test:textscale": "node scripts/check-textscale.mjs",
+    "diagnose:archetypes": "tsx scripts/diagnose-archetypes.ts"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
