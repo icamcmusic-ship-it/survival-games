@@ -74,6 +74,10 @@ const ARCHETYPE_SPECIALITY: Record<ArchetypeId, Proficiency> = {
     quiet: 'stealth',
     // AUDIT-9 stage D: the walk is the job.
     courier: 'pacing',
+    // AUDIT-9 batch 5: the Rigger's whole identity is the rope, and the
+    // Arbitrator's is reading the room well enough to know who is lying.
+    rigger: 'climbing',
+    arbitrator: 'readingPeople',
 };
 
 /**

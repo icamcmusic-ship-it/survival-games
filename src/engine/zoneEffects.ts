@@ -6,7 +6,7 @@ import { forecastHazard } from './hazardChain';
 import { SimContext, getAlive } from './context';
 import { traitMod } from '../data/traits';
 import { applyDamage, checkDeath } from './combat';
-import { cycleOf } from './memory';
+import { cycleOf, ensureMemory } from './memory';
 import { depleteZone, getZone, hasForceField, severEdge, zoneFeatures } from './map';
 import { clampTribute } from './vitals';
 import { climateOf } from './climate';
@@ -331,6 +331,9 @@ export function tickZoneEffects(ctx: SimContext) {
         if (floodExpired && !hasEffect(state, zoneName, 'blooming')) {
             endZoneEffect(state, zoneName, 'flooded');
             startZoneEffect(ctx, zoneName, 'blooming', false);
+            // AUDIT-9 batch 5: this bloom is what the water left, not weather.
+            const bloom = effectsFor(state, zoneName).find(e => e.kind === 'blooming');
+            if (bloom) bloom.fromAftermath = true;
             ctx.logEvent(
                 `The water goes down in ${zoneName} and leaves the place covered in what it took: `
                 + 'packs, tins, somebody\'s coat, all of it spread across the mud in plain sight. '
@@ -439,6 +442,20 @@ function applyEffectTick(ctx: SimContext, zoneName: string, effect: ZoneEffect, 
                 t.vitals.sanity = Math.min(100, t.vitals.sanity + ZONE_EFFECTS.bloomingSanityRelief);
                 t.vitals.hunger = Math.max(0, t.vitals.hunger - ZONE_EFFECTS.bloomingFeed * severity);
                 t.health = Math.min(100, t.health + ZONE_EFFECTS.bloomingHeal);
+                /*
+                 * AUDIT-9 batch 5: coming back to the ground that nearly
+                 * killed you, and getting something out of it.
+                 *
+                 * Read from what the tribute already remembers: `zone.threat`
+                 * is written by `addZoneThreat` when a hazard hurts somebody
+                 * there, so "this person knows this sector as dangerous" is a
+                 * fact the belief system has held all along. Standing in it
+                 * while it feeds them, after the hazard turned it into
+                 * salvage, is the whole beat.
+                 */
+                if (effect.fromAftermath && (ensureMemory(t).zones[t.zone]?.threat ?? 0) > 0) {
+                    t.returnedToChangedGround = true;
+                }
                 clampTribute(t);
                 break;
 

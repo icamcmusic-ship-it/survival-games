@@ -181,6 +181,10 @@ function holdHearing(ctx: SimContext, record: Alliance, members: Tribute[]) {
         if (ctx.rng.chance(bitter)) {
             delete m.allianceId;
             walkouts.push(m.id);
+        } else {
+            // AUDIT-9 batch 5: 'The Vote Held' — they lost the argument and
+            // stayed anyway, which is the thing an alliance is made of.
+            m.stayedAfterBeingPassedOver = true;
         }
     });
 

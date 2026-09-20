@@ -90,6 +90,12 @@ jobs:
       # firing; it cannot show that a branch which never came up is rare
       # rather than dead, and two of them were dead when written.
       - run: npm run test:batch4
+      # AUDIT-9 batch 5: the scenario starts, and the assertion that the
+      # balance baseline never runs one. Plus the reachability fixtures, which
+      # are what stops somebody lowering a threshold because a 500-run sample
+      # happened not to produce it.
+      - run: npm run test:scenario-starts
+      - run: npm run test:reachability
 
       # Content and structure.
       - run: npm run test:arenas

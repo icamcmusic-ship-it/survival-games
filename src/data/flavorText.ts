@@ -4231,6 +4231,56 @@ export const ARCHETYPE_SIGNATURE_TEXTS: Record<string, string[]> = {
         '{tribute} does business in {zone}. It is not an alliance and neither of them pretends otherwise.',
         'The arrangement {tribute} strikes in {zone} is the only honest thing in the arena: bought, priced, and temporary.',
     ],
+    /*
+     * AUDIT-9 batch 5: the two new archetypes' set pieces.
+     *
+     * Twelve lines each, over the pool floor of eight, because both of these
+     * beats can fire early and be visible for the rest of a run — a rigged
+     * sector stays rigged, and an arbitration is the kind of thing the group
+     * keeps referring back to.
+     */
+    riggerAnchor: [
+        '{tribute} spends an hour in {zone} on something nobody asked for: a line, fixed properly, at the one place somebody would go over.',
+        'In {zone}, {tribute} finds the anchor point everybody else walked past, and makes it fast. It is not dramatic. It will matter.',
+        '{tribute} rigs {zone} the way somebody taught them to rig things, in a district where getting it wrong killed people.',
+        'The line {tribute} sets in {zone} is overbuilt for what it is holding, which is nothing, yet.',
+        'Nobody watching {zone} understands why {tribute} is tying knots. {tribute} does not explain.',
+        '{tribute} walks the edge of {zone} twice before choosing where to fix the line, which is the whole difference between a rigger and somebody with rope.',
+        'There is a line in {zone} now. {tribute} put it there, tested it with their own weight, and walked away.',
+        '{tribute} leaves {zone} better than they found it, in the one way this arena rewards: there is now a way back up.',
+        'The knot {tribute} ties in {zone} has a name. They have not said it out loud since the reaping.',
+        '{tribute} secures {zone} against a fall that has not happened, for a person who has not arrived.',
+        'In {zone}, {tribute} does the unglamorous thing properly, and the broadcast cuts away from it.',
+        '{tribute} makes {zone} survivable. The Capitol has no idea what it is looking at.',
+    ],
+    arbitratorTerms: [
+        '{tribute} says, out loud, what the group agreed — and then hands {other} the {goods} out of the shared cache, because that is what agreeing meant.',
+        '"That is not what was agreed," {tribute} says, and nobody argues, and {other} gets the {goods}.',
+        '{tribute} reminds everybody what they swore, in the order they swore it, and the {goods} goes to {other} without another word.',
+        'It takes {tribute} about a minute to make the group\'s own rule bind, and {other} walks away with the {goods}.',
+        '{other} was passed over. {tribute} makes it good, from the cache, in front of everybody who watched it happen the first time.',
+        '{tribute} does not supply anything and does not need to. They simply hold the group to its word, and the {goods} changes hands.',
+        'The charter was a form of words until {tribute} read it back. {other} has the {goods} now.',
+        '{tribute} settles it in favour of {other}, cites the clause, and lets the silence do the rest.',
+        'Nobody made {tribute} the judge of anything. They have been acting like it since day one, and the {goods} goes where they say.',
+        '{tribute} puts the {goods} in {other}\'s hands and explains, briefly, which promise that was.',
+        'What {tribute} enforces in front of the group is not generosity. It is the terms, and {other} is owed them.',
+        '{tribute} makes the group keep its word to {other}, and the group is quietly relieved somebody did.',
+    ],
+    arbitratorAccord: [
+        '{tribute} stands between {first} and {second} in {zone} and talks until both of them have agreed to something, out loud, with witnesses.',
+        'Whatever {first} and {second} were about to do to each other in {zone}, {tribute} gets terms out of them first.',
+        '{tribute} does not take a side between {first} and {second}. {tribute} takes minutes.',
+        'In {zone}, {tribute} makes {first} and {second} each say what they will not do, and makes everybody else hear it.',
+        '{first} and {second} do not shake hands. {tribute} does not need them to; the terms are said and the terms are witnessed.',
+        '{tribute} gets between {first} and {second} with nothing but a sentence structure, and it works.',
+        'The accord {tribute} brokers in {zone} between {first} and {second} is not friendship and is not meant to be.',
+        'Nobody in {zone} can afford the fight {first} and {second} were about to have. {tribute} says so, at length, until they agree.',
+        '{tribute} names the terms between {first} and {second} precisely enough that breaking them would have to be deliberate.',
+        'What {tribute} arranges between {first} and {second} in {zone} will hold for exactly as long as it was agreed to hold.',
+        '{first} and {second} both walk out of {zone} alive, which neither of them planned, because {tribute} was standing there.',
+        '{tribute} turns a fight in {zone} into a contract. {first} and {second} are still furious, and still bound.',
+    ],
     zealotSermon: [
         '{tribute} says something out loud in {zone} about what all of this is *for*, and means every word. Everyone within a zone hears it.',
         'In {zone}, {tribute} explains the Games to the arena. Nobody asked. Nobody who hears it sleeps well.',

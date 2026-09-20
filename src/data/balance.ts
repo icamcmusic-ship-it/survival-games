@@ -7968,6 +7968,26 @@ export const ARCHETYPE_HOOKS = {
      * for the archetype to kill itself.
      */
     brokerKeepNeedLine: 65,
+    /*
+     * AUDIT-9 batch 5: the Arbitrator.
+     *
+     * Their set piece needs a grievance the group actually produced, which is
+     * the "real dispute" in the audit's spec and the reason this is not a
+     * charisma check with a different name.
+     */
+    /** How long a cache hearing stays fresh enough to arbitrate. */
+    arbitratorGrievanceCycles: 4,
+    /** What being made good is worth, to the person it was owed to... */
+    arbitratorRegard: 20,
+    arbitratorTrust: 12,
+    /** ...and to everybody who watched the group's own rule hold. */
+    arbitratorWitnessRegard: 6,
+    /** How much of the debt an enforced settlement actually discharges. */
+    arbitratorDebtSettled: 2,
+    /** Regard below this between two people present is a feud worth settling. */
+    arbitratorFeudLine: 0,
+    /** How long an imposed accord holds. */
+    arbitratorTruceCycles: 3,
     /**
      * AUDIT-7 §8.2: how many weapons a broker keeps before they will trade one.
      *
@@ -8751,4 +8771,22 @@ export const ALLIANCE_DISPUTE = {
 
     /** Cycles before the follow-up beat reads the record. */
     aftermathCycles: 2,
+} as const;
+
+/**
+ * AUDIT-9 batch 5: the authored scenario starts.
+ * See `engine/scenarioStarts.ts`.
+ *
+ * Deliberately few knobs. A scenario start is a *position*, not a difficulty
+ * setting — if these needed tuning to be interesting, the scenario would be
+ * doing something the base game cannot, which is the thing the audit rules
+ * out for them.
+ */
+export const SCENARIO_STARTS = {
+    /** Kits piled into the one contested sector. */
+    cacheSize: 6,
+    /** What "came in carrying something" costs, on the walking-wounded start. */
+    woundedDamage: 28,
+    woundedFloor: 45,
+    woundedFatigue: 15,
 } as const;

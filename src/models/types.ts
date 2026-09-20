@@ -88,6 +88,36 @@ export type ArchetypeId =
      * does not exist is exactly the dead hook the stage gate exists to stop.
      */
     | 'courier'
+    /*
+     * AUDIT-9 batch 5: two more, and the same rule applied — the audit says
+     * "Start with two, not all four", and gates each on "demonstrated
+     * behavioural distinction" and "signature opportunities before death",
+     * with the explicit warning: *"Do not give a new archetype a flat survival
+     * subsidy to conceal that its core action rarely becomes legal."*
+     *
+     * These two are taken because batch 4 built the systems their core actions
+     * need, and a week ago neither could have existed:
+     *
+     *   The Rigger — "connects separated allies and secures risky crossings;
+     *   completes a rescue or haul using a prepared anchor". That is
+     *   `engine/rescueLine.ts`, which did not exist, and specifically the
+     *   `rigged` anchor branch, which was dead on arrival until it was rebuilt
+     *   around `Rope-Handed`.
+     *
+     *   The Arbitrator — "keeps contested cooperation possible through
+     *   evidence and terms; resolves a real dispute with an enforceable
+     *   concession", with the constraint that it "must not duplicate Broker's
+     *   trading loop". That is `engine/allianceDispute.ts`: a Broker sells you
+     *   a thing, an Arbitrator makes the group's own rule bind. Different
+     *   verb, different object, different system.
+     *
+     * The Reclaimer and the Evacuator are deliberately not taken. The
+     * Reclaimer needs site projects that can change hands and the Evacuator
+     * needs a group-movement contract; both would be archetypes pointed at
+     * machinery that does not exist, which is the dead hook batch 4's gate
+     * caught twice in one sitting.
+     */
+    | 'rigger' | 'arbitrator'
     // Audit 5 §12.4: four more, each holding a stance/objective/target
     // combination no existing archetype does.
     | 'scavenger' | 'captor' | 'bellwether' | 'confessor'
@@ -758,6 +788,21 @@ export interface Tribute {
         totalHours?: number;
     };
 
+    /*
+     * AUDIT-9 batch 5: durable counters for the new achievement candidates.
+     *
+     * Fields rather than prose matches, which is the catalogue's own standing
+     * rule — every one of these is set at the single site where the thing
+     * happens, and read by exactly one card.
+     */
+    /** Handed something over after having been blocked by being on another level. */
+    deliveredAcrossLevels?: boolean;
+    /** Gave up something they were carrying to finish a rescue. */
+    droppedToRescue?: boolean;
+    /** Came back to ground a hazard changed, and got something out of it. */
+    returnedToChangedGround?: boolean;
+    /** Was passed over in a cache hearing and stayed with the group anyway. */
+    stayedAfterBeingPassedOver?: boolean;
     /** Cycles the current stance has been held, for hysteresis. */
     stanceHeld: number;
     /** Pre-Games audience darling. Starts with sponsor trust and draws envy. */
@@ -1616,6 +1661,17 @@ export interface RescueLineRecord {
  * it passed over and who walked out over it are four, and they are the ones
  * the follow-up beat and the record book have anything to say about.
  */
+/**
+ * AUDIT-9 batch 5: the authored openings. See `engine/scenarioStarts.ts`.
+ *
+ * Each is an ordinary `GameState` rearranged at cycle zero — never a new rule.
+ */
+export type ScenarioStartId =
+    | 'separated-allies'
+    | 'damaged-crossing'
+    | 'contested-cache'
+    | 'walking-wounded';
+
 export interface AllianceDisputeRecord {
     cycle: number;
     allianceId: string;
@@ -1906,6 +1962,15 @@ export interface ZoneEffect {
     nextSpreadCycle?: number;
     /** 'burning' only: how many zones deep this particular fire chain runs (1 = the origin fire). */
     chainLength?: number;
+    /**
+     * AUDIT-9 batch 5: this bloom is what a hazard left behind, not weather.
+     *
+     * The difference matters to exactly one thing — the card about returning
+     * to ground that nearly killed you and finding it worth having — and
+     * without it that card would fire for any bloom anywhere, which is a
+     * different and much smaller story.
+     */
+    fromAftermath?: boolean;
     /** Multiplier on this instance's per-tick damage/chance constants. Defaults to 1 where absent. */
     severity?: number;
     /**
@@ -2324,6 +2389,15 @@ export interface Arena {
  * named person owes another by a particular cycle. See `engine/obligations`.
  */
 export interface Obligation {
+    /**
+     * AUDIT-9 batch 5: this promise was, at some point, unkeepable only
+     * because the two of them were on different levels of the same zone.
+     *
+     * B12's repair made that a real refusal rather than a silent teleport;
+     * this records it, so the card about going and fixing it can tell the
+     * difference between a promise kept and a promise kept the hard way.
+     */
+    blockedByLevel?: boolean;
     id: string;
     owedById: string;
     owedToId: string;
@@ -2802,6 +2876,27 @@ export interface GameState {
      * water is up.
      */
     tideStruck?: string[];
+    /**
+     * AUDIT-9 batch 5: sectors a Rigger has put a fixed line on.
+     *
+     * The Rigger's set piece is the *preparation*, not the rescue — an
+     * archetype whose only verb needs somebody else to be in trouble fires
+     * rarely, which is the dead-hook failure batch 4's gate caught twice. A
+     * rigged sector is worth having before anybody falls into it, and the
+     * rescue chain reads this when deciding what the line is tied to.
+     */
+    riggedZones?: string[];
+    /**
+     * AUDIT-9 batch 5: which scenario start this run was dealt, if any.
+     *
+     * Recorded on the state rather than only in the setup call because
+     * everything downstream needs to know: the manifest (a scenario run is not
+     * comparable to a standard one), the record book, and above all the
+     * balance harnesses, which must be able to assert that the baseline sweep
+     * contains none of these. A scenario run is a legal Games and a useless
+     * data point for tuning.
+     */
+    scenarioStart?: ScenarioStartId;
     /** Aggregate audience interest in the living field, recomputed each cycle. */
     audienceInterest?: number;
     /** Zone name -> deaths that have happened there, broadcast by the sky each night. */

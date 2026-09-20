@@ -8,6 +8,7 @@ import { arenaLaws } from '../engine/gamesProfile';
 import { Notable, runDelta, runNotables, victorsOf } from './notables';
 import { ARENAS } from '../data/constants';
 import { dailySeed } from '../data/replayHooks';
+import { contentFingerprint } from './manifest';
 import { ARENA_MUTTS } from '../data/mutts';
 import { deathCausesInRun } from '../engine/encounters';
 import {
@@ -85,7 +86,30 @@ export interface PanemRecords {
      * daily with no way to say how today went is only a shared starting
      * position; this is the local scoreboard that gives it a point.
      */
-    dailyBests?: Record<string, { day: number; deaths: number; victorName?: string; victorDistrict?: number; date: string }>;
+    dailyBests?: Record<string, {
+        day: number;
+        deaths: number;
+        victorName?: string;
+        victorDistrict?: number;
+        date: string;
+        /*
+         * AUDIT-9 batch 5: what the score was scored under.
+         *
+         * The audit's ask for the daily is "same seed, rules, content version
+         * and campaign mode for every participant; interventions either fixed
+         * or disallowed for the comparable score". A scoreboard keyed on the
+         * seed alone cannot honour any of that: the content tables moved three
+         * times during this audit, and a personal best set before a balance
+         * change is not a best that the run after it is competing with.
+         *
+         * `content` is the fingerprint the run was played under. `tainted`
+         * records that somebody reached in — a run with interventions is not
+         * comparable to one without, and the honest thing is to keep the
+         * result and mark it rather than to silently rank it alongside.
+         */
+        content?: string;
+        tainted?: boolean;
+    }>;
     /**
      * §9 (audit): victors who came back as mentors, keyed by their district.
      * A crown used to end at the record book. Now the tribute who won returns
@@ -477,7 +501,7 @@ export const PANEM_SPEC: StorageSpec<PanemRecords> = {
                 : (Number.isFinite(patron) ? [patron] : []),
             arenasBought: asStrArray(r.arenasBought),
             stipendsTaken: Math.max(0, asNum(r.stipendsTaken, 0)),
-            dailyBests: asObjMap<{ day: number; deaths: number; victorName?: string; victorDistrict?: number; date: string }>(r.dailyBests),
+            dailyBests: asObjMap<NonNullable<PanemRecords['dailyBests']>[string]>(r.dailyBests),
             victorMentors: asObjMap<{ name: string; archetype: string; run: number }>(r.victorMentors),
             districtCrowns: asObjMap<DistrictCrown>(r.districtCrowns),
             arenasWon: asStrArray(r.arenasWon),
@@ -659,7 +683,21 @@ export function commitRun(state: GameState): RunOutcome {
     if (state.seed === dailySeed()) {
         records.dailyBests = records.dailyBests ?? {};
         const prior = records.dailyBests[state.seed];
+        const content = contentFingerprint();
+        const tainted = (state.gamemakerCommands ?? 0) > 0 || state.gamemakerMode === true;
+        /*
+         * AUDIT-9 batch 5: a best set under different content is not a best
+         * this run has to beat.
+         *
+         * Treating it as one would quietly punish the player for a balance
+         * change they did not make — and, worse, would present two
+         * incomparable numbers as a comparison, which is the whole family of
+         * defect batch 1 was about. A stale-content entry is replaced rather
+         * than competed with.
+         */
+        const staleContent = prior !== undefined && prior.content !== content;
         const betterThanPrior = !prior
+            || staleContent
             || (hasVictor && prior.victorName === undefined)
             || (hasVictor === (prior.victorName !== undefined) && state.day > prior.day);
         if (betterThanPrior) {
@@ -669,6 +707,8 @@ export function commitRun(state: GameState): RunOutcome {
                 victorName: victor?.name,
                 victorDistrict: victor?.district,
                 date: new Date().toISOString(),
+                content,
+                tainted,
             };
         }
     }

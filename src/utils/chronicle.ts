@@ -1,6 +1,7 @@
 import { EventLog, GameState, Tribute } from '../models/types';
 import { factLineOf } from '../ui/chronicleFacts';
 import { victorsOf } from './notables';
+import { contentFingerprint, runManifest } from './manifest';
 
 function castLookup(state: GameState): Map<string, Tribute> {
     return new Map(state.tributes.map(t => [t.id, t]));
@@ -70,6 +71,10 @@ export function chronicleMarkdown(state: GameState, filter: boolean | ChronicleF
         followed ? `# ${followed.name} of District ${followed.district} — ${arenaTitle(state)}` : `# ${arenaTitle(state)}`,
         '',
         `- **Seed:** \`${state.seed}\``,
+        // AUDIT-9 batch 5: the seed is what to type in; this is what it was
+        // typed into. A chronicle shared across a content change replays as a
+        // different Games, and this is the line that lets somebody notice.
+        `- **Content:** \`${contentFingerprint()}\``,
         `- **Arena:** ${state.arena.name}`,
         `- **Tributes:** ${state.tributes.length}`,
         `- **${victorLine(state).replace(': ', ':** ')}`,
@@ -237,6 +242,13 @@ export function downloadChronicleAs(
 export function chronicleJson(state: GameState): string {
     return JSON.stringify({
         seed: state.seed,
+        /*
+         * AUDIT-9 batch 5: what this run was played *under*, not just what it
+         * was played *from*. "A seed alone is not a complete replay
+         * specification" — see `utils/manifest.ts` for why, and for what
+         * happens to a seed replayed across a content change.
+         */
+        manifest: runManifest(state),
         arena: { id: state.arena.id, name: state.arena.name },
         config: state.baseConfig,
         day: state.day,

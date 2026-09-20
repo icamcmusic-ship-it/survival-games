@@ -77,7 +77,7 @@ function strandingOf(state: GameState, t: Tribute): RescueLineRecord['stranding'
  * said out loud in the line that announces the attempt, and it is the thing
  * the rescuer could go and improve instead of pulling now.
  */
-function anchorFor(t: Tribute): { kind: RescueLineRecord['anchor']; quality: number } {
+function anchorFor(t: Tribute, rigged: boolean): { kind: RescueLineRecord['anchor']; quality: number } {
     const rope = t.inventory.find(i => i.type === 'utility' || i.type === 'tool');
     /*
      * AUDIT-9 batch 4: who actually knows how to tie one off.
@@ -101,6 +101,17 @@ function anchorFor(t: Tribute): { kind: RescueLineRecord['anchor']; quality: num
      */
     const knows = t.traits.includes('Rope-Handed')
         || profOf(t, 'climbing') >= RESCUE_LINE.goodAnchorClimbing;
+    /*
+     * AUDIT-9 batch 5: and the ground itself can already be rigged.
+     *
+     * The Rigger's set piece fixes a line on a vertical sector *before*
+     * anybody needs it, which is what gives that archetype something to do on
+     * a quiet day. Whoever ends up doing the hauling gets the benefit of it —
+     * including the Rigger, and including somebody who has never tied a knot
+     * in their life. That is the point of preparing ground: it works for
+     * whoever is standing on it afterwards.
+     */
+    if (rigged) return { kind: 'rigged', quality: RESCUE_LINE.riggedQuality };
     if (rope && knows) return { kind: 'rigged', quality: RESCUE_LINE.riggedQuality };
     if (rope) return { kind: 'rope', quality: RESCUE_LINE.ropeQuality };
     return { kind: 'improvised', quality: RESCUE_LINE.improvisedQuality };
@@ -194,7 +205,7 @@ function attemptRescueLine(
     stranding: RescueLineRecord['stranding'],
 ) {
     const state = ctx.state;
-    const anchor = anchorFor(rescuer);
+    const anchor = anchorFor(rescuer, (state.riggedZones ?? []).includes(stranded.zone));
 
     /*
      * The warning. Said before the roll, naming the thing the attempt rests
@@ -265,9 +276,26 @@ function attemptRescueLine(
         - deterrent;
     if (ctx.rng.chance(cutChance)) {
         record(ctx, { rescuerId: rescuer.id, strandedId: stranded.id, zone: stranded.zone, anchor: anchor.kind, stranding, outcome: 'cut' });
+        /*
+         * AUDIT-9 batch 5: the record tells the truth, even where the
+         * witnesses cannot.
+         *
+         * The soak caught this as two invariant violations at once: a
+         * tribute-dealt death whose cause did not name its killer, and a
+         * tribute-dealt death coded `fall`. Both were mine, and both came
+         * from trying to make the *record* as ambiguous as the scene.
+         *
+         * That is the wrong place for the ambiguity. The uncertainty in this
+         * beat belongs to the people standing in the zone — who see a line go
+         * slack and have to decide what they think — and the engine models
+         * that already, in what witnesses do and do not adjust their regard
+         * over. The death record is ground truth, and this whole audit has
+         * been about records that tell the truth. A murder is a murder in the
+         * ledger, whatever the broadcast makes of it.
+         */
+        const cause = `Dropped in ${stranded.zone} by ${rescuer.name}, who was holding the other end of the line`;
         applyDamage(ctx, stranded, RESCUE_LINE.fallDamage, {
-            cause: `Dropped in ${stranded.zone} when the anchor went`,
-            kind: 'tribute', sourceId: rescuer.id, code: 'fall',
+            cause, kind: 'tribute', sourceId: rescuer.id, code: 'tribute',
         });
         openWound(stranded, BLEEDING.combatSeverity);
         clampTribute(stranded);
@@ -286,7 +314,7 @@ function attemptRescueLine(
                 .forEach(o => adjustRel(o, rescuer.id, -RESCUE_LINE.cutWitnessRegard));
         }
         rescuer.betrayalsCommitted = (rescuer.betrayalsCommitted ?? 0) + 1;
-        checkDeath(ctx, stranded, `Dropped in ${stranded.zone} when the anchor went`);
+        checkDeath(ctx, stranded, cause);
         return;
     }
 
@@ -346,6 +374,8 @@ function attemptRescueLine(
     let rescuerDropped: Item | undefined;
     if (encumbranceOf(rescuer) > RESCUE_LINE.loadLine && rescuer.inventory.length > 0) {
         rescuerDropped = rescuer.inventory.pop();
+        // AUDIT-9 batch 5: 'The Cost of Carrying' reads this and nothing else.
+        rescuer.droppedToRescue = true;
     }
     trainProficiency(rescuer, 'climbing', ctx);
     incurDebt(stranded, rescuer, RESCUE_LINE.debt, ctx);

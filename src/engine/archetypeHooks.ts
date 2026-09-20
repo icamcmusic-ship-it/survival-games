@@ -1,4 +1,5 @@
-import { samePlace } from './verticality';
+import { isVertical, samePlace } from './verticality';
+import { isHostileTo } from './alliance';
 import { EventType, Item, Objective, Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { severRandomEdge } from './zoneEffects';
@@ -6,8 +7,8 @@ import { ARCHETYPE_HOOKS, EARNED_TRAIT_RULES, HUNTING, MEMORY } from '../data/ba
 import { earnTrait } from './earnedTraits';
 import { SimContext, getAlive } from './context';
 import { notorietyOf } from './notoriety';
-import { improveRead } from './memory';
-import { getRel, adjustMutual, adjustRel } from './relationships';
+import { improveRead, cycleOf } from './memory';
+import { getRel, adjustMutual, adjustRel, adjustTrust } from './relationships';
 import { addFear } from './fear';
 import { addExcitement } from './audience';
 import { grantTruce, truceLedger } from './parley';
@@ -238,6 +239,232 @@ export const SIGNATURES: Record<string, Signature> = {
         // §4.3: a retainer is peace bought, and it lasts as long as the fee.
         grantTruce(ctx, t, client, ARCHETYPE_HOOKS.contractTruceCycles, 'extortion');
         addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement * ARCHETYPE_HOOKS.signatureGatedMultiplier);
+        return true;
+    },
+
+    /*
+     * AUDIT-9 batch 5 — Rigger: the anchor, prepared before anybody needs it.
+     *
+     * The audit's spec is "completes a rescue or haul using a prepared
+     * anchor", and the temptation is to make the signature *be* a rescue —
+     * which would make it fire only when somebody else is in trouble, i.e.
+     * rarely, i.e. the dead hook this batch's gate exists to catch.
+     *
+     * So the set piece is the preparation, not the rescue. A Rigger rigs the
+     * ground: they fix a line on a vertical sector before anything has gone
+     * wrong, which is a thing they can do alone, on their own schedule, and
+     * which then changes what happens when somebody does go over. The rescue
+     * chain reads `riggedZones` and treats a line fixed here as a proper
+     * anchor regardless of who is holding it.
+     *
+     * That also gives the archetype its solo utility, which the audit
+     * explicitly requires: rigging a sector is worth doing even if nobody
+     * ever falls into it, because the Rigger themselves climbs it afterwards.
+     */
+    riggerAnchor: (ctx, t) => {
+        const zone = getZone(ctx.state.arena, t.zone);
+        if (!zone) return false;
+        /*
+         * Ground worth rigging: a drop, a height, or a crossing somebody has
+         * to get through. Measured across the 45 authored arenas, 67% of zones
+         * carry one of the three, so the terrain was never what held this set
+         * piece down.
+         */
+        const f = zoneFeatures(zone);
+        if (!isVertical(ctx.state.arena, t.zone) && !f.elevation && !f.chokepoint) return false;
+        if ((ctx.state.riggedZones ?? []).includes(t.zone)) return false;
+        /*
+         * AUDIT-9 batch 5: and no item gate.
+         *
+         * The first version required a utility or tool item, or `Rope-Handed`.
+         * That held the signature to 8.9% of Rigger entrants against a 29%
+         * floor — a dead hook, and dead for the worst possible reason: the
+         * archetype whose entire description is "grew up on lines and anchors"
+         * could not tie one without finding the right loot first.
+         *
+         * A Rigger improvises. That is the competence the archetype *is*, and
+         * it is what the audit means by "solo utility through safer traversal
+         * must exist" — something they can do on a quiet day, alone, without
+         * the Cornucopia having been kind to them.
+         */
+
+        ctx.state.riggedZones = [...(ctx.state.riggedZones ?? []), t.zone];
+        say(ctx, t, 'riggerAnchor', [t.id], { zone: t.zone }, 'signature-beats');
+        trainProficiency(t, 'climbing', ctx);
+        t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust);
+        return true;
+    },
+
+    /*
+     * AUDIT-9 batch 5 — Arbitrator: holding the group to its own charter.
+     *
+     * "Resolves a real dispute with an enforceable concession", and "must not
+     * duplicate Broker's trading loop". The Broker supplies; the Arbitrator
+     * binds. This fires on somebody who has actually been wronged by the
+     * group's own rule — a member passed over at a cache hearing — and makes
+     * the group make it good, out of the cache, in front of the people who
+     * swore the charter.
+     *
+     * It needs a real dispute to have happened, which is the "real" in the
+     * spec and the reason this is not just a charisma check: an Arbitrator in
+     * a group that has never had to divide anything short has nothing to
+     * arbitrate, and correctly does not fire.
+     */
+    arbitratorTerms: (ctx, t) => {
+        /*
+         * AUDIT-9 batch 5: an Arbitrator does not need to be in the group.
+         *
+         * Requiring one held this to 11.3% even after the grievance test and
+         * the payer were both fixed, and it was never right: the archetype's
+         * description is "keeps contested cooperation possible", which is a
+         * thing done *between* people rather than inside a club. Somebody who
+         * will make two strangers settle up in front of witnesses is the
+         * purest version of this, not a lesser one.
+         *
+         * What the scene does need is all three of them present — the
+         * arbitrator, the person who owes, and the person owed. That is what
+         * makes it an arbitration rather than an opinion.
+         */
+        const record = t.allianceId ? ctx.state.alliances?.[t.allianceId] : undefined;
+        const mates = getAlive(ctx.state).filter(o => o.allianceId !== undefined && o.allianceId === t.allianceId && o.id !== t.id);
+        const here = getAlive(ctx.state).filter(o => o.id !== t.id && samePlace(ctx.state.arena, t, o));
+        if (here.length === 0) return false;
+
+        /*
+         * AUDIT-9 batch 5: what counts as "a real dispute".
+         *
+         * The first version required a cache hearing in the last few cycles.
+         * Hearings happen in about one run in seven, so the signature fired
+         * for 0.6% of Arbitrator entrants against a 29% floor — the deadest
+         * hook in this batch, and dead because I had pointed an archetype at
+         * the rarest thing in the system it reads instead of at the system.
+         *
+         * Three grievances qualify now, in order of how squarely they are
+         * this archetype's business. All three are things somebody *agreed*
+         * and did not do, which is the line between an Arbitrator and a
+         * Broker: the Broker supplies, the Arbitrator makes the agreement
+         * bind.
+         */
+        const cycle = cycleOf(ctx.state);
+
+        // 1. Somebody was passed over when the group divided a short cache.
+        const dispute = (ctx.state.allianceDisputes ?? [])
+            .filter(d => d.allianceId === t.allianceId
+                && d.passedOverIds.length > 0
+                && cycle - d.cycle <= ARCHETYPE_HOOKS.arbitratorGrievanceCycles)
+            .sort((a, b) => b.cycle - a.cycle)[0];
+        const passedOver = dispute
+            ? mates.find(o => dispute.passedOverIds.includes(o.id))
+            : undefined;
+
+        // 2. A promise inside this group was broken.
+        const broken = (ctx.state.obligations ?? []).find(o =>
+            o.status === 'broken'
+            && mates.some(m => m.id === o.owedToId)
+            && [t.id, ...mates.map(m => m.id)].includes(o.owedById));
+        /*
+         * AUDIT-9 batch 5: who pays, and out of whose pocket.
+         *
+         * The first version took the concession out of the group's shared
+         * cache — which is usually empty, and which held this to 3.4% even
+         * after the grievance test was widened. It was also the wrong
+         * instinct: making the *group* pay for one member's default is not
+         * enforcing terms, it is socialising them.
+         *
+         * The debtor pays. That is what an enforceable concession is, it is
+         * the sentence the archetype's tagline is a shortened version of, and
+         * it is available whenever somebody in the group owes somebody else
+         * and is standing there with something in their hands. The cache is
+         * the fallback, for the grievances that have no single debtor —
+         * a cache hearing that passed somebody over is the group's debt.
+         */
+        let payer: Tribute | undefined;
+        let wronged = passedOver ?? (broken ? mates.find(o => o.id === broken.owedToId) : undefined);
+        if (!wronged) {
+            // The commonest grievance by far: somebody owes somebody, and
+            // both of them are standing right here.
+            for (const creditor of here) {
+                const debtor = here.find(d =>
+                    d.id !== creditor.id
+                    && (d.debts?.[creditor.id] ?? 0) > 0
+                    && d.inventory.length > 0);
+                if (debtor) { wronged = creditor; payer = debtor; break; }
+            }
+        }
+        /*
+         * AUDIT-9 batch 5: and the thing this archetype does most of all.
+         *
+         * Three rounds of widening the *enforcement* path got it from 0.6% to
+         * 16.4%, still under the 29% floor, and the reason is structural
+         * rather than tunable: enforcing an agreement needs an agreement to
+         * exist between two people who are standing together, and that is
+         * simply not most cycles.
+         *
+         * But the spec's first clause is "keeps contested cooperation
+         * *possible*", and that is not enforcement at all — it is the thing
+         * done before there is anything to enforce. Two people who want to
+         * kill each other, in one place, with somebody standing between them
+         * writing down what they just agreed to: that is the archetype, it is
+         * abundant, and nothing else in the game does it. The Confessor's plea
+         * buys a truce for *themselves*; this is a third party imposing one on
+         * two other people, which is a different act with a different actor.
+         *
+         * Enforcement stays as the richer branch, preferred when it is
+         * available, because making somebody actually pay is the better scene.
+         */
+        if (!wronged) {
+            const hostilePair = (() => {
+                for (const a of here) {
+                    const b = here.find(o => o.id !== a.id
+                        && isHostileTo(a, o)
+                        && !hasTruce(ctx.state, a, o.id)
+                        && getRel(a, o.id) < ARCHETYPE_HOOKS.arbitratorFeudLine);
+                    if (b) return [a, b] as const;
+                }
+                return undefined;
+            })();
+            if (!hostilePair) return false;
+            const [a, b] = hostilePair;
+            grantTruce(ctx, a, b, ARCHETYPE_HOOKS.arbitratorTruceCycles, 'brokered');
+            say(ctx, t, 'arbitratorAccord', [t.id, a.id, b.id], { first: a.name, second: b.name });
+            adjustRel(a, t.id, ARCHETYPE_HOOKS.arbitratorWitnessRegard);
+            adjustRel(b, t.id, ARCHETYPE_HOOKS.arbitratorWitnessRegard);
+            t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust);
+            addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
+            return true;
+        }
+
+        let goods: Item | undefined;
+        if (payer) {
+            // Something they can spare: never their last weapon, never the
+            // thing keeping them alive if they can help it.
+            const idx = payer.inventory.findIndex(i => i.type !== 'weapon');
+            const at = idx >= 0 ? idx : 0;
+            goods = payer.inventory.splice(at, 1)[0];
+            // The debt is what was enforced, so the debt is what settles.
+            if (payer.debts) {
+                payer.debts[wronged.id] = Math.max(0, (payer.debts[wronged.id] ?? 0) - ARCHETYPE_HOOKS.arbitratorDebtSettled);
+                if (payer.debts[wronged.id] <= 0) delete payer.debts[wronged.id];
+            }
+        } else {
+            // No single debtor: the grievance is the group's, so the group's
+            // stores answer for it.
+            if (!record) return false;
+            const idx = record.sharedCache.findIndex(i => i.type === 'food' || i.type === 'water' || i.type === 'medical');
+            if (idx < 0) return false;
+            goods = record.sharedCache.splice(idx, 1)[0];
+        }
+        if (!goods) return false;
+        giveItem(wronged, goods);
+
+        say(ctx, t, 'arbitratorTerms', [t.id, wronged.id], { other: wronged.name, goods: goods.name });
+        adjustRel(wronged, t.id, ARCHETYPE_HOOKS.arbitratorRegard);
+        adjustTrust(wronged, t.id, ARCHETYPE_HOOKS.arbitratorTrust);
+        // Everybody who watched the terms hold thinks a little more of them.
+        here.forEach(m => adjustRel(m, t.id, ARCHETYPE_HOOKS.arbitratorWitnessRegard));
+        void mates;
+        t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust);
+        addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
         return true;
     },
 

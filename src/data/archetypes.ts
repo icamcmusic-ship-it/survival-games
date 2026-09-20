@@ -438,6 +438,85 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         // Audit 4 §8.3: Professional distance — this is a job, and they have had worse clients.
         fearScale: 0.8,
     },
+    /*
+     * AUDIT-9 batch 5: the Rigger.
+     *
+     * "Connects separated allies and secures risky crossings. Completes a
+     * rescue or haul using a prepared anchor; solo utility through safer
+     * traversal must exist."
+     *
+     * The last clause is the one that decides whether this archetype is real.
+     * An archetype whose only verb needs somebody else to be in trouble is an
+     * archetype that does nothing for most of a run — so the Rigger's climbing
+     * is a standing advantage on vertical ground whether or not anybody needs
+     * hauling, and `Rope-Handed` is in its preferred traits because that trait
+     * is what turns a rope into a rigged anchor.
+     */
+    rigger: {
+        id: 'rigger',
+        name: 'Rigger',
+        description: 'Grew up on lines and anchors. The one person in the arena who can get somebody off a ledge and expect the rope to hold.',
+        // Endurance and agility: hauling somebody up a face is both. The
+        // intelligence is the knot, which is the part of this that is
+        // knowledge rather than strength.
+        statBias: { endurance: 2, agility: 1, intelligence: 1, charisma: -1 },
+        preferredTraits: ['Rope-Handed', 'Climber', 'Steadfast', 'Shared-Burden'],
+        aggression: -0.15,
+        allianceAffinity: 0.35,
+        treachery: -0.3,
+        caution: 0.1,
+        // Holding ground and working it, rather than hunting over it.
+        stanceBias: { Fortified: 0.5, Tending: 0.4, Defensive: 0.3, Aggressive: -0.5 },
+        objectiveBias: { protect: 0.4, reach: 0.3 },
+        targetPreference: 'nearest',
+        riskCurve: 'flat',
+        signature: 'riggerAnchor',
+        tagline: 'It will hold.',
+        // Visibly useful, and visibly not a threat.
+        targetDraw: 0.7,
+    },
+    /*
+     * AUDIT-9 batch 5: the Arbitrator.
+     *
+     * "Keeps contested cooperation possible through evidence and terms.
+     * Resolves a real dispute with an enforceable concession; must not
+     * duplicate Broker's trading loop."
+     *
+     * The constraint is the design. A Broker's verb is *sell* — they hand you
+     * a thing and you owe them. An Arbitrator's verb is *bind*: they do not
+     * supply anything, they make the group's own charter mean something at
+     * the moment it is least convenient. The two never touch, because the
+     * Broker needs goods and the Arbitrator needs a rule somebody swore to.
+     */
+    arbitrator: {
+        id: 'arbitrator',
+        name: 'Arbitrator',
+        description: 'Holds people to what they agreed, out loud, in front of everybody who heard them agree it. Unarmed authority, and it lasts exactly as long as the group wants it to.',
+        statBias: { charisma: 2, intelligence: 2, strength: -1 },
+        /*
+         * AUDIT-9 batch 5: these were drafted as 'Names the Witness' and
+         * 'Clear Terms' — two entries from the audit's *proposed* trait list
+         * in §12, which is not the same thing as the trait table. The
+         * reference check caught it, which is exactly what it is for: a
+         * preferred trait that names no row fails silently, and the archetype
+         * simply stops preferring anything.
+         *
+         * `Witness` and `Barterer` are the real rows that mean what those
+         * proposals meant, and both already exist.
+         */
+        preferredTraits: ['Bookkeeper', 'Peacemaker', 'Witness', 'Barterer'],
+        aggression: -0.3,
+        allianceAffinity: 0.5,
+        treachery: -0.4,
+        caution: 0.25,
+        stanceBias: { Defensive: 0.5, Patrolling: 0.4, Evasive: 0.2, Aggressive: -0.7 },
+        objectiveBias: { hold: 0.4, protect: 0.3 },
+        targetPreference: 'rival',
+        riskCurve: 'flat',
+        signature: 'arbitratorTerms',
+        tagline: 'That is not what was agreed.',
+        targetDraw: 0.9,
+    },
     zealot: {
         id: 'zealot',
         name: 'Zealot',
@@ -1342,6 +1421,20 @@ const BASE_WEIGHTS: ArchetypeWeights = {
     // 1,600 runs is one `metrics.ts` will not render a verdict on — which is
     // exactly the "no dead hooks" the stage gate asks for.
     courier: 1,
+    /*
+     * AUDIT-9 batch 5: the two new archetypes, on the same reasoning the
+     * Courier got — weighted with the mid-tier roles rather than added at the
+     * bottom, because an archetype drawn under 500 entrants in 1,600 runs is
+     * one `metrics.ts` will not render a verdict on, and an archetype nobody
+     * can judge is an archetype nobody can balance.
+     *
+     * It is also the difference between shipping these and only appearing to:
+     * with no base weight at all they drew zero entrants across 400 runs,
+     * which the diagnosis found immediately and which is the same dead-hook
+     * failure in a different costume.
+     */
+    rigger: 1,
+    arbitrator: 1,
     protector: 1,
     trickster: 1,
     wildcard: 1,

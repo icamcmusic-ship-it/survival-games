@@ -191,6 +191,16 @@ export function tickObligations(ctx: SimContext) {
          * tribute who is down or in transit is not handing anything over.
          */
         const together = samePlace(state.arena, from, to) && isActive(from);
+        /*
+         * AUDIT-9 batch 5: 'Wrong Floor' — B12's repair, made visible.
+         *
+         * The interesting case is not that a vertical handover is refused; it
+         * is that somebody notices, climbs, and does it properly. Blocked by
+         * the level is recorded here; the delivery below reads it.
+         */
+        if (!together && from.zone === to.zone && isActive(from)) {
+            o.blockedByLevel = true;
+        }
 
         if (o.kind === 'supply' && together) {
             // What they actually need: a kit for a wound, food for hunger.
@@ -229,6 +239,9 @@ export function tickObligations(ctx: SimContext) {
                         { category: 'loot', zone: to.zone },
                     );
                 }
+                // AUDIT-9 batch 5: they were on the wrong floor for it, and
+                // then they were not.
+                if (o.blockedByLevel) from.deliveredAcrossLevels = true;
                 keep(ctx, o, `${from.name} hands ${to.name} the ${spare.name} without being asked twice. That is the promise, discharged, in front of everybody who heard it made.`);
                 return;
             }

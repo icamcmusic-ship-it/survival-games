@@ -1,4 +1,5 @@
-import { GameConfig, GameState } from '../src/models/types';
+import { GameConfig, GameState, ScenarioStartId } from '../src/models/types';
+import { applyScenarioStart } from '../src/engine/scenarioStarts';
 import { resolveArenaForRun } from '../src/engine/arenaSetup';
 import { generateTributes } from '../src/engine/generator';
 import { configForProfile, gamesProfileFor } from '../src/engine/gamesProfile';
@@ -19,8 +20,24 @@ import { FRESH_CAMPAIGN } from '../src/engine/campaign';
  * apart for another few audits.
  */
 export function initialRunState(
-    { seed, arenaId, config, gamemakerMode = false }:
-    { seed: string; arenaId: string; config: GameConfig; gamemakerMode?: boolean },
+    { seed, arenaId, config, gamemakerMode = false, scenario }:
+    {
+        seed: string;
+        arenaId: string;
+        config: GameConfig;
+        gamemakerMode?: boolean;
+        /*
+         * AUDIT-9 batch 5: an authored opening, applied to the finished
+         * starting state.
+         *
+         * Opt-in and unset by default, which is the whole design. The audit
+         * requires scenario starts to "remain separate from the standard
+         * balance baseline", and the reliable way to guarantee that is for the
+         * baseline to be what you get when you do not ask for anything. The
+         * harnesses never pass this; `check-scenario-starts` asserts it.
+         */
+        scenario?: ScenarioStartId;
+    },
 ): GameState {
     // REPLAY-01: this year's temperament is rolled before the arena and the
     // cast, because a Quell can shape both of them.
@@ -39,7 +56,7 @@ export function initialRunState(
         // walk in carrying.
         gamesProfile.quell,
     );
-    return {
+    const state: GameState = {
         seed, arena, tributes, phase: 'setup', day: 0, log: [],
         gamemakerMode,
         config: resolved,
@@ -53,6 +70,10 @@ export function initialRunState(
         // of the game a new player is handed, not of somebody's record book.
         campaign: FRESH_CAMPAIGN,
     };
+    // Applied last, to a complete and legal opening state: a scenario
+    // rearranges a Games, it does not build one.
+    if (scenario) applyScenarioStart(state, scenario);
+    return state;
 }
 
 /**
