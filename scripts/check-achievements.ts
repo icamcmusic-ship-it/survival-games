@@ -476,6 +476,34 @@ if (duplicates.length > 0) {
     }
 }
 
+/*
+ * AUDIT-9 B20: two achievements may not share a title.
+ *
+ * Seven titles were shared by different ids, some across three — "Not Who They
+ * Were" was the name of three separate questions at once. Every one of them
+ * turned out to be a genuinely distinct predicate rather than a duplicate, so
+ * the fix was distinct names and not a merge, and no id changed, which is what
+ * keeps anybody's unlocked list intact.
+ *
+ * A title is the only part of an achievement a player ever sees. Two entries
+ * wearing the same one is indistinguishable, from the outside, from the same
+ * entry firing twice — and the predicate checks above cannot see it, because
+ * the predicates were never the thing that collided.
+ */
+{
+    const byName = new Map<string, string[]>();
+    ACHIEVEMENTS.forEach(a => byName.set(a.name, [...(byName.get(a.name) ?? []), a.id]));
+    const shared = [...byName.entries()].filter(([, ids]) => ids.length > 1);
+    if (shared.length > 0) {
+        console.log(`\nFAIL: ${shared.length} achievement title(s) are used by more than one id:`);
+        shared.forEach(([name, ids]) => console.log(`  ${JSON.stringify(name)}  ${ids.join(', ')}`));
+        console.log('  (give each a distinct name — renaming keeps the id, so unlocked lists survive)');
+        failed = true;
+    } else {
+        console.log(`every achievement title is unique across ${ACHIEVEMENTS.length} entries.`);
+    }
+}
+
 if (process.env.ACHIEVEMENT_EMIT_RARITY === '1') {
     /*
      * Audit 3 §1.6: writes the labels back into `achievements.ts` rather than

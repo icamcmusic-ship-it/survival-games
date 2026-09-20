@@ -8343,3 +8343,36 @@ export const CONFUSION = {
      */
     destinationFlattening: 0.9,
 } as const;
+
+/**
+ * AUDIT-9 stage C §3: what a cycle's hours buy. See `engine/actionBudget`.
+ *
+ * `baseHours` is a waking day rather than 24, and the costs below are
+ * deliberately coarse: the point is that travelling a long way and building a
+ * shelter and setting a trap do not all fit, not that any one of them is
+ * priced to the minute.
+ */
+export const ACTION_BUDGET = {
+    baseHours: 12,
+    minHours: 3,
+    /** A body at 100 fatigue loses this much of the day. */
+    fatigueHourCost: 5,
+    legInjuryHourCost: 1.5,
+    hurtHealthLine: 40,
+    hurtHourCost: 2,
+    enduranceMidpoint: 5,
+    /** Hours per point of endurance above the midpoint. */
+    enduranceHourBonus: 0.4,
+    /** Improvising a weapon out of what is in the pack. */
+    craftHours: 3,
+    /** One leg of a crossing. Travel is the expensive thing a day holds. */
+    travelHours: 5,
+    /** Searching ground for food or water. */
+    forageHours: 3,
+    /** Setting a trap properly, which is why a rushed one is a bad one. */
+    trapHours: 4,
+    shelterHours: 5,
+    fireHours: 2,
+    /** Dressing a wound: urgent, and cheap enough to always be possible. */
+    dressingHours: 1,
+} as const;

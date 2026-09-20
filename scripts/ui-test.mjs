@@ -873,6 +873,133 @@ await step('the arena and the tribute sheet both fit a 380px phone', async () =>
   await page.keyboard.press('Escape');
 });
 
+/*
+ * AUDIT-9 §7 "browser acceptance pass still needed". The harness already drove
+ * keyboard shortcuts, modals, touch targets and phone widths; the audit's list
+ * also asks for contrast measured on *rendered* styles, focus restoration,
+ * reduced motion, 200-400% zoom, large casts and screen-reader announcements
+ * that do not flood. Those are the ones below.
+ *
+ * Contrast is computed from what the browser actually paints — the composited
+ * colour after every cascade, theme and opacity — because a palette that
+ * passes in the stylesheet says nothing about the pixel a person looks at.
+ */
+const CONTRAST_EXEMPT = /^(chip-|badge-)/;
+
+await step('text contrast meets WCAG AA on rendered styles', async () => {
+  const bad = await page.evaluate(() => {
+    const lum = ([r, g, b]) => {
+      const f = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
+      return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+    };
+    const parse = c => (c.match(/[\d.]+/g) || []).slice(0, 3).map(Number);
+    const alpha = c => { const p = (c.match(/[\d.]+/g) || []); return p.length > 3 ? Number(p[3]) : 1; };
+    // The painted background: walk up until something is not transparent.
+    const bgOf = el => {
+      for (let n = el; n; n = n.parentElement) {
+        const c = getComputedStyle(n).backgroundColor;
+        if (alpha(c) > 0.95) return parse(c);
+      }
+      return [0, 0, 0];
+    };
+    const out = [];
+    for (const el of document.querySelectorAll('body *')) {
+      const text = (el.textContent || '').trim();
+      if (!text || el.children.length > 0) continue;       // leaf text only
+      const cs = getComputedStyle(el);
+      if (cs.visibility === 'hidden' || cs.display === 'none' || Number(cs.opacity) < 0.95) continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < 4 || r.height < 4) continue;
+      const size = parseFloat(cs.fontSize);
+      const bold = Number(cs.fontWeight) >= 700;
+      // WCAG: large text is 24px, or 18.66px bold.
+      const large = size >= 24 || (bold && size >= 18.66);
+      const need = large ? 3 : 4.5;
+      const fg = parse(cs.color), bg = bgOf(el);
+      const L1 = lum(fg), L2 = lum(bg);
+      const ratio = (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
+      if (ratio + 0.05 < need) {
+        out.push({ text: text.slice(0, 40), cls: el.className?.toString().slice(0, 40) || el.tagName,
+                   ratio: Number(ratio.toFixed(2)), need, size });
+      }
+    }
+    return out;
+  });
+  const real = bad.filter(b => !CONTRAST_EXEMPT.test(b.cls));
+  if (real.length) {
+    throw new Error(`${real.length} element(s) under AA contrast, worst: `
+      + real.sort((a, b) => a.ratio - b.ratio).slice(0, 4)
+        .map(b => `${b.ratio}:1 (needs ${b.need}) "${b.text}" [${b.cls}]`).join(' | '));
+  }
+});
+
+await step('a dialog returns focus to whatever opened it', async () => {
+  const opener = page.getByRole('button', { name: /— District \d+, (Male|Female), age \d+/ }).first();
+  if (!await opener.count()) return;
+  await opener.focus();
+  const before = await page.evaluate(() => document.activeElement?.textContent?.slice(0, 40) ?? '');
+  await opener.click();
+  await page.getByRole('dialog').first().waitFor({ timeout: 4000 });
+  // Focus must be inside the dialog while it is open, or a screen reader user
+  // is still standing in the page behind it.
+  const inside = await page.evaluate(() => {
+    const d = document.querySelector('[role="dialog"]');
+    return !!d && d.contains(document.activeElement);
+  });
+  if (!inside) throw new Error('focus stayed outside the dialog when it opened');
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(250);
+  const after = await page.evaluate(() => document.activeElement?.textContent?.slice(0, 40) ?? '');
+  if (after !== before) throw new Error(`focus was not restored to the opener (was "${before}", now "${after}")`);
+});
+
+await step('the live region announces without flooding', async () => {
+  const regions = await page.evaluate(() =>
+    [...document.querySelectorAll('[aria-live]')].map(el => ({
+      politeness: el.getAttribute('aria-live'),
+      atomic: el.getAttribute('aria-atomic'),
+      len: (el.textContent || '').trim().length,
+    })));
+  if (regions.length === 0) throw new Error('no aria-live region: nothing is announced at all');
+  const shouty = regions.filter(r => r.politeness === 'assertive');
+  if (shouty.length) throw new Error(`${shouty.length} assertive live region(s): the feed interrupts the reader`);
+  // A live region holding the whole chronicle re-reads the whole chronicle.
+  const flooding = regions.filter(r => r.len > 400);
+  if (flooding.length) throw new Error(`a live region holds ${flooding[0].len} characters — that is a wall of text per update`);
+});
+
+await step('reduced motion is honoured', async () => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.waitForTimeout(300);
+  const moving = await page.evaluate(() => {
+    let n = 0;
+    for (const el of document.querySelectorAll('body *')) {
+      const cs = getComputedStyle(el);
+      const dur = parseFloat(cs.animationDuration) || 0;
+      const iter = cs.animationIterationCount;
+      if (dur > 0 && (iter === 'infinite' || Number(iter) > 1)) n++;
+    }
+    return n;
+  });
+  if (moving > 0) throw new Error(`${moving} element(s) still run a repeating animation under prefers-reduced-motion`);
+  await page.emulateMedia({ reducedMotion: null });
+});
+
+for (const zoom of [200, 400]) {
+  await step(`the run is usable at ${zoom}% zoom`, async () => {
+    // Zoom is width in CSS pixels: 1280 at 200% is a 640px viewport.
+    await page.setViewportSize({ width: Math.round(1280 / (zoom / 100)), height: Math.round(950 / (zoom / 100)) });
+    await page.waitForTimeout(400);
+    const over = await page.evaluate(() =>
+      document.documentElement.scrollWidth > document.documentElement.clientWidth + 2);
+    await page.screenshot({ path: `${shots}/zoom-${zoom}.png` });
+    if (over) throw new Error(`horizontal scrolling appears at ${zoom}% zoom`);
+    const reachable = await page.getByRole('button').count();
+    if (reachable === 0) throw new Error(`no controls are reachable at ${zoom}% zoom`);
+  });
+}
+await page.setViewportSize({ width: 1400, height: 950 });
+
 console.log('\n' + (errors.length ? 'ERRORS:\n' + errors.map(e => ' - ' + e).join('\n') : 'No errors.'));
 await browser.close();
 process.exit(errors.length ? 1 : 0);

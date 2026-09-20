@@ -296,7 +296,7 @@ let exoticBetrayals = 0, preemptiveBetrayals = 0, merges = 0, leadershipChanges 
 let factionCoups = 0, factionExpulsions = 0, factionWalkouts = 0, expulsions = 0, hearings = 0, trucesOutlived = 0, brokeredHeld = 0;
 let feuds = 0, freeForAlls = 0, careerDefections = 0, cacheContributions = 0;
 // Intentions and fieldcraft.
-let objectivesFormed = 0, trapsSet = 0, trapsTriggered = 0;
+let objectivesFormed = 0, trapsSet = 0, trapsTriggered = 0, partialWork = 0;
 /**
  * Audit 3 §1.2: traps were counted as one number, so a five-kind menu that was
  * a two-kind menu in play read as a healthy 304 traps a sweep. Counted per
@@ -619,6 +619,8 @@ for (let i = 0; i < 400; i++) {
     TRAP_SET_KINDS.forEach(kind => { if (beat(l, `trap-set-${kind}`)) { trapKinds[kind]++; trapsSet++; } });
     if (beat(l, 'trap-triggered')) trapsTriggered++;
     if (beat(l, 'fire-lit')) firesLit++;
+    // AUDIT-9 stage C: a cycle that ran out of hours mid-job.
+    if (beat(l, 'partial-work')) partialWork++;
     if (beat(l, 'shelter-built')) sheltersBuilt++;
     if (beat(l, 'camouflaged')) camouflaged++;
     if (beat(l, 'standoff')) standoffs++;
@@ -1397,7 +1399,7 @@ if (musterRuns > 0 && musterAttended === 0) {
 console.log(`zoneControl: held=${cornucopiaHeld} payouts=${cornucopiaPayouts}`);
 console.log(`schedule: signatureBeats=${signatureBeats} calendarBeats=${calendarBeats}`);
 console.log(`fieldcraft: traps by kind ${Object.entries(trapKinds).map(([k, n]) => `${k}=${n}`).join(' ')}`);
-console.log(`fieldcraft: trapsSet=${trapsSet} trapsTriggered=${trapsTriggered} fires=${firesLit} shelters=${sheltersBuilt} camouflage=${camouflaged} poisonedWeapons=${weaponsPoisoned}`);
+console.log(`fieldcraft: trapsSet=${trapsSet} trapsTriggered=${trapsTriggered} fires=${firesLit} shelters=${sheltersBuilt} camouflage=${camouflaged} poisonedWeapons=${weaponsPoisoned} partialWork=${partialWork}`);
 console.log(`arena: zoneFires=${zoneFiresStarted} (spread ${zoneFiresSpread}) floods=${zoneFloods} freezes=${zoneFreezes} contaminations=${zoneContaminations} fogs=${zoneFogs} strippedZones=${zoneStripped} severed=${zoneSevered}`);
 console.log(`arena: borderTelegraphs=${borderTelegraphs} cornucopiaRestocks=${cornucopiaRestocks} muttEncounters=${muttEncounters}`);
 console.log(`alliances: recruitments=${recruitments} organicGroupsOf3Plus=${organicTrios} largestSeen=${maxAllianceSeen}`);

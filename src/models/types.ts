@@ -670,6 +670,22 @@ export interface Tribute {
     memory: TributeMemory;
     /** The last thing that hurt them — the real cause of death, not a guess. */
     lastDamage?: DamageRecord;
+    /**
+     * AUDIT-9 stage C §3: hours left in this cycle. See `engine/actionBudget`.
+     *
+     * Undefined before the first cycle and on states saved before budgets
+     * existed; `hoursLeft()` treats that as a full day rather than an empty
+     * one, so an old save resumes with everybody able to act.
+     */
+    hoursLeft?: number;
+    /** The allowance this cycle granted, so spending can be reported. */
+    hoursToday?: number;
+    /**
+     * Work carried across cycles: a half-set trap, a half-built shelter.
+     * One at a time — starting something else abandons it.
+     */
+    partialWork?: { kind: string; hoursDone: number };
+
     /** Cycles the current stance has been held, for hysteresis. */
     stanceHeld: number;
     /** Pre-Games audience darling. Starts with sponsor trust and draws envy. */
@@ -3121,6 +3137,7 @@ export type EventType =
     | 'succession-split'
     | 'succession-unnamed'
     | 'trap-destroyed'
+    | 'partial-work'
     | 'trap-set-snare'
     | 'trap-set-deadfall'
     | 'trap-set-pit'
