@@ -1,3 +1,4 @@
+import { dropParachute } from './parachutes';
 import { giftRefusal } from './arenaPolicy';
 import { SimContext, getAlive } from './context';
 import { profOf } from './proficiency';
@@ -8,7 +9,7 @@ import { composureOf } from './composure';
 import { SPONSOR_TEXTS } from '../data/flavorText';
 import { drawFromBloc } from './sponsorBlocs';
 import { clampTribute } from './vitals';
-import { giveItem, itemPhrase } from './items';
+import { itemPhrase } from './items';
 import { ensureMemory } from './memory';
 import { mentorGenerosity, processMentorPleas } from './mentors';
 import { Item, Tribute } from '../models/types';
@@ -181,7 +182,13 @@ export function processSponsors(ctx: SimContext) {
         // back this tribute is empty, the parachute does not come.
         const bloc = drawFromBloc(ctx, t, gift.value);
         if (!bloc) return;
-        giveItem(t, gift);
+        /*
+         * AUDIT-9 stage C §4: this was `giveItem(t, gift)` — the medicine was
+         * in the pack instantly, wherever they stood and whoever stood next to
+         * them. It is a parachute now: it falls into the zone they are in, and
+         * whoever is actually there when it lands is who opens it.
+         */
+        dropParachute(ctx, t, gift, bloc.seal);
         t.excitementRating = Math.max(0, t.excitementRating - SPONSORS.giftExcitementCost);
         ensureMemory(t).giftsReceived += 1;
         clampTribute(t);

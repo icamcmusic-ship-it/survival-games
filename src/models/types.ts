@@ -2623,6 +2623,24 @@ export interface GameState {
     /** Alliance id -> its structure. See `Alliance`. */
     alliances?: Record<string, Alliance>;
     /**
+     * AUDIT-9 stage C §4: sponsor gifts in the air and on the ground.
+     *
+     * A gift exists here between the moment somebody pays for it and the
+     * moment somebody picks it up, which is the window in which it can land
+     * in the wrong zone or be taken by the wrong person. See
+     * `engine/parachutes`.
+     */
+    parachutes?: Array<{
+        id: string;
+        item: Item;
+        zone: string;
+        /** Who it was bought for. Not necessarily who gets it. */
+        forId: string;
+        landedCycle: number;
+        seal?: string;
+    }>;
+
+    /**
      * Movement along each edge of the zone graph, keyed by the two zone names
      * sorted and joined with '|'. Decays every cycle, so it reads as "where the
      * traffic is right now" rather than a cumulative total.
@@ -3137,6 +3155,10 @@ export type EventType =
     | 'succession-split'
     | 'succession-unnamed'
     | 'trap-destroyed'
+    | 'parachute-claimed'
+    | 'parachute-stolen'
+    | 'parachute-collected'
+    | 'parachute-lost'
     | 'partial-work'
     | 'trap-set-snare'
     | 'trap-set-deadfall'

@@ -9,7 +9,12 @@
 import { scenario, check, eq, world, inventoryCensus, report } from './scenarios';
 import { ACTION_BUDGET } from '../src/data/balance';
 import { hoursFor, hoursLeft, hoursSpent, resetBudget, spend, work, progressOf, canAfford } from '../src/engine/actionBudget';
-import { Tribute } from '../src/models/types';
+import { Tribute, Item } from '../src/models/types';
+import { ITEMS } from '../src/data/constants';
+import { PARACHUTES } from '../src/data/balance';
+import { createContext } from '../src/engine/context';
+import { RNG } from '../src/utils/rng';
+import { dropParachute, resolveParachutes, pendingParachutes } from '../src/engine/parachutes';
 
 console.log('action budgets');
 
@@ -179,6 +184,80 @@ scenario(
         const invented = [...after].filter(([id, n]) => n > (before.get(id) ?? 0) * 8 + 8);
         check(invented.length === 0,
             `quantity appeared from nowhere: ${invented.map(([id, n]) => `${id} ${before.get(id) ?? 0}->${n}`).join(', ')}`);
+    },
+);
+
+console.log('\nphysical delivery');
+
+scenario(
+    'a gift lands in a zone rather than in a pack',
+    'a sponsor gift exists in the world between being paid for and being picked up',
+    () => {
+        const w = world('SCEN-chute-1');
+        const t = w.tribute(0);
+        const item = { ...ITEMS.find(i => i.id === 'bread')! };
+        const ctx = createContext(w.state, new RNG('SCEN-chute-1'));
+        const held = t.inventory.length;
+        dropParachute(ctx, t, item);
+        eq(t.inventory.length, held, 'the item must not be in the pack before it has landed');
+        eq(pendingParachutes(w.state).length, 1, 'it should be in the air');
+        eq(pendingParachutes(w.state)[0].zone, t.zone, 'addressed to the zone they are standing in');
+    },
+);
+
+scenario(
+    'the addressee alone in the zone gets their gift',
+    'delivery is not a lottery: being there is what earns it',
+    () => {
+        const w = world('SCEN-chute-2');
+        const t = w.tribute(0);
+        w.only(t);
+        const ctx = createContext(w.state, new RNG('SCEN-chute-2'));
+        const item = { ...ITEMS.find(i => i.id === 'bread')! };
+        dropParachute(ctx, t, item);
+        resolveParachutes(ctx);
+        check(t.inventory.some((i: Item) => i.id === 'bread'), 'they were standing under it and should have it');
+        eq(pendingParachutes(w.state).length, 0, 'nothing should be left in the air');
+    },
+);
+
+scenario(
+    'a gift falling where its owner is not can be taken by whoever is',
+    'the wrong person reaching it first is a thing the engine can now express',
+    () => {
+        const w = world('SCEN-chute-3');
+        const owner = w.tribute(0);
+        const rival = w.tribute(1);
+        w.only(owner, rival);
+        delete owner.allianceId; delete rival.allianceId;
+        const ctx = createContext(w.state, new RNG('SCEN-chute-3'));
+        const item = { ...ITEMS.find(i => i.id === 'bread')! };
+        dropParachute(ctx, owner, item);
+        // The owner dies before it lands; the rival is standing in the zone.
+        owner.status = 'dead'; owner.health = 0;
+        w.place(rival, owner.zone);
+        resolveParachutes(ctx);
+        check(rival.inventory.some((i: Item) => i.id === 'bread'),
+            'nobody alive was addressed, so the tribute standing there should have it');
+    },
+);
+
+scenario(
+    'an unclaimed gift is collected rather than lying in the arena forever',
+    'the world does not accumulate free supplies nobody ever reaches',
+    () => {
+        const w = world('SCEN-chute-4');
+        const t = w.tribute(0);
+        const ctx = createContext(w.state, new RNG('SCEN-chute-4'));
+        const item = { ...ITEMS.find(i => i.id === 'bread')! };
+        // Drop it somewhere nobody is, then let the clock run.
+        dropParachute(ctx, t, item);
+        pendingParachutes(w.state)[0].zone = '__nowhere__';
+        resolveParachutes(ctx);
+        eq(pendingParachutes(w.state).length, 1, 'it waits at first');
+        w.state.cycle = (w.state.cycle ?? 0) + PARACHUTES.lifetimeCycles;
+        resolveParachutes(ctx);
+        eq(pendingParachutes(w.state).length, 0, 'and is collected once its time is up');
     },
 );
 

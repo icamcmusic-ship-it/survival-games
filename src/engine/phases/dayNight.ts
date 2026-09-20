@@ -28,6 +28,7 @@ import { runStanceBeats } from '../stanceBeats';
 import { runArchetypeSignatures, tickGhosts, tickScholars } from '../archetypeHooks';
 import { isActive, isDowned } from '../downed';
 import { decayUpkeep, postActionUpkeep, preActionUpkeep } from './upkeep';
+import { resolveParachutes } from '../parachutes';
 import {
     applyArenaEvent, fill, handleInsanity, idleAction, isBreakingDown,
     pendingChain, pickTerrainEvent, resolveMuttAttack, resolvePairEncounter,
@@ -586,6 +587,18 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     }
 
     processSponsors(ctx);
+    /*
+     * AUDIT-9 stage C §4: the parachute comes down in the zone it was sent to,
+     * in the same cycle, and whoever is standing in that zone opens it.
+     *
+     * Resolved here rather than a cycle later on purpose. A full cycle of
+     * delay meant the addressee had usually walked off before their own gift
+     * arrived — 42% of parachutes were taken by somebody else, which is not a
+     * dramatic arena, it is a broken postal service. Landing it now means
+     * interception happens for the reason it should: they were not alone when
+     * their sponsors came through.
+     */
+    resolveParachutes(ctx);
 
     // The anthem closes the night. Every tribute learns exactly who died today,
     // wherever they were standing when it happened — which is the single most

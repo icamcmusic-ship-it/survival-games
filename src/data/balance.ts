@@ -8376,3 +8376,18 @@ export const ACTION_BUDGET = {
     /** Dressing a wound: urgent, and cheap enough to always be possible. */
     dressingHours: 1,
 } as const;
+
+/**
+ * AUDIT-9 stage C §4: how long a gift stays in the arena, and what it costs
+ * to watch somebody else take yours. See `engine/parachutes`.
+ */
+export const PARACHUTES = {
+    /** Cycles an unclaimed parachute sits before the Capitol collects it. */
+    lifetimeCycles: 2,
+    /** Regard lost toward whoever took a crate with your name on it. */
+    stolenRegard: 18,
+    /** How much reading the drop matters next to plain speed. */
+    contestWitWeight: 0.5,
+    /** Ceiling on a rival's odds, so a drop is still usually a gift. */
+    contestRivalShare: 0.3,
+} as const;
