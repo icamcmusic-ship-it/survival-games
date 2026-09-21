@@ -2,6 +2,7 @@ import { SimContext } from '../context';
 import { processSpoilage, processVitals } from '../survival';
 import { tickDowned } from '../downed';
 import { tickRescueAftermath, tickRescueLines } from '../rescueLine';
+import { enforceCapacity } from '../items';
 import { decayMemories, decayRelationships, decaySuspicion } from '../memory';
 import { decayFear } from '../fear';
 import { decayAllianceRegard, decayTrust } from '../relationships';
@@ -68,6 +69,26 @@ export function postActionUpkeep(ctx: SimContext) {
     tickDowned(ctx);
     // ...and the beat a cycle or two later that reads what actually happened.
     tickRescueAftermath(ctx);
+    /*
+     * Nobody ends a cycle holding more than they can carry.
+     *
+     * The day phase already swept this, but it swept *before* the actions that
+     * pick things up — so a cycle that ended with a scavenging run ended over
+     * capacity, and the soak caught it the moment scavenging became common
+     * enough to matter. Capacity is dynamic (it shrinks with a lost pack and
+     * with condition), so this belongs in the lifecycle every phase runs rather
+     * than at one point inside one of them.
+     *
+     * Silent: the day phase narrates its own spill, and a second line for the
+     * same armful would read as two.
+     */
+    /*
+     * Everyone, not only the living. A corpse holding more than it could carry
+     * is not a corpse with a bigger pack — it is items lying beside it, which
+     * is what `enforceCapacity` produces, and looting reads the body's
+     * inventory afterwards either way.
+     */
+    ctx.state.tributes.forEach(t => enforceCapacity(t));
 }
 
 /**

@@ -26,12 +26,16 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
      */
     naturalDeathRate: 0.3,
     /*
-     * A bloodbath of roughly 8-11 from a full field: measured median 9, mean
-     * 8.8, 36.6% of the cast — which also brings the long-standing "share of
-     * the field lost in the bloodbath" indicator into its 33-50% design band
-     * for the first time.
+     * REQUEST: the two death settings are counts, stored as shares of the cast.
+     *
+     * Measured at these defaults over a full ARENAS sweep at n=1,600: a median
+     * of 9 dead at the Cornucopia and a median of 16 killed by other tributes,
+     * with the arena taking the rest. Both are what the earlier multipliers
+     * produced, restated in the unit the player is actually choosing — 8 of 24
+     * at the horn, 7 of 24 to the arena.
      */
-    bloodbathLethality: 1.6,
+    bloodbathDeathShare: 8 / 24,
+    arenaDeathShare: 7 / 24,
     sponsorGenerosity: 1.0,
     enableFeast: true,
     enableSanity: true,

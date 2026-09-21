@@ -1572,6 +1572,24 @@ export const PHYSIQUE = {
         climb: 0.05,
         hungerDrain: 0.035,
     },
+    /*
+     * REQUEST (body types): left exactly as it was, and worth saying why.
+     *
+     * Weighting bodies by district gave the career districts bulk and took it
+     * off everybody else, which cost 1.6 points of career-archetype win rate.
+     * The obvious repair was to make bulk more expensive — it buys injury
+     * absorption and grapple resistance and pays in agility, heat and water, so
+     * raising the price looked like pricing the advantage.
+     *
+     * Measured at n=1,600, it moved the career archetype the *wrong way*:
+     * 10.90% -> 11.12%. A harsher world is a world the best-equipped tribute
+     * copes with best, so every global cost increase is a relative buff to the
+     * people who were already winning. Reverted, and the district bias itself
+     * was reduced instead.
+     *
+     * Left here as a note rather than as a change, because the next person to
+     * look at this will have the same idea.
+     */
     conditionPerStep: {
         insulation: 0.06,
         starvationBuffer: 4,
@@ -1769,7 +1787,7 @@ export const BLOODBATH = {
      * horn first — this is a bonus on top of proximity, agility and noise, all
      * of which already favour them.
      */
-    careerReachBonus: 2.5,
+    careerReachBonus: 2.0,
     /** §8: how much `targetDraw` moves who gets picked in the scrum. */
     targetDrawWeight: 0.06,
     /** §5: a walled horn is a killing box — fewer commit, and they commit harder. */
@@ -1779,23 +1797,82 @@ export const BLOODBATH = {
     islandHornDeterrent: 0.22,
     islandHornSwimmer: 0.35,
     /*
-     * Bounds on `GameConfig.bloodbathLethality`.
+     * REQUEST: the Cornucopia setting is a *number of tributes*, not a
+     * multiplier. `GameConfig.bloodbathDeathShare` is that number as a share of
+     * the cast, so one setting means the same thing at every district count.
      *
-     * At the floor the opening is a scramble for packs that a few people do not
-     * walk away from; at the ceiling it is the canon bloodbath at its worst. The
-     * ceiling is bounded by the field it has to leave behind — a bloodbath that
-     * takes most of the cast leaves no Games after it.
+     * The ceiling is "everybody but one": a bloodbath cannot leave an empty
+     * arena, and the Gamemakers would not allow one if it could. A genuine zero
+     * is allowed — a scramble for packs that nobody dies in is a legitimate
+     * thing to want to watch, and was not previously expressible.
      */
-    minLethality: 0.4,
-    maxLethality: 2.4,
+    maxDeathShare: 23 / 24,
     /**
-     * How much of the lethality slider reaches commitment rather than damage.
+     * How hard the killing zone hits while the Cornucopia is behind its target,
+     * decaying to 1 as it is approached.
      *
-     * Damped: commitment changes which half of the field is in the scrum as
-     * well as how many come out of it, and the slider is meant to be a body
-     * count, not a different cast.
+     * The target is met by keeping people in the fight and by hitting harder
+     * while behind — never by executing anybody. Every death still goes through
+     * `resolveCombat` and belongs to whoever landed it, which is what keeps
+     * attribution, obituaries and achievements honest at every setting.
      */
-    commitmentShare: 0.35,
+    catchUpDamage: 3.4,
+    /**
+     * Extra rounds two people stay locked together while the scrum is behind.
+     *
+     * Damage alone could not carry a high target: a three-round exchange
+     * between two healthy tributes mostly ends with two hurt tributes, so a
+     * bloodbath asked for twenty-three of twenty-four saturated around eleven
+     * however hard the killing zone was made to hit.
+     */
+    catchUpRounds: 9,
+    /** What the killing zone is worth once the ask has been met. */
+    minLethality: 0.4,
+    /**
+     * Rounds of scrum per tribute the target asks for.
+     *
+     * The old budget was `pool.length * 6 + 12`, which is the right shape for a
+     * bloodbath taking a third of the field and far too short for one asked to
+     * take twenty-three of twenty-four: the loop simply ran out of rounds and
+     * everybody walked away.
+     */
+    scrumRoundsPerTribute: 14,
+    /**
+     * The share of the field below which the horn stops being worth charging.
+     *
+     * Not the historical *outcome* share (a third) but the point where the
+     * commitment curve passes 1 — and those are different numbers, which cost a
+     * measurement to learn. Anchored at a third, a default-sized ask produced a
+     * commitment factor of exactly 1, which is *less* commitment than the old
+     * multiplier gave: fewer of the cautious half charged the horn, the scrum
+     * became a Career pack with a handful of volunteers in it, and Career
+     * victors went 57.4% -> 62.1%. A bloodbath that takes a third of the field
+     * is already a bloodbath most of the field ran at.
+     */
+    commitmentAnchor: 0.22,
+    /** How steeply commitment rises when more than that is asked for... */
+    commitmentAbove: 2.2,
+    /** ...and how gently it falls when less is. */
+    commitmentBelow: 0.7,
+    /**
+     * How much a shortfall raises the odds of catching somebody who ran.
+     *
+     * Without it the target saturated at about ten of twenty-four however high
+     * it was set: only the tributes who committed to the horn were ever in the
+     * scrum, so a bloodbath asked for twenty-three had nobody left to take
+     * them from.
+     */
+    runDownCatchUp: 2.2,
+    /**
+     * The floor on catching somebody who ran, scaled by the shortfall.
+     *
+     * The multiplier above runs through plate proximity and agility, both of
+     * which can be small, so a slow tribute on the far edge of the ring mostly
+     * got away however hard the multiplier was pushed — and a Cornucopia asked
+     * for twenty-three of twenty-four came up three or four short. When the
+     * horn is the whole story, the field does not get to leave it.
+     */
+    runDownFloor: 0.85,
 } as const;
 
 /**
@@ -1905,10 +1982,6 @@ export const ARENA_DEATH_BUDGET = {
      * rate down (measured 5.0% -> 3.3% across 240 runs) and pushes the
      * tribute-dealt share up toward its design goal.
      */
-    /** Environmental deaths below this share of the cast are never interfered with. */
-    softCapShare: 0.20,
-    /** The share at which sparing is at its most likely. */
-    hardCapShare: 0.36,
     sparedChanceAtCap: 0.35,
     sparedChanceAtHardCap: 0.9,
     /**
@@ -1918,16 +1991,31 @@ export const ARENA_DEATH_BUDGET = {
      */
     activeBelowAliveShare: 0.85,
     /*
-     * The bounds on `GameConfig.naturalDeathRate`, which multiplies the two
-     * shares above.
+     * The bounds on `GameConfig.naturalDeathRate`, which scales how hard
+     * non-tribute damage lands.
      *
-     * The floor is not zero: an arena that can never take anybody is not a
-     * setting this game has, and the finalist protection already handles the
-     * only case where a zero is wanted. The ceiling is where the wipeout rate
-     * starts climbing, measured rather than guessed.
+     * The floor is not zero: an arena that can never hurt anybody is not a
+     * setting this game has. The ceiling is where the wipeout rate starts
+     * climbing, measured rather than guessed.
      */
     minNaturalRate: 0.1,
     maxNaturalRate: 2,
+    /*
+     * REQUEST: the arena setting is a *number of tributes*, not a share of a
+     * budget curve. `GameConfig.arenaDeathShare` is that number as a share of
+     * the cast, and the two constants above become the shape of the curve
+     * either side of it rather than the target itself.
+     *
+     * `softCapShare`/`hardCapShare` are now read as fractions *of the target*:
+     * the arena is never reined in below `softOfTarget` of what it was asked
+     * for, is reined in increasingly hard between there and the target, and is
+     * all but stopped past it. A target of zero stops it outright — which is a
+     * legitimate thing to want and was not previously expressible.
+     */
+    softOfTarget: 0.6,
+    hardOfTarget: 1.15,
+    /** "Everybody but one": the arena may not empty the arena. */
+    maxDeathShare: 23 / 24,
 } as const;
 
 /**
@@ -2005,6 +2093,34 @@ export const ESCALATION = {
     collapseDamagePerDay: 15,
     /** The Gamemakers want a victor: the border stops short of the last two. */
     finalistCollapseDamage: 10,
+    /*
+     * REQUEST: "too many victors walk out with 1% health".
+     *
+     * The sole-survivor save clamps a killing blow to leave the last tribute
+     * breathing, and it clamped to exactly one health — which is why the 25th
+     * percentile of victor health was *exactly 1* and 36% of victors finished
+     * at five or below. A Games whose last act is the Gamemakers deciding not
+     * to let the weather finish somebody does not leave them on the edge of
+     * death; it leaves them alive.
+     *
+     * Only the sole-survivor case. The final-two grace and the arena-budget
+     * save still leave a tribute on one health on purpose: the arena has all
+     * but killed them and the other finalist can still finish it, which is a
+     * real ending rather than a bookkeeping one.
+     */
+    lastSurvivorFloor: 14,
+    /**
+     * REQUEST: what the Gamemakers will let the cameras see of the tribute
+     * they have already decided is coming home.
+     *
+     * Not untouched — a tribute who walks out of a mutt attack without a mark
+     * on them tells the audience what has been arranged — but never a cannon.
+     */
+    riggedFloor: 8,
+    /** ...and for a finalist the arena spared while the other one is still out there. */
+    finalTwoSaveFloor: 6,
+    /** ...and for anybody the arena's own budget spared, who may still win. */
+    arenaSaveFloor: 5,
     finalistCount: 2,
     /**
      * The forced finale. Finalist protection (see `applyDamage`) means the
@@ -2109,7 +2225,21 @@ export const ESCALATION = {
      * finalist can still finish it — what is no longer allowed is the Games
      * ending because somebody's arm went septic off-camera.
      */
-    finalTwoAttritionGraceCycles: 8,
+    /*
+     * REQUEST: "too many final deaths before victor is crowned do not end in a
+     * show down, this needs to happen most of the time".
+     *
+     * Measured at 8: the last death was the victor's own kill in 76.7% of runs,
+     * and the other 23% were the weather, a wound going bad, or the closing
+     * border finishing the runner-up while the two of them were still looking
+     * for each other. Widened so the arena has to wait longer before it is
+     * allowed to take the ending away from them.
+     *
+     * Still a window and not a rule, for the reason the original comment gives:
+     * two tributes who genuinely never meet must not hold the Games open
+     * forever, and the forced finale is what usually resolves it first.
+     */
+    finalTwoAttritionGraceCycles: 16,
 } as const;
 
 /**
@@ -4054,6 +4184,16 @@ export const ZONES = {
 /** What tributes remember, and how fast they forget it. */
 /** §1.2: thresholds for the victor's interview reading the run's own ledgers. */
 export const EPILOGUE = {
+    /*
+     * REQUEST: the retrieval. See `processEpilogue`.
+     *
+     * A victor is crowned days after the cannon, not on it. The floor is what
+     * the Capitol will not put on camera; the share is how much of the rest
+     * they manage in the time they have. Neither touches wounds, injuries or
+     * conditions — `healthAtLastCannon` keeps the number they were standing on.
+     */
+    retrievalFloor: 12,
+    retrievalRecoveryShare: 0.18,
     /** Sponsor credit earned purely by being unfindable, worth Caesar asking about. */
     ghostTrustNotable: 12,
 } as const;
@@ -4434,7 +4574,19 @@ export const STANCE_MODES = {
     scavenging: {
         /** Inventory value below which a tribute has nothing worth having. */
         inventoryValue: 8,
-        base: 1.8,
+        /*
+         * REQUEST (absolute death counts), side-effect: raised from 1.8.
+         *
+         * Concentrating the deaths into the Cornucopia arms more of the field
+         * at the horn and spreads fewer bodies through the run, and Scavenging
+         * is gated on having nothing worth carrying or on standing near
+         * somebody who no longer needs theirs — so it fell from 1.3% of
+         * stance-time to 0.8%, under its floor. The stance's own comment has
+         * called it the rarest in the game across several audits; this is the
+         * role-appropriate opportunity the audit's §8.6 asks for rather than
+         * another widening of what counts as scavenging.
+         */
+        base: 2.2,
         /** Pull from a cannon in an adjacent zone: someone dropped their kit. */
         cannonBonus: 1.6,
         /** Corpse-looting edge. */
@@ -6096,6 +6248,89 @@ export const GENERATION = {
      * alias again; 0 would decouple them entirely).
      */
     buildFrameWeight: 0.6,
+
+    /*
+     * REQUEST: bodies are weighted, and weighted per district and per age.
+     *
+     * Measured before this existed, over 4,800 reaped tributes: 53.7% of every
+     * cast was Broad, Heavy or Massive and 51.8% was Padded, Bulky or Hulking.
+     * Both seven-rung scales had their mass sitting a rung and a half above
+     * centre, so "strong, bulky, athletic" was not a kind of tribute — it was
+     * the default one, and a Spare or Lean tribute was the unusual sight.
+     *
+     * Worse, the two things that ought to decide a body decided nothing:
+     * "big" ran 76-81% across *every* district (the career districts were
+     * indistinguishable from District 8) and 61% at age twelve against 83% at
+     * eighteen, which is nowhere near the difference six years makes.
+     *
+     * Three changes, each with its own knob so each can be measured alone:
+     *
+     *  - `frameWeights`/`conditionWeights` replace a flat draw with an explicit
+     *    rarity curve over the seven rungs. The shape is a bell: the middle is
+     *    common, a step out is ordinary, two steps is uncommon, the ends are
+     *    rare. These are relative weights, not probabilities.
+     *  - `districtBodyBias` shifts the draw. 1, 2 and 4 train their tributes
+     *    from childhood; 11 works fields and 7 fells timber, so their bodies
+     *    are built by labour rather than by an academy — a different reason for
+     *    the same shift, and a smaller one. 3, 5, 6 and 8 are indoor trades and
+     *    12 is a hungry district.
+     *  - `bodyAgeAnchor`/`bodyAgePerYear` gate the top of both scales by age,
+     *    and `bodyYoungCeiling` caps it outright: a twelve-year-old does not
+     *    get to be Massive or Hulking because a roll said so.
+     */
+    /** Relative rarity of each frame rung, Slender to Massive. */
+    frameWeights: [2.5, 10, 24, 26, 11, 4, 1],
+    /** Relative rarity of each condition rung, Skeletal to Hulking. */
+    conditionWeights: [0, 0, 30, 28, 11, 4, 1],
+    /**
+     * The lowest condition rung a tribute can be reaped at, as an index.
+     *
+     * A zero weight stops a rung being drawn; it does not stop a downward bias
+     * sliding the rung above it into the empty slot, which is how 6% of the
+     * cast arrived Wasted or Skeletal on the first measurement. Everyone has
+     * been fed for a week in the Capitol: the bottom two rungs are somewhere
+     * the run takes you, not somewhere you start.
+     */
+    startingConditionFloor: 2,
+    /*
+     * How much the body generation already done — height and strength — pulls
+     * the two scales, and from where.
+     *
+     * `PHYSIQUE.neutralHeightCm` is 165, which is the neutral height for
+     * *reach*; it is not the middle of this cast. Heights are drawn from an
+     * age-scaled band whose mean runs above it, so using it here quietly added
+     * half a rung to everybody and most of a rung to the oldest — which is the
+     * bulk the district and the age were supposed to be deciding.
+     */
+    bodyNeutralHeightCm: 172,
+    bodyCmPerRung: 22,
+    bodyNeutralStrength: 5,
+    bodyStrengthPerRung: 6,
+    bodyPhysiqueWeight: 0.55,
+    /**
+     * Rungs of bias per district. Positive is bigger.
+     *
+     * The career districts are the largest entry because their tributes have
+     * been fed and trained for this since they could walk. District 11 and 7
+     * are field and timber labour — real strength, built by work rather than by
+     * an academy, and not the same thing as volunteering.
+     */
+    districtBodyBias: {
+        1: 0.8, 2: 0.9, 4: 0.75,
+        7: 0.45, 11: 0.5, 10: 0.25,
+        3: -0.45, 5: -0.3, 6: -0.3, 8: -0.4, 9: -0.1, 12: -0.55,
+    } as Record<number, number>,
+    /** Age at which the body scales sit where the weights put them. */
+    bodyAgeAnchor: 17,
+    /** Rungs gained or lost per year either side of the anchor. */
+    bodyAgePerYear: 0.42,
+    /**
+     * The hard ceiling for the youngest tributes, as a rung index on both
+     * seven-rung scales. A bias big enough to move an eighteen-year-old to
+     * Massive must not carry a twelve-year-old there with it, and a soft pull
+     * alone cannot promise that — so this is a cap, applied last.
+     */
+    bodyYoungCeiling: { 12: 3, 13: 4, 14: 4, 15: 5 } as Record<number, number>,
     /** §3.1: roughly one tribute in ten leads with the other hand. */
     leftHandedShare: 0.11,
     /** Baseline sponsor trust before reputation modifiers. */

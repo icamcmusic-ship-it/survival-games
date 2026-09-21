@@ -134,6 +134,41 @@ export function processEpilogue(ctx: SimContext) {
     const alive = getAlive(ctx.state);
     const winner = alive[0];
 
+    /*
+     * REQUEST: "too many victors walk out with 1% health".
+     *
+     * Measured: 32% of victors were crowned at five health or below, and the
+     * tenth percentile was one. None of that came from a clamp — it is simply
+     * where the last fight left them, and the run ended on the cannon with
+     * nothing between that moment and the crown.
+     *
+     * In the source material there *is* something between them: a hovercraft,
+     * and a Capitol hospital, and a victor who wakes up days later with the
+     * anthem already over. The retrieval is the missing step, not a change to
+     * how the last fight goes — which should still be able to end with somebody
+     * on their knees.
+     *
+     * Deliberately stabilisation rather than a cure: wounds, injuries,
+     * conditions and everything else the run did to them are untouched, and
+     * `healthAtLastCannon` keeps the number they were actually standing on, so
+     * a chronicle that wants to say how close it was still can.
+     */
+    alive.forEach(v => {
+        v.healthAtLastCannon = v.health;
+        const recovered = v.health
+            + (100 - v.health) * EPILOGUE.retrievalRecoveryShare;
+        const stabilised = Math.min(100, Math.max(EPILOGUE.retrievalFloor, Math.round(recovered)));
+        if (stabilised <= v.health) return;
+        v.health = stabilised;
+        ctx.logEvent(
+            `The hovercraft has ${v.name} before the cannon has finished echoing. `
+            + `They are ${v.healthAtLastCannon <= EPILOGUE.retrievalFloor ? 'not conscious for any of it' : 'awake, and wish they were not'}; `
+            + 'the Capitol has a great deal of practice at putting a victor back together before the country has to look at them.',
+            [v.id],
+            { important: true, category: 'survival' },
+        );
+    });
+
     const qas: EpilogueQA[] = [];
 
     if (!winner) {

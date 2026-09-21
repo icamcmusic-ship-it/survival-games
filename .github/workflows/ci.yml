@@ -94,6 +94,18 @@ jobs:
       # AUDIT-10 batch 2: the shared legal-action contract. "Validated twice"
       # is not something a reader can check by inspection.
       - run: npm run test:actions
+      # REQUEST: bodies weighted by rarity, district and age. A distribution is
+      # the one thing a positioned scene cannot check.
+      - run: npm run test:bodies
+      # REQUEST: how a Games ends — victor health and whether the last death
+      # is a showdown. Both are distributions, not propositions about one run.
+      - run: npm run test:endgame
+      # REQUEST: the death settings are counts. "Absolute" is a claim about the
+      # whole slider, so it is checked across its range rather than at its default.
+      - run: npm run test:death-targets
+      # REQUEST: a fixed Games. The outcome is the easy half; the hard half is
+      # that every other death in it is still a real, attributed, ordered death.
+      - run: npm run test:rigged
 
       # Content and structure.
       - run: npm run test:arenas

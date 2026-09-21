@@ -141,8 +141,10 @@ export default function App() {
         // shared link is untrusted input.
         naturalDeathRate: numParam('naturalDeathRate', DEFAULT_GAME_CONFIG.naturalDeathRate,
           ARENA_DEATH_BUDGET.minNaturalRate, ARENA_DEATH_BUDGET.maxNaturalRate),
-        bloodbathLethality: numParam('bloodbathLethality', DEFAULT_GAME_CONFIG.bloodbathLethality,
-          BLOODBATH.minLethality, BLOODBATH.maxLethality),
+        bloodbathDeathShare: numParam('bloodbathDeathShare', DEFAULT_GAME_CONFIG.bloodbathDeathShare,
+          0, BLOODBATH.maxDeathShare),
+        arenaDeathShare: numParam('arenaDeathShare', DEFAULT_GAME_CONFIG.arenaDeathShare,
+          0, ARENA_DEATH_BUDGET.maxDeathShare),
         sponsorGenerosity: numParam('sponsorGenerosity', DEFAULT_GAME_CONFIG.sponsorGenerosity, 0, 3),
         enableFeast: boolParam('enableFeast', DEFAULT_GAME_CONFIG.enableFeast),
         enableSanity: boolParam('enableSanity', DEFAULT_GAME_CONFIG.enableSanity),
@@ -346,6 +348,7 @@ export default function App() {
             onReroll={gameActions.rerollCast}
             onConfirm={gameActions.confirmReaping}
             onCoach={(id, coaching) => { gameActions.setCoaching(id, coaching); }}
+            onRig={(id) => { gameActions.setRiggedVictor(id); }}
           />
         )}
 

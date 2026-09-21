@@ -363,6 +363,10 @@ function saveHallOfFame(state: GameState): WriteResult {
         quellId: state.gamesProfile?.quell?.id ?? null,
         config: state.baseConfig,
         noVictor: !winner,
+        // REQUEST: a fixed Games is archived as one. A record book that cannot
+        // tell a crown that was won from one that was arranged is worse than no
+        // record book.
+        rigged: state.riggedVictorId !== undefined ? true : undefined,
         winnerName: jointName ?? winner?.name ?? 'No victor',
         winnerDistrict: winner?.district ?? 0,
         kills: winner?.kills ?? 0,
@@ -656,6 +660,26 @@ export const gameActions = {
         if (gameState.phase !== 'reaping' && gameState.phase !== 'setup') return false;
         // Written onto the simulator's live state so the phase engines see it.
         simulator.getState().playerCoaching = { tributeId, ...coaching };
+        gameActions.syncFromSimulator();
+        return true;
+    },
+
+    /**
+     * REQUEST: "a setting to force a certain tribute to win the games".
+     *
+     * Only before the gong. Rigging a Games at the final four is a different
+     * and much uglier thing, and the engine's protection is written as "nothing
+     * may kill this person" — applied halfway through a run it would undo
+     * deaths that have already been narrated.
+     */
+    setRiggedVictor(tributeId: string | null): boolean {
+        const { gameState, simulator } = gameStore.getState();
+        if (!gameState || !simulator) return false;
+        if (gameState.phase !== 'reaping' && gameState.phase !== 'setup') return false;
+        const live = simulator.getState();
+        if (tributeId === null) delete live.riggedVictorId;
+        else if (live.tributes.some(t => t.id === tributeId)) live.riggedVictorId = tributeId;
+        else return false;
         gameActions.syncFromSimulator();
         return true;
     },

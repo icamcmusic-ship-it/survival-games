@@ -53,8 +53,18 @@ await step('advanced settings open and sliders move', async () => {
   const slider = name => page.getByRole('slider', { name });
   await slider('Districts').fill('4');
   await slider('Hazard rate').fill('2.5');
+  /*
+   * REQUEST: the death settings are counts of tributes, so their range depends
+   * on the cast — which the Districts slider above just set to 4, i.e. 8
+   * tributes. Asserted rather than assumed: a count slider whose top does not
+   * track the field it is counting out of is the bug this replaced.
+   */
+  const horn = slider('Cornucopia deaths');
+  const hornMax = await horn.getAttribute('max');
+  if (hornMax !== '7') throw new Error(`Cornucopia deaths tops out at ${hornMax}, expected 7 for a cast of 8`);
+  await horn.fill('7');
+  await slider('Arena deaths').fill('0');
   await slider('Arena lethality').fill('1.5');
-  await slider('Bloodbath lethality').fill('2');
   await slider('Alliance betrayal rate').fill('3');
   await slider('Sponsor generosity').fill('0');
   await page.getByText('Reset everything').click();

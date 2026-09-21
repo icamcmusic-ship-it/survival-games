@@ -343,59 +343,120 @@ export function driftCondition(t: Tribute): 'lost' | 'gained' | undefined {
     return undefined;
 }
 
-/** Frame and condition as generated at the reaping. */
-export function rollBody(pickIndex: (max: number) => number, strength: number, heightCm: number): {
-    frame: Frame; condition: Condition; build: Build;
-} {
-    // Frame correlates with height and, more weakly, with strength — the two
-    // things that are actually skeleton-shaped — but keeps an independent roll
-    // so a wiry powerhouse and a heavy-set average tribute both exist.
-    //
-    // §6: the roll is made on the original five-rung scale and then offset into
-    // the seven-rung one, so the common case is distributed exactly as it was.
-    // The outer two rungs are reached only by the extra roll below, which is
-    // what keeps 'Slender' and 'Massive' rare.
-    const heightPull = (heightCm - PHYSIQUE.neutralHeightCm) / 12;
-    const innerIdx = Math.round(
-        pickIndex(4) * GENERATION.buildFrameWeight
-        + (strength / 2.5 + heightPull) * (1 - GENERATION.buildFrameWeight)
-    );
-    let frameIdx = Math.min(4, Math.max(0, innerIdx)) + 1;
-    // A tribute already at an end of the old scale can be pushed past it: one
-    // roll in five, and only in the direction their body was already going.
-    if (frameIdx === 1 && pickIndex(4) === 0) frameIdx = 0;
-    else if (frameIdx === 5 && pickIndex(4) === 0) frameIdx = 6;
+/**
+ * Draw a rung from a weighted seven-rung scale, shifted by `bias` rungs.
+ *
+ * The bias is applied to the *weights* rather than to the result, which is the
+ * difference between "this district tends bigger" and "this district is bigger
+ * by exactly one rung". A District 2 tribute is usually larger and sometimes
+ * is not, which is what a bias should mean.
+ *
+ * `roll` is a fraction in [0, 1) from the run's own stream, so this stays
+ * exactly as deterministic as everything else in the engine.
+ */
+function weightedRung(weights: readonly number[], bias: number, roll: number): number {
+    // Shifting the curve: each rung's weight is taken from the position it
+    // would have occupied without the bias, interpolated so a fractional bias
+    // is a real fractional shift rather than a rounded one.
+    const shifted = weights.map((_, idx) => {
+        const from = idx - bias;
+        const lo = Math.floor(from);
+        const hi = lo + 1;
+        const frac = from - lo;
+        const at = (i: number) => (i < 0 || i >= weights.length ? 0 : weights[i]);
+        return at(lo) * (1 - frac) + at(hi) * frac;
+    });
+    const total = shifted.reduce((sum, w) => sum + w, 0);
+    if (total <= 0) return Math.min(weights.length - 1, Math.max(0, Math.round(bias) + AXIS_MIDDLE));
+    let target = roll * total;
+    for (let i = 0; i < shifted.length; i++) {
+        target -= shifted[i];
+        if (target <= 0) return i;
+    }
+    return shifted.length - 1;
+}
+
+/**
+ * How far a tribute's body is pushed up or down both scales before the draw.
+ *
+ * Three inputs, each with its own knob so each can be measured alone: where
+ * they are from, how old they are, and how tall and strong the rest of
+ * generation already decided they are.
+ */
+export function bodyBiasFor(district: number, age: number, strength: number, heightCm: number): number {
+    const fromDistrict = GENERATION.districtBodyBias[district] ?? 0;
+    const fromAge = (age - GENERATION.bodyAgeAnchor) * GENERATION.bodyAgePerYear;
+    // The correlation the old roll had, kept: frame is skeleton-shaped, and
+    // height and strength are the two things that are skeleton-shaped too.
+    // Weakened, because it was doing the work the district and the age should
+    // have been doing and was doing it for everybody equally.
+    const fromBody = ((heightCm - GENERATION.bodyNeutralHeightCm) / GENERATION.bodyCmPerRung
+        + (strength - GENERATION.bodyNeutralStrength) / GENERATION.bodyStrengthPerRung)
+        * GENERATION.bodyPhysiqueWeight;
+    return fromDistrict + fromAge + fromBody;
+}
+
+/** The highest rung a tribute of this age may reach on either scale. */
+function ceilingForAge(age: number): number {
+    return GENERATION.bodyYoungCeiling[age] ?? FRAMES.length - 1;
+}
+
+/**
+ * Frame and condition as generated at the reaping.
+ *
+ * REQUEST: weighted by rarity, by district and by age.
+ *
+ * The previous version drew the frame from a flat five-wide index blended with
+ * height and strength, and the condition from a flat four-wide index — so both
+ * scales were near-uniform over their middle, their mass sat above centre, and
+ * neither the district nor the age moved them in any way a reader would notice.
+ * Measured over 4,800 tributes: 53.7% Broad-or-larger, 51.8% Padded-or-heavier,
+ * "big" at 76-81% in *every* district and 61% at twelve.
+ *
+ * Now: an explicit rarity curve per rung, shifted by a bias that is mostly the
+ * district and the age, and then capped for the youngest — because a bias large
+ * enough to make an eighteen-year-old from District 2 Massive must not carry a
+ * twelve-year-old from District 8 there with it, and a soft pull cannot promise
+ * that.
+ *
+ * `pickIndex` is kept in the signature for the callers that have it, and the
+ * fractional rolls are derived from it, so the draw still comes out of the run's
+ * own seeded stream.
+ */
+export function rollBody(
+    pickIndex: (max: number) => number,
+    strength: number,
+    heightCm: number,
+    who: { district?: number; age?: number } = {},
+): { frame: Frame; condition: Condition; build: Build } {
+    const bias = bodyBiasFor(who.district ?? 0, who.age ?? GENERATION.bodyAgeAnchor, strength, heightCm);
+    // A fraction in [0, 1) from the integer picker the callers hand in. The
+    // granularity of an integer-to-fraction conversion is not a tunable:
+    // changing it does not retune the curve, it quantises it more finely.
+    // balance-exempt: structural, the resolution of a fraction from an integer
+    const RESOLUTION = 1000;
+    const roll = () => pickIndex(RESOLUTION - 1) / RESOLUTION;
+
+    const ceiling = ceilingForAge(who.age ?? GENERATION.bodyAgeAnchor);
+    const frameIdx = Math.min(ceiling, weightedRung(GENERATION.frameWeights, bias, roll()));
     const frame = FRAMES[frameIdx];
 
-    // Nobody walks into an arena Wasted, let alone Skeletal; everyone has been
-    // fed for a week in the Capitol. The bottom of the condition scale is
-    // somewhere the run takes you, not somewhere you start — and the top is
-    // rare for the same reason the top of the frame scale is.
     /*
-     * AUDIT-8 §1.3: this read `pickIndex(4)`, and `pickIndex` is inclusive.
-     *
-     * The comment said "Lean .. Bulky" — four rungs, indices 2-5 — and the
-     * code drew 0-4 and offset by 2, so the base range ran Lean..*Hulking*.
-     * The promotion on the next line, which exists to make the top rung rare
-     * exactly as the frame axis below makes 'Slender' and 'Massive' rare, was
-     * therefore adding a second path to a rung the base roll already reached
-     * one time in five. Measured over 7,640 tributes: `Hulking` 24.3% — the
-     * single most common starting condition, and `Bulky` directly beneath it
-     * the *least* common at 16.8%. The intended shape is a bell with rare
-     * ends; the produced shape was a ramp with an inverted notch.
-     *
-     * It propagated: `deriveBuild` sums the two axis orders, so the eleven-rung
-     * Build ladder came out `Slight` 0.09%, `Wiry` 0.56%, and `Frail` and
-     * `Skeletal` unreachable at the reaping — five of eleven rungs between rare
-     * and impossible, on a ladder widened precisely so those bodies would stop
-     * collapsing into one word. And `conditionStep` is read by seven functions
-     * in this file, so a quarter of the field walked in at the extreme of
-     * insulation, heat tolerance, water need, agility penalty, injury
-     * absorption and starvation buffer all at once — which collapses the half
-     * of the two-axis model that makes it worth having.
+     * Nobody walks into an arena Wasted, let alone Skeletal; everyone has been
+     * fed for a week in the Capitol. The bottom of the condition scale is
+     * somewhere the run takes you, not somewhere you start — which is why the
+     * first two weights are zero rather than small.
      */
-    let conditionIdx = Math.min(3, Math.max(0, pickIndex(3))) + 2;  // Lean .. Bulky
-    if (conditionIdx === 5 && pickIndex(4) === 0) conditionIdx = 6;
+    const conditionIdx = Math.min(
+        ceiling,
+        // ...and the floor is enforced rather than implied. A zero weight stops
+        // a rung being *drawn*, but shifting the curve downward slides the
+        // neighbouring rung's weight into the empty slot, which put 6% of the
+        // cast on the plates Wasted or Skeletal. The two bottom rungs are not a
+        // rare outcome of the draw; they are not an outcome of it at all.
+        Math.max(GENERATION.startingConditionFloor,
+            weightedRung(GENERATION.conditionWeights, bias, roll())),
+    );
     const condition = CONDITIONS[conditionIdx];
     return { frame, condition, build: deriveBuild(frame, condition) };
 }

@@ -597,8 +597,16 @@ const CONFIG_RULES: ConfigRules = {
     // defaults, which are the behaviour those saves were played under.
     naturalDeathRate: r => clamp(asNum(r.naturalDeathRate, DEFAULT_GAME_CONFIG.naturalDeathRate),
         ARENA_DEATH_BUDGET.minNaturalRate, ARENA_DEATH_BUDGET.maxNaturalRate),
-    bloodbathLethality: r => clamp(asNum(r.bloodbathLethality, DEFAULT_GAME_CONFIG.bloodbathLethality),
-        BLOODBATH.minLethality, BLOODBATH.maxLethality),
+    /*
+     * REQUEST: the death settings became targets in tributes rather than
+     * multipliers. A save written before that carries the old fields and none
+     * of the new ones, and resolves to the defaults — which are the numbers
+     * those saves were played under, restated in the new unit.
+     */
+    bloodbathDeathShare: r => clamp(asNum(r.bloodbathDeathShare, DEFAULT_GAME_CONFIG.bloodbathDeathShare),
+        0, BLOODBATH.maxDeathShare),
+    arenaDeathShare: r => clamp(asNum(r.arenaDeathShare, DEFAULT_GAME_CONFIG.arenaDeathShare),
+        0, ARENA_DEATH_BUDGET.maxDeathShare),
     sponsorGenerosity: r => clamp(asNum(r.sponsorGenerosity, DEFAULT_GAME_CONFIG.sponsorGenerosity), 0, 3),
     enableFeast: r => asBool(r.enableFeast, DEFAULT_GAME_CONFIG.enableFeast),
     enableSanity: r => asBool(r.enableSanity, DEFAULT_GAME_CONFIG.enableSanity),

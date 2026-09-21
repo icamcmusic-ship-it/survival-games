@@ -140,6 +140,7 @@ export function normalizeEntry(raw: unknown): HallOfFameEntry | null {
         config,
         quellId: typeof r.quellId === 'string' || r.quellId === null ? r.quellId : undefined,
         noVictor: r.noVictor === true ? true : undefined,
+        rigged: r.rigged === true ? true : undefined,
         pinned: r.pinned === true ? true : undefined,
         winnerName,
         winnerDistrict: asNumber(r.winnerDistrict),
