@@ -2460,6 +2460,38 @@ export interface GameConfig {
     districtCount: number; // 2-16, each district reaps 2 tributes (13-16 are the "expanded Games" outer territories)
     hazardRate: number; // multiplier on random event/mutt attack chance
     betrayalRate: number; // multiplier on alliance betrayal chance
+    /**
+     * How much of the cast the arena itself is allowed to take.
+     *
+     * The arena and the tributes compete for the same finite cast, and the
+     * split between them was fixed: `ARENA_DEATH_BUDGET` capped environmental
+     * deaths at a share of the field and nothing about it was configurable, so
+     * a run that wanted a knife-fight Games and a run that wanted a survival
+     * Games got the same one. Measured at the defaults before this existed: a
+     * 24-tribute field lost about 11 people to the arena and about 12 to each
+     * other, which is more scenery than most players want.
+     *
+     * A multiplier on the budget's soft and hard caps. Below 1 the Gamemakers
+     * start pulling the arena's punches sooner, so more of the cast survives to
+     * be killed by somebody — which is the only other thing that can kill them.
+     * Above 1 the arena is given a longer leash.
+     *
+     * `DEFAULT_GAME_CONFIG` sets this to the value measured to produce roughly
+     * 16 tribute-dealt deaths in a full field; see `NATURAL_DEATHS` in
+     * `data/balance.ts` for the measurement.
+     */
+    naturalDeathRate: number;
+    /**
+     * How hard the opening sixty seconds hits.
+     *
+     * A multiplier on the damage landed inside the killing zone, which is the
+     * one lever that moves the bloodbath's body count monotonically without
+     * changing who commits to the horn (the commitment knobs move *which*
+     * tributes die as much as how many, which is a different setting).
+     *
+     * Default tuned to a bloodbath that takes roughly 8-11 of a full field.
+     */
+    bloodbathLethality: number;
     sponsorGenerosity: number; // multiplier on sponsor gift chance
     enableFeast: boolean;
     enableSanity: boolean;

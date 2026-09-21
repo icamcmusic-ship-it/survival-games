@@ -343,7 +343,22 @@ function attemptRescueLine(
         + Math.max(0, -getRel(rescuer, stranded.id)) * RESCUE_LINE.cutPerDislike
         - deterrent;
     if (ctx.rng.chance(cutChance)) {
-        const cause = `Dropped in ${stranded.zone} when the anchor went`;
+        /*
+         * AUDIT-10 F05: a cut line is a murder, and the record has to say so.
+         *
+         * The cause was `Dropped in <zone> when the anchor went` with
+         * `kind: 'tribute'` and the cutter as the source — three statements
+         * that do not agree. `killTribute` writes `Killed by <name>` for every
+         * tribute-dealt death and everything downstream keys off that prefix:
+         * the soak asserts the obituary names the recorded killer, and the
+         * metrics script buckets anything it does not recognise as a hazard,
+         * so this read as death by scenery and moved two indicators. The prose
+         * about the anchor is elaboration and belongs *after* the prefix.
+         *
+         * `code: 'fall'` was the same disagreement in the taxonomy: a person
+         * did this. The fall is how, not who.
+         */
+        const cause = `Killed by ${rescuer.name}, who cut the line in ${stranded.zone} and let the anchor take the blame`;
         record(ctx, { rescuerId: rescuer.id, strandedId: stranded.id, zone: stranded.zone, anchor: anchor.kind, stranding, outcome: 'cut', rope: anchor.rope });
         /*
          * AUDIT-10 F05: a downed victim is outside the damage system.
@@ -363,10 +378,10 @@ function attemptRescueLine(
          */
         const wasDowned = isDowned(stranded);
         if (wasDowned) {
-            cutDownedLine(ctx, stranded, `Killed by ${rescuer.name}, who cut the line in ${stranded.zone}`, rescuer);
+            cutDownedLine(ctx, stranded, cause, rescuer);
         } else {
             applyDamage(ctx, stranded, RESCUE_LINE.fallDamage, {
-                cause, kind: 'tribute', sourceId: rescuer.id, code: 'fall',
+                cause, kind: 'tribute', sourceId: rescuer.id, code: 'tribute',
             });
             openWound(stranded, BLEEDING.combatSeverity);
             clampTribute(stranded);

@@ -446,6 +446,8 @@ const FULL_CONFIG: Required<GameConfig> = {
     districtCount: 10,
     hazardRate: 1.75,
     betrayalRate: 2,
+    naturalDeathRate: 1.4,
+    bloodbathLethality: 0.8,
     sponsorGenerosity: 0.5,
     enableFeast: false,
     enableSanity: false,

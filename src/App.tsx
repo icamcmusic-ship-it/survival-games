@@ -67,6 +67,7 @@ import { TributeModal } from './components/TributeModal';
 import { useStore } from './store/createStore';
 import { prefsStore } from './store/prefsStore';
 import { DEFAULT_GAME_CONFIG } from './data/constants';
+import { ARENA_DEATH_BUDGET, BLOODBATH } from './data/balance';
 
 export default function App() {
   const gameState = useStore(gameStore, s => s.gameState);
@@ -134,6 +135,14 @@ export default function App() {
         districtCount: Math.round(numParam('districtCount', DEFAULT_GAME_CONFIG.districtCount, 2, 16)),
         hazardRate: numParam('hazardRate', DEFAULT_GAME_CONFIG.hazardRate, 0.25, 2.5),
         betrayalRate: numParam('betrayalRate', DEFAULT_GAME_CONFIG.betrayalRate, 0, 3),
+        // The death-mix dials. Absent — which is every link written before they
+        // existed — falls back to the defaults, which is what those links
+        // always replayed. Ranges mirror the setup screen's sliders, because a
+        // shared link is untrusted input.
+        naturalDeathRate: numParam('naturalDeathRate', DEFAULT_GAME_CONFIG.naturalDeathRate,
+          ARENA_DEATH_BUDGET.minNaturalRate, ARENA_DEATH_BUDGET.maxNaturalRate),
+        bloodbathLethality: numParam('bloodbathLethality', DEFAULT_GAME_CONFIG.bloodbathLethality,
+          BLOODBATH.minLethality, BLOODBATH.maxLethality),
         sponsorGenerosity: numParam('sponsorGenerosity', DEFAULT_GAME_CONFIG.sponsorGenerosity, 0, 3),
         enableFeast: boolParam('enableFeast', DEFAULT_GAME_CONFIG.enableFeast),
         enableSanity: boolParam('enableSanity', DEFAULT_GAME_CONFIG.enableSanity),

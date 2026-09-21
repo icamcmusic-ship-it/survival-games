@@ -17,7 +17,7 @@ import { ITEMS } from '../src/data/constants';
 import { Item, Tribute } from '../src/models/types';
 import { createContext } from '../src/engine/context';
 import { RNG } from '../src/utils/rng';
-import { RESCUE_LINE, ALLIANCE_DISPUTE, VERTICALITY } from '../src/data/balance';
+import { RESCUE_LINE, VERTICALITY } from '../src/data/balance';
 import { tickRescueLines } from '../src/engine/rescueLine';
 import { tickAllianceDisputes } from '../src/engine/allianceDispute';
 import { goDown, isDowned, tickDowned, widenRescueWindow } from '../src/engine/downed';

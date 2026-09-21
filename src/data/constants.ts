@@ -7,6 +7,31 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
     districtCount: 12,
     hazardRate: 1.0,
     betrayalRate: 1.0,
+    /*
+     * Tuned by measurement rather than chosen, and deliberately well below 1.
+     *
+     * At 1.0 — the behaviour before this setting existed — a 24-tribute field
+     * lost about 11.5 people to the arena and about 11.5 to each other, so more
+     * than half of every Games was scenery. Measured over a full `ARENAS`
+     * sweep: 0.3 puts tribute-dealt deaths at a median of 16, which is the
+     * target, and leaves the arena about 7.
+     *
+     * The number reads low because the old arena was hitting very hard, not
+     * because the arena is now harmless: thirst, infection, falls and mutts all
+     * still finish people, and the closing border is exempt from this scaling
+     * entirely (see `UNSCALED_DAMAGE` in `combat.ts`) because it is the
+     * Gamemakers ending the Games rather than arena attrition. Turning it lower
+     * still buys a few more tribute-dealt deaths at the price of a longer
+     * Games, which is a trade the slider lets the player make.
+     */
+    naturalDeathRate: 0.3,
+    /*
+     * A bloodbath of roughly 8-11 from a full field: measured median 9, mean
+     * 8.8, 36.6% of the cast — which also brings the long-standing "share of
+     * the field lost in the bloodbath" indicator into its 33-50% design band
+     * for the first time.
+     */
+    bloodbathLethality: 1.6,
     sponsorGenerosity: 1.0,
     enableFeast: true,
     enableSanity: true,

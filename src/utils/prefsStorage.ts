@@ -128,6 +128,8 @@ export const CONFIG_SPEC: StorageSpec<GameConfig> = {
         return {
             districtCount: Math.min(16, Math.max(2, asNum(r.districtCount, DEFAULT_GAME_CONFIG.districtCount))),
             hazardRate: asNum(r.hazardRate, DEFAULT_GAME_CONFIG.hazardRate),
+            naturalDeathRate: asNum(r.naturalDeathRate, DEFAULT_GAME_CONFIG.naturalDeathRate),
+            bloodbathLethality: asNum(r.bloodbathLethality, DEFAULT_GAME_CONFIG.bloodbathLethality),
             betrayalRate: asNum(r.betrayalRate, DEFAULT_GAME_CONFIG.betrayalRate),
             sponsorGenerosity: asNum(r.sponsorGenerosity, DEFAULT_GAME_CONFIG.sponsorGenerosity),
             enableFeast: asBool(r.enableFeast, DEFAULT_GAME_CONFIG.enableFeast),

@@ -128,6 +128,19 @@ const EARNED_TRAIT_NAMES = Object.keys(TRAIT_DEFS).filter(name => TRAIT_DEFS[nam
 const dead = (state: GameState) => state.tributes.filter(t => t.status === 'dead');
 
 /**
+ * The last four standing, in every Games rather than only in the rare ones
+ * that end with somebody still alive beside the victor.
+ *
+ * Ranked by when they fell — survivors sort first, then the latest deaths —
+ * which is the same construction two of the star-crossed predicates already
+ * do inline. Hoisted so a predicate asking about the endgame asks the same
+ * question they do.
+ */
+const finalFour = (state: GameState) => [...state.tributes]
+    .sort((a, b) => (b.dayOfDeath ?? Infinity) - (a.dayOfDeath ?? Infinity))
+    .slice(0, 4);
+
+/**
  * AUDIT-9 B01/B03: how many went down at the Cornucopia.
  *
  * The bloodbath is a *phase*, not a calendar day — `startGames()` sets
@@ -207,7 +220,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Caught Out',
         hint: 'See a planted rumour exposed as false by somebody who went and looked.',
         category: 'social',
-        rarity: 'rare',
+        rarity: 'common',
         // Audit 3 §1.6: an exposed claim is retired from the pool, so reading
         // the pool at the end was reading for the one thing that is removed.
         test: state => state.plantedRumourExposed === true,
@@ -240,7 +253,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Three Names',
         hint: 'Have three tributes carrying earned epithets alive at the same time.',
         category: 'capitol',
-        rarity: 'rare',
+        rarity: 'common',
         test: state => state.tributes.filter(t => !!t.epithet).length >= 3,
         nearMiss: state => {
             const n = state.tributes.filter(t => !!t.epithet).length;
@@ -281,7 +294,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'A Weapon With a Name',
         hint: 'Crown a victor holding a weapon that earned a name of its own in the arena.',
         category: 'combat',
-        rarity: 'rare',
+        rarity: 'common',
         test: (_s, v) => !!v && v.inventory.some(i => !!i.legendName),
     },
     {
@@ -460,7 +473,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Scavenger',
         hint: 'Crown a victor who went through four or more of the fallen.',
         category: 'survival',
-        rarity: 'legendary',
+        rarity: 'rare',
         /*
          * AUDIT-9 stage C: five was above the ceiling once actions started
          * costing the day. Looting a body takes time somebody now has to
@@ -609,7 +622,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         hint: 'Crown a victor who was still keeping up a performed bond when the field came down to the last two.',
         category: 'social',
         // AUDIT-7: observed at 0.4% of 500 runs, so no longer 'possible?'.
-        rarity: 'possible',
+        rarity: 'legendary',
         /*
          * AUDIT-6 §11.2: the victor scope is the whole point of this one — it
          * is about the act still running at the end — so it keeps it. What it
@@ -628,7 +641,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Quartermaster',
         hint: 'Crown a victor who held a named alliance role for ten cycles or more.',
         category: 'social',
-        rarity: 'rare',
+        rarity: 'common',
         test: (_s, v) => !!v && (v.roleCycles ?? 0) >= 10,
         nearMiss: (_s, v) => (v && (v.roleCycles ?? 0) >= 6 && (v.roleCycles ?? 0) < 10)
             ? `${v.name} held a role for ${v.roleCycles} cycles — ${10 - (v.roleCycles ?? 0)} short`
@@ -663,7 +676,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Fever Dream',
         hint: 'See a tribute cut back from a septic wound that was going to kill them.',
         category: 'survival',
-        rarity: 'legendary',
+        rarity: 'rare',
         // Audit 3 §1.6/§10.1: this wanted `terminalInfectionBeaten` on the
         // *victor*. Measured over 200 runs at the rates that then applied: 19
         // of 4,808 tributes ever reached the top grade, 3 were ever treated
@@ -804,7 +817,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Weather Beaten',
         hint: 'Crown a victor who survived four or more storms.',
         category: 'arena',
-        rarity: 'rare',
+        rarity: 'common',
         test: (_s, v) => !!v && (v.stormsSurvived ?? 0) >= 4,
         nearMiss: (_s, v) => (v && (v.stormsSurvived ?? 0) >= 2 && (v.stormsSurvived ?? 0) < 4)
             ? `${v.name} rode out ${v.stormsSurvived} storms — ${4 - (v.stormsSurvived ?? 0)} short of weather-beaten`
@@ -831,7 +844,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Bloodless Crown',
         hint: 'Crown a victor who never killed anybody.',
         category: 'combat',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: (_s, v) => !!v && v.kills === 0,
         nearMiss: (_s, v) => (v && v.kills > 0 && v.kills <= 2)
             ? `${v.name} won with ${v.kills} kill${v.kills === 1 ? '' : 's'} — ${v.kills} short of a bloodless crown`
@@ -842,7 +855,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Fourteen at Most',
         hint: 'Crown a victor aged fourteen or under.',
         category: 'reaping',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: (_s, v) => !!v && v.age <= 14,
         nearMiss: (_s, v) => (v && v.age > 14 && v.age <= 16)
             ? `${v.name} was ${v.age} — ${v.age - 14} year${v.age - 14 === 1 ? '' : 's'} over`
@@ -892,7 +905,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Star-Crossed',
         hint: 'See a star-crossed pair both survive to the final four.',
         category: 'social',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: state => {
             const lovers = state.tributes.filter(t => isStarCrossed(t));
             if (lovers.length < 2) return false;
@@ -997,7 +1010,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Everyone Knows the Name',
         hint: 'See a single tribute reach five kills.',
         category: 'combat',
-        rarity: 'rare',
+        rarity: 'common',
         test: state => state.tributes.some(t => t.kills >= 5),
         nearMiss: state => {
             const best = state.tributes.reduce((a, t) => Math.max(a, t.kills), 0);
@@ -1034,7 +1047,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Long Games',
         hint: 'See a Games run past day twelve.',
         category: 'games',
-        rarity: 'rare',
+        rarity: 'common',
         test: state => state.day > 12,
         nearMiss: state => state.day >= 10 && state.day <= 12
             ? `these Games ran ${state.day} days — ${13 - state.day} short`
@@ -1045,7 +1058,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Over By Friday',
         hint: 'See a Games finish on day six or earlier.',
         category: 'games',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: state => state.day <= 6,
         nearMiss: state => state.day > 6 && state.day <= 8
             ? `these Games ran ${state.day} days — ${state.day - 6} over`
@@ -1092,7 +1105,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Arena Won',
         hint: 'See a Games where more tributes died to the arena than to each other.',
         category: 'games',
-        rarity: 'common',
+        rarity: 'rare',
         test: state => {
             // AUDIT-9: by code, not by prefix.
             const byTribute = dead(state).filter(t => deathCodeOf(t) === 'tribute').length;
@@ -1219,7 +1232,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Let It Burn',
         hint: 'See a fire spread from one sector into the next.',
         category: 'arena',
-        rarity: 'rare',
+        rarity: 'common',
         test: state => state.log.some(e => /The fire in .* jumps to/.test(e.text)),
     },
     {
@@ -1241,7 +1254,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Held Together With String',
         hint: 'Crown a victor carrying three or more standing injuries at the end.',
         category: 'survival',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: (_s, v) => !!v && Object.values(v.injuries).filter(Boolean).length >= 3,
         nearMiss: (_s, v) => {
             const n = v ? Object.values(v.injuries).filter(Boolean).length : 0;
@@ -1272,7 +1285,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Never Needed Anyone',
         hint: 'Crown a victor who never once joined an alliance.',
         category: 'social',
-        rarity: 'legendary',
+        rarity: 'possible',
         test: (state, v) => !!v && !state.log.some(e => e.category === 'alliance' && e.tributesInvolved.includes(v.id)),
     },
     {
@@ -1351,7 +1364,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Kept Their Word',
         hint: 'Crown a victor who was still protecting someone younger when the Games ended.',
         category: 'social',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: (_s, v) => !!v && (v.protectorBonds?.length ?? 0) > 0,
     },
     {
@@ -1463,7 +1476,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // Audit 2 §11.2: three against a ceiling of two.
         hint: 'See one tribute extort payment out of two different people in a single Games.',
         category: 'social',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: state => state.tributes.some(t => (t.extortedIds?.length ?? 0) >= 2),
         nearMiss: state => {
             const holder = state.tributes.find(t => (t.extortedIds?.length ?? 0) === 1);
@@ -1638,7 +1651,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Ground Gave Out',
         hint: 'Watch the closing border take somebody.',
         category: 'arena',
-        rarity: 'rare',
+        rarity: 'common',
         // AUDIT-9: the border is a cause code; it had two spellings here and
         // the engine writes at least three.
         test: state => dead(state).some(t => deathCodeOf(t) === 'border'),
@@ -1648,7 +1661,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Held the Horn',
         hint: 'Hold the Cornucopia for six consecutive cycles.',
         category: 'combat',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: state => (state.maxHornHold ?? 0) >= 6,
         nearMiss: state => {
             const n = state.maxHornHold ?? 0;
@@ -1808,7 +1821,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // very best. Two-thirds of a sprawl is the top of what the calendar
         // allows, and it is still the longest walk anybody takes all year.
         category: 'arena',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: state => state.arena.zones.length >= 12
             && state.tributes.some(t =>
                 (t.visitedZones?.length ?? 0) >= Math.ceil(state.arena.zones.length * (2 / 3))),
@@ -1857,7 +1870,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Brought Back',
         hint: 'Crown a victor who was left for dead and pulled back by an ally.',
         category: 'social',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: (_s, v) => !!v && v.revivedBy !== undefined,
         nearMiss: (state, v) => {
             if (!v || v.revivedBy !== undefined) return undefined;
@@ -1961,7 +1974,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Quiet Storm',
         hint: 'Crown a victor who never once opened a fight. Killing in self-defence is fine.',
         category: 'combat',
-        rarity: 'common',
+        rarity: 'rare',
         test: (_s, v) => !!v && (v.fightsOpened ?? 0) === 0,
         nearMiss: (_s, v) => (v && (v.fightsOpened ?? 0) === 1)
             ? `${v.name} opened exactly one fight all run — one short of never`
@@ -2002,7 +2015,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'social',
         // AUDIT-7: the §4.1 trust wiring and the §4.2 keeper role between them
         // made the arena economy busy enough for this to land. 0.4% of 500 runs.
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (_s, v) => !!v
             && [(v.extortedIds?.length ?? 0) > 0,
                 (v.extortedByIds?.length ?? 0) > 0,
@@ -2019,7 +2032,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Foul Weather Friend',
         hint: 'Crown a victor who stood in three separate Gamemaker storm fronts and walked out of all three.',
         category: 'arena',
-        rarity: 'rare',
+        rarity: 'common',
         test: (_s, v) => !!v && (v.stormsSurvived ?? 0) >= 3,
         nearMiss: (_s, v) => (v && (v.stormsSurvived ?? 0) === 2)
             ? `${v.name} rode out two fronts — one short`
@@ -2101,7 +2114,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Storm Chaser',
         hint: 'Crown a victor who walked into a sector under an active zone effect three times and survived each one.',
         category: 'arena',
-        rarity: 'rare',
+        rarity: 'common',
         test: (_s, v) => !!v && (v.walkedIntoEffect ?? 0) >= 3,
         nearMiss: (_s, v) => {
             const walked = v?.walkedIntoEffect ?? 0;
@@ -2249,7 +2262,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Nobody Was Invited',
         hint: 'See a Games of seven days or more end without the Gamemakers ever calling a feast.',
         category: 'games',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: state => state.config.enableFeast === true && (state.feastsHeld ?? 0) === 0 && state.day >= 7,
         nearMiss: state => state.config.enableFeast === true && (state.feastsHeld ?? 0) === 0 && state.day === 6
             ? 'no feast was ever called, but the Games ended on day six — Nobody Was Invited runs to seven'
@@ -2260,7 +2273,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Hands Off',
         hint: 'As Gamemaker, crown a victor without pulling a single lever.',
         category: 'games',
-        rarity: 'common',
+        rarity: 'rare',
         test: (state, v) => !!v && state.gamemakerMode === true
             && Object.values(state.gamemakerUse ?? {}).every(u => (u?.uses ?? 0) === 0),
     },
@@ -2367,7 +2380,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'A Blade With a Name',
         hint: 'Crown a victor carrying a named weapon that has taken five lives.',
         category: 'combat',
-        rarity: 'possible',
+        rarity: 'legendary',
         // AUDIT-8 §1.4: unlocked on exactly the same runs as 'a-weapon-with-a-name' and 'the-named-blade' across a
         // 500-run sample. Re-gated to a harder rung of the same ladder rather than
         // deleted, so an id already in a player's record keeps resolving.
@@ -2391,7 +2404,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Nothing but Sky',
         hint: 'See a Games where two of every three deaths were the arena\'s, not another tribute\'s.',
         category: 'oddity',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: state => {
             const dead = state.tributes.filter(t => t.status === 'dead');
             const byHand = dead.filter(t => deathCodeOf(t) === 'tribute').length;
@@ -2423,7 +2436,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Long Truce',
         hint: 'Crown a victor whose truce was renewed twice with the same tribute.',
         category: 'social',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: (_s, v) => !!v && Object.values(v.truceRenewed ?? {}).some(n => n >= 2),
         nearMiss: (_s, v) => (v && Object.values(v.truceRenewed ?? {}).some(n => n === 1))
             ? `${v.name} renewed a truce once — the Long Truce renews it twice`
@@ -2885,7 +2898,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Not a Free Ride',
         hint: 'Complete an escort you agreed to, with everybody accounted for.',
         category: 'social',
-        rarity: 'legendary',
+        rarity: 'possible',
         test: state => (state.obligations ?? []).some(o => o.kind === 'escort' && o.status === 'kept'),
     },
     {
@@ -2926,7 +2939,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Carried Back',
         hint: 'Collect an ally\'s parachute and bring it to them.',
         category: 'social',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: state => state.log.some(e => e.type === 'parachute-collected'),
     },
     {
@@ -2934,7 +2947,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Something in the Water',
         hint: 'See a tribute felled by water they drank days earlier.',
         category: 'survival',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: state => state.log.some(e => e.type === 'waterborne-illness'),
     },
     {
@@ -3029,7 +3042,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Scarred And Standing',
         hint: 'Crown a victor carrying an old wound that never closed properly.',
         category: 'survival',
-        rarity: 'legendary',
+        rarity: 'rare',
         // Audit 5 §1.7: two scars on a victor measured 0 in 400 runs, and 6
         // tributes of 9,600 ever carried two. One scar on the winner is 5 of
         // 389 victors — the legendary it was always going to be.
@@ -3076,7 +3089,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Down And Up',
         hint: 'Crown a victor who was carried out of the dirt and later did the carrying.',
         category: 'oddity',
-        rarity: 'possible',
+        rarity: 'legendary',
         // Audit 4 §2.1: `downed` is 1.5% of tribute-cycles with 137 rescues
         // per 160 runs; the rescued victor is the narrow part.
         // AUDIT-8 §1.4: unlocked on exactly the same runs as 'brought-back' across a
@@ -3145,7 +3158,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // AUDIT-7: observed across 500 runs, so no longer 'possible?' — the label
         // means the simulation is believed able to do this and no measured run
         // ever has, and a measured run now has.
-        rarity: 'legendary',
+        rarity: 'possible',
         test: state => Object.values(state.alliances ?? {}).some(a => Object.values(a.roles ?? {}).filter(Boolean).length >= 4),
         nearMiss: state => {
             const best = Math.max(0, ...Object.values(state.alliances ?? {}).map(a => Object.values(a.roles ?? {}).filter(Boolean).length));
@@ -3307,7 +3320,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Held the Door',
         hint: 'Crown a Warden — the tribute who finds the one way through and stands in it.',
         category: 'reaping',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: (_s, v) => !!v && v.archetype === 'warden',
     },
     {
@@ -3323,7 +3336,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Not By Their Hand',
         hint: 'Crown a Penitent — a tribute who came in having already decided what they would not do.',
         category: 'reaping',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: (_s, v) => !!v && v.archetype === 'penitent',
     },
     {
@@ -3331,7 +3344,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Fed the Arena',
         hint: 'Crown a Forager, who never needed anybody to die first.',
         category: 'reaping',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: (_s, v) => !!v && v.archetype === 'forager',
     },
     {
@@ -3347,7 +3360,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Everything Is Worth Something',
         hint: 'Crown a Broker, who would rather hold a favour than a knife.',
         category: 'reaping',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: (_s, v) => !!v && v.archetype === 'broker',
     },
     {
@@ -3412,7 +3425,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Back From Down',
         hint: 'Crown a victor who was put on the ground and still finished with three kills.',
         category: 'combat',
-        rarity: 'possible',
+        rarity: 'legendary',
         // AUDIT-8 §1.4: unlocked on exactly the same runs as 'brought-back' and 'down-and-up' across a
         // 500-run sample. Re-gated to a harder rung of the same ladder rather than
         // deleted, so an id already in a player's record keeps resolving.
@@ -3473,7 +3486,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Four Fights, None Theirs',
         hint: 'Crown a victor with four kills or more who opened none of the fights that produced them.',
         category: 'combat',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: (_s, v) => !!v && v.kills >= 4 && (v.fightsOpened ?? 0) === 0,
         nearMiss: (_s, v) => (v && v.kills >= 4 && (v.fightsOpened ?? 0) === 1
             ? `${v.name} took ${v.kills} and started one of them`
@@ -3580,7 +3593,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Mind Came Back',
         hint: 'Crown a victor whose mind and will both gave out, and who came back from both.',
         category: 'survival',
-        rarity: 'legendary',
+        rarity: 'rare',
         // AUDIT-8 §1.4: unlocked on exactly the same runs as 'second-wind' across a
         // 500-run sample. Re-gated to a harder rung of the same ladder rather than
         // deleted, so an id already in a player's record keeps resolving.
@@ -3615,7 +3628,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Speaker',
         hint: 'Crown a victor who learned to speak for people who were not in the room.',
         category: 'social',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: (_s, v) => !!v && (v.proficiencies?.oratory ?? 0) >= 2,
         nearMiss: (_s, v) => ((v?.proficiencies?.oratory ?? 0) === 1
             ? `${v?.name} spoke for a group exactly once`
@@ -3639,7 +3652,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Told to Their Faces',
         hint: 'See six or more survivors, at the convergence, told exactly what each of them has done.',
         category: 'social',
-        rarity: 'rare',
+        rarity: 'common',
         // §11.4: the recap itself fires in 83% of runs. A recap with six people
         // still in the room is the version worth going looking for.
         test: state => state.log.some(l => /THE RECAP:/.test(l.text) && l.tributesInvolved.length >= 6),
@@ -3694,7 +3707,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Top to Bottom',
         hint: 'Crown a victor who worked both levels of two different vertical sectors.',
         category: 'arena',
-        rarity: 'rare',
+        rarity: 'common',
         /*
          * §11.4: `levelsStood` tops out at two and two was 63% of runs — which
          * is the exact observation `verticalZonesStood` was added for. Asking
@@ -3724,7 +3737,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Nowhere Quiet',
         hint: 'See every sector of the arena take at least one death.',
         category: 'arena',
-        rarity: 'legendary',
+        rarity: 'possible',
         test: state => state.arena.zones.length >= 4
             && state.arena.zones.every(z => (state.zoneDeaths?.[z.name] ?? 0) > 0),
         nearMiss: state => {
@@ -3854,7 +3867,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Sold the Arena',
         hint: 'Crown a victor who sold the map to one person and lied about it to another.',
         category: 'capitol',
-        rarity: 'legendary',
+        rarity: 'possible',
         // AUDIT-8 §1.4: this shared a byte-identical predicate with 'arms-dealer'.
         // Two cards for one boolean, always flipping together. Re-gated to the
         // harder half of the same idea rather than deleted, so no id already in
@@ -3874,7 +3887,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Nothing Left To Give',
         hint: 'See every sponsor bloc spend out in a Games whose victor was sent nothing at all.',
         category: 'capitol',
-        rarity: 'legendary',
+        rarity: 'possible',
         // AUDIT-8 §1.4: this shared a byte-identical predicate with 'nobody-is-buying' and 'a7-every-bloc-spent'.
         // Two cards for one boolean, always flipping together. Re-gated to the
         // harder half of the same idea rather than deleted, so no id already in
@@ -4239,7 +4252,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Whole Vocabulary',
         hint: 'See six or more different zone-effect kinds in one Games.',
         category: 'arena',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: state => {
             const kinds = new Set(Object.values(state.zoneEffects ?? {}).flat().map(e => e.kind));
             return kinds.size >= 6;
@@ -4254,7 +4267,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Crowned in the Glow',
         hint: 'Crown a victor standing in an irradiated sector.',
         category: 'arena',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: (state, v) => !!v && (state.zoneEffects?.[v.zone] ?? []).some(e => e.kind === 'irradiated'),
     },
     {
@@ -4397,7 +4410,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Named, Then Crowned',
         hint: 'Crown a victor who had earned an epithet before the third day.',
         category: 'oddity',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: (_s, v) => !!v && v.epithet !== undefined && (v.epithetCycle ?? 99) <= 6,
         nearMiss: (_s, v) => (v?.epithet && (v.epithetCycle ?? 99) <= 10
             ? `${v.name} was named on cycle ${v.epithetCycle}` : undefined),
@@ -4425,7 +4438,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Four Times',
         hint: 'Crown a victor holding a weapon that has drawn blood four times.',
         category: 'oddity',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: (_s, v) => !!v && v.inventory.some(i => (i.bloodDrawn ?? 0) >= 4),
         nearMiss: (_s, v) => {
             const best = Math.max(0, ...(v?.inventory ?? []).map(i => i.bloodDrawn ?? 0));
@@ -4538,7 +4551,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Beat the Fever',
         hint: 'Crown a victor who came back from a terminal infection.',
         category: 'survival',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (_s, v) => !!v && v.terminalInfectionBeaten === true,
         nearMiss: (_s, v) => (v && !v.terminalInfectionBeaten && (v.worstInfectionGrade ?? 0) >= 2
             ? `the victor carried a grade-${v.worstInfectionGrade} infection and treated it before it turned` : undefined),
@@ -4606,7 +4619,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Twice Frozen',
         hint: 'Crown a victor who took frostbite in two separate cycles.',
         category: 'survival',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: (_s, v) => !!v && (v.frostbitesTaken ?? 0) >= 2,
         nearMiss: (_s, v) => ((v?.frostbitesTaken ?? 0) === 1 ? 'the victor was frostbitten once' : undefined),
     },
@@ -4756,7 +4769,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'They Stopped Watching',
         hint: 'See the audience go flat for three cycles running and the Games survive it.',
         category: 'capitol',
-        rarity: 'legendary',
+        rarity: 'rare',
         // AUDIT-7: 500 runs never produced more than 3, so 4 was an entry
         // nobody could earn. Placed on the measured ceiling.
         // AUDIT-9: and the ceiling moved again, to 2. The Games now produce
@@ -4774,7 +4787,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Whole Purse',
         hint: 'See every sponsor bloc spend out on a victor who took three gifts or more of it themselves.',
         category: 'capitol',
-        rarity: 'legendary',
+        rarity: 'rare',
         // AUDIT-8 §1.4: this shared a byte-identical predicate with 'nobody-is-buying' and 'nothing-left-to-give'.
         // Two cards for one boolean, always flipping together. Re-gated to the
         // harder half of the same idea rather than deleted, so no id already in
@@ -4982,7 +4995,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'a8-first-and-last',
         name: 'Both Ends of It',
         hint: 'Crown a victor who drew first blood and dealt the last kill of the Games.',
-        category: 'combat', rarity: 'rare',
+        category: 'combat', rarity: 'legendary',
         /*
          * AUDIT-9 (audit B20: "First and Last" is one of seven titles shared
          * by different ids).
@@ -5034,7 +5047,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'a8-off-hand',
         name: 'Off Hand',
         hint: 'Crown a victor who took a life with their weapon arm ruined.',
-        category: 'combat', rarity: 'legendary',
+        category: 'combat', rarity: 'rare',
         test: (_s, v) => !!v && v.kills >= 1 && v.woundedSide !== undefined && v.woundedSide === v.handedness,
     },
     {
@@ -5104,7 +5117,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'a8-scarred-and-won',
         name: 'Scarred and Won',
         hint: 'Crown a victor carrying two or more permanent scars.',
-        category: 'combat', rarity: 'possible',
+        category: 'combat', rarity: 'legendary',
         test: (_s, v) => !!v && Object.keys(v.scars ?? {}).length >= 2,
         nearMiss: (_s, v) => (Object.keys(v?.scars ?? {}).length === 1
             ? 'they came out with one mark that will not fade' : undefined),
@@ -5198,7 +5211,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'a8-the-whole-charter',
         name: 'The Whole Charter',
         hint: 'See a charter of four clauses or more sworn in a single Games.',
-        category: 'social', rarity: 'legendary',
+        category: 'social', rarity: 'rare',
         /*
          * AUDIT-9: 5 stopped being reachable and the reason is a deliberate
          * change elsewhere. A charter grows by renegotiation, renegotiation
@@ -5233,7 +5246,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'a8-every-site',
         name: 'Every Site',
         hint: 'Crown a victor who was hurt at three or more separate body sites over the run.',
-        category: 'survival', rarity: 'possible',
+        category: 'survival', rarity: 'legendary',
         // AUDIT-8: all four sites never happened in 500 runs. Three does.
         test: (_s, v) => !!v && (['head', 'torso', 'arms', 'legs'] as const).filter(site =>
             v.injuries[site] || (v.injurySeverity?.[site] ?? 0) > 0 || !!v.scars?.[site]).length >= 3,
@@ -5270,7 +5283,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'a8-beat-the-worst-of-it',
         name: 'Beat the Worst of It',
         hint: 'Crown a victor who carried an infection to its worst grade and came out clean.',
-        category: 'survival', rarity: 'legendary',
+        category: 'survival', rarity: 'rare',
         test: (_s, v) => !!v && (v.worstInfectionGrade ?? 0) >= 3 && !v.injuries.infected,
         nearMiss: (_s, v) => ((v?.worstInfectionGrade ?? 0) === 2
             ? 'the worst of it reached grade two' : undefined),
@@ -5288,7 +5301,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'a8-never-went-thirsty',
         name: 'Never Went Thirsty',
         hint: 'Crown a victor eight days in who ended comfortably watered.',
-        category: 'survival', rarity: 'rare',
+        category: 'survival', rarity: 'common',
         test: (_s, v) => !!v && v.vitals.thirst < 35 && v.daysSurvived >= 8,
         nearMiss: (_s, v) => (!!v && v.daysSurvived >= 8 && v.vitals.thirst >= 35 && v.vitals.thirst < 55
             ? 'dry at the end, though never dangerously' : undefined),
@@ -5328,7 +5341,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'a8-knows-the-back-ways',
         name: 'Knows the Back Ways',
         hint: 'Crown a victor who found an unmapped way through and told nobody about it.',
-        category: 'arena', rarity: 'legendary',
+        category: 'arena', rarity: 'rare',
         // AUDIT-8: the duplicate guard from §1.4 caught this as identical to
         // 'the-unmapped-way' and 'a7-every-hidden-way' on its first run — which is the guard doing its job on the
         // very next batch written. Re-aimed at a question nothing else asks.
@@ -5412,7 +5425,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'a8-never-sent-anything',
         name: 'Never Sent Anything',
         hint: 'Crown a victor the sponsors ignored in a year when they were paying out.',
-        category: 'capitol', rarity: 'rare',
+        category: 'capitol', rarity: 'legendary',
         test: (state, v) => !!v && (v.memory?.giftsReceived ?? 0) === 0
             && state.tributes.some(o => (o.memory?.giftsReceived ?? 0) > 0),
     },
@@ -5438,12 +5451,25 @@ export const ACHIEVEMENTS: Achievement[] = [
     {
         id: 'a8-the-gamemakers-attention',
         name: "The Gamemaker's Attention",
-        hint: 'Crown a bloodless victor in a year the Head Gamemaker personally intervened.',
-        category: 'capitol', rarity: 'rare',
+        hint: 'Crown a bloodless victor in a year the Gamemakers reached into the arena more than once.',
+        category: 'capitol', rarity: 'legendary',
         // AUDIT-8: the duplicate guard from §1.4 caught this as identical to
         // 'made-them-blink' on its first run — which is the guard doing its job on the
         // very next batch written. Re-aimed at a question nothing else asks.
-        test: (state, v) => state.gamemakerSignatureFired === true && !!v && v.kills === 0,
+        //
+        // AUDIT-10: and caught again, against `bloodless-crown`. The signature
+        // fires in nearly every Games, so "bloodless victor AND the signature
+        // fired" was "bloodless victor" wearing a hat. `gamemakerCommands`
+        // counts the interventions that actually happened, which makes this a
+        // question about a *meddled-with* year rather than an ordinary one.
+        test: (state, v) => (state.gamemakerCommands ?? 0) >= 2 && !!v && v.kills === 0,
+        nearMiss: (state, v) => {
+            if (!v || v.kills !== 0) return undefined;
+            const reached = state.gamemakerCommands ?? 0;
+            return reached === 1
+                ? `${v.name} came home without killing anybody, but the Gamemakers only reached into this arena once`
+                : undefined;
+        },
     },
     {
         id: 'a8-bought-nothing',
@@ -5494,7 +5520,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'a8-twelve-years-old',
         name: 'Twelve Years Old',
         hint: 'Crown a victor at the youngest age the bowl can draw.',
-        category: 'reaping', rarity: 'legendary',
+        category: 'reaping', rarity: 'possible',
         test: (_s, v) => !!v && v.age <= 12,
         nearMiss: (_s, v) => (v?.age === 13 ? 'thirteen; twelve is the bar' : undefined),
     },
@@ -5565,17 +5591,35 @@ export const ACHIEVEMENTS: Achievement[] = [
     {
         id: 'a8-everybody-knew-everybody',
         name: 'Everybody Knew Everybody',
-        hint: 'See a Games where every survivor at the end had heard of the others.',
-        category: 'games', rarity: 'legendary',
+        hint: 'See a Games where the last four standing had all heard of each other.',
+        category: 'games', rarity: 'common',
+        /*
+         * AUDIT-10: re-aimed, by the same duplicate guard that re-aimed this
+         * entry's neighbour and for the same reason.
+         *
+         * "Every survivor at the end" required two or more alive, which in this
+         * game is a dual victory and nothing else — so the predicate was
+         * `dual-victory` plus a condition that is almost always true alongside
+         * it, and the two unlocked on exactly the same runs. The question worth
+         * asking is the audit's own §11 one: whether the endgame was between
+         * people who had a history, or between strangers the bracket happened to
+         * leave standing. The final four answers that in every Games, not only
+         * in the rare ones with two crowns.
+         */
         test: state => {
-            const board = state.tributes.filter(t => t.status === 'alive');
-            if (board.length < 2) return false;
+            const board = finalFour(state);
+            if (board.length < 4) return false;
             return board.every(a => board.every(b =>
                 a.id === b.id || (a.memory?.notoriety?.[b.id] ?? 0) > 0));
         },
         nearMiss: state => {
-            const board = state.tributes.filter(t => t.status === 'alive');
-            return board.length === 1 ? 'only one of them was left to know anybody' : undefined;
+            const board = finalFour(state);
+            if (board.length < 4) return undefined;
+            const strangers = board.filter(a => board.some(b =>
+                a.id !== b.id && (a.memory?.notoriety?.[b.id] ?? 0) <= 0));
+            return strangers.length > 0 && strangers.length <= 2
+                ? `${strangers.map(t => t.name).join(' and ')} reached the final four without having heard of everybody else in it`
+                : undefined;
         },
     },
     {
@@ -5619,7 +5663,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'a8-it-outlived-its-owner',
         name: 'It Outlived Its Owner',
         hint: 'Crown a victor holding a named weapon in a year somebody else died having killed twice.',
-        category: 'oddity', rarity: 'rare',
+        category: 'oddity', rarity: 'common',
         test: (state, v) => !!v && v.inventory.some(i => i.legendName !== undefined)
             && state.tributes.some(o => o.id !== v.id && o.status === 'dead' && o.kills >= 2),
         nearMiss: (state, v) => (!!v && v.inventory.some(i => i.legendName !== undefined)
@@ -5646,14 +5690,14 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'a8-what-they-brought',
         name: 'What They Brought, What They Take',
         hint: 'Crown a victor still holding their token and carrying a permanent scar.',
-        category: 'oddity', rarity: 'legendary',
+        category: 'oddity', rarity: 'rare',
         test: (_s, v) => !!v && v.token !== undefined && Object.keys(v.scars ?? {}).length >= 1,
     },
     {
         id: 'a8-never-left',
         name: 'A Week in Three Sectors',
         hint: 'Crown a victor seven days in who used three sectors or fewer.',
-        category: 'oddity', rarity: 'rare',
+        category: 'oddity', rarity: 'common',
         test: (_s, v) => !!v && (v.visitedZones?.length ?? 0) <= 3 && v.daysSurvived >= 7,
         nearMiss: (_s, v) => ((v?.visitedZones?.length ?? 0) === 4 && (v?.daysSurvived ?? 0) >= 7
             ? 'they used four sectors in the whole Games' : undefined),

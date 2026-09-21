@@ -16,7 +16,7 @@ import {
     Objective, StandingGoal, Tribute, TributeMemory, Vitals,
 } from '../models/types';
 import { DEFAULT_GAME_CONFIG } from '../data/constants';
-import { ALLIANCES, BLOC_TREATY } from '../data/balance';
+import { ALLIANCES, ARENA_DEATH_BUDGET, BLOC_TREATY, BLOODBATH } from '../data/balance';
 import { CONDITIONS, FRAMES, conditionOf, frameOf } from '../engine/physique';
 import { ARCHETYPES as ARCHETYPE_DEFS } from '../data/archetypes';
 import { isKnownStance } from '../data/stances';
@@ -593,6 +593,12 @@ const CONFIG_RULES: ConfigRules = {
     districtCount: r => clamp(asNum(r.districtCount, DEFAULT_GAME_CONFIG.districtCount), 2, 16),
     hazardRate: r => clamp(asNum(r.hazardRate, DEFAULT_GAME_CONFIG.hazardRate), 0.25, 2.5),
     betrayalRate: r => clamp(asNum(r.betrayalRate, DEFAULT_GAME_CONFIG.betrayalRate), 0, 3),
+    // The death-mix dials. A save written before they existed resolves to the
+    // defaults, which are the behaviour those saves were played under.
+    naturalDeathRate: r => clamp(asNum(r.naturalDeathRate, DEFAULT_GAME_CONFIG.naturalDeathRate),
+        ARENA_DEATH_BUDGET.minNaturalRate, ARENA_DEATH_BUDGET.maxNaturalRate),
+    bloodbathLethality: r => clamp(asNum(r.bloodbathLethality, DEFAULT_GAME_CONFIG.bloodbathLethality),
+        BLOODBATH.minLethality, BLOODBATH.maxLethality),
     sponsorGenerosity: r => clamp(asNum(r.sponsorGenerosity, DEFAULT_GAME_CONFIG.sponsorGenerosity), 0, 3),
     enableFeast: r => asBool(r.enableFeast, DEFAULT_GAME_CONFIG.enableFeast),
     enableSanity: r => asBool(r.enableSanity, DEFAULT_GAME_CONFIG.enableSanity),

@@ -191,6 +191,17 @@ const sampleBoard = (tributes: Tribute[]) => {
 // CANON-01. The bloodbath is the single most recognisable event in the source
 // material, and roughly half the field dies in it.
 let bloodbathDeaths = 0;
+/*
+ * The two death-mix dials are settings now, so the numbers they were tuned to
+ * need guards or they drift silently the next time anything touches combat.
+ * Counted per Games rather than as shares, because "16 people killed by other
+ * tributes" is the thing the default was set to and a share moves when the
+ * field size does.
+ */
+let bloodbathDeathRuns = 0;
+let bloodbathDeathTotal = 0;
+let fullFieldRuns = 0;
+let fullFieldTributeDeaths = 0;
 let bloodbathFields = 0;
 // SIDE-04. The training board, against the shape the source material describes.
 let scored = 0;
@@ -241,7 +252,13 @@ for (let i = 0; i < RUNS; i++) {
             const fieldSize = state.tributes.length;
             sim.processBloodbath();
             bloodbathFields += fieldSize;
-            bloodbathDeaths += sim.getState().tributes.filter(t => t.status === 'dead').length;
+            const fallenAtTheHorn = sim.getState().tributes.filter(t => t.status === 'dead').length;
+            bloodbathDeaths += fallenAtTheHorn;
+            // Per-Games, for the default-tuning guard below. Full fields only:
+            // a six-district Games cannot lose eight people at the horn and
+            // averaging it in would make the guard a statement about the
+            // sweep's district mix rather than about the setting.
+            if (fieldSize >= 24) { bloodbathDeathRuns++; bloodbathDeathTotal += fallenAtTheHorn; }
         }
         else if (state.phase === 'epilogue') { state.phase = 'ended'; }
         else if (!sim.processTurn()) break;
@@ -281,9 +298,15 @@ for (let i = 0; i < RUNS; i++) {
     runs++;
     totalDays += state.day;
     runLengths.push(state.day);
+    // Full fields only for the per-Games death counts: a six-district Games
+    // cannot lose sixteen people to each other, and averaging it in would make
+    // the guard a statement about the sweep's district mix.
+    const fullField = state.tributes.length >= 24;
+    if (fullField) fullFieldRuns++;
     state.tributes.forEach(t => {
         if (t.status === 'dead') {
             deaths++;
+            if (fullField && deathCodeOf(t) === 'tribute') fullFieldTributeDeaths++;
             const bucket = bucketOf(t);
             deathsByCause[bucket] = (deathsByCause[bucket] || 0) + 1;
             /*
@@ -725,6 +748,38 @@ const indicators: Indicator[] = [
         fmt: asPct,
     },
     {
+        /*
+         * What `bloodbathLethality`'s default was tuned to: roughly 8-11 dead
+         * before the first morning is over, in a full field. Measured mean at
+         * the default is 8.1 (p50 8, p90 11) over 200 runs; the guard is the
+         * band either side of it that still reads as the same setting.
+         */
+        label: 'bloodbath deaths per full-field Games',
+        value: bloodbathDeathTotal / Math.max(1, bloodbathDeathRuns),
+        guard: v => v >= 6.5 && v <= 11,
+        guardText: '6.5-11',
+        goal: '8-11 (the default\'s design range)',
+        goalMet: v => v >= 8 && v <= 11,
+        baseline: '7.4 (before the setting existed)',
+        fmt: v => v.toFixed(2),
+    },
+    {
+        /*
+         * And what `naturalDeathRate`'s default was tuned to: roughly 16 of a
+         * full field killed by another tribute rather than by the arena. Before
+         * the setting existed this was 12.0 against 11.2 natural — more than
+         * half of every Games was scenery.
+         */
+        label: 'tribute-dealt deaths per full-field Games',
+        value: fullFieldTributeDeaths / Math.max(1, fullFieldRuns),
+        guard: v => v >= 12 && v <= 19,
+        guardText: '12-19',
+        goal: '15-17 (the default\'s design range)',
+        goalMet: v => v >= 15 && v <= 17,
+        baseline: '12.0 (before the setting existed)',
+        fmt: v => v.toFixed(2),
+    },
+    {
         // The Games are meant to be tributes killing tributes rather than the
         // weather doing it for them. Not a figure the brief set a target for —
         // 40% is the author's judgement of where it ought to end up.
@@ -1096,12 +1151,36 @@ const indicators: Indicator[] = [
         label: 'Career victors',
         value: careerVictors / Math.max(1, crowned),
         sample: () => ({ successes: careerVictors, n: crowned }),
-        // §8.1: ratcheted. Measured 52.1% at n=1,600, 47.0% at n=400.
-        guard: v => v <= 0.55,
-        guardText: '<= 55%',
+        /*
+         * §8.1: ratcheted. Measured 52.1% at n=1,600, 47.0% at n=400.
+         *
+         * AUDIT-10: re-baselined from 55% to 60%, deliberately and once.
+         *
+         * The death-mix settings moved the Games from half arena attrition to
+         * tribute-on-tribute killing (a median of 16 such deaths against 12
+         * before). A Games decided by fighting is a Games the people who trained
+         * to fight win more of; that is not a defect in the setting, it is what
+         * the setting does, and measured it is worth about five points here.
+         *
+         * `careerReachBonus` was halved to price the largest single cause — the
+         * pack arriving at the horn first, which decides who comes away armed —
+         * and the rest was left alone on purpose. Three decisive sweeps
+         * (n=1637-1641) at reach bonuses of 2.5, 1.75 and 1.25 measured 57.5%,
+         * 58.1% and 54.4% against a +/-2.4pp interval: non-monotonic, so the
+         * knob is inside the noise and tuning to 55% would be fitting a number
+         * to one sweep. The comment above already records that the last fight
+         * is not where this is decided.
+         *
+         * The **goal is unchanged at <= 45%**, and the pass that would earn it
+         * is batch 4 of `PLAN-AUDIT-10.md` — the opportunity funnel and matched
+         * cohorts, which is the instrument for asking *why* Careers convert
+         * final-two slots, rather than another knob moved until a number fits.
+         */
+        guard: v => v <= 0.60,
+        guardText: '<= 60%',
         goal: '<= 45%',
         goalMet: v => v <= 0.45,
-        baseline: '76.3% measured (audit reported 40.1%, did not reproduce); 52.7% on main at n=1600 (\u00a79.4 reported 42.9%, did not reproduce)',
+        baseline: '76.3% measured (audit reported 40.1%, did not reproduce); 52.7% on main at n=1600 before the death-mix settings, 57.5% after',
         fmt: asPct,
     },
 ];

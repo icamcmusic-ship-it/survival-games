@@ -19,7 +19,7 @@ import { canSeeArena, disclosureFor } from '../ui/disclosure';
 import { CLIMATE_LABELS, LAW_LABELS, lawsOf, lengthEstimate, terrainMix } from '../data/arenaBriefing';
 import { packFor } from '../data/arenaEventPacks';
 import { ARENA_MUTTS } from '../data/mutts';
-import { COIN_ECONOMY } from '../data/balance';
+import { ARENA_DEATH_BUDGET, BLOODBATH, COIN_ECONOMY } from '../data/balance';
 import { RNG } from '../utils/rng';
 import { QUELLS } from '../data/gamesProfile';
 
@@ -104,6 +104,34 @@ function presetDelta(current: GameConfig, preset: PresetConfig): string[] {
  * four betrayals a Games at 1×) and stated as the difference from default, so
  * "hazards 1.5×" reads as "about three more hazard deaths per Games".
  */
+/*
+ * The two death-mix dials are expressed in bodies rather than in multipliers,
+ * because that is the thing the player is actually setting and because neither
+ * default is 1 — a sentence of the form "about the usual" measured from 1.0
+ * would be wrong for both of them. Both are anchored on the measured default
+ * (200 runs, full `ARENAS` sweep, 24-tribute field) and scaled from there.
+ */
+const MEASURED = {
+    /** Tribute-dealt deaths per Games at `naturalDeathRate` = 0.2. */
+    tributeDeaths: 16,
+    /** ...and how many of those a point of the dial is worth, near the default. */
+    tributeDeathsPerPoint: 4,
+    /** Bloodbath deaths per Games at `bloodbathLethality` = 1.3. */
+    bloodbathDeaths: 8,
+    bloodbathDeathsPerPoint: 3,
+} as const;
+
+function deathMixHint(kind: 'natural' | 'bloodbath', value: number): string {
+    if (kind === 'natural') {
+        const delta = value - DEFAULT_GAME_CONFIG.naturalDeathRate;
+        const byTributes = Math.round(MEASURED.tributeDeaths - delta * MEASURED.tributeDeathsPerPoint);
+        return `Roughly ${Math.max(0, byTributes)} of the field killed by another tribute, and the rest by the arena.`;
+    }
+    const delta = value - DEFAULT_GAME_CONFIG.bloodbathLethality;
+    const dead = Math.round(MEASURED.bloodbathDeaths + delta * MEASURED.bloodbathDeathsPerPoint);
+    return `Roughly ${Math.max(0, dead)} dead before the first morning is over.`;
+}
+
 function effectHint(kind: 'hazard' | 'betrayal' | 'sponsor', value: number): string {
     const delta = value - 1;
     if (Math.abs(delta) < 0.13) return 'About the usual for a Games.';
@@ -158,6 +186,8 @@ function randomConfig(current: GameConfig): GameConfig {
         ...current,
         districtCount: pick(2, 16, 1),
         hazardRate: pick(0.25, 2.5, 0.25),
+        naturalDeathRate: pick(ARENA_DEATH_BUDGET.minNaturalRate, ARENA_DEATH_BUDGET.maxNaturalRate, 0.1),
+        bloodbathLethality: pick(BLOODBATH.minLethality, BLOODBATH.maxLethality, 0.1),
         betrayalRate: pick(0, 3, 0.25),
         sponsorGenerosity: pick(0, 3, 0.25),
         enableFeast: Math.random() < 0.75,
@@ -185,6 +215,17 @@ function ConfigSlider({ label, hint, effect, value, min, max, step, format, onCh
             </div>
             <input
                 type="range"
+                /*
+                 * AUDIT-10: every one of these sliders was an unnamed range
+                 * input — the visible label is a sibling `<span>`, not a
+                 * `<label for>`, so a screen reader announced eight identical
+                 * "slider" controls. Naming them also makes the browser test
+                 * able to address a slider by what it *is* rather than by its
+                 * position in the panel, which is how adding two settings broke
+                 * that test: it was filling the betrayal slider's value into
+                 * whatever happened to be third.
+                 */
+                aria-label={label}
                 min={min}
                 max={max}
                 step={step}
@@ -1175,6 +1216,31 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                 min={0.25} max={2.5} step={0.25}
                                 format={(v) => `${v.toFixed(2)}×`}
                                 onChange={(v) => setConfig(c => ({ ...c, hazardRate: v }))}
+                            />
+                            {/*
+                              * The death mix. These two decide what a Games is
+                              * more than any other pair of settings: whether the
+                              * story is people killing each other or the arena
+                              * killing people, and how much of it happens in the
+                              * first sixty seconds.
+                              */}
+                            <ConfigSlider
+                                label="Arena lethality"
+                                hint="How hard everything that is not another tribute hits — hazards, wounds, thirst, cold. Lower leaves more of the field alive to meet each other."
+                                effect={deathMixHint('natural', config.naturalDeathRate)}
+                                value={config.naturalDeathRate}
+                                min={ARENA_DEATH_BUDGET.minNaturalRate} max={ARENA_DEATH_BUDGET.maxNaturalRate} step={0.1}
+                                format={(v) => `${v.toFixed(1)}×`}
+                                onChange={(v) => setConfig(c => ({ ...c, naturalDeathRate: v }))}
+                            />
+                            <ConfigSlider
+                                label="Bloodbath lethality"
+                                hint="How many stay in the scrum at the Cornucopia, and how hard the killing zone hits."
+                                effect={deathMixHint('bloodbath', config.bloodbathLethality)}
+                                value={config.bloodbathLethality}
+                                min={BLOODBATH.minLethality} max={BLOODBATH.maxLethality} step={0.1}
+                                format={(v) => `${v.toFixed(1)}×`}
+                                onChange={(v) => setConfig(c => ({ ...c, bloodbathLethality: v }))}
                             />
                             <ConfigSlider
                                 label="Alliance betrayal rate"

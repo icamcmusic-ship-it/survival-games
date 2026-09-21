@@ -4,6 +4,7 @@ import { useTransientFlag } from '../ui/useTransientFlag';
 import { Share2, Check, Copy } from 'lucide-react';
 import { CampaignSnapshot, GameConfig } from '../models/types';
 import { encodeCampaign } from '../utils/campaignLink';
+import { DEFAULT_GAME_CONFIG } from '../data/constants';
 import { copyMessage, copySucceeded, copyText } from '../utils/copyText';
 import { CONTENT_REVISION, fidelityOf, shareLabelFor } from '../utils/replayManifest';
 
@@ -66,6 +67,11 @@ export function shareParams(
         districtCount: String(config.districtCount),
         hazardRate: String(config.hazardRate),
         betrayalRate: String(config.betrayalRate),
+        // The death-mix dials decide how many people the arena kills and how
+        // many the tributes do, so a link that dropped either replayed a
+        // different Games under the same seed.
+        naturalDeathRate: String(config.naturalDeathRate ?? DEFAULT_GAME_CONFIG.naturalDeathRate),
+        bloodbathLethality: String(config.bloodbathLethality ?? DEFAULT_GAME_CONFIG.bloodbathLethality),
         sponsorGenerosity: String(config.sponsorGenerosity),
         enableFeast: String(config.enableFeast),
         enableSanity: String(config.enableSanity),
