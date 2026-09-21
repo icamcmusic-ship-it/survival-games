@@ -6,7 +6,8 @@ import { cycleOf } from './memory';
 import { adjustRel, adjustTrust, getRel } from './relationships';
 import { isActive } from './downed';
 import { giveItem } from './items';
-import { canAfford, spend } from './actionBudget';
+import { spend } from './actionBudget';
+import { canSpend, noteAttempt, noteRefusal } from './actions';
 import { ARCHETYPES } from '../data/archetypes';
 
 /**
@@ -227,9 +228,17 @@ function holdHearing(ctx: SimContext, record: Alliance, members: Tribute[], abse
      * cycle of everything else. Anybody who cannot afford the half hour is not
      * at the hearing, and if that leaves too few people there is no hearing.
      */
-    const attending = members.filter(m => canAfford(m, ALLIANCE_DISPUTE.hearingHours));
-    if (attending.length < ALLIANCE_DISPUTE.minMembers) return;
+    const attending = members.filter(m => {
+        const time = canSpend(m, ALLIANCE_DISPUTE.hearingHours);
+        if (!time.ok) noteRefusal(state, 'alliance-hearing', time.why);
+        return time.ok;
+    });
+    if (attending.length < ALLIANCE_DISPUTE.minMembers) {
+        noteRefusal(state, 'alliance-hearing', 'no-time');
+        return;
+    }
     attending.forEach(m => spend(m, ALLIANCE_DISPUTE.hearingHours));
+    noteAttempt(state, 'alliance-hearing');
     members = attending;
     const split = decideSplit(ctx, record, members);
 

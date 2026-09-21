@@ -8,7 +8,7 @@ import { hasEffect } from './zoneEffects';
 import { encumbranceOf } from './items';
 import { profOf, trainProficiency } from './proficiency';
 import { cycleOf } from './memory';
-import { canAfford, spend } from './actionBudget';
+import { canSpend, canSpanTo, perform } from './actions';
 import { adjustMutual, adjustRel, getRel } from './relationships';
 import { incurDebt } from './debts';
 import { clampTribute } from './vitals';
@@ -146,23 +146,21 @@ function anchorFor(t: Tribute): { kind: RescueLineRecord['anchor']; quality: num
  */
 function canAttemptRescue(state: GameState, rescuer: Tribute, stranded: Tribute): boolean {
     if (rescuer.id === stranded.id) return false;
-    if (!isActive(rescuer)) return false;
-    // F09: the same physical-contact rule the rest of the engine uses. A rope
-    // may span levels, so this is `zone` plus an explicit level allowance
-    // rather than `samePlace` — but the rescuer must be on the *upper* level
-    // of a vertical zone to be hauling anybody up it.
-    if (rescuer.zone !== stranded.zone) return false;
-    if (isVertical(state.arena, stranded.zone)
-        && stranded.zoneLevel === 'lower'
-        && (rescuer.zoneLevel ?? 'upper') !== 'upper') return false;
-    if (isVertical(state.arena, stranded.zone)
-        && stranded.zoneLevel !== 'lower'
-        && !samePlace(state.arena, rescuer, stranded)) return false;
+    /*
+     * AUDIT-10 batch 2: asked through the shared contract rather than
+     * re-derived here.
+     *
+     * `canSpanTo` is the one predicate in the engine for "can get a line to",
+     * as distinct from `canReach` ("can put hands on"). A rope may deliberately
+     * span the levels of a vertical zone — paid downward, never up — and that
+     * distinction was written out longhand here in batch 1, which is exactly
+     * how nine subsystems ended up with nine versions of it.
+     */
+    if (!canSpanTo(state, rescuer, stranded).ok) return false;
     if (rescuer.health < RESCUE_LINE.rescuerMinHealth) return false;
     // F15: hauling somebody up a face is a major action, and a day has only so
     // many hours in it. Fatigue was already charged; the budget was not.
-    if (!canAfford(rescuer, RESCUE_LINE.rescuerHours)) return false;
-    return true;
+    return canSpend(rescuer, RESCUE_LINE.rescuerHours).ok;
 }
 
 /**
@@ -267,13 +265,33 @@ function attemptRescueLine(
     const anchor = anchorFor(rescuer);
     if (!anchor) return;
     /*
-     * AUDIT-10 F15: the hours go before the scene does, not after it. A
-     * rescuer who cannot afford the attempt was filtered out upstream; this is
-     * the commit, and it is checked again here because the two validations the
-     * audit asks for — before committing and immediately before resolution —
-     * are the whole point of having a budget at all.
+     * AUDIT-10 batch 2: the commit goes through the contract.
+     *
+     * `perform` validates, validates *again* immediately before resolving, and
+     * only then spends the hours — which matters here more than almost
+     * anywhere, because this pass iterates the whole roster and an earlier
+     * rescue in the same cycle can kill the rope holder or move the person at
+     * the bottom of it. The `check` is the audit's own example: the rescue
+     * target moved.
      */
-    if (!spend(rescuer, RESCUE_LINE.rescuerHours)) return;
+    const committed = perform(ctx, {
+        kind: 'rescue-line',
+        actors: [rescuer],
+        hours: RESCUE_LINE.rescuerHours,
+        check: () => canAttemptRescue(state, rescuer, stranded)
+            && strandingOf(state, stranded) === stranding,
+    }, () => resolveRescueLine(ctx, rescuer, stranded, stranding, anchor));
+    void committed;
+}
+
+function resolveRescueLine(
+    ctx: SimContext,
+    rescuer: Tribute,
+    stranded: Tribute,
+    stranding: RescueLineRecord['stranding'],
+    anchor: NonNullable<ReturnType<typeof anchorFor>>,
+) {
+    const state = ctx.state;
 
     /*
      * The warning. Said before the roll, naming the thing the attempt rests

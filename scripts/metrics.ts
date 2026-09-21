@@ -20,6 +20,7 @@ import { STANCES } from '../src/data/stances';
 import { legacyOf } from '../src/data/districts';
 import { coverageCells, coverageReport, initialRunState } from './runInit';
 import { deathCodeOf } from '../src/engine/causes';
+import { refusalSummary } from '../src/engine/actions';
 import { TRAIT_DEFS } from '../src/data/traits';
 import { ARCHETYPES } from '../src/data/archetypes';
 
@@ -202,6 +203,17 @@ let bloodbathDeathRuns = 0;
 let bloodbathDeathTotal = 0;
 let fullFieldRuns = 0;
 let fullFieldTributeDeaths = 0;
+/*
+ * AUDIT-10 batch 2, the audit's §4 measurement list.
+ *
+ * "Add behavior metrics: impossible-action attempts ... These reveal failures
+ * that 'event fired at least once' cannot." A chain that fires once in a
+ * thousand runs because its actors never have the hours for it is
+ * indistinguishable, to every other check here, from a chain that is meant to
+ * be rare. These two counters tell them apart.
+ */
+const actionAttempts: Record<string, number> = {};
+const actionRefusals: Record<string, number> = {};
 let bloodbathFields = 0;
 // SIDE-04. The training board, against the shape the source material describes.
 let scored = 0;
@@ -298,6 +310,12 @@ for (let i = 0; i < RUNS; i++) {
     runs++;
     totalDays += state.day;
     runLengths.push(state.day);
+    Object.entries(state.actionLedger?.attempted ?? {}).forEach(([k, v]) => {
+        actionAttempts[k] = (actionAttempts[k] ?? 0) + v;
+    });
+    refusalSummary(state).forEach(({ key, count }) => {
+        actionRefusals[key] = (actionRefusals[key] ?? 0) + count;
+    });
     // Full fields only for the per-Games death counts: a six-district Games
     // cannot lose sixteen people to each other, and averaging it in would make
     // the guard a statement about the sweep's district mix.
@@ -1186,6 +1204,42 @@ const indicators: Indicator[] = [
 ];
 
 console.log(`runs=${runs} victors=${victors} deaths=${deaths} avgDays=${(totalDays / runs).toFixed(1)}`);
+
+/*
+ * AUDIT-10 batch 2: the behaviour ledger.
+ *
+ * Reported rather than guarded, deliberately. A refusal is not a defect — a
+ * tribute out of hours *should* be refused — and the number worth acting on is
+ * the ratio: a chain refused far more often than it is attempted is a chain
+ * whose prerequisites nobody can meet, which is the failure the audit says the
+ * existing checks cannot see. Guards come once there is a measured normal to
+ * regress against.
+ */
+{
+    const kinds = [...new Set([
+        ...Object.keys(actionAttempts),
+        ...Object.keys(actionRefusals).map(k => k.split(':')[0]),
+    ])].sort();
+    if (kinds.length > 0) {
+        console.log('\naction ledger (attempted vs refused, per run):');
+        kinds.forEach(kind => {
+            const done = actionAttempts[kind] ?? 0;
+            const refused = Object.entries(actionRefusals)
+                .filter(([k]) => k.startsWith(`${kind}:`));
+            const refusedTotal = refused.reduce((sum, [, v]) => sum + v, 0);
+            const why = refused
+                .sort((a, b) => b[1] - a[1])
+                .map(([k, v]) => `${k.split(':')[1]} ${(v / runs).toFixed(1)}`)
+                .join(', ');
+            const share = done + refusedTotal > 0
+                ? `${((done / (done + refusedTotal)) * 100).toFixed(0)}% got through`
+                : 'never reached';
+            console.log(`  ${kind.padEnd(18)} ${(done / runs).toFixed(1)} done, `
+                + `${(refusedTotal / runs).toFixed(1)} refused — ${share}`
+                + (why ? `  (${why})` : ''));
+        });
+    }
+}
 console.log('\ncause of death:');
 Object.entries(deathsByCause)
     .sort((a, b) => b[1] - a[1])

@@ -3,8 +3,9 @@ import { SimContext } from './context';
 import { UNIVERSAL_DEATHS, VERTICALITY } from '../data/balance';
 import { getZone, zoneFeatures } from './map';
 import { profOf } from './proficiency';
-import { canAfford, spend } from './actionBudget';
 import { isActive } from './downed';
+import { canSpend, noteAttempt, noteRefusal } from './actions';
+import { spend } from './actionBudget';
 import { applyDamage, checkDeath } from './combat';
 import { injure, openWound } from './wounds';
 import { BLEEDING } from '../data/balance';
@@ -101,7 +102,7 @@ export function tickVerticality(ctx: SimContext) {
          * Fatigue was charged below and the budget was not, which is the same
          * split that let a rescuer with no hours complete a haul.
          */
-        if (!canAfford(t, VERTICALITY.levelHours)) return;
+
 
         // Down is where the good ground is, and where the danger is. A tribute
         // is drawn down by need and pushed up by fear, which is the whole
@@ -112,11 +113,29 @@ export function tickVerticality(ctx: SimContext) {
         const wantsUp = level === 'lower' && t.health < VERTICALITY.retreatHealth;
 
         if (!wantsDown && !wantsUp) return;
+        /*
+         * AUDIT-10 batch 2: the affordability check sits here, after the want.
+         *
+         * Placed before it, this counted every tribute merely *standing* in a
+         * vertical zone with no hours as a refused level change — ten a run,
+         * none of which was an intent — and the audit's whole argument for
+         * this counter is that it distinguishes a rare chain from an
+         * unreachable one. A refusal is only meaningful against an intent.
+         */
+        const affordable = canSpend(t, VERTICALITY.levelHours);
+        if (!affordable.ok) { noteRefusal(ctx.state, 'change-level', affordable.why); return; }
         if (!ctx.rng.chance(VERTICALITY.changeLevelChance)) return;
 
         const going: ZoneLevel = wantsDown ? 'lower' : 'upper';
-        // Re-validated at the moment of resolution, not only at intent.
-        if (!spend(t, VERTICALITY.levelHours)) return;
+        /*
+         * AUDIT-10 batch 2: re-validated at the moment of resolution, not only
+         * at intent. The rolls between the two can change the answer — a fall
+         * on somebody else's action does not reach this tribute, but the
+         * ordering of this pass against the rescue pass does.
+         */
+        if (!isActive(t)) { noteRefusal(ctx.state, 'change-level', 'incapable'); return; }
+        if (!spend(t, VERTICALITY.levelHours)) { noteRefusal(ctx.state, 'change-level', 'no-time'); return; }
+        noteAttempt(ctx.state, 'change-level');
         t.vitals.fatigue += going === 'lower' ? VERTICALITY.descendFatigue : VERTICALITY.climbFatigue;
         t.levelsStood = t.levelsStood ?? [level];
         if (!t.levelsStood.includes(going)) t.levelsStood.push(going);

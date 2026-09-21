@@ -9,7 +9,7 @@ import { cycleOf } from './memory';
 import { adjustRel, adjustRespect } from './relationships';
 import { addFear } from './fear';
 import { hopsTo, severedEdgeSet } from './map';
-import { samePlace } from './verticality';
+import { canReach, noteAttempt, noteRefusal } from './actions';
 import { killTribute, enterShock } from './combat';
 import { loseSanity } from './sanityBands';
 
@@ -246,8 +246,24 @@ export function tickDowned(ctx: SimContext) {
          * which checks reach and equipment for itself. This pass is the
          * medical one.
          */
-        const here = ctx.state.tributes.filter(o =>
-            o.id !== t.id && isActive(o) && samePlace(ctx.state.arena, o, t));
+        const here = ctx.state.tributes.filter(o => {
+            if (o.id === t.id) return false;
+            const reach = canReach(ctx.state, o, t);
+            /*
+             * AUDIT-10 batch 2: counted, not merely excluded. Somebody who
+             * would have helped and could not get to them is the difference
+             * between a rescue window that is tight and one that is closed,
+             * and only one of those is a design decision.
+             *
+             * Only people who could have acted at all are counted: a corpse or
+             * another downed tribute failing `canAct` is not a reachability
+             * failure, and counting them buried the signal under it.
+             */
+            if (!reach.ok && reach.why !== 'incapable' && (o.relationships[t.id] ?? 0) > 0) {
+                noteRefusal(ctx.state, 'treat-downed', reach.why);
+            }
+            return reach.ok;
+        });
 
         // (a) Rescue. Whoever in the zone has the best chance of it tries.
         const allies = here.filter(o => wouldHelp(o, t));
@@ -256,6 +272,7 @@ export function tickDowned(ctx: SimContext) {
             const rescuer = allies.reduce((best, o) =>
                 (rescueChance(o, !!medicalItem(o)) > rescueChance(best, !!medicalItem(best)) ? o : best));
             // The kit is spent on the attempt, not on the outcome.
+            noteAttempt(ctx.state, 'treat-downed');
             const kit = consumeOne(rescuer, i => i.type === 'medical');
             if (ctx.rng.chance(rescueChance(rescuer, !!kit))) {
                 const cause = t.downed!.cause;

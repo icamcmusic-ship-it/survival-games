@@ -3285,6 +3285,22 @@ export interface GameState {
     /** §6.7: per-event Gamemaker usage, for cooldowns, escalating cost and overuse. */
     gamemakerUse?: Record<string, { lastCycle: number; uses: number }>;
     /**
+     * AUDIT-10 batch 2: what tributes tried to do and what stopped them.
+     *
+     * The audit's §4 measurement list opens with "impossible-action attempts",
+     * and the reason it has to be a counter rather than a branch is that a
+     * branch nobody took is indistinguishable from a branch that is meant to be
+     * rare. A chain firing once per thousand runs because its actors never have
+     * the hours for it passes every existing check in this repository.
+     *
+     * `attempted` is per action kind; `refused` is per `kind:reason`. See
+     * `engine/actions.ts`.
+     */
+    actionLedger?: {
+        attempted: Record<string, number>;
+        refused: Record<string, number>;
+    };
+    /**
      * AUDIT-9 B05: how many manual/scheduled interventions this run has fired.
      *
      * Interventions do not enter through a phase, so they have no (seed,
