@@ -12,18 +12,56 @@ import { ALLIANCES, BLOODBATH, QUALITY_BIAS, TRAINING } from '../../data/balance
 import { registerAlliance } from '../alliance';
 
 /**
- * `GameConfig.bloodbathLethality`, clamped.
+ * REQUEST: how many tributes the Cornucopia is supposed to take.
  *
- * The lever is damage inside the killing zone rather than how many tributes
- * commit to the horn. Both move the body count, and only this one moves it
- * without also changing *who* dies: raising commitment pulls more of the
- * cautious half of the field into the scrum, which is a different Games, not a
- * bloodier one. Damage scales what happens to the people who were always going
- * to be standing there.
+ * `GameConfig.bloodbathDeathShare` is a share of the cast rather than a count,
+ * so one setting means the same thing at every district count — the slider is
+ * labelled in tributes and this is where the label becomes a number.
+ *
+ * Capped at "everybody but one": a bloodbath cannot leave an empty arena, and
+ * the Gamemakers would not allow one if it could.
  */
-function lethalityOf(ctx: SimContext): number {
-    const raw = ctx.state.config.bloodbathLethality ?? 1;
-    return Math.max(BLOODBATH.minLethality, Math.min(BLOODBATH.maxLethality, raw));
+export function bloodbathTargetFor(ctx: SimContext): number {
+    const cast = ctx.state.tributes.length;
+    const share = Math.max(0, Math.min(BLOODBATH.maxDeathShare, ctx.state.config.bloodbathDeathShare ?? 0));
+    return Math.min(Math.max(0, cast - 1), Math.round(share * cast));
+}
+
+/**
+ * How far short of the ask the Cornucopia currently is, 0-1.
+ *
+ * The one number the whole phase steers on: it decides how hard the killing
+ * zone hits, how long two people stay locked together, whether anybody chases
+ * the ones who ran, and whether the scrum is allowed to break up.
+ */
+function shortfallOf(ctx: SimContext, castAtGong: number, target: number): number {
+    if (target <= 0) return 0;
+    return Math.max(0, target - fallenSoFar(ctx, castAtGong)) / target;
+}
+
+/** How many have fallen at the horn so far this phase. */
+function fallenSoFar(ctx: SimContext, before: number): number {
+    return before - ctx.state.tributes.filter(t => t.status === 'alive').length;
+}
+
+/**
+ * How hard the killing zone hits, given how far behind the target it is.
+ *
+ * The target is met by keeping people in the fight and by hitting harder while
+ * behind — never by executing anybody. Every death still goes through
+ * `resolveCombat` and belongs to whoever landed it, which is what keeps the
+ * attribution, the obituaries and the achievements honest at every setting.
+ *
+ * Decays to 1 as the target is approached, and to nothing once it is met, so a
+ * bloodbath that has already taken what it was asked for stops being unusually
+ * lethal rather than stopping dead.
+ */
+function lethalityOf(ctx: SimContext, fallen = 0, target = 0): number {
+    if (target <= 0) return BLOODBATH.minLethality;
+    const remaining = Math.max(0, target - fallen);
+    if (remaining === 0) return BLOODBATH.minLethality;
+    const behind = remaining / target;
+    return 1 + (BLOODBATH.catchUpDamage - 1) * behind;
 }
 
 /**
@@ -41,14 +79,29 @@ function lethalityOf(ctx: SimContext): number {
  * would be two settings wearing one label.
  */
 function commitmentFactor(ctx: SimContext): number {
-    return 1 + (lethalityOf(ctx) - 1) * BLOODBATH.commitmentShare;
+    // Commitment is set by how big the asked-for bloodbath is relative to the
+    // field, not by how far behind it currently is: who charges the horn is
+    // decided in the first seconds, before anybody has fallen.
+    const cast = Math.max(1, ctx.state.tributes.length);
+    const ask = bloodbathTargetFor(ctx) / cast;
+    /*
+     * A third of the field is the historical shape; asking for more pulls more
+     * of the cautious half in, asking for less lets them go for the treeline.
+     *
+     * Steep above the historical shape and gentle below it, because the two
+     * directions are different requests: "fewer, and let them run" is a change
+     * of degree, and "almost everybody" is a change of kind — nobody edges
+     * toward the treeline in a Games where the horn is the whole story.
+     */
+    const delta = ask - BLOODBATH.commitmentAnchor;
+    return 1 + delta * (delta > 0 ? BLOODBATH.commitmentAbove : BLOODBATH.commitmentBelow);
 }
 
 import { resolveCombat, resolveGroupCombat, selfInflictedDeath } from '../combat';
 import { BLOODBATH_TEXTS,
     PEDESTAL_ARENA_SHOTS, PEDESTAL_REACTIONS, EARLY_STEP_OFF, GONG_DECISIONS,
 } from '../../data/flavorText';
-import { giveItem, itemPhrase, mintItem, itemPoolFor, pickForDistrict } from '../items';
+import { enforceCapacity, giveItem, itemPhrase, mintItem, itemPoolFor, pickForDistrict } from '../items';
 import { personaThreat } from './alliances';
 import { getRel, setRel } from '../relationships';
 import { noteContact, noteSighting, ensureMemory } from '../memory';
@@ -371,6 +424,13 @@ export function processBloodbath(ctx: SimContext) {
     ctx.state.phase = 'bloodbath';
     ctx.rng = new RNG(`${ctx.state.seed}-bloodbath`);
     const alive = getAlive(ctx.state);
+    /*
+     * REQUEST: how many the Cornucopia is asked for, and the count to measure
+     * it against. Read once, before anybody moves, so the whole phase is
+     * working toward the same number.
+     */
+    const castAtGong = ctx.state.tributes.filter(t => t.status === 'alive').length;
+    const deathTarget = bloodbathTargetFor(ctx);
     // Anyone who reaches the gong has survived to day 1. Without this, a
     // Cornucopia death was recorded as daysSurvived 0 — the day-phase loop
     // that normally stamps it never runs for them — which fed bad data to
@@ -599,7 +659,37 @@ export function processBloodbath(ctx: SimContext) {
     runners.forEach(t => {
         if (t.status !== 'alive' || hunters.length === 0) return;
         const proximity = 1 - (t.platePosition ?? 0.5);
-        const caught = BLOODBATH.runDownChance * proximity * Math.max(0.3, 1 - t.attributes.agility / 12);
+        /*
+         * REQUEST: while the Cornucopia is short of what it was asked for, the
+         * people who turned for the treeline are the rest of the ask.
+         *
+         * Without this the target saturated at about ten of twenty-four
+         * however high it was set: only the tributes who committed to the horn
+         * were ever in the scrum, so a bloodbath asked for twenty-three had
+         * nobody left to take them from. Whoever runs is still only caught if
+         * somebody armed is behind them and they are slow enough and close
+         * enough to the ring — the shortfall raises the odds, it does not
+         * suspend the conditions.
+         */
+        // Met the ask already: nobody bothers chasing the ones who ran.
+        if (fallenSoFar(ctx, castAtGong) >= deathTarget) return;
+        const shortfall = Math.max(0, deathTarget - fallenSoFar(ctx, castAtGong)) / Math.max(1, deathTarget);
+        /*
+         * Two terms, and the floor is the one that matters at a high ask.
+         *
+         * The product term is the ordinary case: how close to the ring they
+         * started and how fast they are. Both can be small, and multiplying a
+         * shortfall through them still leaves a slow tribute on the far edge of
+         * the plates mostly getting away — so a Cornucopia asked for
+         * twenty-three of twenty-four came up three or four short no matter how
+         * the multiplier was tuned. The floor says that when the horn is the
+         * whole story, the field does not get to leave it.
+         */
+        const caught = Math.min(0.97, Math.max(
+            BLOODBATH.runDownChance * (1 + shortfall * BLOODBATH.runDownCatchUp)
+                * proximity * Math.max(0.3, 1 - t.attributes.agility / 12),
+            shortfall * BLOODBATH.runDownFloor,
+        ));
         if (!ctx.rng.chance(caught)) return;
         const hunter = ctx.rng.pickOrUndefined(hunters.filter(h => h.status === 'alive' && h.id !== t.id));
         if (!hunter) return;
@@ -623,7 +713,8 @@ export function processBloodbath(ctx: SimContext) {
         );
         // Being caught from behind is an ambush by any definition, and nobody
         // is thinking clearly enough to break off in the first seconds.
-        resolveCombat(ctx, hunter, t, true, true, BLOODBATH.noRetreatRounds, BLOODBATH.killingZoneDamage * lethalityOf(ctx));
+        resolveCombat(ctx, hunter, t, true, true, BLOODBATH.noRetreatRounds,
+            BLOODBATH.killingZoneDamage * lethalityOf(ctx, fallenSoFar(ctx, castAtGong), deathTarget));
     });
 
     runners.forEach(t => {
@@ -666,13 +757,40 @@ export function processBloodbath(ctx: SimContext) {
      * margin it always did, and the slider adds bodies rather than adding
      * Careers' share of them.
      */
-    const careerEdge = 1 + (BLOODBATH.careerKillingZoneBonus - 1) / commitmentFactor(ctx);
-    const zoneMultiplier = (t: Tribute) => (killingZone.has(t.id)
-        ? BLOODBATH.killingZoneDamage * lethalityOf(ctx) * (t.isCareer ? careerEdge : 1)
-        : 1);
+    const careerEdge = 1 + (BLOODBATH.careerKillingZoneBonus - 1) / Math.max(0.5, commitmentFactor(ctx));
+    /*
+     * The catch-up is *added*, not multiplied through the Career edge.
+     *
+     * Multiplied, the term that exists to make a high target reachable became a
+     * term that made the pack better at reaching it than anybody else — and the
+     * pack is already who wins the horn. Measured: Career victors moved with
+     * the bloodbath target rather than staying put under it.
+     */
+    const zoneMultiplier = (t: Tribute) => {
+        if (!killingZone.has(t.id)) return 1;
+        const base = BLOODBATH.killingZoneDamage * (t.isCareer ? careerEdge : 1);
+        const catchUp = lethalityOf(ctx, fallenSoFar(ctx, castAtGong), deathTarget) - 1;
+        return base + BLOODBATH.killingZoneDamage * catchUp;
+    };
 
-    let rounds = pool.length * 6 + 12;
+    /*
+     * REQUEST: the scrum runs until the target is met or there is nobody left
+     * to meet it with.
+     *
+     * The round budget used to be `pool.length * 6 + 12`, which is the right
+     * shape for a bloodbath that takes about a third of the field and far too
+     * short for one asked to take twenty-three of twenty-four: the loop simply
+     * ran out of rounds and everybody walked away. Sized off the target now.
+     */
+    /** Staying in a knot, raised by whatever the Cornucopia is still short of. */
+    const groupReengage = () => Math.min(0.995, BLOODBATH.groupReengageChance
+        * (1 + shortfallOf(ctx, castAtGong, deathTarget)));
+
+    let rounds = Math.max(pool.length * 6 + 12, deathTarget * BLOODBATH.scrumRoundsPerTribute);
     while (pool.length > 1 && rounds-- > 0) {
+        // Met the ask: whoever is still standing in the knot breaks off. The
+        // Gamemakers wanted a number and they have it.
+        if (fallenSoFar(ctx, castAtGong) >= deathTarget) break;
         // The pack does not queue up for duels. If enough of them are still in
         // the scrum they pick one target and go through them together, which is
         // the entire reason a Career pack is frightening.
@@ -687,7 +805,11 @@ export function processBloodbath(ctx: SimContext) {
             });
             resolveGroupCombat(ctx, party);
             party.forEach(t => {
-                if (t.status === 'alive' && ctx.rng.chance(BLOODBATH.groupReengageChance)) pool.push(t);
+                // REQUEST: the group branches drain the pool too. Left
+                // unscaled, a scrum asked for most of the field emptied itself
+                // through them while the duel branch was holding everybody in
+                // — which is why the target saturated around eleven.
+                if (t.status === 'alive' && ctx.rng.chance(groupReengage())) pool.push(t);
             });
             continue;
         }
@@ -697,7 +819,11 @@ export function processBloodbath(ctx: SimContext) {
             const party = pool.splice(0, 3);
             resolveGroupCombat(ctx, party);
             party.forEach(t => {
-                if (t.status === 'alive' && ctx.rng.chance(BLOODBATH.groupReengageChance)) pool.push(t);
+                // REQUEST: the group branches drain the pool too. Left
+                // unscaled, a scrum asked for most of the field emptied itself
+                // through them while the duel branch was holding everybody in
+                // — which is why the target saturated around eleven.
+                if (t.status === 'alive' && ctx.rng.chance(groupReengage())) pool.push(t);
             });
             continue;
         }
@@ -707,14 +833,32 @@ export function processBloodbath(ctx: SimContext) {
         // reason to hate, or whoever promised the crowd a bloodbath.
         const t2 = pool.splice(pickOpponentIndex(ctx, t1, pool), 1)[0];
 
+        /*
+         * REQUEST: a scrum short of what it was asked for does not let go.
+         *
+         * Damage alone could not carry a high target — a three-round exchange
+         * between two healthy tributes mostly ends with two hurt tributes, so
+         * a bloodbath asked for twenty-three saturated around eleven however
+         * hard the killing zone hit. How long two people stay locked together
+         * is the other half of it, and it is the half that scales.
+         */
+        const locked = BLOODBATH.noRetreatRounds
+            + Math.round(shortfallOf(ctx, castAtGong, deathTarget) * BLOODBATH.catchUpRounds);
         resolveCombat(
             ctx, t1, t2, true, false,
-            BLOODBATH.noRetreatRounds,
+            locked,
             Math.max(zoneMultiplier(t1), zoneMultiplier(t2)),
         );
         // Staying in the scrum is the other half of how long the opening runs,
         // and therefore of how many people it takes.
-        const reengage = Math.min(0.98, BLOODBATH.reengageChance * commitmentFactor(ctx));
+        // Staying in the scrum is most of how many the opening takes, so it is
+        // the first thing the target drives: while the Cornucopia is behind
+        // what it was asked for, nobody is minded to walk away from it.
+        const behind = fallenSoFar(ctx, castAtGong) < deathTarget;
+        const reengage = behind
+            ? Math.min(0.995, BLOODBATH.reengageChance * commitmentFactor(ctx)
+                * (1 + (deathTarget - fallenSoFar(ctx, castAtGong)) / Math.max(1, deathTarget)))
+            : BLOODBATH.reengageChance * 0.5;
         if (t1.status === 'alive' && ctx.rng.chance(reengage)) pool.push(t1);
         if (t2.status === 'alive' && ctx.rng.chance(reengage)) pool.push(t2);
     }
@@ -767,6 +911,16 @@ export function processBloodbath(ctx: SimContext) {
     // 'bloodbath', so calling it here only seeds the watch and counts the
     // health recovery.
     tickRunRecords(ctx);
+    /*
+     * Nobody leaves the horn holding more than they can carry.
+     *
+     * The Cornucopia is where most of the kit in a Games enters it, and this
+     * phase never swept capacity — the day phase did, a phase later, and a
+     * tribute who died in between froze the overflow into their corpse. The
+     * soak caught it the moment the target work made the scrum longer and the
+     * armfuls bigger.
+     */
+    ctx.state.tributes.forEach(t => enforceCapacity(t));
 }
 
 /**

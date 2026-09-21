@@ -51,7 +51,10 @@ for (let i = 0; i < RUNS; i++) {
     });
     const last = state.tributes
         .filter(t => t.status === 'dead')
-        .sort((a, b) => (b.dayOfDeath ?? -1) - (a.dayOfDeath ?? -1))[0] as Tribute | undefined;
+        // The recorded elimination order, not `dayOfDeath`: two tributes who
+        // fall on the same day are indistinguishable by day, and the last death
+        // of a Games very often shares a day with the one before it.
+        .sort((a, b) => (b.eliminationIndex ?? -1) - (a.eliminationIndex ?? -1))[0] as Tribute | undefined;
     if (last && deathCodeOf(last) === 'tribute'
         && victors.some(v => last.lastDamage?.sourceId === v.id)) showdowns++;
 }

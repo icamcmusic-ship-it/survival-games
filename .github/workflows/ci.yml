@@ -100,6 +100,9 @@ jobs:
       # REQUEST: how a Games ends — victor health and whether the last death
       # is a showdown. Both are distributions, not propositions about one run.
       - run: npm run test:endgame
+      # REQUEST: the death settings are counts. "Absolute" is a claim about the
+      # whole slider, so it is checked across its range rather than at its default.
+      - run: npm run test:death-targets
 
       # Content and structure.
       - run: npm run test:arenas

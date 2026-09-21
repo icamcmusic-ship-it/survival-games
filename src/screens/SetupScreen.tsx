@@ -104,32 +104,28 @@ function presetDelta(current: GameConfig, preset: PresetConfig): string[] {
  * four betrayals a Games at 1×) and stated as the difference from default, so
  * "hazards 1.5×" reads as "about three more hazard deaths per Games".
  */
-/*
- * The two death-mix dials are expressed in bodies rather than in multipliers,
- * because that is the thing the player is actually setting and because neither
- * default is 1 — a sentence of the form "about the usual" measured from 1.0
- * would be wrong for both of them. Both are anchored on the measured default
- * (200 runs, full `ARENAS` sweep, 24-tribute field) and scaled from there.
+/**
+ * REQUEST: the death settings read as tributes, because that is the unit the
+ * player is choosing in.
+ *
+ * The stored value is a share of the cast so one setting means the same thing
+ * at every district count; the label converts it back for the district count
+ * currently selected. Both directions live here so the slider, its readout and
+ * its effect line can never disagree about what the number means.
  */
-const MEASURED = {
-    /** Tribute-dealt deaths per Games at `naturalDeathRate` = 0.2. */
-    tributeDeaths: 16,
-    /** ...and how many of those a point of the dial is worth, near the default. */
-    tributeDeathsPerPoint: 4,
-    /** Bloodbath deaths per Games at `bloodbathLethality` = 1.3. */
-    bloodbathDeaths: 8,
-    bloodbathDeathsPerPoint: 3,
-} as const;
+function deathsFor(share: number, cast: number): number {
+    return Math.min(Math.max(0, cast - 1), Math.round(share * cast));
+}
 
-function deathMixHint(kind: 'natural' | 'bloodbath', value: number): string {
-    if (kind === 'natural') {
-        const delta = value - DEFAULT_GAME_CONFIG.naturalDeathRate;
-        const byTributes = Math.round(MEASURED.tributeDeaths - delta * MEASURED.tributeDeathsPerPoint);
-        return `Roughly ${Math.max(0, byTributes)} of the field killed by another tribute, and the rest by the arena.`;
+function deathMixHint(kind: 'arena' | 'bloodbath', share: number, cast: number): string {
+    const dead = deathsFor(share, cast);
+    if (kind === 'arena') {
+        if (dead === 0) return 'The arena hurts people and never finishes one. Every death in these Games is somebody\'s doing.';
+        return `About ${dead} of ${cast} taken by the arena itself — hazards, wounds, thirst, cold — leaving the rest to each other.`;
     }
-    const delta = value - DEFAULT_GAME_CONFIG.bloodbathLethality;
-    const dead = Math.round(MEASURED.bloodbathDeaths + delta * MEASURED.bloodbathDeathsPerPoint);
-    return `Roughly ${Math.max(0, dead)} dead before the first morning is over.`;
+    if (dead === 0) return 'Nobody dies at the Cornucopia. They take what they can carry and scatter.';
+    if (dead >= cast - 1) return `All but one of the ${cast} before the first morning is over. The Games end at the horn.`;
+    return `About ${dead} of ${cast} dead before the first morning is over.`;
 }
 
 function effectHint(kind: 'hazard' | 'betrayal' | 'sponsor', value: number): string {
@@ -187,7 +183,8 @@ function randomConfig(current: GameConfig): GameConfig {
         districtCount: pick(2, 16, 1),
         hazardRate: pick(0.25, 2.5, 0.25),
         naturalDeathRate: pick(ARENA_DEATH_BUDGET.minNaturalRate, ARENA_DEATH_BUDGET.maxNaturalRate, 0.1),
-        bloodbathLethality: pick(BLOODBATH.minLethality, BLOODBATH.maxLethality, 0.1),
+        bloodbathDeathShare: pick(0, BLOODBATH.maxDeathShare, 1 / 24),
+        arenaDeathShare: pick(0, ARENA_DEATH_BUDGET.maxDeathShare, 1 / 24),
         betrayalRate: pick(0, 3, 0.25),
         sponsorGenerosity: pick(0, 3, 0.25),
         enableFeast: Math.random() < 0.75,
@@ -351,6 +348,12 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
     const [pinnedQuellId, setPinnedQuellId] = useState<string | null>(null);
     const [config, setConfigState] = useState<GameConfig>(readStoredConfig);
     const [showAdvanced, setShowAdvanced] = useState(false);
+    /*
+     * REQUEST: the death sliders are counts, so they need the count they are
+     * counting out of. Two tributes per district, and it moves when the
+     * districts slider does — which is why the stored value is a share.
+     */
+    const castSize = config.districtCount * 2;
     // §8: both halves have to be present for either to apply, so one boolean
     // covers the pair and the checkbox writes both or clears both.
     const customAges = config.ageMean !== undefined && config.ageSpread !== undefined;
@@ -1224,23 +1227,39 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                               * killing people, and how much of it happens in the
                               * first sixty seconds.
                               */}
+                            {/*
+                              * REQUEST: absolute, in tributes. The slider steps
+                              * one tribute at a time and reads "8 of 24"; what
+                              * is stored is the share, so the setting survives
+                              * a change of district count meaning the same
+                              * thing rather than a different one.
+                              */}
+                            <ConfigSlider
+                                label="Cornucopia deaths"
+                                hint="How many the opening sixty seconds takes. They still die to somebody — the Gamemakers only decide how long the scrum runs and how hard it is fought."
+                                effect={deathMixHint('bloodbath', config.bloodbathDeathShare, castSize)}
+                                value={deathsFor(config.bloodbathDeathShare, castSize)}
+                                min={0} max={castSize - 1} step={1}
+                                format={(v) => `${v} of ${castSize}`}
+                                onChange={(v) => setConfig(c => ({ ...c, bloodbathDeathShare: v / castSize }))}
+                            />
+                            <ConfigSlider
+                                label="Arena deaths"
+                                hint="How many the arena itself takes over the whole Games — hazards, wounds, thirst, cold. The rest are left to each other."
+                                effect={deathMixHint('arena', config.arenaDeathShare, castSize)}
+                                value={deathsFor(config.arenaDeathShare, castSize)}
+                                min={0} max={castSize - 1} step={1}
+                                format={(v) => `${v} of ${castSize}`}
+                                onChange={(v) => setConfig(c => ({ ...c, arenaDeathShare: v / castSize }))}
+                            />
                             <ConfigSlider
                                 label="Arena lethality"
-                                hint="How hard everything that is not another tribute hits — hazards, wounds, thirst, cold. Lower leaves more of the field alive to meet each other."
-                                effect={deathMixHint('natural', config.naturalDeathRate)}
+                                hint="How hard everything that is not another tribute hits. Separate from how many it kills: a hard arena leaves walking wounded for other tributes to finish, a soft one mostly bruises."
+                                effect={`${config.naturalDeathRate.toFixed(1)}× the damage a hazard, a wound or a cold night does.`}
                                 value={config.naturalDeathRate}
                                 min={ARENA_DEATH_BUDGET.minNaturalRate} max={ARENA_DEATH_BUDGET.maxNaturalRate} step={0.1}
                                 format={(v) => `${v.toFixed(1)}×`}
                                 onChange={(v) => setConfig(c => ({ ...c, naturalDeathRate: v }))}
-                            />
-                            <ConfigSlider
-                                label="Bloodbath lethality"
-                                hint="How many stay in the scrum at the Cornucopia, and how hard the killing zone hits."
-                                effect={deathMixHint('bloodbath', config.bloodbathLethality)}
-                                value={config.bloodbathLethality}
-                                min={BLOODBATH.minLethality} max={BLOODBATH.maxLethality} step={0.1}
-                                format={(v) => `${v.toFixed(1)}×`}
-                                onChange={(v) => setConfig(c => ({ ...c, bloodbathLethality: v }))}
                             />
                             <ConfigSlider
                                 label="Alliance betrayal rate"

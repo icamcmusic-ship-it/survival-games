@@ -1787,7 +1787,7 @@ export const BLOODBATH = {
      * horn first — this is a bonus on top of proximity, agility and noise, all
      * of which already favour them.
      */
-    careerReachBonus: 2.5,
+    careerReachBonus: 2.0,
     /** §8: how much `targetDraw` moves who gets picked in the scrum. */
     targetDrawWeight: 0.06,
     /** §5: a walled horn is a killing box — fewer commit, and they commit harder. */
@@ -1797,23 +1797,82 @@ export const BLOODBATH = {
     islandHornDeterrent: 0.22,
     islandHornSwimmer: 0.35,
     /*
-     * Bounds on `GameConfig.bloodbathLethality`.
+     * REQUEST: the Cornucopia setting is a *number of tributes*, not a
+     * multiplier. `GameConfig.bloodbathDeathShare` is that number as a share of
+     * the cast, so one setting means the same thing at every district count.
      *
-     * At the floor the opening is a scramble for packs that a few people do not
-     * walk away from; at the ceiling it is the canon bloodbath at its worst. The
-     * ceiling is bounded by the field it has to leave behind — a bloodbath that
-     * takes most of the cast leaves no Games after it.
+     * The ceiling is "everybody but one": a bloodbath cannot leave an empty
+     * arena, and the Gamemakers would not allow one if it could. A genuine zero
+     * is allowed — a scramble for packs that nobody dies in is a legitimate
+     * thing to want to watch, and was not previously expressible.
      */
-    minLethality: 0.4,
-    maxLethality: 2.4,
+    maxDeathShare: 23 / 24,
     /**
-     * How much of the lethality slider reaches commitment rather than damage.
+     * How hard the killing zone hits while the Cornucopia is behind its target,
+     * decaying to 1 as it is approached.
      *
-     * Damped: commitment changes which half of the field is in the scrum as
-     * well as how many come out of it, and the slider is meant to be a body
-     * count, not a different cast.
+     * The target is met by keeping people in the fight and by hitting harder
+     * while behind — never by executing anybody. Every death still goes through
+     * `resolveCombat` and belongs to whoever landed it, which is what keeps
+     * attribution, obituaries and achievements honest at every setting.
      */
-    commitmentShare: 0.35,
+    catchUpDamage: 3.4,
+    /**
+     * Extra rounds two people stay locked together while the scrum is behind.
+     *
+     * Damage alone could not carry a high target: a three-round exchange
+     * between two healthy tributes mostly ends with two hurt tributes, so a
+     * bloodbath asked for twenty-three of twenty-four saturated around eleven
+     * however hard the killing zone was made to hit.
+     */
+    catchUpRounds: 9,
+    /** What the killing zone is worth once the ask has been met. */
+    minLethality: 0.4,
+    /**
+     * Rounds of scrum per tribute the target asks for.
+     *
+     * The old budget was `pool.length * 6 + 12`, which is the right shape for a
+     * bloodbath taking a third of the field and far too short for one asked to
+     * take twenty-three of twenty-four: the loop simply ran out of rounds and
+     * everybody walked away.
+     */
+    scrumRoundsPerTribute: 14,
+    /**
+     * The share of the field below which the horn stops being worth charging.
+     *
+     * Not the historical *outcome* share (a third) but the point where the
+     * commitment curve passes 1 — and those are different numbers, which cost a
+     * measurement to learn. Anchored at a third, a default-sized ask produced a
+     * commitment factor of exactly 1, which is *less* commitment than the old
+     * multiplier gave: fewer of the cautious half charged the horn, the scrum
+     * became a Career pack with a handful of volunteers in it, and Career
+     * victors went 57.4% -> 62.1%. A bloodbath that takes a third of the field
+     * is already a bloodbath most of the field ran at.
+     */
+    commitmentAnchor: 0.22,
+    /** How steeply commitment rises when more than that is asked for... */
+    commitmentAbove: 2.2,
+    /** ...and how gently it falls when less is. */
+    commitmentBelow: 0.7,
+    /**
+     * How much a shortfall raises the odds of catching somebody who ran.
+     *
+     * Without it the target saturated at about ten of twenty-four however high
+     * it was set: only the tributes who committed to the horn were ever in the
+     * scrum, so a bloodbath asked for twenty-three had nobody left to take
+     * them from.
+     */
+    runDownCatchUp: 2.2,
+    /**
+     * The floor on catching somebody who ran, scaled by the shortfall.
+     *
+     * The multiplier above runs through plate proximity and agility, both of
+     * which can be small, so a slow tribute on the far edge of the ring mostly
+     * got away however hard the multiplier was pushed — and a Cornucopia asked
+     * for twenty-three of twenty-four came up three or four short. When the
+     * horn is the whole story, the field does not get to leave it.
+     */
+    runDownFloor: 0.85,
 } as const;
 
 /**
@@ -1923,10 +1982,6 @@ export const ARENA_DEATH_BUDGET = {
      * rate down (measured 5.0% -> 3.3% across 240 runs) and pushes the
      * tribute-dealt share up toward its design goal.
      */
-    /** Environmental deaths below this share of the cast are never interfered with. */
-    softCapShare: 0.20,
-    /** The share at which sparing is at its most likely. */
-    hardCapShare: 0.36,
     sparedChanceAtCap: 0.35,
     sparedChanceAtHardCap: 0.9,
     /**
@@ -1936,16 +1991,31 @@ export const ARENA_DEATH_BUDGET = {
      */
     activeBelowAliveShare: 0.85,
     /*
-     * The bounds on `GameConfig.naturalDeathRate`, which multiplies the two
-     * shares above.
+     * The bounds on `GameConfig.naturalDeathRate`, which scales how hard
+     * non-tribute damage lands.
      *
-     * The floor is not zero: an arena that can never take anybody is not a
-     * setting this game has, and the finalist protection already handles the
-     * only case where a zero is wanted. The ceiling is where the wipeout rate
-     * starts climbing, measured rather than guessed.
+     * The floor is not zero: an arena that can never hurt anybody is not a
+     * setting this game has. The ceiling is where the wipeout rate starts
+     * climbing, measured rather than guessed.
      */
     minNaturalRate: 0.1,
     maxNaturalRate: 2,
+    /*
+     * REQUEST: the arena setting is a *number of tributes*, not a share of a
+     * budget curve. `GameConfig.arenaDeathShare` is that number as a share of
+     * the cast, and the two constants above become the shape of the curve
+     * either side of it rather than the target itself.
+     *
+     * `softCapShare`/`hardCapShare` are now read as fractions *of the target*:
+     * the arena is never reined in below `softOfTarget` of what it was asked
+     * for, is reined in increasingly hard between there and the target, and is
+     * all but stopped past it. A target of zero stops it outright — which is a
+     * legitimate thing to want and was not previously expressible.
+     */
+    softOfTarget: 0.6,
+    hardOfTarget: 1.15,
+    /** "Everybody but one": the arena may not empty the arena. */
+    maxDeathShare: 23 / 24,
 } as const;
 
 /**
@@ -4496,7 +4566,19 @@ export const STANCE_MODES = {
     scavenging: {
         /** Inventory value below which a tribute has nothing worth having. */
         inventoryValue: 8,
-        base: 1.8,
+        /*
+         * REQUEST (absolute death counts), side-effect: raised from 1.8.
+         *
+         * Concentrating the deaths into the Cornucopia arms more of the field
+         * at the horn and spreads fewer bodies through the run, and Scavenging
+         * is gated on having nothing worth carrying or on standing near
+         * somebody who no longer needs theirs — so it fell from 1.3% of
+         * stance-time to 0.8%, under its floor. The stance's own comment has
+         * called it the rarest in the game across several audits; this is the
+         * role-appropriate opportunity the audit's §8.6 asks for rather than
+         * another widening of what counts as scavenging.
+         */
+        base: 2.2,
         /** Pull from a cannon in an adjacent zone: someone dropped their kit. */
         cannonBonus: 1.6,
         /** Corpse-looting edge. */

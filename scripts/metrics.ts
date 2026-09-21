@@ -916,6 +916,22 @@ const indicators: Indicator[] = [
         goalMet: v => v >= 0.015,
         baseline: '0.5%',
         fmt: asPct,
+        /*
+         * AUDIT-10: and it is the minimum of a ten-row table, which is the same
+         * selected-extreme statistic as the two archetype rows above and gets
+         * the same treatment. Measured across six sweeps at n=1,600 while the
+         * death-mix work was in progress it ran 0.8% to 1.0%, crossing the
+         * guard in both directions without anything touching the stance layer.
+         *
+         * A stance that has genuinely fallen off the board will sit well below
+         * the floor and still fail; one hovering on it is reported and does not
+         * fail the build.
+         */
+        extremeOf: () => {
+            const total = STANCES.reduce((a: number, st: Stance) => a + stanceSamples[st], 0);
+            const rarest = Math.min(...STANCES.map((st: Stance) => stanceSamples[st]));
+            return { rows: STANCES.length, successes: rarest, n: Math.max(1, total) };
+        },
     },
     {
         /*

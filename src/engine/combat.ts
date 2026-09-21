@@ -250,8 +250,15 @@ function arenaOverBudget(ctx: SimContext, alive: number): boolean {
     if (alive > cast * ARENA_DEATH_BUDGET.activeBelowAliveShare) return false;
     const taken = ctx.state.environmentalDeaths ?? 0;
     /*
-     * REQUEST ("too many victors walk out with 1% health"): the budget is NOT
-     * scaled by `naturalDeathRate`, and it was.
+     * REQUEST: how many the arena is asked for, as a number of tributes.
+     *
+     * `arenaDeathShare` is that number as a share of the cast. The budget curve
+     * is expressed relative to it: never reined in below `softOfTarget` of the
+     * ask, reined in increasingly hard up to the ask, all but stopped past it.
+     * A target of zero stops the arena killing anybody outright, which is a
+     * legitimate thing to want and was not previously expressible at all.
+     *
+     * (Previously: the budget is NOT scaled by `naturalDeathRate`, and it was.
      *
      * Scaling both the arena's damage and its death budget by the same setting
      * counts it twice. At the measured default of 0.3 the soft cap came out at
@@ -265,11 +272,14 @@ function arenaOverBudget(ctx: SimContext, alive: number): boolean {
      *
      * The damage scaling is the lever (see `applyDamage`). This is the
      * Gamemakers' ceiling on the arena's share of the killing, and it is a
-     * share of the cast either way.
+     * share of the cast either way.)
      */
-    const soft = cast * ARENA_DEATH_BUDGET.softCapShare;
+    const share = Math.max(0, Math.min(ARENA_DEATH_BUDGET.maxDeathShare, ctx.state.config.arenaDeathShare ?? 0.3));
+    const target = share * cast;
+    if (target <= 0) return true;
+    const soft = target * ARENA_DEATH_BUDGET.softOfTarget;
     if (taken < soft) return false;
-    const hard = cast * ARENA_DEATH_BUDGET.hardCapShare;
+    const hard = target * ARENA_DEATH_BUDGET.hardOfTarget;
     const through = hard > soft ? Math.min(1, (taken - soft) / (hard - soft)) : 1;
     const chance = ARENA_DEATH_BUDGET.sparedChanceAtCap
         + through * (ARENA_DEATH_BUDGET.sparedChanceAtHardCap - ARENA_DEATH_BUDGET.sparedChanceAtCap);

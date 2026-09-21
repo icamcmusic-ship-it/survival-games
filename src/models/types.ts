@@ -2467,37 +2467,42 @@ export interface GameConfig {
     hazardRate: number; // multiplier on random event/mutt attack chance
     betrayalRate: number; // multiplier on alliance betrayal chance
     /**
-     * How much of the cast the arena itself is allowed to take.
+     * REQUEST: "the length of the hazards, arena deaths, cornucopia deaths
+     * should be more absolute. I want to be able to choose for up to 23 tribute
+     * deaths in cornucopia if I choose".
      *
-     * The arena and the tributes compete for the same finite cast, and the
-     * split between them was fixed: `ARENA_DEATH_BUDGET` capped environmental
-     * deaths at a share of the field and nothing about it was configurable, so
-     * a run that wanted a knife-fight Games and a run that wanted a survival
-     * Games got the same one. Measured at the defaults before this existed: a
-     * 24-tribute field lost about 11 people to the arena and about 12 to each
-     * other, which is more scenery than most players want.
+     * Both death settings are **targets**, not multipliers. The stored value is
+     * a share of the cast so that one setting means the same thing at every
+     * district count; the slider is labelled, and reasoned about, in tributes.
+     * A 24-tribute field at `bloodbathDeathShare: 0.96` loses 23 people at the
+     * Cornucopia, because that is what the number says.
      *
-     * A multiplier on the budget's soft and hard caps. Below 1 the Gamemakers
-     * start pulling the arena's punches sooner, so more of the cast survives to
-     * be killed by somebody — which is the only other thing that can kill them.
-     * Above 1 the arena is given a longer leash.
+     * They are targets rather than guarantees, and the residual is honest: the
+     * Cornucopia meets its ask by keeping people in the fight and hitting
+     * harder while it is behind, never by executing anybody, so every death
+     * still goes through `resolveCombat` and belongs to whoever landed it.
+     * People survive fights. Measured over a full ARENAS sweep at 12 districts:
      *
-     * `DEFAULT_GAME_CONFIG` sets this to the value measured to produce roughly
-     * 16 tribute-dealt deaths in a full field; see `NATURAL_DEATHS` in
-     * `data/balance.ts` for the measurement.
+     *     asked  0  ->  0.2 dead      asked 12  ->  12.0
+     *     asked  4  ->  4.0           asked 18  ->  17.9
+     *     asked  8  ->  8.0           asked 23  ->  21.2
+     *
+     * Met to within a rounding error up to about half the field, approached
+     * above that. See `bloodbathTargetFor` and `arenaOverBudget`.
+     */
+    bloodbathDeathShare: number;
+    arenaDeathShare: number;
+    /**
+     * How hard everything that is not another tribute hits.
+     *
+     * Kept alongside `arenaDeathShare` because the two answer different
+     * questions and both are worth asking. The share is *how many* the arena
+     * takes; this is *how hard it hits on the way*, which decides whether the
+     * arena's share arrives as a few outright killings or as a field of walking
+     * wounded that other tributes then finish. Left as a multiplier because
+     * there is no absolute unit for "how much a flood hurts".
      */
     naturalDeathRate: number;
-    /**
-     * How hard the opening sixty seconds hits.
-     *
-     * A multiplier on the damage landed inside the killing zone, which is the
-     * one lever that moves the bloodbath's body count monotonically without
-     * changing who commits to the horn (the commitment knobs move *which*
-     * tributes die as much as how many, which is a different setting).
-     *
-     * Default tuned to a bloodbath that takes roughly 8-11 of a full field.
-     */
-    bloodbathLethality: number;
     sponsorGenerosity: number; // multiplier on sponsor gift chance
     enableFeast: boolean;
     enableSanity: boolean;

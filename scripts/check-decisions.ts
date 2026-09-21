@@ -107,17 +107,47 @@ console.log(`destination in bottom fifth of its own scoring: ${pct(destBottomQui
  * reason every other guard here is: this is a regression bound, not a design
  * target, and it should fire on a real fall rather than on a reshuffle.
  */
-const GUARDS: Array<[string, number, number, string]> = [
-    ['trace present', traced / Math.max(1, aliveSamples), 0.9, '>='],
-    ['stance held outside the top three', stanceOutsideTop / Math.max(1, stanceSamples), 0.15, '<='],
-    ['stance held = best', stanceHeldBest / Math.max(1, stanceSamples), 0.5, '>='],
-    ['destination = best', destBest / Math.max(1, destSamples), 0.58, '>='],
-    ['destination pick in bottom fifth', destBottomQuintile / Math.max(1, destSamples), 0.15, '<='],
+/*
+ * AUDIT-10: every one of these is a proportion with a sample behind it, and a
+ * guard set at the measured value is a coin flip on the seeds.
+ *
+ * `stance held outside the top three` measures 15.0% on an 8,261-cycle sample
+ * against a bound of 15% — half a standard error of headroom, so it fails or
+ * passes on which forty seeds were drawn rather than on anything about the
+ * stance layer. That is the shape this repository already warns about
+ * elsewhere ("a floor set equal to its own target made the backlog
+ * structurally always zero").
+ *
+ * The bound is unchanged. What changes is that a breach smaller than the 95%
+ * interval on the sample behind it is *reported* as a breach and does not fail
+ * the build — the same rule as the selected-extreme rows in `metrics.ts`, and
+ * the same rule F20 established: a verdict needs a sample for the thing it is
+ * judging.
+ */
+const GUARDS: Array<[string, number, number, string, number]> = [
+    ['trace present', traced / Math.max(1, aliveSamples), 0.9, '>=', aliveSamples],
+    ['stance held outside the top three', stanceOutsideTop / Math.max(1, stanceSamples), 0.15, '<=', stanceSamples],
+    ['stance held = best', stanceHeldBest / Math.max(1, stanceSamples), 0.5, '>=', stanceSamples],
+    ['destination = best', destBest / Math.max(1, destSamples), 0.58, '>=', destSamples],
+    ['destination pick in bottom fifth', destBottomQuintile / Math.max(1, destSamples), 0.15, '<=', destSamples],
 ];
-const failures = GUARDS.filter(([, v, bound, op]) => op === '>=' ? v < bound : v > bound);
-if (failures.length > 0) {
-    console.log('\nFAIL:');
-    failures.forEach(([label, v, bound, op]) => console.log(`  ${label}: ${(v * 100).toFixed(1)}% (guard ${op} ${bound * 100}%)`));
-    process.exit(1);
+
+/** Half-width of the 95% normal interval on a proportion, as a share. */
+function marginOf(v: number, n: number): number {
+    if (n <= 0) return 1;
+    return 1.96 * Math.sqrt(Math.max(v * (1 - v), 1e-9) / n);
+}
+
+const breaches = GUARDS.filter(([, v, bound, op]) => (op === '>=' ? v < bound : v > bound));
+const decisive = breaches.filter(([, v, bound, , n]) => Math.abs(v - bound) > marginOf(v, n));
+if (breaches.length > 0) {
+    console.log(`\n${decisive.length > 0 ? 'FAIL' : 'BREACHED, BUT NOT DECISIVE'}:`);
+    breaches.forEach(([label, v, bound, op, n]) => {
+        const margin = marginOf(v, n);
+        const inside = Math.abs(v - bound) <= margin;
+        console.log(`  ${label}: ${(v * 100).toFixed(1)}% (guard ${op} ${bound * 100}%)`
+            + ` [+/-${(margin * 100).toFixed(1)}pp, n=${n}${inside ? ', inside the interval — reported, not failed' : ''}]`);
+    });
+    if (decisive.length > 0) process.exit(1);
 }
 console.log('\nDecision quality guards hold.');

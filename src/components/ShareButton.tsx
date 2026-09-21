@@ -71,7 +71,8 @@ export function shareParams(
         // many the tributes do, so a link that dropped either replayed a
         // different Games under the same seed.
         naturalDeathRate: String(config.naturalDeathRate ?? DEFAULT_GAME_CONFIG.naturalDeathRate),
-        bloodbathLethality: String(config.bloodbathLethality ?? DEFAULT_GAME_CONFIG.bloodbathLethality),
+        bloodbathDeathShare: String(config.bloodbathDeathShare ?? DEFAULT_GAME_CONFIG.bloodbathDeathShare),
+        arenaDeathShare: String(config.arenaDeathShare ?? DEFAULT_GAME_CONFIG.arenaDeathShare),
         sponsorGenerosity: String(config.sponsorGenerosity),
         enableFeast: String(config.enableFeast),
         enableSanity: String(config.enableSanity),
