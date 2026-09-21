@@ -1599,6 +1599,26 @@ function zFor(p: number): number {
  * ranges) and the only thing every one of them has in common is that scaling
  * the value toward the allowed side eventually satisfies it.
  */
+/**
+ * Is the guard *inside* this indicator's confidence interval?
+ *
+ * AUDIT-10: this was `!guard(lo) || !guard(hi)` — "at least one endpoint fails
+ * the guard" — which is a different question and answers yes for a value that
+ * is decisively past the bound. A `<= 60%` guard against 64% with an interval
+ * of 61.6-66.4% fails at both endpoints, so the old expression called it
+ * undecided when it is the clearest possible regression.
+ *
+ * It only mattered as an annotation while nothing read it. It matters now that
+ * a straddled guard suppresses the failure, because the old predicate would
+ * have suppressed every failure with a sample behind it.
+ *
+ * The guard is inside the interval exactly when the two endpoints disagree
+ * about it: one end passes and the other does not.
+ */
+function guardStraddled(ind: Indicator, lo: number, hi: number): boolean {
+    return ind.guard(lo) !== ind.guard(hi);
+}
+
 function findOvershoot(ind: Indicator): number {
     if (ind.guard(ind.value)) return 0;
     for (let share = 0.005; share <= 1; share += 0.005) {
@@ -1625,7 +1645,30 @@ indicators.forEach(ind => {
         insideSelection = overshoot <= slack;
         if (insideSelection) indecisive++;
     }
-    if (judgeable && !ok && !insideSelection) failed++;
+    /*
+     * AUDIT-10: a breach the sample cannot resolve does not fail the build.
+     *
+     * The harness already computed this and already said it out loud — "guard
+     * inside the interval — not decisive at this run count", and then a
+     * summary line calling the verdict "noise either way" — and then failed on
+     * it anyway. `Career victors` read 61.8% +/-4.7pp against a <= 60% guard at
+     * 400 runs and 57.4% +/-2.4pp at 1,600: the cheap job was failing on a row
+     * the expensive job passes, which is the coin flip that comment describes
+     * rather than a regression.
+     *
+     * The two jobs exist for exactly this split — `check` screens at 400,
+     * `balance` judges at 1,600 — so an indicator that cannot be decided at
+     * this run count is reported here and decided there. A real regression
+     * still fails: it has to move the value past the guard by more than the
+     * interval, which is what "decided" means.
+     */
+    let insideInterval = false;
+    if (!ok && ind.sample) {
+        const { successes, n } = ind.sample();
+        const { lo, hi } = wilson(successes, n);
+        insideInterval = guardStraddled(ind, lo, hi);
+    }
+    if (judgeable && !ok && !insideSelection && !insideInterval) failed++;
     const shown = ind.fmt(ind.value);
     const metGoal = ind.goalMet ? ind.goalMet(ind.value) : true;
     const goalNote = ind.goal ? `  goal ${ind.goal}${metGoal ? ' MET' : ' unmet'}` : '';
@@ -1652,8 +1695,10 @@ indicators.forEach(ind => {
         const { successes, n } = ind.sample();
         const margin = marginPct(successes, n);
         const { lo, hi } = wilson(successes, n);
-        const straddles = !ind.guard(lo) || !ind.guard(hi);
-        uncertainty = `  [+/-${margin.toFixed(1)}pp, n=${n}${straddles ? ', guard inside the interval — not decisive at this run count' : ''}]`;
+        const straddles = guardStraddled(ind, lo, hi);
+        uncertainty = `  [+/-${margin.toFixed(1)}pp, n=${n}${straddles
+            ? `, guard inside the interval — not decisive at this run count${ok ? '' : '; reported, not failed'}`
+            : ''}]`;
         if (straddles) indecisive++;
     }
     console.log(
