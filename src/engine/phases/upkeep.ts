@@ -5,6 +5,9 @@ import { tickRescueAftermath, tickRescueLines } from '../rescueLine';
 import { decayMemories, decayRelationships, decaySuspicion } from '../memory';
 import { decayFear } from '../fear';
 import { decayAllianceRegard, decayTrust } from '../relationships';
+import { tickForecasts } from '../hazardChain';
+import { tickExposure } from '../survival';
+import { tickZoneEffects } from '../zoneEffects';
 
 /**
  * AUDIT-9 B01: the upkeep every elapsed phase owes, in one place.
@@ -32,7 +35,10 @@ import { decayAllianceRegard, decayTrust } from '../relationships';
  *   2. `postActionUpkeep` — the downed tick, after movement and violence have
  *                           settled, because the whole question it asks is who
  *                           is standing in the zone at the end of the cycle.
- *   3. `decayUpkeep`      — memory, regard, trust, dread and suspicion fade on
+ *   3. `worldClockUpkeep` — the arena's own clock: forecasts coming due, slow
+ *                           poisoning arriving, and active zone effects taking
+ *                           their per-cycle turn.
+ *   4. `decayUpkeep`      — memory, regard, trust, dread and suspicion fade on
  *                           the cycle clock whatever the cycle contained.
  *
  * The day phase calls these in place of the inline calls it used to make, so
@@ -64,7 +70,30 @@ export function postActionUpkeep(ctx: SimContext) {
     tickRescueAftermath(ctx);
 }
 
-/** Stage 3: everything that fades on the cycle clock. */
+/**
+ * Stage 3: the arena's clock.
+ *
+ * AUDIT-10 F14: `processFeast` adopted the physiological stages and not these,
+ * so a flood forecast due at cycle 6 was still pending, with no effect, after a
+ * feast advanced cycle 5 to 6 — and every active zone effect skipped its
+ * per-cycle tick on that route too. The meaning of a deadline therefore
+ * depended on which kind of phase happened to occupy the cycle it fell in,
+ * which makes "due at cycle 6" unusable as a promise to the player.
+ *
+ * One definition, called by every phase that advances the cycle. The internal
+ * order is the day phase's own and is the rule everywhere: a forecast comes due
+ * *before* the effects tick, so a hazard that lands this cycle is a hazard this
+ * cycle rather than next one; and it lands before travel is resolved in the
+ * day phase and at the close of a feast, which is the same relationship — the
+ * forecast resolves against where people actually were for the cycle.
+ */
+export function worldClockUpkeep(ctx: SimContext) {
+    tickForecasts(ctx);
+    tickExposure(ctx);
+    tickZoneEffects(ctx);
+}
+
+/** Stage 4: everything that fades on the cycle clock. */
 export function decayUpkeep(ctx: SimContext) {
     decayMemories(ctx.state);
     decayRelationships(ctx.state);

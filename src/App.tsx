@@ -3,7 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { decodeCampaign } from './utils/campaignLink';
+import { decodeCampaignResult } from './utils/campaignLink';
+import { fidelityMessage, fidelityOf } from './utils/replayManifest';
 import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { Settings2, Swords } from 'lucide-react';
 import { ShareButton } from './components/ShareButton';
@@ -66,6 +67,7 @@ import { TributeModal } from './components/TributeModal';
 import { useStore } from './store/createStore';
 import { prefsStore } from './store/prefsStore';
 import { DEFAULT_GAME_CONFIG } from './data/constants';
+import { ARENA_DEATH_BUDGET, BLOODBATH } from './data/balance';
 
 export default function App() {
   const gameState = useStore(gameStore, s => s.gameState);
@@ -81,6 +83,13 @@ export default function App() {
     : null;
   const isReplayedRun = useStore(gameStore, s => s.isReplayedRun);
   const [showSettings, setShowSettings] = React.useState(false);
+  /**
+   * F02: a share link whose campaign payload did not validate still launches —
+   * the seed and rules are fine — but it launches under the receiver's own
+   * career, and says so. Silently discarding the campaign while the link
+   * advertises an exact replay is the misreport this replaces.
+   */
+  const linkNotice = useStore(gameStore, s => s.linkNotice);
 
   // §2.4: the in-app reduced-motion preference, mirrored onto <html> so the
   // stylesheet's own reduced-motion rules apply to it as well as to the OS
@@ -126,6 +135,14 @@ export default function App() {
         districtCount: Math.round(numParam('districtCount', DEFAULT_GAME_CONFIG.districtCount, 2, 16)),
         hazardRate: numParam('hazardRate', DEFAULT_GAME_CONFIG.hazardRate, 0.25, 2.5),
         betrayalRate: numParam('betrayalRate', DEFAULT_GAME_CONFIG.betrayalRate, 0, 3),
+        // The death-mix dials. Absent — which is every link written before they
+        // existed — falls back to the defaults, which is what those links
+        // always replayed. Ranges mirror the setup screen's sliders, because a
+        // shared link is untrusted input.
+        naturalDeathRate: numParam('naturalDeathRate', DEFAULT_GAME_CONFIG.naturalDeathRate,
+          ARENA_DEATH_BUDGET.minNaturalRate, ARENA_DEATH_BUDGET.maxNaturalRate),
+        bloodbathLethality: numParam('bloodbathLethality', DEFAULT_GAME_CONFIG.bloodbathLethality,
+          BLOODBATH.minLethality, BLOODBATH.maxLethality),
         sponsorGenerosity: numParam('sponsorGenerosity', DEFAULT_GAME_CONFIG.sponsorGenerosity, 0, 3),
         enableFeast: boolParam('enableFeast', DEFAULT_GAME_CONFIG.enableFeast),
         enableSanity: boolParam('enableSanity', DEFAULT_GAME_CONFIG.enableSanity),
@@ -165,8 +182,26 @@ export default function App() {
        * always has. `decodeCampaign` validates rather than casts: a link is
        * untrusted input and a malformed payload reads as no history.
        */
-      const pinnedCampaign = decodeCampaign(params.get('campaign'));
-      void gameActions.startGame(urlSeed, urlArena, urlGamemaker, config, true, false, pinnedQuellId, pinnedCampaign);
+      const decoded = decodeCampaignResult(params.get('campaign'));
+      /*
+       * AUDIT-10 F19: say which of the four kinds of reproduction this is
+       * before the Games starts, rather than letting every link imply the
+       * strongest one. `exact` is the only one that needs no explanation, so it
+       * is the only one that does not raise the banner.
+       */
+      const fidelityInputs = {
+        campaign: decoded.status === 'ok',
+        campaignRejected: decoded.status === 'rejected',
+        revision: params.get('rev') ?? undefined,
+        veteransSeated: Number(params.get('vets') ?? 0) || 0,
+        interventions: Number(params.get('acts') ?? 0) || 0,
+      };
+      const fidelity = fidelityOf(fidelityInputs);
+      const notice = decoded.status === 'rejected'
+        ? `${decoded.reason ?? 'The campaign attached to this link could not be read.'} ${fidelityMessage(fidelity, fidelityInputs)}`
+        : fidelity === 'exact' ? null : fidelityMessage(fidelity, fidelityInputs);
+      void gameActions.startGame(urlSeed, urlArena, urlGamemaker, config, true, false, pinnedQuellId, decoded.snapshot)
+        .then(() => gameActions.setLinkNotice(notice));
       bootedFromLink = true;
       // Consume the replay params so a later refresh doesn't relaunch it.
       window.history.replaceState(null, '', window.location.pathname);
@@ -222,7 +257,11 @@ export default function App() {
             )}
             <span className="chip chip-gold" role="status" aria-label={`${coins} Capitol Coins available for wagers`} title="Capitol Coins available for wagers">{coins} <span aria-hidden="true">⨷</span></span>
             {gameState && (
-              <ShareButton seed={gameState.seed} arenaId={gameState.arena.id} gamemakerMode={gameState.gamemakerMode} config={gameState.baseConfig} quellId={gameState.gamesProfile?.quell?.id ?? null} campaign={gameState.campaign} />
+              <ShareButton seed={gameState.seed} arenaId={gameState.arena.id} gamemakerMode={gameState.gamemakerMode} config={gameState.baseConfig} quellId={gameState.gamesProfile?.quell?.id ?? null} campaign={gameState.campaign}
+                // F19: the two inputs the link cannot carry, counted off the
+                // run so the control can describe itself honestly.
+                veteransSeated={gameState.veteransSeated?.length ?? 0}
+                interventions={gameState.gamemakerCommands ?? 0} />
             )}
             {/* Real links now that screens are real routes: the address bar
                 follows them, and middle-click / open-in-new-tab work. The click
@@ -275,9 +314,26 @@ export default function App() {
       )}
 
       <main id="main-content" tabIndex={-1} className="max-w-6xl mx-auto px-4 py-8">
+        {linkNotice && (
+          <div role="alert" className="panel p-4 mb-5 flex items-start justify-between gap-4"
+            style={{ borderColor: 'var(--color-coin-400)', borderWidth: '2px' }}>
+            <div className="space-y-1">
+              <span className="eyebrow text-[var(--color-coin-400)]">Shared link: what this replays</span>
+              <p className="text-sm text-[var(--color-ink-200)] m-0">{linkNotice}</p>
+            </div>
+            {/* `min-h`/`px` rather than a bare ghost button: `test:ui` holds every
+                control to a 24px touch target and a text-only button is under it. */}
+            <button type="button" className="btn btn-sm flex-none min-h-[28px] px-3" onClick={() => gameActions.setLinkNotice(null)}>Dismiss</button>
+          </div>
+        )}
         <Suspense fallback={<ScreenFallback />}>
         {view === 'setup' && (
-          <SetupScreen onStart={(seed, arenaId, gamemakerMode, config, forceQuell, pinnedQuellId) => { void gameActions.startGame(seed, arenaId, gamemakerMode, config, false, forceQuell, pinnedQuellId ?? undefined); }} />
+          <SetupScreen onStart={(seed, arenaId, gamemakerMode, config, forceQuell, pinnedQuellId) => {
+            // F19: a Games the player set up themselves inherits no claim from
+            // a previous link or relaunch, so the banner goes with it.
+            gameActions.setLinkNotice(null);
+            void gameActions.startGame(seed, arenaId, gamemakerMode, config, false, forceQuell, pinnedQuellId ?? undefined);
+          }} />
         )}
 
         {view === 'roster' && gameState && gameState.phase === 'reaping' && (

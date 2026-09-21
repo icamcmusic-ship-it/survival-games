@@ -46,13 +46,19 @@ await step('setup tabs switch sections', async () => {
 await step('advanced settings open and sliders move', async () => {
   await setupTab('Rules').click();
   await page.getByText(/advanced simulation settings/i).click();
-  const sliders = page.locator('input[type=range]');
-  await sliders.nth(0).fill('4');   // districts
-  await sliders.nth(1).fill('2.5'); // hazard
-  await sliders.nth(2).fill('3');   // betrayal
-  await sliders.nth(3).fill('0');   // sponsors
+  // AUDIT-10: addressed by name rather than by position. Adding two settings
+  // to the panel silently re-pointed `nth(2)` at a different slider with a
+  // different range, and the test failed on a malformed value rather than on
+  // anything being wrong with the panel.
+  const slider = name => page.getByRole('slider', { name });
+  await slider('Districts').fill('4');
+  await slider('Hazard rate').fill('2.5');
+  await slider('Arena lethality').fill('1.5');
+  await slider('Bloodbath lethality').fill('2');
+  await slider('Alliance betrayal rate').fill('3');
+  await slider('Sponsor generosity').fill('0');
   await page.getByText('Reset everything').click();
-  await sliders.nth(0).fill('12');
+  await slider('Districts').fill('12');
 });
 
 await step('gamemaker mode toggles', async () => {

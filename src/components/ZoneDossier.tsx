@@ -52,9 +52,25 @@ export function ZoneDossier({ gameState, zone }: { gameState: GameState; zone: s
     // `Tribute.zone` is not cleared on death, so the fallen are still standing
     // where they fell — which is what makes naming them here possible at all.
     const fell = gameState.tributes.filter(t => t.status === 'dead' && t.zone === zone);
-    // The printed yield is what the arena started with; depletion is the share
-    // of it that has been taken since.
-    const yieldLeft = Math.round(printed.resources * (1 - depletion) * 100);
+    /*
+     * AUDIT-10 F17: two different quantities, labelled as one.
+     *
+     * `printed.resources` is the zone's yield relative to the arena; depletion
+     * is the share of *that* which has been taken. The product of the two is
+     * effective yield, and it was printed under the label "% of what it started
+     * with" — so a zone with `resources: 0.4` and nothing taken from it at all
+     * read as "40% of what it started with", which is a lie about a number the
+     * player uses to decide where to forage.
+     *
+     * Both are now shown, each on its own scale and under its own name:
+     * `stockLeft` is the share of this zone's own original stock still there,
+     * and `effectiveYield` is what a forage here is actually worth. The
+     * historical worst figure sits on the same scale as the stock figure it
+     * qualifies.
+     */
+    const stockLeft = Math.round((1 - depletion) * 100);
+    const worstStockLeft = Math.round((1 - peak) * 100);
+    const effectiveYield = Math.round(printed.resources * (1 - depletion) * 100);
     const stripped = depletion >= 1 - ZONES.minYieldFraction - 0.01;
 
     const row = (label: string, value: React.ReactNode) => (
@@ -69,9 +85,9 @@ export function ZoneDossier({ gameState, zone }: { gameState: GameState; zone: s
             {row('Ground', `${printed.terrain} · danger ${Math.round(printed.danger * 100)}% · printed yield ${Math.round(printed.resources * 100)}%`)}
             {row('Forage', (
                 <span>
-                    {yieldLeft}% of what it started with
+                    {stockLeft}% of what it started with · effective yield {effectiveYield}%
                     {stripped && <strong className="text-[var(--red)]"> — stripped to the floor</strong>}
-                    {peak > depletion + 0.05 && ` (worst it has been: ${Math.round(printed.resources * (1 - peak) * 100)}%)`}
+                    {peak > depletion + 0.05 && ` (worst its stock has been: ${worstStockLeft}%)`}
                 </span>
             ))}
             {row('Traffic', traffic === 0 ? 'Nobody has set foot here.' : `${traffic} crossings this run`)}

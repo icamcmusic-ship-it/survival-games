@@ -348,6 +348,9 @@ export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]
         // The leader's zone, not whatever order the array happened to be in —
         // the exact anti-pattern this module's header calls out.
         campZone: leader.zone,
+        // AUDIT-10 F10: and which level of it. Set once, here; the cache does
+        // not follow the leader around afterwards.
+        campLevel: leader.zoneLevel,
         sharedCache: [],
         pact,
         pactSwornField: getAlive(ctx.state).length,

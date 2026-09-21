@@ -294,8 +294,22 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
                 : RELATIONSHIPS.griefSanityMin + intensity * (RELATIONSHIPS.griefSanityMax - RELATIONSHIPS.griefSanityMin))
                 + (isPartner ? DEBTS.partnerGriefSanity : 0);
 
+            /*
+             * AUDIT-10: and the fifth body is not the first body.
+             *
+             * Grief was linear in the number of deaths, so how much of a run a
+             * cast spent at the sanity floor was partly just a count of how
+             * many people died in it. Each previous loss damps the next, to a
+             * floor — bounded, so somebody who has lost their whole alliance is
+             * numbed rather than immune.
+             */
+            const buried = ensureMemory(other).mourned.length;
+            const numbing = Math.max(
+                RELATIONSHIPS.griefRepeatFloor,
+                Math.pow(RELATIONSHIPS.griefRepeatDecay, buried),
+            );
             // Some people have buried someone before, and some people have not.
-            loseSanity(other, sanityHit * Math.max(0, 1 - traitMod(other, 'griefResist')));
+            loseSanity(other, sanityHit * numbing * Math.max(0, 1 - traitMod(other, 'griefResist')));
             addExcitement(other, Math.round(10 + intensity * 25));
             // The crowd rewards visible grief.
             other.sponsorTrust += Math.round(intensity * RELATIONSHIPS.griefTrustPerIntensity);

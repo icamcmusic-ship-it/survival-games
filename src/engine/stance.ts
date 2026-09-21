@@ -888,6 +888,23 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
             reasons: stanceReasons(ctx, t, sig, stance),
         })),
     };
+    /*
+     * AUDIT-10 F18: the trace above is the *ranking*, and the ranking is not
+     * always the decision.
+     *
+     * Everything below this point can keep the incumbent stance — the minimum
+     * hold, the switch margin, a conditional cooldown. When it does, `stances[0]`
+     * is an option the tribute considered and did not take, and the sheet was
+     * printing its reasons under the heading of the stance they are actually
+     * in. `noteHeld` records that the stance was held, and why, so the
+     * explanation can say so instead of explaining the wrong stance.
+     *
+     * Always reset first: a trace is one cycle's worth and a stale `held` would
+     * outlive the hold it describes.
+     */
+    const noteHeld = (because: string) => {
+        t.decisionTrace = { ...t.decisionTrace!, held: { stance: t.stance, because } };
+    };
 
     // A conditional stance whose situation has passed is vacated at once — the
     // hold is a stability device, not a trap.
@@ -921,6 +938,7 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
         + Math.floor((t.stanceChurn ?? 0) * STANCE.churnHoldPerSwitch)
         + sleepStanceHold(t);
     if (!emergency && t.stanceHeld < hold) {
+        noteHeld(`they have only just committed to ${t.stance.toLowerCase()} and switching again this soon is not worth it`);
         t.stanceHeld += 1;
         // Tenure accrues on every cycle the tribute actually spends in the
         // stance, not only the ones where the scorer re-picks it outright.
@@ -944,6 +962,7 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
     // noise win. Decayed below, so a settled tribute pays nothing for it.
     const margin = STANCE.switchMargin * (1 + (t.stanceChurn ?? 0) * STANCE.churnMarginPerSwitch);
     if (stillValid && bestScore < (scores[t.stance] ?? -Infinity) + margin) {
+        noteHeld(`${bestStance.toLowerCase()} scored better, but not by enough to be worth changing their mind over`);
         t.stanceHeld += 1;
         if (t.stance === 'Fortified') t.fortifiedCycles = (t.fortifiedCycles ?? 0) + 1;
         settleShadowing();

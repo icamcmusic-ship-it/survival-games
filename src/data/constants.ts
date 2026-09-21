@@ -7,6 +7,31 @@ export const DEFAULT_GAME_CONFIG: GameConfig = {
     districtCount: 12,
     hazardRate: 1.0,
     betrayalRate: 1.0,
+    /*
+     * Tuned by measurement rather than chosen, and deliberately well below 1.
+     *
+     * At 1.0 — the behaviour before this setting existed — a 24-tribute field
+     * lost about 11.5 people to the arena and about 11.5 to each other, so more
+     * than half of every Games was scenery. Measured over a full `ARENAS`
+     * sweep: 0.3 puts tribute-dealt deaths at a median of 16, which is the
+     * target, and leaves the arena about 7.
+     *
+     * The number reads low because the old arena was hitting very hard, not
+     * because the arena is now harmless: thirst, infection, falls and mutts all
+     * still finish people, and the closing border is exempt from this scaling
+     * entirely (see `UNSCALED_DAMAGE` in `combat.ts`) because it is the
+     * Gamemakers ending the Games rather than arena attrition. Turning it lower
+     * still buys a few more tribute-dealt deaths at the price of a longer
+     * Games, which is a trade the slider lets the player make.
+     */
+    naturalDeathRate: 0.3,
+    /*
+     * A bloodbath of roughly 8-11 from a full field: measured median 9, mean
+     * 8.8, 36.6% of the cast — which also brings the long-standing "share of
+     * the field lost in the bloodbath" indicator into its 33-50% design band
+     * for the first time.
+     */
+    bloodbathLethality: 1.6,
     sponsorGenerosity: 1.0,
     enableFeast: true,
     enableSanity: true,
@@ -1567,14 +1592,18 @@ export const ITEMS: Item[] = [
     { id: 'medkit', name: 'First Aid Kit', type: 'medical', value: 80 },
     { id: 'ointment', name: 'Burn Ointment', type: 'medical', value: 40 , stack: 2 },
     { id: 'antidote', name: 'Antidote Vial', type: 'medical', value: 60 },
-    { id: 'rope', name: 'Rope', type: 'utility', value: 10 },
-    { id: 'wire', name: 'Wire', type: 'utility', value: 15 },
+    // AUDIT-10 F06: the capability fields. Line, load-bearing and edge are
+    // stated on the objects that have them, so `anchorFor` composes a rescue
+    // rig from what a tribute is physically carrying rather than from which
+    // drawer of this table it came out of.
+    { id: 'rope', name: 'Rope', type: 'utility', value: 10, ropeLength: 20, tensileStrength: 0.9 },
+    { id: 'wire', name: 'Wire', type: 'utility', value: 15, ropeLength: 12, tensileStrength: 0.5, cuttingEdge: 0.4 },
     // Deliberately a utility, not a food: nightlock exists to be rendered down
     // and painted onto a blade, and a tribute must never absent-mindedly eat it
     // out of their own pack the way `consumeSupplies` eats anything of type 'food'.
     { id: 'nightlock', name: 'Nightlock Berries', type: 'utility', value: 12 },
     { id: 'matches', name: 'Matches', type: 'utility', value: 25 },
-    { id: 'backpack', name: 'Backpack', type: 'utility', value: 30, capacity: 2 },
+    { id: 'backpack', name: 'Backpack', type: 'utility', value: 30, capacity: 2, lashable: true },
 
     // SIDE-01. The table was 23 items, 12 of them weapons that differed only in
     // damage, durability and class — no armour, no containers, no tools, no
@@ -1583,11 +1612,11 @@ export const ITEMS: Item[] = [
     { id: 'vest', name: 'Padded Vest', type: 'armour', value: 45, armour: 0.15, durability: 60, maxDurability: 60 },
     { id: 'bracers', name: 'Leather Bracers', type: 'armour', value: 30, armour: 0.08, durability: 70, maxDurability: 70 },
     { id: 'shield', name: 'Buckler', type: 'armour', value: 40, armour: 0.12, durability: 50, maxDurability: 50 },
-    { id: 'sleeping-bag', name: 'Insulated Sleeping Bag', type: 'utility', value: 70, warmth: true },
+    { id: 'sleeping-bag', name: 'Insulated Sleeping Bag', type: 'utility', value: 70, warmth: true, lashable: true },
     { id: 'lantern', name: 'Shielded Lantern', type: 'tool', value: 35, light: true },
     { id: 'tablets', name: 'Purification Tablets', type: 'medical', value: 50, purifies: true, stack: 3 },
-    { id: 'net', name: 'Fishing Net', type: 'tool', value: 30, fishing: true },
-    { id: 'satchel', name: 'Canvas Satchel', type: 'utility', value: 20, capacity: 1 },
+    { id: 'net', name: 'Fishing Net', type: 'tool', value: 30, fishing: true, ropeLength: 8, tensileStrength: 0.35, lashable: true },
+    { id: 'satchel', name: 'Canvas Satchel', type: 'utility', value: 20, capacity: 1, lashable: true },
     { id: 'whetstone', name: 'Whetstone', type: 'tool', value: 25, stack: 3 },
 
     // §8.3: the catalogue widened from 33 to ~50, spreading the special
@@ -1611,8 +1640,8 @@ export const ITEMS: Item[] = [
     { id: 'fishing-kit', name: 'Line and Hooks', type: 'tool', value: 25, fishing: true },
     { id: 'charcoal-filter', name: 'Charcoal Filter', type: 'tool', value: 35, purifies: true },
     { id: 'glow-stick', name: 'Chemical Glowlight', type: 'tool', value: 20, light: true },
-    { id: 'thermal-cloak', name: 'Thermal Cloak', type: 'utility', value: 55, warmth: true },
-    { id: 'bandolier', name: 'Leather Bandolier', type: 'utility', value: 22, capacity: 1 },
+    { id: 'thermal-cloak', name: 'Thermal Cloak', type: 'utility', value: 55, warmth: true, lashable: true },
+    { id: 'bandolier', name: 'Leather Bandolier', type: 'utility', value: 22, capacity: 1, lashable: true },
     { id: 'helmet', name: 'Padded Helmet', type: 'armour', value: 25, armour: 0.06, durability: 50, maxDurability: 50 },
     // Poison sources beyond the berry bushes — see POISONING.sources.
     { id: 'venom-vial', name: 'Venom Vial', type: 'utility', value: 35 },
@@ -1629,7 +1658,7 @@ export const ITEMS: Item[] = [
     { id: 'still', name: 'Solar Still', type: 'water', value: 55, purifies: true, reusable: true },
     { id: 'condenser', name: 'Capitol Condenser', type: 'water', value: 70, purifies: true, reusable: true },
     { id: 'gourd', name: 'Sealed Gourd', type: 'water', value: 18, stack: 3 },
-    { id: 'rain-tarp', name: 'Rain Tarp', type: 'water', value: 32, stack: 2 },
+    { id: 'rain-tarp', name: 'Rain Tarp', type: 'water', value: 32, stack: 2, lashable: true },
     { id: 'snowmelt', name: 'Flask of Snowmelt', type: 'water', value: 22, stack: 2 },
     { id: 'birch-tap', name: 'Birch Tap', type: 'water', value: 26, stack: 2 },
     // Medical, each answering a specific injury the engine tracks.

@@ -10,6 +10,40 @@ import { traitMod } from '../../data/traits';
 import { ARCHETYPES } from '../../data/archetypes';
 import { ALLIANCES, BLOODBATH, QUALITY_BIAS, TRAINING } from '../../data/balance';
 import { registerAlliance } from '../alliance';
+
+/**
+ * `GameConfig.bloodbathLethality`, clamped.
+ *
+ * The lever is damage inside the killing zone rather than how many tributes
+ * commit to the horn. Both move the body count, and only this one moves it
+ * without also changing *who* dies: raising commitment pulls more of the
+ * cautious half of the field into the scrum, which is a different Games, not a
+ * bloodier one. Damage scales what happens to the people who were always going
+ * to be standing there.
+ */
+function lethalityOf(ctx: SimContext): number {
+    const raw = ctx.state.config.bloodbathLethality ?? 1;
+    return Math.max(BLOODBATH.minLethality, Math.min(BLOODBATH.maxLethality, raw));
+}
+
+/**
+ * How many people commit to the horn at this setting.
+ *
+ * Damage alone was not enough of a lever: across the whole slider it moved the
+ * opening by about one body, because most of the scrum's deaths are decided by
+ * how many rounds two people spend in reach of each other rather than by the
+ * multiplier on each hit. Commitment is the other half — a bloodier bloodbath
+ * is more people staying in it, which is also what the canon version *is*.
+ *
+ * Damped relative to the damage term (`commitmentShare`), because commitment
+ * also changes *who* dies: raising it pulls the cautious half of the field into
+ * the scrum, and a slider that replaced the cast as well as the body count
+ * would be two settings wearing one label.
+ */
+function commitmentFactor(ctx: SimContext): number {
+    return 1 + (lethalityOf(ctx) - 1) * BLOODBATH.commitmentShare;
+}
+
 import { resolveCombat, resolveGroupCombat, selfInflictedDeath } from '../combat';
 import { BLOODBATH_TEXTS,
     PEDESTAL_ARENA_SHOTS, PEDESTAL_REACTIONS, EARLY_STEP_OFF, GONG_DECISIONS,
@@ -412,7 +446,7 @@ export function processBloodbath(ctx: SimContext) {
 
     ctx.rng.shuffle(alive).forEach(t => {
         const proximity = 1 - (t.platePosition ?? 0.5);
-        let fightChance = BLOODBATH.fightChanceBase;
+        let fightChance = BLOODBATH.fightChanceBase * commitmentFactor(ctx);
         if (t.isCareer) fightChance += BLOODBATH.fightChanceCareer;
         // A plate in the horn's shadow is an invitation, and a plate on the far
         // edge of the ring is permission to leave.
@@ -589,7 +623,7 @@ export function processBloodbath(ctx: SimContext) {
         );
         // Being caught from behind is an ambush by any definition, and nobody
         // is thinking clearly enough to break off in the first seconds.
-        resolveCombat(ctx, hunter, t, true, true, BLOODBATH.noRetreatRounds, BLOODBATH.killingZoneDamage);
+        resolveCombat(ctx, hunter, t, true, true, BLOODBATH.noRetreatRounds, BLOODBATH.killingZoneDamage * lethalityOf(ctx));
     });
 
     runners.forEach(t => {
@@ -618,8 +652,23 @@ export function processBloodbath(ctx: SimContext) {
     //    first meet each other rather than being paired off at random.
     const pool = arrivals.filter(t => t.status === 'alive');
     // §23: a Career inside the knot hits harder than anybody else inside it.
+    /*
+     * A bloodier bloodbath must not also be a more *Career* bloodbath.
+     *
+     * Measured: raising lethality to the default moved Career victors from
+     * 52.7% to 60.5%, past the 55% guard. Commitment is the mechanism — the
+     * Careers already all charge the horn, so raising base commitment draws in
+     * the cautious half of the field and hands them to the people who trained
+     * for this. The extra bodies were Career kills.
+     *
+     * So the Career bonus is divided back out by the same commitment factor:
+     * the pack still hits harder than anybody else inside the knot, by the same
+     * margin it always did, and the slider adds bodies rather than adding
+     * Careers' share of them.
+     */
+    const careerEdge = 1 + (BLOODBATH.careerKillingZoneBonus - 1) / commitmentFactor(ctx);
     const zoneMultiplier = (t: Tribute) => (killingZone.has(t.id)
-        ? BLOODBATH.killingZoneDamage * (t.isCareer ? BLOODBATH.careerKillingZoneBonus : 1)
+        ? BLOODBATH.killingZoneDamage * lethalityOf(ctx) * (t.isCareer ? careerEdge : 1)
         : 1);
 
     let rounds = pool.length * 6 + 12;
@@ -663,8 +712,11 @@ export function processBloodbath(ctx: SimContext) {
             BLOODBATH.noRetreatRounds,
             Math.max(zoneMultiplier(t1), zoneMultiplier(t2)),
         );
-        if (t1.status === 'alive' && ctx.rng.chance(BLOODBATH.reengageChance)) pool.push(t1);
-        if (t2.status === 'alive' && ctx.rng.chance(BLOODBATH.reengageChance)) pool.push(t2);
+        // Staying in the scrum is the other half of how long the opening runs,
+        // and therefore of how many people it takes.
+        const reengage = Math.min(0.98, BLOODBATH.reengageChance * commitmentFactor(ctx));
+        if (t1.status === 'alive' && ctx.rng.chance(reengage)) pool.push(t1);
+        if (t2.status === 'alive' && ctx.rng.chance(reengage)) pool.push(t2);
     }
 
     if (pool.length > 1) {

@@ -9,6 +9,7 @@ import { cycleOf } from './memory';
 import { adjustRel, adjustRespect } from './relationships';
 import { addFear } from './fear';
 import { hopsTo, severedEdgeSet } from './map';
+import { samePlace } from './verticality';
 import { killTribute, enterShock } from './combat';
 import { loseSanity } from './sanityBands';
 
@@ -99,14 +100,32 @@ export function goDown(ctx: SimContext, t: Tribute, cause: string, byId?: string
  * two regression indicators at once. Elaborate after the prefix, never
  * before it.
  */
-function finish(ctx: SimContext, t: Tribute, cause: string, killer?: Tribute, silent = false) {
+function finish(
+    ctx: SimContext,
+    t: Tribute,
+    cause: string,
+    killer?: Tribute,
+    silent = false,
+    /**
+     * AUDIT-10 F05: what killed them, when it was not a person.
+     *
+     * Without this the no-killer path inherited `t.lastDamage.kind`, and a
+     * tribute who was downed *by somebody* and then finished by the arena kept
+     * `kind: 'tribute'` with `sourceId` cleared to undefined — a killing blow
+     * credited to a tribute the roster does not contain. Harmless while the
+     * only no-killer callers were the bleed-out paths (which inherit a status
+     * cause honestly); not harmless once an anchor tearing out could end the
+     * window. An explicit kind is the honest answer for those.
+     */
+    arenaKind?: { kind: NonNullable<Tribute['lastDamage']>['kind']; code?: NonNullable<Tribute['lastDamage']>['code'] },
+) {
     delete t.downed;
     t.lastDamage = {
         cause,
-        kind: killer ? 'tribute' : (t.lastDamage?.kind ?? 'status'),
+        kind: killer ? 'tribute' : (arenaKind?.kind ?? t.lastDamage?.kind ?? 'status'),
         // A finished tribute is a tribute kill; an expired one keeps whatever
         // the marker's own cause classifies as.
-        code: killer ? 'tribute' : t.lastDamage?.code,
+        code: killer ? 'tribute' : (arenaKind?.code ?? t.lastDamage?.code),
         sourceId: killer?.id,
         cycle: cycleOf(ctx.state),
         amount: t.lastDamage?.amount ?? 0,
@@ -121,6 +140,44 @@ function finish(ctx: SimContext, t: Tribute, cause: string, killer?: Tribute, si
 function bleedOut(ctx: SimContext, t: Tribute, describe: (killerName: string) => string, fallback: string, silent = false) {
     const by = t.downed?.byId ? ctx.state.tributes.find(o => o.id === t.downed!.byId) : undefined;
     finish(ctx, t, by ? describe(by.name) : fallback, by, silent);
+}
+
+/**
+ * AUDIT-10 F05: a lethal interruption of the rescue window, from outside it.
+ *
+ * `applyDamage` and `checkDeath` both refuse an already-downed tribute on
+ * purpose (see the comment at the top of `applyDamage`): status damage runs
+ * through that funnel every cycle against a tribute sitting at exactly 0
+ * health, so anything that landed would make the window zero cycles wide.
+ * The consequence was that a rescue line deliberately cut under a downed
+ * person recorded a betrayal and changed nothing — no damage, no death, no
+ * attacker attribution — because the only doors into their ending were shut.
+ *
+ * This is the door for events that are *meant* to end it: the line cut, the
+ * anchor torn out, the debris that came down on them. It ends the window now
+ * and credits `killer` when there is one, leaving the ordinary clock —
+ * rescue, execution, bleeding out — exactly as it was for everything else.
+ */
+export function cutDownedLine(ctx: SimContext, t: Tribute, cause: string, killer?: Tribute) {
+    if (!isDowned(t)) return;
+    // With no killer this is the arena doing it — a fall — and it must say so
+    // rather than inheriting a tribute attribution from the blow that downed
+    // them, whose source is not the source of this.
+    finish(ctx, t, cause, killer, false, killer ? undefined : { kind: 'arena', code: 'fall' });
+}
+
+/**
+ * AUDIT-10 F04: buy a downed tribute more of the clock.
+ *
+ * The explicit version of "the rescue window improved". An extraction does not
+ * put somebody back on their feet, but it does take them out of the thing that
+ * was going to finish them, and that is worth saying in the one number the
+ * window is actually made of rather than leaving it as an implication of prose.
+ */
+export function widenRescueWindow(t: Tribute, cycles: number) {
+    if (!t.downed || cycles <= 0) return;
+    t.downed.cyclesLeft += cycles;
+    t.downed.extracted = true;
 }
 
 /**
@@ -175,8 +232,22 @@ export function tickDowned(ctx: SimContext) {
             return;
         }
 
+        /*
+         * AUDIT-10 F09: contact, not a matching zone name.
+         *
+         * This was `o.zone === t.zone`, which in a vertical zone is not a
+         * place — it is two places with a drop between them. A probe revived a
+         * tribute on the lower level with a helper standing on the upper one
+         * while `samePlace` returned false for the same pair. Direct treatment
+         * and an execution both require being able to put hands on somebody, so
+         * both go through the engine's one proximity predicate.
+         *
+         * A rope rescue may deliberately span levels; that is `rescueLine.ts`,
+         * which checks reach and equipment for itself. This pass is the
+         * medical one.
+         */
         const here = ctx.state.tributes.filter(o =>
-            o.id !== t.id && isActive(o) && o.zone === t.zone);
+            o.id !== t.id && isActive(o) && samePlace(ctx.state.arena, o, t));
 
         // (a) Rescue. Whoever in the zone has the best chance of it tries.
         const allies = here.filter(o => wouldHelp(o, t));

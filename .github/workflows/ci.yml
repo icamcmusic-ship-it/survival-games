@@ -90,6 +90,7 @@ jobs:
       # firing; it cannot show that a branch which never came up is rare
       # rather than dead, and two of them were dead when written.
       - run: npm run test:batch4
+      - run: npm run test:audit10-fixes
 
       # Content and structure.
       - run: npm run test:arenas

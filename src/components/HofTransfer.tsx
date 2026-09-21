@@ -3,6 +3,7 @@ import { useTransientFlag } from '../ui/useTransientFlag';
 import { HallOfFameEntry } from '../models/types';
 import { importHallOfFame, serializeHallOfFame } from '../utils/hofStorage';
 import { Download, Upload, Copy, Check } from 'lucide-react';
+import { copyMessage, copySucceeded, copyText } from '../utils/copyText';
 
 interface Props {
     entries: HallOfFameEntry[];
@@ -44,13 +45,12 @@ export function HofTransfer({ entries, onImported }: Props) {
         }
     };
 
+    // AUDIT-10 F16: the archive is the one thing here a player cannot recreate,
+    // so a copy that silently did nothing was the worst version of this bug.
     const copy = async () => {
-        try {
-            await navigator.clipboard?.writeText(json);
-            setCopied(true);
-        } catch {
-            setStatus({ ok: false, message: 'Clipboard unavailable. Select the JSON below and copy it manually.' });
-        }
+        const result = await copyText(json);
+        if (copySucceeded(result)) { setCopied(true); return; }
+        setStatus({ ok: false, message: copyMessage(result, 'Archive') + ' Select the JSON below and copy it manually.' });
     };
 
     const runImport = (raw: string) => {

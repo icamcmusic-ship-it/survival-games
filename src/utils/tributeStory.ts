@@ -1,6 +1,7 @@
 import { GameState, Tribute } from '../models/types';
 import { fearOf } from '../engine/fear';
 import { TRAIT_DEFS } from '../data/traits';
+import { copySucceeded, copyText } from './copyText';
 
 /**
  * SIDE: a tribute's-eye chronicle (§9.3 of the audit).
@@ -101,12 +102,8 @@ export function tributeStoryMarkdown(state: GameState, tribute: Tribute): string
 }
 
 export async function copyTributeStory(state: GameState, tribute: Tribute): Promise<boolean> {
-    try {
-        await navigator.clipboard.writeText(tributeStoryMarkdown(state, tribute));
-        return true;
-    } catch {
-        return false;
-    }
+    // AUDIT-10 F16: verified rather than assumed.
+    return copySucceeded(await copyText(tributeStoryMarkdown(state, tribute)));
 }
 
 export function downloadTributeStory(state: GameState, tribute: Tribute) {

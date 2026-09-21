@@ -1747,7 +1747,29 @@ export const BLOODBATH = {
      * decides who comes away armed. Measured as the largest single lever on
      * the Career share of the opening.
      */
-    careerReachBonus: 4,
+    /*
+     * AUDIT-10: reduced from 4 alongside `naturalDeathRate`.
+     *
+     * This is the largest single lever on the Career share of the opening, and
+     * arriving first is what decides who comes away armed. That mattered less
+     * when half the cast died of the weather; with the Games decided by
+     * fighting it compounds, and Career victors measured 52.7% before this
+     * change and 58-60% after it, past the 55% guard. Pricing the advantage
+     * that causes the edge, which is what the audit's §8.5 asks for, rather
+     * than applying a global combat nerf that would also hit everybody else.
+     *
+     * Halved rather than tuned to a number. Three decisive sweeps (n=1637-1641)
+     * at 2.5, 1.75 and 1.25 produced Career victor shares of 57.5%, 58.1% and
+     * 54.4% against a +/-2.4pp interval — non-monotonic, which means the knob
+     * is inside the noise at this sample and any value picked to hit a target
+     * would be fitted to one sweep. So this is the defensible change (half the
+     * largest single lever on the Career opening) rather than the one that
+     * produced the best number, and the residual is recorded against the
+     * `Career victors` guard instead of tuned away. The pack still reaches the
+     * horn first — this is a bonus on top of proximity, agility and noise, all
+     * of which already favour them.
+     */
+    careerReachBonus: 2.5,
     /** §8: how much `targetDraw` moves who gets picked in the scrum. */
     targetDrawWeight: 0.06,
     /** §5: a walled horn is a killing box — fewer commit, and they commit harder. */
@@ -1756,6 +1778,24 @@ export const BLOODBATH = {
     /** §5: an island horn has to be crossed to, which selects for swimmers. */
     islandHornDeterrent: 0.22,
     islandHornSwimmer: 0.35,
+    /*
+     * Bounds on `GameConfig.bloodbathLethality`.
+     *
+     * At the floor the opening is a scramble for packs that a few people do not
+     * walk away from; at the ceiling it is the canon bloodbath at its worst. The
+     * ceiling is bounded by the field it has to leave behind — a bloodbath that
+     * takes most of the cast leaves no Games after it.
+     */
+    minLethality: 0.4,
+    maxLethality: 2.4,
+    /**
+     * How much of the lethality slider reaches commitment rather than damage.
+     *
+     * Damped: commitment changes which half of the field is in the scrum as
+     * well as how many come out of it, and the slider is meant to be a body
+     * count, not a different cast.
+     */
+    commitmentShare: 0.35,
 } as const;
 
 /**
@@ -1877,6 +1917,17 @@ export const ARENA_DEATH_BUDGET = {
      * starts pulling punches on day one reads as broken rather than merciful.
      */
     activeBelowAliveShare: 0.85,
+    /*
+     * The bounds on `GameConfig.naturalDeathRate`, which multiplies the two
+     * shares above.
+     *
+     * The floor is not zero: an arena that can never take anybody is not a
+     * setting this game has, and the finalist protection already handles the
+     * only case where a zero is wanted. The ceiling is where the wipeout rate
+     * starts climbing, measured rather than guessed.
+     */
+    minNaturalRate: 0.1,
+    maxNaturalRate: 2,
 } as const;
 
 /**
@@ -1922,7 +1973,18 @@ export const ESCALATION = {
      * early — that path is now the interesting one rather than the redundant
      * one.
      */
-    startDay: 12,
+    /*
+     * Pulled back from 12 alongside `naturalDeathRate`.
+     *
+     * 12 was set when the arena was killing about half the cast on its own: the
+     * field thinned by attrition and the escalation only had to finish it.
+     * With the arena reined in to the measured default the same run took 15.6
+     * days against a 10-13 guard, because nothing was thinning the field and
+     * nothing was making anybody meet. Escalation is what makes them meet, so
+     * it starts sooner. Measured rather than guessed; see the run-length
+     * indicator in `metrics.ts`.
+     */
+    startDay: 6,
     /**
      * Canon's Gamemakers do not escalate on a timetable; they escalate because
      * the audience is bored. Aggregate excitement across the living field is
@@ -1932,9 +1994,15 @@ export const ESCALATION = {
      */
     boredomThreshold: 20,
     /** Nothing closes in before this, however dull the Games are. */
-    boredomEarliestDay: 7,
+    boredomEarliestDay: 5,
     collapseDamageBase: 20,
-    collapseDamagePerDay: 10,
+    /*
+     * Raised from 10 alongside `naturalDeathRate`. The collapse is what ends a
+     * Games, and with the arena reined in it is doing more of that work alone:
+     * at 10 the measured run ran 14.3 days against a 10-13 guard, with the time
+     * going into a long thin tail rather than into a longer middle.
+     */
+    collapseDamagePerDay: 15,
     /** The Gamemakers want a victor: the border stops short of the last two. */
     finalistCollapseDamage: 10,
     finalistCount: 2,
@@ -1974,7 +2042,7 @@ export const ESCALATION = {
      * When the field drops into the band below, the Gamemakers take the rest
      * of the arena away and drive everyone left into one sector.
      */
-    convergeAtOrBelow: 6,
+    convergeAtOrBelow: 10,
     /**
      * ...but never before this many cycles have been played, so a brutal
      * bloodbath does not trigger it on day one.
@@ -1983,13 +2051,22 @@ export const ESCALATION = {
      * bloodbath plus two bad days put the field into the convergence band
      * before the middle of the Games had happened at all.
      */
-    convergeEarliestDay: 8,
+    convergeEarliestDay: 4,
     /*
      * AUDIT-6 §9.1: the muster — the softer convergence, at twice the field
      * size and none of the force. See `GameState.musterZone`.
      */
-    musterAtOrBelow: 12,
-    musterEarliestDay: 4,
+    /*
+     * Raised from 12 alongside `naturalDeathRate`. The measured slump after
+     * reining the arena in was days 2-6, at 0.6-1.1 deaths a day: the arena had
+     * stopped filling the middle of the Games and nothing had replaced it. The
+     * muster is the thing that makes people meet without the Gamemakers having
+     * to kill anybody, so it now starts while the field is still most of a
+     * bloodbath's survivors rather than waiting for attrition that no longer
+     * happens.
+     */
+    musterAtOrBelow: 16,
+    musterEarliestDay: 3,
     /** How long the price stays on the sector. */
     musterCycles: 4,
     /** What standing in it is worth per cycle, in sponsor trust and excitement. */
@@ -2438,7 +2515,16 @@ export const ENCOUNTERS = {
     baseMuttChance: 0.1,
     hazardCeiling: 0.9,
     /** Chance two tributes sharing a zone actually interact. */
-    meetChance: 0.4,
+    /**
+     * Whether two tributes in the same sector actually find each other.
+     *
+     * Raised from 0.4 alongside `naturalDeathRate`. When the arena was killing
+     * about half the cast, the field thinned whether or not anybody met; with
+     * the arena reined in, meeting is most of what ends a Games. Measured as
+     * worth about a quarter of a tribute-dealt death per Games, which is what
+     * carries that indicator over its design range.
+     */
+    meetChance: 0.62,
     /** Chance a crowded zone escalates into a group fight rather than a duel. */
     groupFightChance: 0.7,
     /** Cap on how many tributes are drawn into a single brawl. */
@@ -3594,6 +3680,14 @@ export const VETERANS = {
  * that hurts — which is the decision the whole mechanic exists to create.
  */
 export const VERTICALITY = {
+    /**
+     * AUDIT-10 F15: what changing level costs out of the day.
+     *
+     * Climbing charged fatigue and nothing else, so a tribute with no hours
+     * left still went up and down a shaft. Fatigue and the action budget are
+     * separate systems and a major action answers to both.
+     */
+    levelHours: 1,
     /** Need past which a tribute will risk the descent. */
     descendHunger: 55,
     descendThirst: 55,
@@ -4514,6 +4608,24 @@ export const RELATIONSHIPS = {
      * swallows its cannon closes it entirely.
      */
     killerIdentifiedNearby: 0.35,
+    /**
+     * AUDIT-10 (audit §8.7, "bound repeated grief shocks from one incident"):
+     * diminishing returns on burying people.
+     *
+     * Each previous loss this tribute has mourned multiplies the next one's
+     * sanity cost by this, to a floor. Grief was linear and unbounded, so a
+     * Games with more deaths in it put more tribute-time at the sanity floor
+     * purely by arithmetic — moving the death mix toward tribute-on-tribute
+     * killing took the floor from 19.3% to 22.6%, past its 22% guard, without
+     * anything about any individual tribute's psychology having changed.
+     *
+     * The shape is also the truer one. The fifth body is not the first body.
+     * It costs something, and it costs less, and what it mostly does is make
+     * the person harder to reach — which the relationship and trust layers
+     * already model separately from the gauge.
+     */
+    griefRepeatDecay: 0.82,
+    griefRepeatFloor: 0.45,
     /** Sanity cost scales with how strong the lost bond was. */
     griefSanityMax: 45,
     griefSanityMin: 8,
@@ -8705,6 +8817,38 @@ export const RESCUE_LINE = {
 
     /** Cycles before the follow-up beat reads the record. */
     aftermathCycles: 2,
+
+    /*
+     * AUDIT-10 F06: what counts as a line, stated in the capability units the
+     * item table now carries rather than in item types.
+     */
+    /** Shortest length that reaches anybody worth reaching. */
+    minRopeLength: 6,
+    /** Load a line has to bear before it is a line rather than string. */
+    minTensile: 0.3,
+    /** Straps and cloth this many pieces deep knot into a usable improvised line. */
+    lashablePieces: 2,
+    /** ...and what knotting real material rather than clothing is worth. */
+    lashableBonus: 0.12,
+
+    /*
+     * AUDIT-10 F15: what this costs out of the day.
+     *
+     * Fatigue was already charged; hours were not, so a rescuer with none left
+     * still completed a haul. Fatigue and the action budget are separate
+     * systems and a major action has to answer to both.
+     */
+    rescuerHours: 1.5,
+
+    /*
+     * AUDIT-10 F04: what a haul does for somebody who is unconscious.
+     *
+     * Extraction is not revival. It moves them out of what was going to finish
+     * them and buys the medical clock more room; whether anybody can actually
+     * treat them is still `tickDowned`'s question, and can still be answered
+     * no.
+     */
+    extractionCycles: 1,
 } as const;
 
 /**
@@ -8724,8 +8868,6 @@ export const ALLIANCE_DISPUTE = {
     hungryLine: 50,
     /** ...and above this, nobody is going to argue for the contributors. */
     desperateNeed: 80,
-    /** Cache value per hungry member above which there is nothing to argue about. */
-    enoughPerHead: 6,
 
     /*
      * Which way a group splits. Weights, not a uniform roll: a charter that
@@ -8751,4 +8893,17 @@ export const ALLIANCE_DISPUTE = {
 
     /** Cycles before the follow-up beat reads the record. */
     aftermathCycles: 2,
+
+    /*
+     * AUDIT-10 F11: rationing in portions, not in objects or in sale value.
+     */
+    /** Portions a member is entitled to per hearing. */
+    portionsPerHead: 1,
+    /** Hunger/thirst above this makes that the need the hearing must match. */
+    criticalNeed: 65,
+
+    /*
+     * AUDIT-10 F15: a hearing is people standing round a box, which is time.
+     */
+    hearingHours: 0.5,
 } as const;

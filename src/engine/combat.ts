@@ -249,14 +249,48 @@ function arenaOverBudget(ctx: SimContext, alive: number): boolean {
     if (cast === 0) return false;
     if (alive > cast * ARENA_DEATH_BUDGET.activeBelowAliveShare) return false;
     const taken = ctx.state.environmentalDeaths ?? 0;
-    const soft = cast * ARENA_DEATH_BUDGET.softCapShare;
+    /*
+     * `naturalDeathRate` scales the budget the arena is allowed to spend.
+     *
+     * The arena and the tributes are competing for one finite cast, so the only
+     * honest way to ask for more tribute-on-tribute killing is to leave more
+     * people alive for it. Reining the arena in earlier does exactly that: a
+     * spared death is a tribute who walks out of the flood and into somebody
+     * with a knife two days later.
+     *
+     * A multiplier on the caps rather than on the sparing chance, because the
+     * caps are what the budget *is* — the chance curve between them keeps its
+     * shape, and a run at any setting still gets harsher the further past its
+     * own soft cap the arena goes.
+     */
+    const rate = Math.max(
+        ARENA_DEATH_BUDGET.minNaturalRate,
+        Math.min(ARENA_DEATH_BUDGET.maxNaturalRate, ctx.state.config.naturalDeathRate ?? 1),
+    );
+    const soft = cast * ARENA_DEATH_BUDGET.softCapShare * rate;
     if (taken < soft) return false;
-    const hard = cast * ARENA_DEATH_BUDGET.hardCapShare;
+    const hard = cast * ARENA_DEATH_BUDGET.hardCapShare * rate;
     const through = hard > soft ? Math.min(1, (taken - soft) / (hard - soft)) : 1;
     const chance = ARENA_DEATH_BUDGET.sparedChanceAtCap
         + through * (ARENA_DEATH_BUDGET.sparedChanceAtHardCap - ARENA_DEATH_BUDGET.sparedChanceAtCap);
     return ctx.rng.chance(chance);
 }
+
+/**
+ * Damage the arena-lethality setting does not touch.
+ *
+ * A knife does what a knife does at every setting, and so does the closing
+ * border: the collapse is not scenery a tribute is unlucky to be standing in,
+ * it is the Gamemakers ending the Games, and it is the instrument that decides
+ * how long a Games *is*. Scaling it down with the rest of the arena took the
+ * pressure off the endgame as well as the middle, which showed up as the run
+ * getting five days longer rather than as fewer arena deaths.
+ *
+ * `code: 'border'` is checked alongside this, because the border reports
+ * `kind: 'arena'` — the bucket it belongs in for tone and for the obituary —
+ * and is not arena *attrition*.
+ */
+const UNSCALED_DAMAGE: ReadonlyArray<DamageRecord['kind']> = ['tribute', 'gamemaker'];
 
 export function applyDamage(
     ctx: SimContext,
@@ -294,6 +328,33 @@ export function applyDamage(
     // not frame — and it is the first thing the run takes off a starving
     // tribute, so a long run strips the padding before it strips the health.
     if (ARMOURED_DAMAGE.includes(record.kind)) amount *= 1 - injuryAbsorption(t);
+    /*
+     * `naturalDeathRate`: how hard everything that is not another tribute hits.
+     *
+     * Scaling the arena's *death budget* alone turned out not to be the lever
+     * it looks like. Sparing a killing blow softens it; thirst, infection and
+     * venom reapply every cycle, so a spared tribute mostly dies of the same
+     * thing two cycles later and the budget only moves *when* the arena takes
+     * somebody, not how many. Measured across the full range of the cap
+     * multiplier: 11.2 natural deaths per run to 10.2. That is a knob, not a
+     * setting.
+     *
+     * Damage is the lever. A weaker arena means wounds that do not compound,
+     * hunger that does not finish anybody, and a field that stays alive long
+     * enough to meet each other — which is the entire point of asking for
+     * fewer natural deaths. The cap multiplier above stays, because the two do
+     * different jobs: this decides how lethal the arena is, that decides when
+     * the Gamemakers decide it has had enough.
+     *
+     * Only non-tribute damage. A knife does what a knife does at every setting.
+     */
+    if (!UNSCALED_DAMAGE.includes(record.kind) && record.code !== 'border') {
+        const rate = Math.max(
+            ARENA_DEATH_BUDGET.minNaturalRate,
+            Math.min(ARENA_DEATH_BUDGET.maxNaturalRate, ctx.state.config.naturalDeathRate ?? 1),
+        );
+        amount *= rate;
+    }
     amount = Math.max(1, Math.round(amount));
 
     // §7: the Gamemakers want a victor, not an empty arena.
