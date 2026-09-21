@@ -250,26 +250,26 @@ function arenaOverBudget(ctx: SimContext, alive: number): boolean {
     if (alive > cast * ARENA_DEATH_BUDGET.activeBelowAliveShare) return false;
     const taken = ctx.state.environmentalDeaths ?? 0;
     /*
-     * `naturalDeathRate` scales the budget the arena is allowed to spend.
+     * REQUEST ("too many victors walk out with 1% health"): the budget is NOT
+     * scaled by `naturalDeathRate`, and it was.
      *
-     * The arena and the tributes are competing for one finite cast, so the only
-     * honest way to ask for more tribute-on-tribute killing is to leave more
-     * people alive for it. Reining the arena in earlier does exactly that: a
-     * spared death is a tribute who walks out of the flood and into somebody
-     * with a knife two days later.
+     * Scaling both the arena's damage and its death budget by the same setting
+     * counts it twice. At the measured default of 0.3 the soft cap came out at
+     * 1.4 deaths in a field of 24, so the arena was "over budget" from the
+     * first day of nearly every Games — and every environmental killing blow
+     * after that was rolled against and, when spared, clamped its victim to one
+     * health. That is where the 1% victors came from: the 25th percentile of
+     * victor health was *exactly 1* and 36% finished at five or below, because
+     * a third of the cast was being left on the floor at one health by a cap
+     * that had been made five times tighter by accident.
      *
-     * A multiplier on the caps rather than on the sparing chance, because the
-     * caps are what the budget *is* — the chance curve between them keeps its
-     * shape, and a run at any setting still gets harsher the further past its
-     * own soft cap the arena goes.
+     * The damage scaling is the lever (see `applyDamage`). This is the
+     * Gamemakers' ceiling on the arena's share of the killing, and it is a
+     * share of the cast either way.
      */
-    const rate = Math.max(
-        ARENA_DEATH_BUDGET.minNaturalRate,
-        Math.min(ARENA_DEATH_BUDGET.maxNaturalRate, ctx.state.config.naturalDeathRate ?? 1),
-    );
-    const soft = cast * ARENA_DEATH_BUDGET.softCapShare * rate;
+    const soft = cast * ARENA_DEATH_BUDGET.softCapShare;
     if (taken < soft) return false;
-    const hard = cast * ARENA_DEATH_BUDGET.hardCapShare * rate;
+    const hard = cast * ARENA_DEATH_BUDGET.hardCapShare;
     const through = hard > soft ? Math.min(1, (taken - soft) / (hard - soft)) : 1;
     const chance = ARENA_DEATH_BUDGET.sparedChanceAtCap
         + through * (ARENA_DEATH_BUDGET.sparedChanceAtHardCap - ARENA_DEATH_BUDGET.sparedChanceAtCap);
@@ -393,7 +393,21 @@ export function applyDamage(
     if (record.kind !== 'tribute') {
         const alive = ctx.state.tributes.filter(o => o.status === 'alive').length;
         if (alive <= 1 && amount >= t.health) {
-            amount = Math.max(0, t.health - 1);
+            /*
+             * REQUEST: not at one health.
+             *
+             * This clamped to `t.health - 1`, so the last tribute standing was
+             * pinned at exactly one — and since the run ends moments later,
+             * that is the number on the victor's card. Measured: the 25th
+             * percentile of victor health was 1, and 36% finished at five or
+             * below. The Gamemakers keeping somebody alive to be crowned are
+             * not keeping them at the edge of death.
+             *
+             * `lastSurvivorFloor` rather than a fraction of the blow, because
+             * what matters is the state they are left in, not how hard the
+             * thing that nearly killed them hit.
+             */
+            amount = Math.max(0, t.health - ESCALATION.lastSurvivorFloor);
             finalistSave = true;
         }
         // §11 (requests): the last two settle it between them, not by whose
@@ -411,19 +425,30 @@ export function applyDamage(
         // second-to-last tribute is the same failure wearing different
         // clothes, and §24 says so independently.
         if (!finalistSave && amount >= t.health && inFinalTwoGrace(ctx, alive)) {
-            amount = Math.max(0, t.health - 1);
+            // Nearly dead, and not pinned to the exact edge of it: a finalist
+            // the arena has all but killed is a finalist the other one can
+            // still finish, which is the point of the grace, but one health is
+            // an accounting number rather than a state a body is ever in.
+            amount = Math.max(0, t.health - ESCALATION.finalTwoSaveFloor);
             finalistSave = true;
         }
-        // §24 (requests): the arena's share of the killing, capped.
-        //
-        // Same shape as the finalist save above and for a related reason: the
-        // arena is scenery for a story about people, and a run where it takes
-        // most of the cast has no story left in it. Past its budget every
-        // further environmental killing blow is rolled against, and a spared
-        // tribute is left on one health — the arena has still all but killed
-        // them, and the next person to find them will finish it.
+        /*
+         * §24 (requests): the arena's share of the killing, capped.
+         *
+         * Same shape as the finalist save above and for a related reason: the
+         * arena is scenery for a story about people, and a run where it takes
+         * most of the cast has no story left in it. Past its budget every
+         * further environmental killing blow is rolled against, and a spared
+         * tribute is left barely standing — the arena has still all but killed
+         * them, and the next person to find them will finish it.
+         *
+         * REQUEST: "barely standing" is `arenaSaveFloor`, not one health.
+         * Anybody spared here can go on to win, and a tribute pinned to the
+         * exact edge of death by a bookkeeping rule was a third of how victors
+         * came to be crowned at 1%.
+         */
         if (!finalistSave && amount >= t.health && arenaOverBudget(ctx, alive)) {
-            amount = Math.max(0, t.health - 1);
+            amount = Math.max(0, t.health - ESCALATION.arenaSaveFloor);
             finalistSave = true;
         }
         if (amount <= 0) return finalistSave;

@@ -2023,6 +2023,26 @@ export const ESCALATION = {
     collapseDamagePerDay: 15,
     /** The Gamemakers want a victor: the border stops short of the last two. */
     finalistCollapseDamage: 10,
+    /*
+     * REQUEST: "too many victors walk out with 1% health".
+     *
+     * The sole-survivor save clamps a killing blow to leave the last tribute
+     * breathing, and it clamped to exactly one health — which is why the 25th
+     * percentile of victor health was *exactly 1* and 36% of victors finished
+     * at five or below. A Games whose last act is the Gamemakers deciding not
+     * to let the weather finish somebody does not leave them on the edge of
+     * death; it leaves them alive.
+     *
+     * Only the sole-survivor case. The final-two grace and the arena-budget
+     * save still leave a tribute on one health on purpose: the arena has all
+     * but killed them and the other finalist can still finish it, which is a
+     * real ending rather than a bookkeeping one.
+     */
+    lastSurvivorFloor: 14,
+    /** ...and for a finalist the arena spared while the other one is still out there. */
+    finalTwoSaveFloor: 6,
+    /** ...and for anybody the arena's own budget spared, who may still win. */
+    arenaSaveFloor: 5,
     finalistCount: 2,
     /**
      * The forced finale. Finalist protection (see `applyDamage`) means the
@@ -2127,7 +2147,21 @@ export const ESCALATION = {
      * finalist can still finish it — what is no longer allowed is the Games
      * ending because somebody's arm went septic off-camera.
      */
-    finalTwoAttritionGraceCycles: 8,
+    /*
+     * REQUEST: "too many final deaths before victor is crowned do not end in a
+     * show down, this needs to happen most of the time".
+     *
+     * Measured at 8: the last death was the victor's own kill in 76.7% of runs,
+     * and the other 23% were the weather, a wound going bad, or the closing
+     * border finishing the runner-up while the two of them were still looking
+     * for each other. Widened so the arena has to wait longer before it is
+     * allowed to take the ending away from them.
+     *
+     * Still a window and not a rule, for the reason the original comment gives:
+     * two tributes who genuinely never meet must not hold the Games open
+     * forever, and the forced finale is what usually resolves it first.
+     */
+    finalTwoAttritionGraceCycles: 16,
 } as const;
 
 /**
@@ -4072,6 +4106,16 @@ export const ZONES = {
 /** What tributes remember, and how fast they forget it. */
 /** §1.2: thresholds for the victor's interview reading the run's own ledgers. */
 export const EPILOGUE = {
+    /*
+     * REQUEST: the retrieval. See `processEpilogue`.
+     *
+     * A victor is crowned days after the cannon, not on it. The floor is what
+     * the Capitol will not put on camera; the share is how much of the rest
+     * they manage in the time they have. Neither touches wounds, injuries or
+     * conditions — `healthAtLastCannon` keeps the number they were standing on.
+     */
+    retrievalFloor: 12,
+    retrievalRecoveryShare: 0.18,
     /** Sponsor credit earned purely by being unfindable, worth Caesar asking about. */
     ghostTrustNotable: 12,
 } as const;

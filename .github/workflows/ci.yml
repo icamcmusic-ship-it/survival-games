@@ -97,6 +97,9 @@ jobs:
       # REQUEST: bodies weighted by rarity, district and age. A distribution is
       # the one thing a positioned scene cannot check.
       - run: npm run test:bodies
+      # REQUEST: how a Games ends — victor health and whether the last death
+      # is a showdown. Both are distributions, not propositions about one run.
+      - run: npm run test:endgame
 
       # Content and structure.
       - run: npm run test:arenas

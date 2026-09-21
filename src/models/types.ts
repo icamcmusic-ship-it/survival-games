@@ -1429,6 +1429,12 @@ export interface Tribute {
          */
         extracted?: boolean;
     };
+    /**
+     * REQUEST: the health they were actually standing on when the last cannon
+     * went, before the Capitol retrieved them. `health` after the epilogue is
+     * the number on the crowning broadcast; this is the one the arena left.
+     */
+    healthAtLastCannon?: number;
     /** §9.1: they have been down once already. Nobody gets the window twice. */
     everDowned?: boolean;
     /** §9.1: who pulled them back from it. */
