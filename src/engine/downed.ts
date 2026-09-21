@@ -119,6 +119,27 @@ function finish(
      */
     arenaKind?: { kind: NonNullable<Tribute['lastDamage']>['kind']; code?: NonNullable<Tribute['lastDamage']>['code'] },
 ) {
+    /*
+     * REQUEST: the fixed Games. The downed window is the one route to a death
+     * that does not go through `applyDamage`, so the protection has to be
+     * repeated here rather than inherited.
+     *
+     * They come round instead. Whoever was standing over them with a knife
+     * finds the hovercraft arriving first, which is the Capitol's own
+     * explanation and also the true one.
+     */
+    if (ctx.state.riggedVictorId === t.id) {
+        delete t.downed;
+        t.health = Math.max(t.health, DOWNED.reviveHealth);
+        clampTribute(t);
+        ctx.logEvent(
+            `${t.name} is on the ground in ${t.zone} and does not stay there. Nobody watching can say afterwards `
+            + 'quite what it was that went wrong for the person standing over them.',
+            [t.id],
+            { important: true, category: 'survival' },
+        );
+        return;
+    }
     delete t.downed;
     t.lastDamage = {
         cause,

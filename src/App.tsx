@@ -348,6 +348,7 @@ export default function App() {
             onReroll={gameActions.rerollCast}
             onConfirm={gameActions.confirmReaping}
             onCoach={(id, coaching) => { gameActions.setCoaching(id, coaching); }}
+            onRig={(id) => { gameActions.setRiggedVictor(id); }}
           />
         )}
 

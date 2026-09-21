@@ -2109,6 +2109,14 @@ export const ESCALATION = {
      * real ending rather than a bookkeeping one.
      */
     lastSurvivorFloor: 14,
+    /**
+     * REQUEST: what the Gamemakers will let the cameras see of the tribute
+     * they have already decided is coming home.
+     *
+     * Not untouched — a tribute who walks out of a mutt attack without a mark
+     * on them tells the audience what has been arranged — but never a cannon.
+     */
+    riggedFloor: 8,
     /** ...and for a finalist the arena spared while the other one is still out there. */
     finalTwoSaveFloor: 6,
     /** ...and for anybody the arena's own budget spared, who may still win. */

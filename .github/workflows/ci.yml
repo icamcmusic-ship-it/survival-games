@@ -103,6 +103,9 @@ jobs:
       # REQUEST: the death settings are counts. "Absolute" is a claim about the
       # whole slider, so it is checked across its range rather than at its default.
       - run: npm run test:death-targets
+      # REQUEST: a fixed Games. The outcome is the easy half; the hard half is
+      # that every other death in it is still a real, attributed, ordered death.
+      - run: npm run test:rigged
 
       # Content and structure.
       - run: npm run test:arenas

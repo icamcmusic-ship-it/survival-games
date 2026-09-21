@@ -302,6 +302,31 @@ function arenaOverBudget(ctx: SimContext, alive: number): boolean {
  */
 const UNSCALED_DAMAGE: ReadonlyArray<DamageRecord['kind']> = ['tribute', 'gamemaker'];
 
+/**
+ * REQUEST: pull a killing blow aimed at the tribute the Gamemakers have fixed.
+ *
+ * Separate function because it has to happen before the armour, the injury
+ * absorption and every other save, and because the reason it is happening
+ * deserves to be findable by name rather than inferred from a condition
+ * buried in the middle of `applyDamage`.
+ *
+ * Left visibly hurt rather than untouched: a fixed Games is still a Games, and
+ * a tribute who walks out of a mutt attack without a mark on them would tell
+ * the audience what has been arranged. `riggedFloor` is what the Capitol will
+ * let the cameras see.
+ */
+function finishRiggedSave(ctx: SimContext, t: Tribute, amount: number): boolean {
+    const floor = Math.min(t.health, ESCALATION.riggedFloor);
+    const taken = Math.max(0, t.health - floor);
+    if (taken > 0) {
+        t.health -= taken;
+        t.lastDamage = { ...t.lastDamage, cause: t.lastDamage?.cause ?? 'The arena, and the Gamemakers\' opinion of it', kind: 'gamemaker', cycle: cycleOf(ctx.state), amount: taken };
+        clampTribute(t);
+    }
+    void amount;
+    return true;
+}
+
 export function applyDamage(
     ctx: SimContext,
     t: Tribute,
@@ -366,6 +391,24 @@ export function applyDamage(
         amount *= rate;
     }
     amount = Math.max(1, Math.round(amount));
+
+    /*
+     * REQUEST: the Gamemakers have already decided who comes home.
+     *
+     * Checked before every other save and for every kind of damage, including
+     * another tribute's — this is the one protection the arena does not get to
+     * argue with, because the whole point of it is that the outcome is not in
+     * doubt. They can still be beaten, wounded, poisoned, starved and put on
+     * the ground; what cannot happen is the cannon.
+     *
+     * The return value matters as much here as it does for the finalist save:
+     * thirst and infection reapply every cycle, so a clamp alone would hold
+     * them at a hair's breadth and re-kill them forever. Reporting the rescue
+     * lets the status tick relieve the actual cause.
+     */
+    if (ctx.state.riggedVictorId === t.id && amount >= t.health) {
+        return finishRiggedSave(ctx, t, amount);
+    }
 
     // §7: the Gamemakers want a victor, not an empty arena.
     //
@@ -1678,6 +1721,15 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
 export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, opts: { weapon?: Item; cause?: string; silent?: boolean } = {}) {
     const { weapon, cause, silent } = opts;
     if (victim.status === 'dead') return;
+    /*
+     * REQUEST: the backstop for the fixed Games.
+     *
+     * `applyDamage` and the downed window are the two routes that matter and
+     * both check for themselves, but this function is the funnel every death
+     * in the engine passes through — which makes it the only place that can
+     * promise the protection holds for a route somebody adds later.
+     */
+    if (ctx.state.riggedVictorId === victim.id) return;
     victim.status = 'dead';
     // Carry capacity can shrink under a tribute — losing the Backpack is the
     // usual way — and only the per-cycle upkeep in `dayNight` repairs the

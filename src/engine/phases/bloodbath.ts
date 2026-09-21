@@ -499,6 +499,23 @@ export function processBloodbath(ctx: SimContext) {
         [],
         { important: true, category: 'system' }
     );
+    /*
+     * REQUEST: a fixed Games says so, on the record, before anybody dies in it.
+     *
+     * A setting that quietly changes the outcome and leaves the chronicle
+     * reading like an ordinary Games is not a setting, it is a corrupted
+     * record. This line is written once, at the gong, where the audience would
+     * not have known and the reader of the chronicle now does.
+     */
+    const rigged = ctx.state.tributes.find(t => t.id === ctx.state.riggedVictorId);
+    if (rigged) {
+        ctx.logEvent(
+            `This Games has already been decided. ${rigged.name} of District ${rigged.district} is coming home, `
+            + 'and everything the arena does between now and then is arrangement.',
+            [rigged.id],
+            { important: true, category: 'system' },
+        );
+    }
 
     // 1. Who runs at the horn and who runs away from it.
     const runners: Tribute[] = [];

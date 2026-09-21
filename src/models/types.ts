@@ -3329,6 +3329,27 @@ export interface GameState {
      * engines instead of their own rolls.
      */
     playerCoaching?: { tributeId: string; trainingStrategy?: 'showcase' | 'conceal' | 'balanced'; interviewStrategy?: InterviewPersona };
+    /**
+     * REQUEST: "a setting to force a certain tribute to win the games".
+     *
+     * The Gamemakers have decided who comes home, and the arena is arranged
+     * around it. Set at the reaping, before the gong, and never afterwards —
+     * rigging a Games at the final four is a different and much uglier thing.
+     *
+     * Deliberately **not** "this tribute wins": it is "nothing is allowed to
+     * kill this tribute". They still fight, still lose fights, still take
+     * wounds and go down and get dragged out of floods; every death they *deal*
+     * is a real death, attributed to them, and every achievement they earn is
+     * earned. What cannot happen is a cannon for them. They are crowned by
+     * being the last one breathing, the same way every other victor is, which
+     * is what keeps the winner accounting, the obituaries, the elimination
+     * order and the record book all telling the truth.
+     *
+     * The run says so in the chronicle and carries `riggedVictorId` into the
+     * Hall of Fame entry, because a fixed Games that does not admit it is a
+     * corrupted record rather than a setting.
+     */
+    riggedVictorId?: string;
 }
 
 export interface EventLog {
@@ -3620,6 +3641,15 @@ export interface HallOfFameEntry {
     quellId?: string | null;
     /** True for a Games nobody survived — archived as its own kind of entry. */
     noVictor?: boolean;
+    /**
+     * REQUEST: this Games was fixed — a tribute was nominated at the reaping
+     * and nothing was allowed to kill them.
+     *
+     * Archived because a record book that cannot tell a crown that was won from
+     * one that was arranged is worse than no record book. Absent on every entry
+     * from before the setting existed, which is the honest reading of them.
+     */
+    rigged?: boolean;
     /**
      * Player-pinned: never evicted by the HOF_CAP. A first-ever District 12
      * crown should not be silently deleted by run 51.

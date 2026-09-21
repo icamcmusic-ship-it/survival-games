@@ -15,7 +15,7 @@ import { INTERVIEW_PERSONAS } from '../data/personas';
 import { InterviewPersona } from '../models/types';
 import { isVeteran } from '../engine/veterans';
 
-export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, onReroll, onConfirm, onCoach }: {
+export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, onReroll, onConfirm, onCoach, onRig }: {
     tributes: Tribute[],
     arenaName: string,
     seed: string,
@@ -26,6 +26,8 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
     onConfirm: () => void,
     /** §6.10: pin one tribute's training and interview strategy. */
     onCoach?: (tributeId: string, coaching: { trainingStrategy?: 'showcase' | 'conceal' | 'balanced'; interviewStrategy?: InterviewPersona }) => void,
+    /** REQUEST: name the tribute the Gamemakers have already decided on. */
+    onRig?: (tributeId: string | null) => void,
 }) {
     const units = useStore(prefsStore, p => p.units);
     const coaching = gameState?.playerCoaching;
@@ -166,6 +168,43 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
                             </select>
                         </label>
                     </div>
+                </div>
+            )}
+
+            {/*
+              * REQUEST: "a setting to force a certain tribute to win the
+              * games". Sat beside coaching because it is the same kind of
+              * thing — the player's thumb on the scale before the gong — and
+              * deliberately worded so nobody sets it by accident.
+              */}
+            {onRig && (
+                <div className="panel p-4 space-y-2 animate-riseIn" style={{ borderColor: 'var(--color-coin-400)' }}>
+                    <div className="flex items-baseline justify-between flex-wrap gap-2">
+                        <span className="eyebrow text-[var(--color-coin-400)]">Fix the Games</span>
+                        <span className="text-mini text-[var(--color-ink-500)]">
+                            The Gamemakers decide who comes home. They still fight, still lose fights, still
+                            go down — there is simply never a cannon for them.
+                        </span>
+                    </div>
+                    <label className="text-mini text-[var(--color-ink-500)]">
+                        Victor{' '}
+                        <select
+                            className="field text-xs w-auto"
+                            aria-label="Fix the Games: choose the victor"
+                            value={gameState?.riggedVictorId ?? ''}
+                            onChange={e => onRig(e.target.value || null)}
+                        >
+                            <option value="">— let the arena decide —</option>
+                            {[...tributes].sort((a, b) => a.district - b.district).map(t => (
+                                <option key={t.id} value={t.id}>D{t.district} · {t.name}</option>
+                            ))}
+                        </select>
+                    </label>
+                    {gameState?.riggedVictorId && (
+                        <p className="text-micro text-[var(--color-coin-400)] m-0">
+                            This Games is fixed, and the chronicle and the Hall of Fame will say so.
+                        </p>
+                    )}
                 </div>
             )}
 
