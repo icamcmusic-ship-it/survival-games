@@ -534,16 +534,46 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                             </p>
                         ) : (
                             <>
-                                <p className="mt-1.5 leading-relaxed text-[var(--color-ink-400)]">
-                                    They went {tribute.stance.toLowerCase()}
-                                    {tribute.decisionTrace.stances[0]?.reasons.length
-                                        ? <> because {tribute.decisionTrace.stances[0].reasons.map(r => r.label).join(', ')}</>
-                                        : null}.
-                                    {tribute.decisionTrace.stances[1] && (
-                                        <> The other thing on the table was {tribute.decisionTrace.stances[1].stance.toLowerCase()}
-                                            {' '}({tribute.decisionTrace.stances[1].score} against {tribute.decisionTrace.stances[0]?.score}).</>
-                                    )}
-                                </p>
+                                {/*
+                                  * AUDIT-10 F18: explain the stance they are in,
+                                  * not the one that topped the ranking.
+                                  *
+                                  * `stances` is written before hysteresis, so when
+                                  * the hold or the switch margin kept the incumbent
+                                  * this printed the tribute's real stance beside a
+                                  * different stance's reasons — and named that same
+                                  * stance as "the other thing on the table". Both
+                                  * now come off the chosen stance: its own entry in
+                                  * the ranking for the reasons, and the top of the
+                                  * ranking (guaranteed to differ) as the
+                                  * alternative.
+                                  */}
+                                {(() => {
+                                    const trace = tribute.decisionTrace!;
+                                    const held = trace.held;
+                                    const chosenStance = held?.stance ?? trace.stances[0]?.stance ?? tribute.stance;
+                                    const chosen = trace.stances.find(s => s.stance === chosenStance) ?? trace.stances[0];
+                                    // The meaningful rejected option: the best-scoring
+                                    // entry that is not the one they are actually in.
+                                    const alternative = trace.stances.find(s => s.stance !== chosenStance);
+                                    return (
+                                        <p className="mt-1.5 leading-relaxed text-[var(--color-ink-400)]">
+                                            {held
+                                                ? <>They stayed {held.stance.toLowerCase()} — {held.because}</>
+                                                : <>They went {chosenStance.toLowerCase()}
+                                                    {chosen?.reasons.length
+                                                        ? <> because {chosen.reasons.map(r => r.label).join(', ')}</>
+                                                        : null}</>}.
+                                            {held && chosen?.reasons.length
+                                                ? <> Standing with it: {chosen.reasons.map(r => r.label).join(', ')}.</>
+                                                : null}
+                                            {alternative && (
+                                                <> The other thing on the table was {alternative.stance.toLowerCase()}
+                                                    {' '}({alternative.score} against {chosen?.score}).</>
+                                            )}
+                                        </p>
+                                    );
+                                })()}
                                 {tribute.decisionTrace.objectives?.[0] && (
                                     <p className="mt-1 leading-relaxed text-[var(--color-ink-500)]">
                                         Intention: {tribute.decisionTrace.objectives[0].label.toLowerCase()}

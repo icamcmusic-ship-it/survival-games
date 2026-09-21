@@ -2,12 +2,13 @@ import { GameState, Item, RescueLineRecord, Tribute } from '../models/types';
 import { SimContext, getAlive } from './context';
 import { RESCUE_LINE, BLEEDING } from '../data/balance';
 import { applyDamage, checkDeath } from './combat';
-import { isActive, isDowned } from './downed';
-import { isVertical } from './verticality';
+import { cutDownedLine, isActive, isDowned, widenRescueWindow } from './downed';
+import { isVertical, samePlace } from './verticality';
 import { hasEffect } from './zoneEffects';
 import { encumbranceOf } from './items';
 import { profOf, trainProficiency } from './proficiency';
 import { cycleOf } from './memory';
+import { canAfford, spend } from './actionBudget';
 import { adjustMutual, adjustRel, getRel } from './relationships';
 import { incurDebt } from './debts';
 import { clampTribute } from './vitals';
@@ -77,8 +78,30 @@ function strandingOf(state: GameState, t: Tribute): RescueLineRecord['stranding'
  * said out loud in the line that announces the attempt, and it is the thing
  * the rescuer could go and improve instead of pulling now.
  */
-function anchorFor(t: Tribute): { kind: RescueLineRecord['anchor']; quality: number } {
-    const rope = t.inventory.find(i => i.type === 'utility' || i.type === 'tool');
+function anchorFor(t: Tribute): { kind: RescueLineRecord['anchor']; quality: number; rope: boolean } | undefined {
+    /*
+     * AUDIT-10 F06: composed from item capabilities, not from item type.
+     *
+     * This used to be `t.inventory.find(i => i.type === 'utility' || i.type === 'tool')`.
+     * Nightlock Berries are a utility — deliberately, so nobody eats them by
+     * accident — so a Rope-Handed tribute carrying nothing but poison berries
+     * was rigging a proper anchor with them, and matches, charcoal filters and
+     * whetstones did the same. A drawer of the catalogue is not a capability.
+     *
+     * Three honest tiers now, and which one you get is a physical fact about
+     * what is in the pack:
+     *
+     *   - a **line**: something with usable length that will bear a person;
+     *   - **lashable material**: straps, cloth, a pack, knotted into one;
+     *   - **belts and a jacket**: what everybody is wearing, always available,
+     *     and the worst of the three.
+     *
+     * Deliberately no consumption of arbitrary supplies to make an otherwise
+     * impossible scene legal: the third tier is clothing, which is real.
+     */
+    const line = t.inventory.find(i =>
+        (i.ropeLength ?? 0) >= RESCUE_LINE.minRopeLength
+        && (i.tensileStrength ?? 0) >= RESCUE_LINE.minTensile);
     /*
      * AUDIT-9 batch 4: who actually knows how to tie one off.
      *
@@ -92,18 +115,54 @@ function anchorFor(t: Tribute): { kind: RescueLineRecord['anchor']; quality: num
      * `Rope-Handed` is the answer the trait table already had: "grew up on
      * lines and knots". It is a thing somebody arrives knowing rather than
      * something the arena teaches them in a week, which is the right shape for
-     * a skill that shows up once, under load, at the worst moment. It also
-     * gives that trait a use in the one situation its own description is
-     * about — its three existing mods are a grapple, a trap and highland
-     * movement, none of which is a rope holding a person.
+     * a skill that shows up once, under load, at the worst moment.
      *
      * Practised climbing still counts, at a bar low enough to be reachable.
      */
     const knows = t.traits.includes('Rope-Handed')
         || profOf(t, 'climbing') >= RESCUE_LINE.goodAnchorClimbing;
-    if (rope && knows) return { kind: 'rigged', quality: RESCUE_LINE.riggedQuality };
-    if (rope) return { kind: 'rope', quality: RESCUE_LINE.ropeQuality };
-    return { kind: 'improvised', quality: RESCUE_LINE.improvisedQuality };
+    if (line && knows) return { kind: 'rigged', quality: RESCUE_LINE.riggedQuality, rope: true };
+    if (line) return { kind: 'rope', quality: RESCUE_LINE.ropeQuality, rope: true };
+    const lashable = t.inventory.filter(i => i.lashable).length;
+    // Enough strapping to knot a line out of, or the clothes they stand up in.
+    // Either way it is improvised; the first is merely less desperate, which
+    // the anchor roll already prices through `quality`.
+    return {
+        kind: 'improvised',
+        quality: RESCUE_LINE.improvisedQuality
+            + (lashable >= RESCUE_LINE.lashablePieces ? RESCUE_LINE.lashableBonus : 0),
+        rope: false,
+    };
+}
+
+/**
+ * AUDIT-10 F07: can this person actually do it, asked *before* ranking.
+ *
+ * `tickRescueLines` used to rank the whole zone by willingness and then check
+ * the winner's health, returning if it was too low — so one keen, nearly-dead
+ * favourite blocked every healthy volunteer behind them. A fixture with a
+ * one-health favourite and a healthy willing alternative produced no rescue in
+ * 100 attempts. Capability, reach and resources are a filter, not a tiebreak.
+ */
+function canAttemptRescue(state: GameState, rescuer: Tribute, stranded: Tribute): boolean {
+    if (rescuer.id === stranded.id) return false;
+    if (!isActive(rescuer)) return false;
+    // F09: the same physical-contact rule the rest of the engine uses. A rope
+    // may span levels, so this is `zone` plus an explicit level allowance
+    // rather than `samePlace` — but the rescuer must be on the *upper* level
+    // of a vertical zone to be hauling anybody up it.
+    if (rescuer.zone !== stranded.zone) return false;
+    if (isVertical(state.arena, stranded.zone)
+        && stranded.zoneLevel === 'lower'
+        && (rescuer.zoneLevel ?? 'upper') !== 'upper') return false;
+    if (isVertical(state.arena, stranded.zone)
+        && stranded.zoneLevel !== 'lower'
+        && !samePlace(state.arena, rescuer, stranded)) return false;
+    if (rescuer.health < RESCUE_LINE.rescuerMinHealth) return false;
+    // F15: hauling somebody up a face is a major action, and a day has only so
+    // many hours in it. Fatigue was already charged; the budget was not.
+    if (!canAfford(rescuer, RESCUE_LINE.rescuerHours)) return false;
+    return true;
 }
 
 /**
@@ -152,11 +211,15 @@ export function tickRescueLines(ctx: SimContext) {
         // afternoon is not a story, it is a loop.
         if ((state.rescueLines ?? []).some(r => r.strandedId === stranded.id && r.cycle === cycleOf(state))) return;
 
-        const rescuers = getAlive(state).filter(o =>
-            o.id !== stranded.id
-            && isActive(o)
-            && o.zone === stranded.zone
-            && !isDowned(o));
+        /*
+         * AUDIT-10 F07: filter first, rank second.
+         *
+         * Capability, reach and resources decide who is *eligible*; willingness
+         * only decides which of the eligible steps forward. The other order —
+         * rank everybody, then test the winner — let one keen, nearly-dead
+         * favourite block every healthy volunteer behind them.
+         */
+        const rescuers = getAlive(state).filter(o => canAttemptRescue(state, o, stranded));
         if (rescuers.length === 0) return;
 
         /*
@@ -177,11 +240,18 @@ export function tickRescueLines(ctx: SimContext) {
          * So: willingness decides, and a treacherous tribute has their own
          * reasons to volunteer.
          */
-        const rescuer = rescuers
+        /*
+         * Ties no longer always fall to roster order: two equally willing
+         * eligible rescuers are separated by the run's own stream, so the
+         * person who picks up the rope is not simply whoever was reaped first.
+         */
+        const ranked = rescuers
             .map(o => ({ o, w: willingness(o, stranded) }))
-            .sort((a, b) => b.w - a.w)[0].o;
+            .sort((a, b) => b.w - a.w);
+        const best = ranked[0].w;
+        const tied = ranked.filter(r => Math.abs(r.w - best) < 1e-9).map(r => r.o);
+        const rescuer = tied.length > 1 ? ctx.rng.pick(tied) : tied[0];
         if (!ctx.rng.chance(Math.max(0, Math.min(RESCUE_LINE.maxWillingness, willingness(rescuer, stranded))))) return;
-        if (rescuer.health < RESCUE_LINE.rescuerMinHealth) return;
 
         attemptRescueLine(ctx, rescuer, stranded, stranding);
     });
@@ -195,6 +265,15 @@ function attemptRescueLine(
 ) {
     const state = ctx.state;
     const anchor = anchorFor(rescuer);
+    if (!anchor) return;
+    /*
+     * AUDIT-10 F15: the hours go before the scene does, not after it. A
+     * rescuer who cannot afford the attempt was filtered out upstream; this is
+     * the commit, and it is checked again here because the two validations the
+     * audit asks for — before committing and immediately before resolution —
+     * are the whole point of having a budget at all.
+     */
+    if (!spend(rescuer, RESCUE_LINE.rescuerHours)) return;
 
     /*
      * The warning. Said before the roll, naming the thing the attempt rests
@@ -264,13 +343,34 @@ function attemptRescueLine(
         + Math.max(0, -getRel(rescuer, stranded.id)) * RESCUE_LINE.cutPerDislike
         - deterrent;
     if (ctx.rng.chance(cutChance)) {
-        record(ctx, { rescuerId: rescuer.id, strandedId: stranded.id, zone: stranded.zone, anchor: anchor.kind, stranding, outcome: 'cut' });
-        applyDamage(ctx, stranded, RESCUE_LINE.fallDamage, {
-            cause: `Dropped in ${stranded.zone} when the anchor went`,
-            kind: 'tribute', sourceId: rescuer.id, code: 'fall',
-        });
-        openWound(stranded, BLEEDING.combatSeverity);
-        clampTribute(stranded);
+        const cause = `Dropped in ${stranded.zone} when the anchor went`;
+        record(ctx, { rescuerId: rescuer.id, strandedId: stranded.id, zone: stranded.zone, anchor: anchor.kind, stranding, outcome: 'cut', rope: anchor.rope });
+        /*
+         * AUDIT-10 F05: a downed victim is outside the damage system.
+         *
+         * `applyDamage` and `checkDeath` both refuse an already-downed tribute
+         * on purpose — `applyStatusDamage` runs bleeding, infection, venom and
+         * thirst through the same funnel every cycle, and a downed tribute sits
+         * at exactly 0 health, so any damage that landed would close the rescue
+         * window to zero cycles wide. Which meant this branch recorded a cut,
+         * incremented betrayal, and left the victim downed with no new attacker
+         * attribution at all: a murder the engine declined to notice.
+         *
+         * So the cut goes through the downed state machine instead of around
+         * it. `cutDownedLine` is a lethal *interruption* — it ends the window
+         * now and credits the cutter — while ordinary status damage keeps the
+         * clock it has always had.
+         */
+        const wasDowned = isDowned(stranded);
+        if (wasDowned) {
+            cutDownedLine(ctx, stranded, `Killed by ${rescuer.name}, who cut the line in ${stranded.zone}`, rescuer);
+        } else {
+            applyDamage(ctx, stranded, RESCUE_LINE.fallDamage, {
+                cause, kind: 'tribute', sourceId: rescuer.id, code: 'fall',
+            });
+            openWound(stranded, BLEEDING.combatSeverity);
+            clampTribute(stranded);
+        }
         ctx.logEvent(
             `The line goes slack. ${rescuer.name} is holding the cut end of it, and ${stranded.name} is not on the other one.`
             + (witnesses > 0
@@ -286,7 +386,8 @@ function attemptRescueLine(
                 .forEach(o => adjustRel(o, rescuer.id, -RESCUE_LINE.cutWitnessRegard));
         }
         rescuer.betrayalsCommitted = (rescuer.betrayalsCommitted ?? 0) + 1;
-        checkDeath(ctx, stranded, `Dropped in ${stranded.zone} when the anchor went`);
+        // Already resolved through the downed machine when they were down.
+        if (!wasDowned) checkDeath(ctx, stranded, cause);
         return;
     }
 
@@ -303,7 +404,7 @@ function attemptRescueLine(
 
     if (!ctx.rng.chance(Math.max(RESCUE_LINE.minHold, Math.min(RESCUE_LINE.maxHold, hold)))) {
         const outcome: RescueLineRecord['outcome'] = stillLoaded ? 'overloaded' : 'anchor-failed';
-        record(ctx, { rescuerId: rescuer.id, strandedId: stranded.id, zone: stranded.zone, anchor: anchor.kind, stranding, outcome });
+        record(ctx, { rescuerId: rescuer.id, strandedId: stranded.id, zone: stranded.zone, anchor: anchor.kind, stranding, outcome, rope: anchor.rope });
         // Who it goes badly for. An anchor that tears out takes whoever was
         // braced against it; a load that drags takes the person holding it.
         const victim = outcome === 'overloaded' ? stranded
@@ -311,9 +412,17 @@ function attemptRescueLine(
         const cause = outcome === 'overloaded'
             ? `Dragged down in ${stranded.zone} by what they would not let go of`
             : `Fell in ${stranded.zone} when the anchor went`;
-        applyDamage(ctx, victim, RESCUE_LINE.fallDamage, { cause, kind: 'arena', code: 'fall' });
-        openWound(victim, BLEEDING.combatSeverity);
-        clampTribute(victim);
+        // F05, the accidental twin of the cut: an anchor that tears out under
+        // a downed person has to reach them through the same door, or it is a
+        // fall the engine silently declines to apply.
+        const victimDowned = isDowned(victim);
+        if (victimDowned) {
+            cutDownedLine(ctx, victim, cause, undefined);
+        } else {
+            applyDamage(ctx, victim, RESCUE_LINE.fallDamage, { cause, kind: 'arena', code: 'fall' });
+            openWound(victim, BLEEDING.combatSeverity);
+            clampTribute(victim);
+        }
         ctx.logEvent(
             outcome === 'overloaded'
                 ? `${stranded.name} will not let go of the pack, and the pack is heavier than they are strong. `
@@ -331,7 +440,7 @@ function attemptRescueLine(
             [rescuer.id, stranded.id],
             { type: 'rescue-line-failed', important: true, zone: stranded.zone, category: 'survival' },
         );
-        checkDeath(ctx, victim, cause);
+        if (!victimDowned) checkDeath(ctx, victim, cause);
         return;
     }
 
@@ -340,8 +449,44 @@ function attemptRescueLine(
      * free: hauling somebody up a face costs the rescuer the day's strength
      * and, if their hands were full, something out of them.
      */
-    record(ctx, { rescuerId: rescuer.id, strandedId: stranded.id, zone: stranded.zone, anchor: anchor.kind, stranding, outcome: 'clean' });
-    if (stranding === 'below') stranded.zoneLevel = 'upper';
+    /*
+     * AUDIT-10 F04: a successful haul has to have a physical result.
+     *
+     * This branch recorded `clean`, charged fatigue and awarded debt and
+     * regard — and changed position only for `stranding === 'below'`. For a
+     * downed tribute it ended with health 0, the `downed` marker still set, and
+     * nothing moved: a scene that reported success with no corresponding result
+     * anywhere in the state. `postActionUpkeep` then ran the independent
+     * rescue/execution clock over them exactly as though nobody had come.
+     *
+     * The fix is not to make every haul a medical revival — that would delete
+     * the most interesting outcome in the chain, which is somebody arriving in
+     * time and it still not being enough. Three separate reliefs:
+     *
+     *   - **extracted**: they are somewhere else, out of what was going to
+     *     finish them. The vertical case, and the downed case in a zone whose
+     *     lower level is on fire or under water.
+     *   - **stabilized**: they did not move, but the window measurably widened
+     *     — `widenRescueWindow` adds cycles to the downed clock, which is the
+     *     explicit improvement the audit asks for in place of a silent one.
+     *   - **revived**: back on their feet. Only `tickDowned`'s medical clock
+     *     ever does this, and it can still fail.
+     */
+    let relief: NonNullable<RescueLineRecord['relief']>;
+    if (stranding === 'below') {
+        stranded.zoneLevel = 'upper';
+        relief = 'extracted';
+    } else if (isVertical(state.arena, stranded.zone) && (stranded.zoneLevel ?? 'upper') === 'lower') {
+        // Downed at the bottom of something: hauling them up is the extraction,
+        // and it takes the drop, the water or the fire out of the equation.
+        stranded.zoneLevel = 'upper';
+        widenRescueWindow(stranded, RESCUE_LINE.extractionCycles);
+        relief = 'extracted';
+    } else {
+        widenRescueWindow(stranded, RESCUE_LINE.extractionCycles);
+        relief = 'stabilized';
+    }
+    record(ctx, { rescuerId: rescuer.id, strandedId: stranded.id, zone: stranded.zone, anchor: anchor.kind, stranding, outcome: 'clean', relief, rope: anchor.rope });
     rescuer.vitals.fatigue = Math.min(100, rescuer.vitals.fatigue + RESCUE_LINE.rescuerFatigue);
     let rescuerDropped: Item | undefined;
     if (encumbranceOf(rescuer) > RESCUE_LINE.loadLine && rescuer.inventory.length > 0) {
@@ -353,8 +498,16 @@ function attemptRescueLine(
     witnessKindness(ctx, rescuer, stranded);
     clampTribute(rescuer);
     ctx.logEvent(
-        `${stranded.name} comes up out of ${stranded.zone} on ${rescuer.name}'s line, and lies on the ground next to them `
-        + 'while both of them work out how to breathe again.'
+        // The line says which of the three things happened, because they are
+        // three different scenes and reading them as one is what let a haul
+        // that left somebody unconscious on the ground read as a rescue.
+        (relief === 'extracted'
+            ? `${stranded.name} comes up out of ${stranded.zone} on ${rescuer.name}'s line`
+                + (stranding === 'downed'
+                    ? ', limp, breathing, and no longer in the part of it that was going to finish them.'
+                    : ', and lies on the ground next to them while both of them work out how to breathe again.')
+            : `${rescuer.name} gets the line round ${stranded.name} and braces it. `
+                + `${stranded.name} does not come round, but they stop sliding, and that buys whoever can do something about it a little longer to arrive.`)
         + (rescuerDropped ? ` ${rescuer.name}'s ${rescuerDropped.name} is somewhere at the bottom; it had to be.` : ''),
         [rescuer.id, stranded.id],
         { type: 'rescue-line-held', important: true, zone: stranded.zone, category: 'survival' },
@@ -392,18 +545,41 @@ export function tickRescueAftermath(ctx: SimContext) {
         const stranded = byId.get(r.strandedId);
         if (!rescuer || !stranded) return;
 
+        /*
+         * AUDIT-10 F13: say what the record knows, and check the rest.
+         *
+         * Both branches below asserted continuous history nobody had recorded.
+         * "has not been further than arm's reach since" was printed over two
+         * people standing in different sectors, and "still has the rope" was
+         * printed over a cutter whose anchor was a knotted jacket and who may
+         * have dropped whatever line there was two cycles ago. An incident is
+         * evidence for what happened at the incident; a claim about *since*
+         * needs either a record of the interval or wording that does not make
+         * one.
+         */
         if (r.outcome === 'clean' && rescuer.status === 'alive' && stranded.status === 'alive') {
+            const together = samePlace(state.arena, rescuer, stranded);
             ctx.logEvent(
-                `${stranded.name} has not said much about ${r.zone}, and has not been further than arm's reach from `
-                + `${rescuer.name} since. Some debts do not get discharged so much as carried about.`,
+                together
+                    ? `${stranded.name} has not said much about ${r.zone}, and is still within arm's reach of `
+                        + `${rescuer.name}. Some debts do not get discharged so much as carried about.`
+                    : `${stranded.name} has not said much about ${r.zone}, and is a long way from `
+                        + `${rescuer.name} now. The debt travelled anyway; they always do.`,
                 [rescuer.id, stranded.id],
                 { type: 'rescue-line-remembered', zone: stranded.zone, category: 'alliance' },
             );
             return;
         }
         if (r.outcome === 'cut' && rescuer.status === 'alive') {
+            // Only claim the rope if there was one and they still have it.
+            const stillHas = r.rope === true && rescuer.inventory.some(i =>
+                (i.ropeLength ?? 0) >= RESCUE_LINE.minRopeLength
+                && (i.tensileStrength ?? 0) >= RESCUE_LINE.minTensile);
             ctx.logEvent(
-                `${rescuer.name} still has the rope. Whatever they tell themselves about ${r.zone}, they kept the rope.`,
+                stillHas
+                    ? `${rescuer.name} still has the rope. Whatever they tell themselves about ${r.zone}, they kept the rope.`
+                    : `${rescuer.name} does not have the line any more, and has not explained where it went. `
+                        + `Whatever they tell themselves about ${r.zone}, they are telling it without the evidence in their hands.`,
                 [rescuer.id],
                 { type: 'rescue-line-remembered', zone: rescuer.zone, category: 'betrayal' },
             );

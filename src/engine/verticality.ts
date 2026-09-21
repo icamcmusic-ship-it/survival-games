@@ -3,6 +3,8 @@ import { SimContext } from './context';
 import { UNIVERSAL_DEATHS, VERTICALITY } from '../data/balance';
 import { getZone, zoneFeatures } from './map';
 import { profOf } from './proficiency';
+import { canAfford, spend } from './actionBudget';
+import { isActive } from './downed';
 import { applyDamage, checkDeath } from './combat';
 import { injure, openWound } from './wounds';
 import { BLEEDING } from '../data/balance';
@@ -82,9 +84,24 @@ export function enterVerticalZone(arena: Arena, t: Tribute) {
 export function tickVerticality(ctx: SimContext) {
     const arena = ctx.state.arena;
     ctx.state.tributes.forEach(t => {
-        if (t.status !== 'alive') return;
+        /*
+         * AUDIT-10 F08: `status === 'alive'` is not "can climb".
+         *
+         * A downed tribute keeps `status === 'alive'` on purpose — every roster
+         * filter in the engine counts them — so this check let a zero-health
+         * unconscious tribute move from the lower level to the upper one under
+         * their own power, with zero hours available, and log a successful
+         * climb. `isActive` is the predicate that means able to act.
+         */
+        if (!isActive(t)) return;
         if (!isVertical(arena, t.zone)) { t.zoneLevel = undefined; return; }
         const level: ZoneLevel = t.zoneLevel ?? 'upper';
+        /*
+         * F15: and changing level is a real action, so it costs real hours.
+         * Fatigue was charged below and the budget was not, which is the same
+         * split that let a rescuer with no hours complete a haul.
+         */
+        if (!canAfford(t, VERTICALITY.levelHours)) return;
 
         // Down is where the good ground is, and where the danger is. A tribute
         // is drawn down by need and pushed up by fear, which is the whole
@@ -98,6 +115,8 @@ export function tickVerticality(ctx: SimContext) {
         if (!ctx.rng.chance(VERTICALITY.changeLevelChance)) return;
 
         const going: ZoneLevel = wantsDown ? 'lower' : 'upper';
+        // Re-validated at the moment of resolution, not only at intent.
+        if (!spend(t, VERTICALITY.levelHours)) return;
         t.vitals.fatigue += going === 'lower' ? VERTICALITY.descendFatigue : VERTICALITY.climbFatigue;
         t.levelsStood = t.levelsStood ?? [level];
         if (!t.levelsStood.includes(going)) t.levelsStood.push(going);
@@ -128,7 +147,7 @@ export function tickVerticality(ctx: SimContext) {
             );
             clampTribute(t);
             checkDeath(ctx, t, `Could not make the climb in ${t.zone}`);
-            if (t.status !== 'alive') return;
+            if (!isActive(t)) return;
         }
 
         // Going down fast is how people get hurt; going up is slow and safe.
@@ -163,7 +182,11 @@ export function tickVerticality(ctx: SimContext) {
             );
             clampTribute(t);
             checkDeath(ctx, t, cause);
-            if (t.status !== 'alive') return;
+            // F08: a fall can *down* somebody mid-action as well as kill them,
+            // and somebody who is on the ground unconscious does not finish the
+            // descent they started. Capability is rechecked after the damage,
+            // not only before it.
+            if (!isActive(t)) return;
         }
 
         t.zoneLevel = going;

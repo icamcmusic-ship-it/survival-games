@@ -1448,7 +1448,25 @@ if (underSampled.length) {
 {
     const worstFull = reapingTraitRates[reapingTraitRates.length - 1];
     const bestFull = reapingTraitRates[0];
-    const canJudge = reapingTraitGuardRates.length >= TRAIT_SPREAD_MIN_POPULATION;
+    /*
+     * AUDIT-10 F20: judge this table on the rows it is comparing.
+     *
+     * `canJudge` used to be `reapingTraitGuardRates.length >= TRAIT_SPREAD_MIN_POPULATION`
+     * — "have at least ten *other* traits cleared the 500-entrant guard?" — and
+     * that question has nothing to do with whether *these two rows* are
+     * measured well enough to be ranked against each other. It printed "SHORT
+     * of goal" for Ruthless against Slow Burn at 248 and 303 entrants, while
+     * only 27 of 155 observed labels cleared 500 at all. The exploratory table
+     * is useful; a release verdict off two under-sampled rows is not, and the
+     * eligibility rule was not the one the verdict needed.
+     *
+     * So: a verdict requires the two compared rows to clear the same guard
+     * every other judged row clears. Below that this is an exploratory ranking
+     * and says so, with intervals, so a reader can see how wide the rows are
+     * rather than inferring precision from a two-decimal ratio.
+     */
+    const comparedN = [bestFull?.[2] ?? 0, worstFull?.[2] ?? 0];
+    const canJudge = comparedN.every(n => n >= GUARD_MIN_SAMPLE);
     console.log('\nwhole-table reaping-trait balance (every trait over MIN_SAMPLE, no guard):');
     // A trait with zero victors on a 109-entrant sample makes the ratio
     // infinite, which is a statement about the sample and not about the trait.
@@ -1457,15 +1475,22 @@ if (underSampled.length) {
         ? `${reapingTraitFullSpread.toFixed(2)}x`
         : 'unbounded (a trait at zero victors)';
     console.log(`  spread (best/worst)   ${spreadText}`
-        + `  ${canJudge ? (reapingTraitFullSpread <= 2.5 ? 'goal MET' : 'SHORT of goal') : 'not yet judgeable'}  (goal <= 2.5x)`);
-    if (bestFull && worstFull) {
-        console.log(`  best   ${bestFull[0]} ${(bestFull[1] * 100).toFixed(2)}% (n=${bestFull[2]})`);
-        console.log(`  worst  ${worstFull[0]} ${(worstFull[1] * 100).toFixed(2)}% (n=${worstFull[2]})`);
-    }
-    console.log(`  ${reapingTraitGuardRates.length} of ${reapingTraitRates.length} traits clear ${GUARD_MIN_SAMPLE} entrants`
-        + ` (the guarded row needs ${TRAIT_SPREAD_MIN_POPULATION}).`);
+        + `  ${canJudge ? (reapingTraitFullSpread <= 2.5 ? 'goal MET' : 'SHORT of goal') : 'exploratory — no verdict'}  (goal <= 2.5x)`);
+    // F20: the interval on each compared row, so the ratio above is read with
+    // the width of the things it is a ratio of.
+    const row = (label: string, entry: typeof bestFull) => {
+        if (!entry) return;
+        const [name, rate, n] = entry;
+        const margin = marginPct(Math.round(rate * n), n);
+        console.log(`  ${label}  ${name} ${(rate * 100).toFixed(2)}% [+/-${margin.toFixed(1)}pp, n=${n}]`);
+    };
+    row('best ', bestFull);
+    row('worst', worstFull);
+    console.log(`  ${reapingTraitGuardRates.length} of ${reapingTraitRates.length} traits clear ${GUARD_MIN_SAMPLE} entrants.`);
     if (!canJudge) {
-        console.log(`  The guarded row above abstains at this run count. Re-run with METRICS_RUNS=1600.`);
+        console.log(`  No verdict: a release gate needs BOTH compared rows at ${GUARD_MIN_SAMPLE}+ entrants`);
+        console.log(`  and they are at ${comparedN.join(' and ')}. This ranking is exploratory — use it to`);
+        console.log(`  choose what to oversample, not to pass or fail a build. Re-run with METRICS_RUNS=1600.`);
     }
     // The tail is the actionable part: a trait far off the mean on a small
     // sample is noise, but a *cluster* at the bottom is a family that is weak.

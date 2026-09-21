@@ -27,18 +27,16 @@ import { updateStance } from '../stance';
 import { runStanceBeats } from '../stanceBeats';
 import { runArchetypeSignatures, tickGhosts, tickScholars } from '../archetypeHooks';
 import { isActive, isDowned } from '../downed';
-import { decayUpkeep, postActionUpkeep, preActionUpkeep } from './upkeep';
+import { decayUpkeep, postActionUpkeep, preActionUpkeep, worldClockUpkeep } from './upkeep';
 import { resolveParachutes } from '../parachutes';
 import { appealForAid, negotiateObligations, tickObligations } from '../obligations';
 import { tickAllianceDisputes, tickDisputeAftermath } from '../allianceDispute';
-import { tickForecasts } from '../hazardChain';
-import { tickExposure } from '../survival';
 import {
     applyArenaEvent, fill, handleInsanity, idleAction, isBreakingDown,
     pendingChain, pickTerrainEvent, resolveMuttAttack, resolvePairEncounter,
 } from '../encounters';
 import { tickPersistentMutts } from '../mutts';
-import { hasEffect, restockCornucopia, rollAmbientZoneEffects, startZoneEffect, tickForceField, tickZoneEffects } from '../zoneEffects';
+import { hasEffect, restockCornucopia, rollAmbientZoneEffects, startZoneEffect, tickForceField } from '../zoneEffects';
 import { tickStructuralFatigue } from '../loadBearing';
 import { tickAbandonedCamps } from '../abandonedCamps';
 import { enterVerticalZone, samePlace, tickVerticality } from '../verticality';
@@ -429,12 +427,11 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     tickZoneControl(ctx);
     tickSharedGrief(ctx);
     rollAmbientZoneEffects(ctx);
-    // AUDIT-9 stage C §5: forecasts come due before the effects tick, so a
-    // hazard that lands this cycle is a hazard this cycle.
-    tickForecasts(ctx);
-    // AUDIT-9 stage D chain 2: bad water drunk days ago, arriving now.
-    tickExposure(ctx);
-    tickZoneEffects(ctx);
+    // AUDIT-10 F14: the arena's own clock, in one shared definition so a phase
+    // cannot acquire immunity to a deadline by not listing these three calls.
+    // Forecasts still come due before the effects tick — that ordering now
+    // lives inside `worldClockUpkeep`.
+    worldClockUpkeep(ctx);
     // §5.8: occupation loads the arena's structures; empty ones settle back.
     tickStructuralFatigue(ctx);
     // §7.1: the arena's edge is a thing tributes can find, touch, and use.

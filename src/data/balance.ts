@@ -3594,6 +3594,14 @@ export const VETERANS = {
  * that hurts — which is the decision the whole mechanic exists to create.
  */
 export const VERTICALITY = {
+    /**
+     * AUDIT-10 F15: what changing level costs out of the day.
+     *
+     * Climbing charged fatigue and nothing else, so a tribute with no hours
+     * left still went up and down a shaft. Fatigue and the action budget are
+     * separate systems and a major action answers to both.
+     */
+    levelHours: 1,
     /** Need past which a tribute will risk the descent. */
     descendHunger: 55,
     descendThirst: 55,
@@ -8705,6 +8713,38 @@ export const RESCUE_LINE = {
 
     /** Cycles before the follow-up beat reads the record. */
     aftermathCycles: 2,
+
+    /*
+     * AUDIT-10 F06: what counts as a line, stated in the capability units the
+     * item table now carries rather than in item types.
+     */
+    /** Shortest length that reaches anybody worth reaching. */
+    minRopeLength: 6,
+    /** Load a line has to bear before it is a line rather than string. */
+    minTensile: 0.3,
+    /** Straps and cloth this many pieces deep knot into a usable improvised line. */
+    lashablePieces: 2,
+    /** ...and what knotting real material rather than clothing is worth. */
+    lashableBonus: 0.12,
+
+    /*
+     * AUDIT-10 F15: what this costs out of the day.
+     *
+     * Fatigue was already charged; hours were not, so a rescuer with none left
+     * still completed a haul. Fatigue and the action budget are separate
+     * systems and a major action has to answer to both.
+     */
+    rescuerHours: 1.5,
+
+    /*
+     * AUDIT-10 F04: what a haul does for somebody who is unconscious.
+     *
+     * Extraction is not revival. It moves them out of what was going to finish
+     * them and buys the medical clock more room; whether anybody can actually
+     * treat them is still `tickDowned`'s question, and can still be answered
+     * no.
+     */
+    extractionCycles: 1,
 } as const;
 
 /**
@@ -8724,8 +8764,6 @@ export const ALLIANCE_DISPUTE = {
     hungryLine: 50,
     /** ...and above this, nobody is going to argue for the contributors. */
     desperateNeed: 80,
-    /** Cache value per hungry member above which there is nothing to argue about. */
-    enoughPerHead: 6,
 
     /*
      * Which way a group splits. Weights, not a uniform roll: a charter that
@@ -8751,4 +8789,17 @@ export const ALLIANCE_DISPUTE = {
 
     /** Cycles before the follow-up beat reads the record. */
     aftermathCycles: 2,
+
+    /*
+     * AUDIT-10 F11: rationing in portions, not in objects or in sale value.
+     */
+    /** Portions a member is entitled to per hearing. */
+    portionsPerHead: 1,
+    /** Hunger/thirst above this makes that the need the hearing must match. */
+    criticalNeed: 65,
+
+    /*
+     * AUDIT-10 F15: a hearing is people standing round a box, which is time.
+     */
+    hearingHours: 0.5,
 } as const;

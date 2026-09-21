@@ -4,6 +4,8 @@ import { useTransientFlag } from '../ui/useTransientFlag';
 import { Share2, Check, Copy } from 'lucide-react';
 import { CampaignSnapshot, GameConfig } from '../models/types';
 import { encodeCampaign } from '../utils/campaignLink';
+import { copyMessage, copySucceeded, copyText } from '../utils/copyText';
+import { CONTENT_REVISION, fidelityOf, shareLabelFor } from '../utils/replayManifest';
 
 /**
  * AUDIT-7 §1.1: the share payload, hoisted out of the component so a check can
@@ -27,7 +29,7 @@ export const SHARE_OMITS: ReadonlyArray<keyof GameConfig> = [
 ];
 
 export function shareParams(
-    { seed, arenaId, gamemakerMode, config, quellId, campaign }:
+    { seed, arenaId, gamemakerMode, config, quellId, campaign, veteransSeated, interventions }:
     {
         seed: string; arenaId: string; gamemakerMode: boolean; config: GameConfig; quellId: string | null;
         /**
@@ -43,6 +45,18 @@ export function shareParams(
          * applies. Both are useful; the difference is now a choice.
          */
         campaign?: CampaignSnapshot;
+        /**
+         * AUDIT-10 F19: inputs the link cannot carry, declared so the receiver
+         * is told what kind of reproduction this is.
+         *
+         * Grudge-Match veterans are identities out of the *sender's* Hall of
+         * Fame and cannot be resolved against the receiver's archive;
+         * interventions are player actions with no place in a static payload.
+         * Both are counted into the manifest so the link can say "same starting
+         * conditions" instead of "exact run".
+         */
+        veteransSeated?: number;
+        interventions?: number;
     },
 ): URLSearchParams {
     const params = new URLSearchParams({
@@ -99,14 +113,32 @@ export function shareParams(
     // AUDIT-9 B06: opaque and optional, so a seed link stays as short as it
     // has always been and a run link is complete.
     if (campaign) params.set('campaign', encodeCampaign(campaign));
+    /*
+     * AUDIT-10 F19: version the manifest and state what it could not carry.
+     *
+     * `mv` is the manifest version, so a future payload shape can be told from
+     * this one rather than guessed at. `rev` is the engine/content revision the
+     * run executed on, so a link recorded on another build is describable as
+     * such instead of presented as a replay that quietly diverges. `vets` and
+     * `acts` are counts of the two kinds of input the link is known not to
+     * carry. None of them changes the simulation; all of them change what the
+     * receiver is told.
+     */
+    params.set('mv', '1');
+    params.set('rev', CONTENT_REVISION);
+    if (veteransSeated) params.set('vets', String(veteransSeated));
+    if (interventions) params.set('acts', String(interventions));
     return params;
 }
 
 export function ShareButton(
-    { seed, arenaId, gamemakerMode, config, quellId, campaign }:
+    { seed, arenaId, gamemakerMode, config, quellId, campaign, veteransSeated = 0, interventions = 0 }:
     {
         seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig, quellId: string | null,
         campaign?: CampaignSnapshot,
+        /** F19: inputs a link cannot carry. See `shareParams`. */
+        veteransSeated?: number,
+        interventions?: number,
     },
 ) {
     const [status, setStatus] = useTransientFlag<'idle' | 'copied' | 'failed'>('idle', 2000);
@@ -114,48 +146,66 @@ export function ShareButton(
     // copy it by hand instead of being told "Copy failed" with nothing to copy.
     const [fallbackUrl, setFallbackUrl] = useState<string | null>(null);
     const [seedCopied, setSeedCopied] = useTransientFlag(false, 2000);
+    /**
+     * AUDIT-10 F16: what the last copy attempt actually did, announced.
+     *
+     * A tick that appears whether or not anything reached the clipboard is
+     * worse than no tick: the player walks away believing they have the link.
+     * This is the status the live region reads out, and it is only ever set
+     * from a verified result.
+     */
+    const [copyStatus, setCopyStatus] = useState<string | null>(null);
 
     // §1.10: the seed as text, not only as a URL. The full seed (base plus
     // any reroll suffix) is what every screen shows and what this copies.
+    //
+    // F16: this used to `await navigator.clipboard?.writeText(seed)` — which is
+    // `await undefined` when there is no clipboard, and therefore resolved, and
+    // therefore ticked, in exactly the browsers that cannot copy. It goes
+    // through the shared helper, which verifies, and the seed stays visible in
+    // the chip as its own fallback.
     const copySeed = async () => {
-        try {
-            await navigator.clipboard?.writeText(seed);
-            setSeedCopied(true);
-        } catch {
-            /* clipboard unavailable — the seed is on screen in the chip */
-        }
+        const result = await copyText(seed);
+        setCopyStatus(copyMessage(result, 'Seed'));
+        if (copySucceeded(result)) setSeedCopied(true);
     };
+
+    /**
+     * F19: what the strongest link this run can produce actually promises.
+     * Computed from the run, not asserted by the button's caption.
+     */
+    const runFidelity = fidelityOf({
+        campaign: !!campaign,
+        campaignRejected: false,
+        revision: CONTENT_REVISION,
+        veteransSeated,
+        interventions,
+    });
 
     const buildUrl = (withCampaign: boolean) => {
         const params = shareParams({
             seed, arenaId, gamemakerMode, config, quellId,
             campaign: withCampaign ? campaign : undefined,
+            veteransSeated, interventions,
         });
         return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
     };
 
     const handleShare = async (withCampaign = false) => {
         const url = buildUrl(withCampaign);
-        try {
-            // navigator.clipboard is unavailable over plain HTTP and in some
-            // embedded browsers; fall back to a selection copy rather than
-            // failing silently.
-            if (navigator.clipboard?.writeText) {
-                await navigator.clipboard.writeText(url);
-            } else {
-                const el = document.createElement('textarea');
-                el.value = url;
-                el.setAttribute('readonly', '');
-                el.style.position = 'fixed';
-                el.style.opacity = '0';
-                document.body.appendChild(el);
-                el.select();
-                document.execCommand('copy');
-                document.body.removeChild(el);
-            }
+        /*
+         * F16: the fallback path's own return value used to be discarded —
+         * `document.execCommand('copy')` returns false for a copy the browser
+         * declined, and this reported it as a success. One helper now owns
+         * every path and every outcome, and "Copy failed" is shown with the
+         * link in a selectable field rather than on its own.
+         */
+        const result = await copyText(url);
+        setCopyStatus(copyMessage(result, 'Link'));
+        if (copySucceeded(result)) {
             setStatus('copied');
             setFallbackUrl(null);
-        } catch {
+        } else {
             setStatus('failed');
             setFallbackUrl(url);
         }
@@ -193,10 +243,18 @@ export function ShareButton(
                  * and still means "this seed, your campaign", which is what
                  * every link written before this meant.
                  */
-                <Hint text="Copy a link that reproduces this exact run, including the record book it was played under">
+                /*
+                 * AUDIT-10 F19: the label and the tooltip say what this link
+                 * can actually do. "Reproduces this exact run" was untrue for
+                 * any run that seated archived victors or that the player
+                 * intervened in, because neither travels in a URL.
+                 */
+                <Hint text={runFidelity === 'exact'
+                    ? 'Copy a link that reproduces this run: the seed, the rules and the record book it was played under'
+                    : 'Copy a link that reproduces this run\'s starting conditions. Seated victors and Gamemaker interventions cannot travel in a link, so the Games will diverge.'}>
                     <button onClick={() => handleShare(true)} className="btn btn-sm">
                         <Share2 aria-hidden="true" className="w-3.5 h-3.5" />
-                        Share run
+                        {shareLabelFor(runFidelity)}
                     </button>
                 </Hint>
             )}
@@ -206,6 +264,12 @@ export function ShareButton(
                     {' '}seed {seed}
                 </button>
             </Hint>
+            {/*
+              * F16: announced rather than only drawn. A tick changing colour is
+              * not a result a screen reader user is told about, and the failure
+              * cases are precisely the ones worth hearing.
+              */}
+            <span role="status" aria-live="polite" className="sr-only">{copyStatus ?? ''}</span>
             {fallbackUrl && (
                 <input
                     className="field text-xs w-52"

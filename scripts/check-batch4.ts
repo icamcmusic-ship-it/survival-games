@@ -30,6 +30,8 @@ import { tickZoneEffects } from '../src/engine/zoneEffects';
 import { forecastHazard, tickForecasts, mitigate } from '../src/engine/hazardChain';
 
 const food = () => structuredClone(ITEMS.find(i => i.type === 'food')!) as Item;
+/** AUDIT-10 F11: how many people a cache can actually feed. */
+const portionsIn = (items: Item[]) => items.reduce((sum, i) => sum + Math.max(1, i.stack ?? 1), 0);
 
 /** Run a beat until it happens, or give up — these are rolls, not certainties. */
 function until(tries: number, fn: (i: number) => boolean): boolean {
@@ -181,9 +183,57 @@ scenario(
         const d = w.state.allianceDisputes![0];
         check(['equal', 'by-contribution', 'by-need'].includes(d.split), 'on one of the three rules');
         check(d.passedOverIds.length > 0, 'and somebody got nothing');
-        eq(d.fedIds.length, 1, 'one item, one person fed');
+        /*
+         * AUDIT-10 F11: portions, not objects.
+         *
+         * This asserted "one item, one person fed", which was true of the old
+         * allocation and was the bug: the first member took the whole stack and
+         * everyone behind them was recorded as passed over with food standing in
+         * the room. One loaf of bread is a stack of two, so one item is two
+         * portions and feeds two people.
+         */
+        eq(d.fedIds.length, portionsIn([food()]), 'one stack, as many people fed as it holds portions');
         // Non-fatal by construction: nobody can die of this.
         check(members.every(m => m.status === 'alive'), 'everybody is still alive afterwards');
+    },
+);
+
+scenario(
+    'the same quantity packed as one stack or as several feeds the same people',
+    'AUDIT-10 F11: entitlements follow portions, not inventory slots',
+    () => {
+        // The audit's acceptance criterion, stated as a comparison: the split of
+        // a cache must not depend on how the cache happens to be packed.
+        const feedCount = (label: string, pack: (unit: () => Item) => Item[]) => {
+            const w = world(`F11-${label}`);
+            const members = w.state.tributes.slice(0, 4);
+            w.only(...members);
+            members.forEach(m => {
+                m.zone = members[0].zone;
+                m.zoneLevel = members[0].zoneLevel;
+                m.vitals.hunger = 92;
+                m.vitals.thirst = 10;
+                m.inventory = [];
+            });
+            const rec = registerAlliance(createContext(w.state, new RNG(`F11-${label}`)), 'pack', members);
+            members.forEach(m => { m.allianceId = 'pack'; });
+            rec.sharedCache = pack(food);
+            w.state.allianceDisputes = [];
+            until(80, i => {
+                tickAllianceDisputes(createContext(w.state, new RNG(`F11-${label}-${i}`)));
+                return (w.state.allianceDisputes ?? []).length > 0;
+            });
+            return w.state.allianceDisputes?.[0]?.fedIds.length ?? -1;
+        };
+        // Two portions, packed as one stack of two and as two stacks of one.
+        const stacked = feedCount('stacked', unit => [unit()]);
+        const split = feedCount('split', unit => {
+            const a = unit(); a.stack = 1;
+            const b = unit(); b.stack = 1;
+            return [a, b];
+        });
+        check(stacked > 0, 'the stacked cache feeds somebody');
+        eq(split, stacked, 'packing does not change who eats');
     },
 );
 

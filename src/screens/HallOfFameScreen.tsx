@@ -11,6 +11,7 @@ import { Trophy, Trash2, Copy, Check, RotateCcw, Pin, Swords } from 'lucide-reac
 import { gameActions, gameStore } from '../store/gameStore';
 import { useStore } from '../store/createStore';
 import { PanemRecordBook } from '../components/PanemRecordBook';
+import { copySucceeded, copyText } from '../utils/copyText';
 
 export function HallOfFameScreen() {
     // §10.5: which archived victors are currently seated for the next run.
@@ -46,13 +47,12 @@ export function HallOfFameScreen() {
     // §2: which entry is one click from replacing the player's current run.
     const [confirmReplayId, setConfirmReplayId] = useState<string | null>(null);
 
+    // AUDIT-10 F16: `await navigator.clipboard?.writeText(...)` is `await
+    // undefined` when there is no clipboard — it resolves, and the tick used to
+    // appear in exactly the browsers that cannot copy. Verified now; the seed
+    // is on screen either way.
     const copySeed = async (seed: string) => {
-        try {
-            await navigator.clipboard?.writeText(seed);
-            setCopiedSeed(seed);
-        } catch {
-            /* clipboard unavailable — the seed is on screen anyway */
-        }
+        if (copySucceeded(await copyText(seed))) setCopiedSeed(seed);
     };
 
     const clearArchive = () => {

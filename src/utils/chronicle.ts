@@ -1,6 +1,7 @@
 import { EventLog, GameState, Tribute } from '../models/types';
 import { factLineOf } from '../ui/chronicleFacts';
 import { victorsOf } from './notables';
+import { copySucceeded, copyText } from './copyText';
 
 function castLookup(state: GameState): Map<string, Tribute> {
     return new Map(state.tributes.map(t => [t.id, t]));
@@ -274,12 +275,10 @@ export async function copyChronicle(
     format: ChronicleFormat = 'markdown',
     facts = false,
 ): Promise<boolean> {
-    try {
-        await navigator.clipboard.writeText(chronicleText(state, filter, format, facts));
-        return true;
-    } catch {
-        return false;
-    }
+    // AUDIT-10 F16: one verifying helper, shared with every other copy control.
+    // The old body treated a resolved promise as proof; it is not, and in a
+    // browser with no clipboard there was no promise to resolve.
+    return copySucceeded(await copyText(chronicleText(state, filter, format, facts)));
 }
 
 /** 74th, 71st, 103rd — the suffix the Capitol would use. */
@@ -315,10 +314,5 @@ export function momentText(state: GameState, log: EventLog, facts = false): stri
 
 /** Copies one moment. Returns false when the clipboard is unavailable. */
 export async function copyMoment(state: GameState, log: EventLog, facts = false): Promise<boolean> {
-    try {
-        await navigator.clipboard.writeText(momentText(state, log, facts));
-        return true;
-    } catch {
-        return false;
-    }
+    return copySucceeded(await copyText(momentText(state, log, facts)));
 }

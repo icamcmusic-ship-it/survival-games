@@ -17,12 +17,20 @@ A highly replayable, robust text-based survival/tribute simulator with dynamic a
 
 ## Tests
 
-Every check below except `test:ui` runs in CI on each pull request and on every
-push to `main` (`.github/workflows/ci.yml`). It used to run only on push to
-`main`, inside the deploy workflow — so a pull request that broke a guard merged
-clean and the failure landed on the default branch, blocking the Pages deploy
-with the bad commit already in history. `test:ui` is excluded because it needs a
-dev server and a browser; run it locally.
+Every check below runs in CI on each pull request and on every push to `main`
+(`.github/workflows/ci.yml`), including `test:ui`, which gets its own job with a
+dev server and a Chromium install. It used to run only on push to `main`, inside
+the deploy workflow — so a pull request that broke a guard merged clean and the
+failure landed on the default branch, blocking the Pages deploy with the bad
+commit already in history.
+
+**Counts in this file are dated and revision-bound.** Run `npm run catalog` for
+the current catalogue and test inventory, generated from the tables themselves.
+As of the AUDIT-10 revision: 45 authored arenas plus procedural generation, 36
+archetypes, 153 rollable traits, 396 run achievements and 22 meta achievements,
+80 items, and 24 of 24 checks running in CI. Do not restate a number here that
+`npm run catalog` can produce — three of them had gone stale before anybody
+noticed.
 
 - `npm run lint` — TypeScript type check.
 - `npm run test:sim` — headless soak test: hundreds of complete runs across every
@@ -56,8 +64,11 @@ dev server and a browser; run it locally.
   stock (districts 13-16 once shipped at 30 entries per gender against the
   original twelve's 100), no pool repeats itself, and no name is resident in
   more than two districts at once (`Sable` was in five).
-- `npm run test:achievements` — achievement coverage. Evaluates all 130-odd
-  predicates against a few hundred real end-states (a crash test in itself:
+- `npm run catalog` — the catalogue and test inventory, counted from the tables
+  and from `ci.yml`. Not a check; the source for every count in this file.
+- `npm run test:achievements` — achievement coverage. Evaluates every run
+  predicate in the table (`npm run catalog` for the count) against a few
+  hundred real end-states (a crash test in itself:
   they run over finished states with arbitrary optional fields missing), then
   reports what the discovery layer actually hands out — entries that never
   unlock, entries that fire on more than 60% of runs, how many land in the
@@ -179,8 +190,9 @@ dev server and a browser; run it locally.
   than re-downloading one:
   `CHROMIUM_PATH=$(ls -d /opt/pw-browsers/chromium-*/chrome-linux/chrome | head -1) npm run test:ui`,
   or run `npx playwright install chromium`. `SHOT_DIR` controls where its
-  screenshots land. This is the one check excluded from CI, so nobody finds out
-  until they run it.
+  screenshots land. It runs in CI in its own job — the browser and the dev
+  server are set up there — so a break is found on the pull request rather than
+  by whoever next runs it locally.
 
 ## How a run works
 
@@ -325,7 +337,8 @@ running in parallel:
 - **Archetypes** (`data/archetypes.ts`, `engine/archetypeHooks.ts`) are
   characters rather than four bias scalars: a target preference, a risk curve,
   an objective bias, declared antipathies, and one signature set piece per run.
-  Fifteen of them, weighted per district and by the year's cast shape.
+  Weighted per district and by the year's cast shape; `npm run catalog` has the
+  current count.
 - **Names earned in the arena** are their own layer. A tribute's birth name comes
   from `data/names.ts` and is fixed at the reaping; an *epithet*
   (`engine/epithets.ts`) is what the country calls them for what they did here —

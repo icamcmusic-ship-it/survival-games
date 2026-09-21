@@ -5,7 +5,7 @@ import { SideBetTarget, SideQuote, priceSideBet, quoteSideMarkets, settleSideBet
 import { STARTING_COINS, readCoins, writeCoins } from '../utils/prefsStorage';
 import { clearAllStoredData } from '../utils/storage';
 import { readHallOfFame, writeHallOfFame } from '../utils/hofStorage';
-import { readStored, removeStored, tryWriteStored } from '../utils/storage';
+import { WriteResult, persistenceMode, readStored, removeStored, tryWriteStored } from '../utils/storage';
 import { snapshotState } from '../utils/snapshot';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../data/constants';
 import { QUELLS } from '../data/gamesProfile';
@@ -87,7 +87,22 @@ export interface GameStoreState {
      * the end screen has to say when it missed rather than lose the victory
      * silently.
      */
-    hofWriteFailed: 'quota' | 'unavailable' | null;
+    /**
+     * How the Hall-of-Fame write went, when it was anything other than
+     * durably on disk. 'session' means it was accepted by the in-memory
+     * stand-in and will not survive a reload — the end screen says so rather
+     * than reporting a successful archive (F03).
+     */
+    hofWriteFailed: Exclude<WriteResult, 'ok'> | null;
+    /**
+     * AUDIT-10 F02: why a shared link's campaign was not applied.
+     *
+     * Set at boot, before React renders, by the link handler in `App`. It lives
+     * here rather than in component state because the decision is made once
+     * during start-up and the banner that reports it must not be a `setState`
+     * fired from inside a mount effect.
+     */
+    linkNotice: string | null;
     /** REPLAY-03: everything that carries between runs. */
     panem: PanemRecords;
     /** What the run that just finished unlocked or beat, for the end screen. */
@@ -332,7 +347,7 @@ function restoreRewind(snaps: GameState[] | undefined) {
     rewindStack = (snaps ?? []).slice(-REWIND_CAP);
 }
 
-function saveHallOfFame(state: GameState): 'ok' | 'quota' | 'unavailable' {
+function saveHallOfFame(state: GameState): WriteResult {
     const survivors = state.tributes.filter(t => t.status === 'alive');
     const winner = survivors[0];
     // §7.1: a dual victory is archived under both names.
@@ -382,6 +397,7 @@ export const gameStore = createStore<GameStoreState>({
     betsResolved: false,
     hofSaved: false,
     hofWriteFailed: null,
+    linkNotice: null,
     panem: readPanem(),
     lastRunOutcome: null,
     grudgeMatchIds: [],
@@ -541,6 +557,11 @@ function cancelRunToEnd() {
 }
 
 export const gameActions = {
+    /** F02: record, or clear, why a shared link's campaign was not applied. */
+    setLinkNotice(linkNotice: string | null) {
+        gameStore.setState({ linkNotice });
+    },
+
     setView(view: ViewName) {
         // Leaving the game view abandons any fast-forward in progress.
         if (view !== 'game') cancelRunToEnd();
@@ -681,11 +702,30 @@ export const gameActions = {
         gameStore.setState({ grudgeMatchIds: [] });
     },
 
+    /**
+     * AUDIT-10 F19: relaunching an archived run is not replaying it.
+     *
+     * A Hall-of-Fame entry stores the seed, the arena, the Quell and the
+     * config. It does not store the record book the run was played under, so
+     * this relaunch has always started under the player's *current* campaign —
+     * a different set of starting conditions from the one that produced the
+     * archived victor — while presenting itself as running that Games again.
+     *
+     * The relaunch is still worth having and is unchanged mechanically. What
+     * changes is that the player is told which of the four kinds of
+     * reproduction they are getting before it starts, instead of finding out
+     * from a different victor.
+     */
     replayHallOfFameEntry(entry: HallOfFameEntry): Promise<void> {
         const arenaId = entry.arenaId
             ?? ARENAS.find(a => a.name === entry.arenaName)?.id
             ?? 'procedural';
-        return gameActions.startGame(entry.seed, arenaId, false, entry.config ?? DEFAULT_GAME_CONFIG, true, false, entry.quellId);
+        return gameActions.startGame(entry.seed, arenaId, false, entry.config ?? DEFAULT_GAME_CONFIG, true, false, entry.quellId)
+            .then(() => gameActions.setLinkNotice(
+                `Relaunching the ${entry.arenaName} Games under seed ${entry.seed} and the rules it was played under. `
+                + 'The archive does not store the record book that run had, so this runs under your current career: '
+                + 'the same draw, under different rules of inheritance. Expect a different Games.',
+            ));
     },
 
     async resumeSavedRun() {
@@ -717,7 +757,7 @@ export const gameActions = {
             gameState, bets, sideBets, betsResolved, hofSaved, isReplayedRun,
             ...packRewind(rewindStack.slice(-REWIND_PERSIST), gameState.log),
             savedAt: new Date().toISOString(),
-        } as SavedRun) === 'ok';
+        } as SavedRun) !== 'quota' && persistenceMode() === 'persistent';
     },
 
     /** A line on a slot card. Rewrites the slot's envelope in place; nothing else about the save moves. */

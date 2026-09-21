@@ -24,7 +24,7 @@ import { pickNeededGift } from '../sponsors';
 import { isAggressiveStance, isEvasiveStance } from '../../data/stances';
 import { loseSanity } from '../sanityBands';
 import { isActive } from '../downed';
-import { decayUpkeep, postActionUpkeep, preActionUpkeep } from './upkeep';
+import { decayUpkeep, postActionUpkeep, preActionUpkeep, worldClockUpkeep } from './upkeep';
 
 /**
  * The global attribute ceiling, borrowed as a normaliser: arrival order needs
@@ -675,6 +675,16 @@ export function processFeast(ctx: SimContext) {
     // everything that fades on the cycle clock fades, because the cycle
     // happened whatever the Gamemakers scheduled in it.
     postActionUpkeep(ctx);
+    /*
+     * AUDIT-10 F14: and the arena's own clock, which this phase used to skip.
+     *
+     * A flood due at cycle 6 stayed pending with no effect after a feast
+     * advanced cycle 5 to 6, and every active effect missed its per-cycle tick
+     * on this route. A deadline whose meaning depends on what kind of phase
+     * occupied the cycle is not a deadline. Same definition, same internal
+     * order, as the day phase.
+     */
+    worldClockUpkeep(ctx);
     decayUpkeep(ctx);
     // §1.3: the feast is the one place everybody is in the same zone by
     // design, and the run-record differ never observed it.

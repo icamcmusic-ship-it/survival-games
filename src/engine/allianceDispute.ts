@@ -1,11 +1,12 @@
-import { Alliance, AllianceDisputeRecord, Tribute } from '../models/types';
+import { Alliance, AllianceDisputeRecord, Item, Tribute } from '../models/types';
 import { SimContext } from './context';
 import { ALLIANCE_DISPUTE } from '../data/balance';
-import { allianceRecords, cacheValue, membersOf } from './alliance';
+import { allianceRecords, membersOf } from './alliance';
 import { cycleOf } from './memory';
 import { adjustRel, adjustTrust, getRel } from './relationships';
 import { isActive } from './downed';
 import { giveItem } from './items';
+import { canAfford, spend } from './actionBudget';
 import { ARCHETYPES } from '../data/archetypes';
 
 /**
@@ -40,6 +41,87 @@ import { ARCHETYPES } from '../data/archetypes';
 /** How badly this member needs what is in the box. */
 function needOf(t: Tribute): number {
     return Math.max(t.vitals.hunger, t.vitals.thirst);
+}
+
+/**
+ * AUDIT-10 F11: which need is the one this hearing is about.
+ *
+ * Hunger and thirst are different needs and the box holds two different kinds
+ * of thing. Handing a starving member the first water bottle in the cache and
+ * recording them as fed is an accounting mistake that then manufactures a
+ * political grievance out of nothing.
+ */
+function needKindOf(t: Tribute): 'food' | 'water' {
+    return t.vitals.thirst > t.vitals.hunger ? 'water' : 'food';
+}
+
+/** Is this something a person can actually eat or drink? */
+function isProvision(i: Item): boolean {
+    return i.type === 'food' || i.type === 'water';
+}
+
+/**
+ * AUDIT-10 F11: portions, not objects.
+ *
+ * A stack of four loaves is four portions in one inventory slot. The hearing
+ * used to hand out one *item* per member and the first member took the whole
+ * stack, after which two hungry members were recorded as passed over with
+ * three loaves standing in the room. Equivalent quantities packed as one stack
+ * or as several now produce equivalent entitlements.
+ */
+function portionsOf(i: Item): number {
+    return Math.max(1, i.stack ?? 1);
+}
+
+/**
+ * Edible and drinkable portions in the cache, counted separately.
+ *
+ * This replaces `cacheValue` for the scarcity test. `cacheValue` sums sale
+ * value over *everything*, so one expensive utility item — a condenser, a
+ * sleeping bag — suppressed a food-shortage hearing in a group with nothing to
+ * eat. Sale value is not a meal.
+ */
+function provisionPortions(record: Alliance, kind?: 'food' | 'water'): number {
+    return record.sharedCache
+        .filter(i => isProvision(i) && (kind === undefined || i.type === kind))
+        .reduce((sum, i) => sum + portionsOf(i), 0);
+}
+
+/**
+ * Take exactly one portion out of the cache, splitting a stack rather than
+ * handing over the whole thing. Returns the portion, or undefined when there
+ * is none of that kind left.
+ */
+function drawPortion(record: Alliance, kind: 'food' | 'water'): Item | undefined {
+    const source = record.sharedCache.find(i => i.type === kind);
+    if (!source) return undefined;
+    const held = portionsOf(source);
+    if (held <= 1 || source.stack === undefined) {
+        record.sharedCache = record.sharedCache.filter(i => i !== source);
+        return source;
+    }
+    source.stack = held - 1;
+    // A portion off a stack carries the stack's freshness and contamination
+    // with it; splitting supplies never makes either better than the source.
+    return { ...source, stack: 1 };
+}
+
+/**
+ * AUDIT-10 F10: where the cache physically is.
+ *
+ * Stored on the group rather than read off the leader, so a leader who walks
+ * away does not take the box with them.
+ */
+function cacheSite(record: Alliance): { zone: string | undefined; level: string } {
+    return { zone: record.campZone, level: record.campLevel ?? 'upper' };
+}
+
+/** Is this member standing at the cache, on its level? */
+function atCache(record: Alliance, t: Tribute): boolean {
+    const site = cacheSite(record);
+    if (site.zone === undefined) return false;
+    if (t.zone !== site.zone) return false;
+    return (t.zoneLevel ?? 'upper') === site.level;
 }
 
 /** What they have put into it, on the group's own ledger. */
@@ -104,41 +186,126 @@ export function tickAllianceDisputes(ctx: SimContext) {
          * well-supplied alliance never triggers this and a starving one does
          * so within a cycle or two.
          */
-        const hungry = members.filter(m => needOf(m) > ALLIANCE_DISPUTE.hungryLine);
-        if (hungry.length === 0) return;
-        const supply = cacheValue(record);
-        if (supply >= hungry.length * ALLIANCE_DISPUTE.enoughPerHead) return;
-        if (record.sharedCache.length === 0) return;
+        /*
+         * AUDIT-10 F10: a hearing is people standing round a box.
+         *
+         * This used to take every active member of the alliance regardless of
+         * where they were. Three members in three different sectors received a
+         * ration hearing and a transfer out of an unattended cache, while the
+         * prose placed all of them around the same box. Attendance is physical:
+         * the cache's zone, on the cache's level.
+         *
+         * Members who are elsewhere keep their standing entitlement — the
+         * record notes them — but somebody has to carry it to them, which is a
+         * delivery, not a hearing.
+         */
+        const present = members.filter(m => atCache(record, m));
+        const absent = members.filter(m => !atCache(record, m));
+        if (present.length < ALLIANCE_DISPUTE.minMembers) return;
 
-        holdHearing(ctx, record, members);
+        /*
+         * AUDIT-10 F11: scarcity measured in portions of the thing people
+         * actually need, not in sale value over the whole cache.
+         */
+        const hungry = present.filter(m => needOf(m) > ALLIANCE_DISPUTE.hungryLine);
+        if (hungry.length === 0) return;
+        const supply = provisionPortions(record);
+        if (supply === 0) return;
+        if (supply >= hungry.length * ALLIANCE_DISPUTE.portionsPerHead) return;
+
+        holdHearing(ctx, record, present, absent);
     });
 }
 
-function holdHearing(ctx: SimContext, record: Alliance, members: Tribute[]) {
+function holdHearing(ctx: SimContext, record: Alliance, members: Tribute[], absent: Tribute[]) {
     const state = ctx.state;
+    /*
+     * AUDIT-10 F15: a hearing takes the participants' time.
+     *
+     * Standing round a box arguing is not free, and it was: nothing here
+     * reserved any of the day, so a group could hold a hearing on top of a full
+     * cycle of everything else. Anybody who cannot afford the half hour is not
+     * at the hearing, and if that leaves too few people there is no hearing.
+     */
+    const attending = members.filter(m => canAfford(m, ALLIANCE_DISPUTE.hearingHours));
+    if (attending.length < ALLIANCE_DISPUTE.minMembers) return;
+    attending.forEach(m => spend(m, ALLIANCE_DISPUTE.hearingHours));
+    members = attending;
     const split = decideSplit(ctx, record, members);
 
-    // Who gets it, on this group's chosen rule. One item to each, in order,
-    // until the box is empty — so "short" means somebody gets nothing, which
-    // is the entire subject of the argument.
+    // Who gets it, on this group's chosen rule. One *portion* to each, in
+    // order, until the provisions run out — so "short" means somebody gets
+    // nothing, which is the entire subject of the argument.
     const order = [...members].sort((a, b) => {
         if (split === 'by-need') return needOf(b) - needOf(a);
         if (split === 'by-contribution') return contributionOf(record, b) - contributionOf(record, a);
-        // Equal: the leader is not first. That is what "equal" has to mean
-        // here or the word is doing no work — deterministic roster order.
+        /*
+         * Equal: the leader is not first. That is what "equal" has to mean here
+         * or the word is doing no work.
+         *
+         * AUDIT-10 F11 asks that the remainder not always fall to the same
+         * people: roster order is deterministic, so under "equal" the same
+         * member is last in the queue at every hearing this group ever holds.
+         * The queue is rotated by the hearing count instead, which keeps it
+         * deterministic for a given seed and stops it being a standing
+         * disadvantage.
+         */
         return members.indexOf(a) - members.indexOf(b);
     });
+    const heldBefore = (state.allianceDisputes ?? []).filter(d => d.allianceId === record.id).length;
+    if (split === 'equal' && order.length > 0) {
+        const offset = heldBefore % order.length;
+        order.push(...order.splice(0, offset));
+    }
 
     const fed: string[] = [];
     const passedOver: Tribute[] = [];
     order.forEach(m => {
-        const item = record.sharedCache.find(i => i.type === 'food' || i.type === 'water');
-        if (!item) {
+        /*
+         * AUDIT-10 F11: match the ration to the need.
+         *
+         * The old selection took the first food *or* water in the cache
+         * regardless of which of the two the member was short of, so a
+         * dehydrated member could be recorded as fed on a loaf of bread.
+         * The member's critical need decides; the other kind is the fallback
+         * only when it is not critical.
+         */
+        const wants = needKindOf(m);
+        const critical = needOf(m) > ALLIANCE_DISPUTE.criticalNeed;
+        const portion = drawPortion(record, wants)
+            ?? (critical ? undefined : drawPortion(record, wants === 'food' ? 'water' : 'food'));
+        if (!portion) {
             if (needOf(m) > ALLIANCE_DISPUTE.hungryLine) passedOver.push(m);
             return;
         }
-        record.sharedCache = record.sharedCache.filter(i => i !== item);
-        giveItem(m, item);
+        /*
+         * AUDIT-10 F12: an atomic transfer, with the overflow conserved.
+         *
+         * `holdHearing` removed the item from the cache, called `giveItem`,
+         * threw away its returned dropped items and pushed the recipient into
+         * `fedIds` regardless. So a member with a full pack was recorded as fed
+         * on a ration that fell on the floor and ceased to exist — the same
+         * conservation boundary that was fixed for obligations and reintroduced
+         * here. Whatever does not fit goes back into the cache, which is the
+         * actual location the hearing is happening at, and the member is
+         * recorded as issued a ration only if they are holding it.
+         */
+        const dropped = giveItem(m, portion);
+        const landed = !dropped.includes(portion) && m.inventory.some(i => i === portion || i.id === portion.id);
+        const returned = dropped.filter(i => i !== portion);
+        if (returned.length > 0) record.sharedCache.push(...returned);
+        if (!landed) {
+            record.sharedCache.push(portion);
+            if (needOf(m) > ALLIANCE_DISPUTE.hungryLine) passedOver.push(m);
+            ctx.logEvent(
+                `${m.name} is handed a share and has nowhere to put it. It goes back in the box, `
+                + 'which is nobody\'s idea of being fed.',
+                [m.id], { zone: record.campZone, category: 'alliance' },
+            );
+            return;
+        }
+        // Issued, not consumed: they are carrying it. Eating it is survival's
+        // business, and the record says which of the two this is.
         fed.push(m.id);
     });
 
@@ -147,9 +314,9 @@ function holdHearing(ctx: SimContext, record: Alliance, members: Tribute[]) {
      * every tribute a line is about appears in it, and a hearing is about all
      * of them — that is what makes it a hearing rather than a hand-out.
      */
-    const present = members.map(m => m.name).join(', ');
+    const standing = members.map(m => m.name).join(', ');
     ctx.logEvent(
-        `${present} stand round what is left of ${record.name ?? 'the group'}'s cache, and it is not enough. `
+        `${standing} stand round what is left of ${record.name ?? 'the group'}'s cache, and it is not enough. `
         + (split === 'equal'
             ? 'They go round the circle and stop when it runs out, which is the fairest way and helps nobody in particular.'
             : split === 'by-contribution'
@@ -204,6 +371,13 @@ function holdHearing(ctx: SimContext, record: Alliance, members: Tribute[]) {
         fedIds: fed,
         passedOverIds: passedOver.map(m => m.id),
         walkoutIds: walkouts,
+        // F10: members who were owed a share and were not standing there. Their
+        // entitlement is real; a delivery is what discharges it, and until one
+        // happens nothing here has fed them.
+        absentIds: absent.map(m => m.id),
+        // F13: the membership as it stood at the hearing, so the follow-up can
+        // tell "never came back" from "came back".
+        memberIdsAtHearing: members.map(m => m.id),
     });
 }
 
@@ -234,20 +408,53 @@ export function tickDisputeAftermath(ctx: SimContext) {
             .map(id => byId.get(id))
             .filter((t): t is Tribute => t !== undefined && t.status === 'alive');
 
+        /*
+         * AUDIT-10 F13: check before asserting.
+         *
+         * "has not gone back" was printed over somebody who had rejoined the
+         * same alliance two cycles earlier. A record of an incident is evidence
+         * about the incident; a claim about what has happened *since* has to be
+         * read off the current state, and where the state does not support the
+         * stronger claim the wording drops back to what the incident alone
+         * shows.
+         */
         if (gone.length > 0) {
-            ctx.logEvent(
-                `${gone.map(t => t.name).join(' and ')} ${gone.length === 1 ? 'has' : 'have'} not gone back, `
-                + 'and the group has not gone looking. Whatever that camp was, it is a smaller thing now.',
-                gone.map(t => t.id),
-                { type: 'alliance-dispute-remembered', category: 'alliance' },
-            );
+            const rejoined = gone.filter(t => t.allianceId === d.allianceId);
+            const away = gone.filter(t => t.allianceId !== d.allianceId);
+            if (away.length > 0) {
+                ctx.logEvent(
+                    `${away.map(t => t.name).join(' and ')} ${away.length === 1 ? 'has' : 'have'} not gone back, `
+                    + 'and the group has not gone looking. Whatever that camp was, it is a smaller thing now.',
+                    away.map(t => t.id),
+                    { type: 'alliance-dispute-remembered', category: 'alliance' },
+                );
+            }
+            if (rejoined.length > 0) {
+                ctx.logEvent(
+                    `${rejoined.map(t => t.name).join(' and ')} ${rejoined.length === 1 ? 'is' : 'are'} back in the camp. `
+                    + 'Nobody has brought up the box, and nobody has forgotten it either.',
+                    rejoined.map(t => t.id),
+                    { type: 'alliance-dispute-remembered', category: 'alliance' },
+                );
+            }
             return;
         }
-        if (stayed.length > 0) {
+        // ...and "still in the camp" is also a claim about now, not about then.
+        const stillIn = stayed.filter(t => t.allianceId === d.allianceId);
+        const driftedOff = stayed.filter(t => t.allianceId !== d.allianceId);
+        if (driftedOff.length > 0) {
             ctx.logEvent(
-                `${stayed.map(t => t.name).join(' and ')} ${stayed.length === 1 ? 'is' : 'are'} still in the camp, `
+                `${driftedOff.map(t => t.name).join(' and ')} said nothing at the time and ${driftedOff.length === 1 ? 'is' : 'are'} `
+                + 'not with the group any more. Some people do not announce it.',
+                driftedOff.map(t => t.id),
+                { type: 'alliance-dispute-remembered', category: 'alliance' },
+            );
+        }
+        if (stillIn.length > 0) {
+            ctx.logEvent(
+                `${stillIn.map(t => t.name).join(' and ')} ${stillIn.length === 1 ? 'is' : 'are'} still in the camp, `
                 + 'still doing the work, and has stopped saying very much at meals.',
-                stayed.map(t => t.id),
+                stillIn.map(t => t.id),
                 { type: 'alliance-dispute-remembered', category: 'alliance' },
             );
         }

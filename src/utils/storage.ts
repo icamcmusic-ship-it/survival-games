@@ -99,6 +99,7 @@ function memoryBackend(): StorageBackend {
 }
 
 let backend: StorageBackend | null = null;
+let backendPersistent = true;
 
 function getBackend(): StorageBackend {
     if (backend) return backend;
@@ -108,18 +109,43 @@ function getBackend(): StorageBackend {
         if (ls) {
             ls.getItem(STORAGE_KEYS.savedRun);
             backend = ls;
+            backendPersistent = true;
             return backend;
         }
     } catch {
         /* fall through to the in-memory stand-in */
     }
+    // The fallback keeps the session usable, but nothing written to it outlives
+    // the tab. Callers are told so rather than shown a "saved" confirmation for
+    // data that is already as good as gone.
     backend = memoryBackend();
+    backendPersistent = false;
     return backend;
 }
 
-/** Test hook: swap in a fake store (and reset with `setStorageBackend(null)`). */
-export function setStorageBackend(next: StorageBackend | null): void {
+/**
+ * Test hook: swap in a fake store (and reset with `setStorageBackend(null)`).
+ * `persistent` declares whether the substitute survives a reload; the default
+ * (true) keeps every existing migration fixture reading as real disk.
+ */
+export function setStorageBackend(next: StorageBackend | null, persistent = true): void {
     backend = next;
+    backendPersistent = next === null ? true : persistent;
+}
+
+/**
+ * How durable writes actually are right now.
+ *
+ * - `persistent`: a real localStorage that accepted its probe read.
+ * - `session`: the in-memory stand-in. Writes succeed and reads work for as
+ *   long as this tab lives, and are lost on reload. The UI must say so instead
+ *   of reporting a successful save.
+ */
+export type PersistenceMode = 'persistent' | 'session';
+
+export function persistenceMode(): PersistenceMode {
+    getBackend();
+    return backendPersistent ? 'persistent' : 'session';
 }
 
 /* -------------------------------------------------------------------------- */
@@ -198,13 +224,34 @@ export function readStored<T>(spec: StorageSpec<T>): T | null {
 
         // Adopt: rewrite under the canonical key at the current version, and
         // retire the old key so this only happens once.
+        //
+        // Order matters. The rewrite can fail — a full store, a private-mode
+        // backend that throws on write — and the previous code dropped that
+        // result and removed the legacy key anyway, leaving neither copy on
+        // disk. The session looked fine; the next reload had nothing to load.
+        // So: only retire the source once the replacement is genuinely durable.
         if (key !== spec.key || decoded.version !== spec.version) {
-            writeStored(spec, value);
-            if (key !== spec.key) safeRemove(store, key);
+            const wrote = tryWriteStored(spec, value);
+            if (key !== spec.key && writeDurable(wrote)) safeRemove(store, key);
         }
         return value;
     }
     return null;
+}
+
+/**
+ * What a write achieved.
+ *
+ * - `ok`: on disk, and still there after a reload.
+ * - `session`: accepted by the in-memory stand-in only. Export to keep it.
+ * - `quota`: the store is full; the previous copy (if any) is untouched.
+ * - `unavailable`: the store rejected the write outright.
+ */
+export type WriteResult = 'ok' | 'session' | 'quota' | 'unavailable';
+
+/** Did this write survive the tab? Only `ok` does. */
+export function writeDurable(result: WriteResult): boolean {
+    return result === 'ok';
 }
 
 /**
@@ -213,11 +260,15 @@ export function readStored<T>(spec: StorageSpec<T>): T | null {
  * progressively shorter chronicle tail, while 'unavailable' (private mode, a
  * sandboxed iframe) means no retry can ever succeed and it should stop.
  */
-export function tryWriteStored<T>(spec: StorageSpec<T>, data: T): 'ok' | 'quota' | 'unavailable' {
+export function tryWriteStored<T>(spec: StorageSpec<T>, data: T): WriteResult {
     try {
         const envelope: Envelope<T> = { v: spec.version, data };
-        getBackend().setItem(spec.key, JSON.stringify(envelope));
-        return 'ok';
+        const store = getBackend();
+        store.setItem(spec.key, JSON.stringify(envelope));
+        // The write landed, but on the memory stand-in "landed" only means
+        // "until this tab closes". Reporting that as 'ok' is what let the UI
+        // promise a save that a reload would contradict.
+        return backendPersistent ? 'ok' : 'session';
     } catch (err) {
         const quota = err instanceof DOMException
             && (err.name === 'QuotaExceededError'

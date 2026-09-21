@@ -15,6 +15,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useTransientFlag } from '../ui/useTransientFlag';
 import { PRE_ARENA_PHASE_SET, phaseLabel as prettyPhase } from '../ui/phaseLabels';
 import { gameActions, gameStore } from '../store/gameStore';
+import { copySucceeded, copyText } from '../utils/copyText';
 
 /**
  * A3: the chronicle as its own page.
@@ -123,7 +124,9 @@ function CopyPageLink({ page }: { page: Page }) {
             className="btn btn-sm btn-ghost text-mini"
             aria-label={`Copy a link to ${page.label}`}
             onClick={() => {
-                navigator.clipboard?.writeText(url).then(() => setState('ok')).catch(() => setState('fail'));
+                // AUDIT-10 F16: verified, and with a fallback path, rather than
+                // a `?.` that resolves to undefined and reports success.
+                void copyText(url).then(r => setState(copySucceeded(r) ? 'ok' : 'fail'));
             }}
         >
             {state === 'ok' ? 'Link copied' : state === 'fail' ? 'Copy failed' : 'Copy link'}

@@ -416,6 +416,28 @@ export interface Item {
     warmth?: boolean;
     /** Lets a tribute fish still water rather than forage the bank. */
     fishing?: boolean;
+
+    /*
+     * AUDIT-10 F06: what an object can physically *do*, as distinct from what
+     * drawer of the catalogue it lives in.
+     *
+     * `anchorFor` used to accept "any utility or tool item" as a rescue rope,
+     * so a Rope-Handed tribute carrying nothing but Nightlock Berries rigged a
+     * proper anchor with them, and matches, filters and whetstones did the same
+     * by inspection. The type is the wrong question: a drawer is not a
+     * capability. These fields are, and a recipe composes from them.
+     *
+     * Absent means "no, this cannot do that", so every item in the catalogue
+     * keeps its existing behaviour until it is given the capability on purpose.
+     */
+    /** Usable length of line, in metres. Only a thing you can pay out. */
+    ropeLength?: number;
+    /** Share of a hauled person's weight this will bear, 0–1. */
+    tensileStrength?: number;
+    /** Straps, cloth and webbing: not a line, but knottable into one. */
+    lashable?: boolean;
+    /** How well this parts rope, cloth or flesh, 0–1. */
+    cuttingEdge?: number;
 }
 
 /**
@@ -1400,6 +1422,12 @@ export interface Tribute {
         cause: string;
         /** Who put them here, when it was a person. */
         byId?: string;
+        /**
+         * AUDIT-10 F04: somebody got them out of the thing that was going to
+         * finish them. Not treatment — the medical clock above is still
+         * running — but a recorded, physical improvement to the window.
+         */
+        extracted?: boolean;
     };
     /** §9.1: they have been down once already. Nobody gets the window twice. */
     everDowned?: boolean;
@@ -1523,6 +1551,27 @@ export interface DecisionTrace {
     /** Set when the stance was imposed rather than scored. */
     forced?: string;
     /**
+     * AUDIT-10 F18: the stance the tribute is actually in, and why the ranking
+     * above did not become it.
+     *
+     * `stances` is the *ranking*, written before hysteresis runs. When the hold,
+     * the switch margin or an unavailable alternative keeps the incumbent
+     * stance, the top of that ranking is a stance the tribute did not adopt —
+     * and the sheet printed the tribute's real stance beside the top-ranked
+     * option's reasons, so "why did they do that?" explained a decision that
+     * was not taken.
+     *
+     * When this is set, the tribute held `stance` and `because` says which
+     * stability rule held it. The chosen stance's own reasons are in `stances`
+     * under its own entry, and the alternative to show is the ranking's top,
+     * which is by construction a different stance.
+     */
+    held?: {
+        stance: Stance;
+        /** Player-facing, one clause: what stopped the switch. */
+        because: string;
+    };
+    /**
      * §3.3 (audit): what the wander scorer actually *picked*, ranked against
      * everything it weighed, so decision quality is measurable rather than
      * inferred from win rates. `rank` is 0 for the best-scored option;
@@ -1604,6 +1653,23 @@ export interface RescueLineRecord {
     /** Why they could not get themselves out. */
     stranding: 'downed' | 'below';
     outcome: 'clean' | 'anchor-failed' | 'overloaded' | 'cut';
+    /**
+     * AUDIT-10 F04: what a successful haul actually achieved. A rescue is not
+     * one outcome, and recording it as one is what let a "clean" rescue of a
+     * downed tribute end with them still at zero health in the same place.
+     *
+     * - `extracted`:  moved to a valid destination out of the immediate danger.
+     * - `stabilized`: not moved, but the rescue window measurably widened.
+     * - `revived`:    back on their feet. Only the medical clock does this.
+     */
+    relief?: 'extracted' | 'stabilized' | 'revived';
+    /**
+     * AUDIT-10 F13: what the record knows about itself, so the follow-up beat
+     * can say something it checked rather than something it assumed. `rope`
+     * records whether a real line was involved at all — the cut branch used to
+     * assert the cutter still had one even when the anchor was improvised.
+     */
+    rope?: boolean;
     /** Set once the follow-up beat has read this record. */
     read?: boolean;
 }
@@ -1625,6 +1691,17 @@ export interface AllianceDisputeRecord {
     passedOverIds: string[];
     /** Of those passed over, the ones who left over it. */
     walkoutIds: string[];
+    /**
+     * AUDIT-10 F10: members who were not physically at the cache. They hold a
+     * standing entitlement; a hearing they were not at has not fed them.
+     */
+    absentIds?: string[];
+    /**
+     * AUDIT-10 F13: who was actually in the group at the hearing, so the
+     * follow-up can tell a walkout who stayed away from one who rejoined
+     * instead of asserting either.
+     */
+    memberIdsAtHearing?: string[];
     read?: boolean;
 }
 
@@ -1654,6 +1731,11 @@ export interface Alliance {
     name?: string;
     /** Ground they return to and defend. */
     campZone?: string;
+    /**
+     * AUDIT-10 F10: which level of it, in a vertical zone. The cache has a
+     * location of its own; it is not wherever the leader happens to be standing.
+     */
+    campLevel?: ZoneLevel;
     /** Pooled supplies: a reason to stay, and a thing worth stealing. */
     sharedCache: Item[];
     /**
