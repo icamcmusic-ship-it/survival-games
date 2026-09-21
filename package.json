@@ -35,6 +35,7 @@
     "test:batch4": "tsx scripts/check-batch4.ts",
     "test:audit10-fixes": "tsx scripts/check-audit10-fixes.ts",
     "test:actions": "tsx scripts/check-actions.ts",
+    "test:bodies": "tsx scripts/check-bodies.ts",
     "test:textscale": "node scripts/check-textscale.mjs",
     "catalog": "tsx scripts/catalog.ts",
     "diagnose:archetypes": "tsx scripts/diagnose-archetypes.ts"

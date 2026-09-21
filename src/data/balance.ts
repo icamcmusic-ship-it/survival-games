@@ -1572,6 +1572,24 @@ export const PHYSIQUE = {
         climb: 0.05,
         hungerDrain: 0.035,
     },
+    /*
+     * REQUEST (body types): left exactly as it was, and worth saying why.
+     *
+     * Weighting bodies by district gave the career districts bulk and took it
+     * off everybody else, which cost 1.6 points of career-archetype win rate.
+     * The obvious repair was to make bulk more expensive — it buys injury
+     * absorption and grapple resistance and pays in agility, heat and water, so
+     * raising the price looked like pricing the advantage.
+     *
+     * Measured at n=1,600, it moved the career archetype the *wrong way*:
+     * 10.90% -> 11.12%. A harsher world is a world the best-equipped tribute
+     * copes with best, so every global cost increase is a relative buff to the
+     * people who were already winning. Reverted, and the district bias itself
+     * was reduced instead.
+     *
+     * Left here as a note rather than as a change, because the next person to
+     * look at this will have the same idea.
+     */
     conditionPerStep: {
         insulation: 0.06,
         starvationBuffer: 4,
@@ -6096,6 +6114,89 @@ export const GENERATION = {
      * alias again; 0 would decouple them entirely).
      */
     buildFrameWeight: 0.6,
+
+    /*
+     * REQUEST: bodies are weighted, and weighted per district and per age.
+     *
+     * Measured before this existed, over 4,800 reaped tributes: 53.7% of every
+     * cast was Broad, Heavy or Massive and 51.8% was Padded, Bulky or Hulking.
+     * Both seven-rung scales had their mass sitting a rung and a half above
+     * centre, so "strong, bulky, athletic" was not a kind of tribute — it was
+     * the default one, and a Spare or Lean tribute was the unusual sight.
+     *
+     * Worse, the two things that ought to decide a body decided nothing:
+     * "big" ran 76-81% across *every* district (the career districts were
+     * indistinguishable from District 8) and 61% at age twelve against 83% at
+     * eighteen, which is nowhere near the difference six years makes.
+     *
+     * Three changes, each with its own knob so each can be measured alone:
+     *
+     *  - `frameWeights`/`conditionWeights` replace a flat draw with an explicit
+     *    rarity curve over the seven rungs. The shape is a bell: the middle is
+     *    common, a step out is ordinary, two steps is uncommon, the ends are
+     *    rare. These are relative weights, not probabilities.
+     *  - `districtBodyBias` shifts the draw. 1, 2 and 4 train their tributes
+     *    from childhood; 11 works fields and 7 fells timber, so their bodies
+     *    are built by labour rather than by an academy — a different reason for
+     *    the same shift, and a smaller one. 3, 5, 6 and 8 are indoor trades and
+     *    12 is a hungry district.
+     *  - `bodyAgeAnchor`/`bodyAgePerYear` gate the top of both scales by age,
+     *    and `bodyYoungCeiling` caps it outright: a twelve-year-old does not
+     *    get to be Massive or Hulking because a roll said so.
+     */
+    /** Relative rarity of each frame rung, Slender to Massive. */
+    frameWeights: [2.5, 10, 24, 26, 11, 4, 1],
+    /** Relative rarity of each condition rung, Skeletal to Hulking. */
+    conditionWeights: [0, 0, 30, 28, 11, 4, 1],
+    /**
+     * The lowest condition rung a tribute can be reaped at, as an index.
+     *
+     * A zero weight stops a rung being drawn; it does not stop a downward bias
+     * sliding the rung above it into the empty slot, which is how 6% of the
+     * cast arrived Wasted or Skeletal on the first measurement. Everyone has
+     * been fed for a week in the Capitol: the bottom two rungs are somewhere
+     * the run takes you, not somewhere you start.
+     */
+    startingConditionFloor: 2,
+    /*
+     * How much the body generation already done — height and strength — pulls
+     * the two scales, and from where.
+     *
+     * `PHYSIQUE.neutralHeightCm` is 165, which is the neutral height for
+     * *reach*; it is not the middle of this cast. Heights are drawn from an
+     * age-scaled band whose mean runs above it, so using it here quietly added
+     * half a rung to everybody and most of a rung to the oldest — which is the
+     * bulk the district and the age were supposed to be deciding.
+     */
+    bodyNeutralHeightCm: 172,
+    bodyCmPerRung: 22,
+    bodyNeutralStrength: 5,
+    bodyStrengthPerRung: 6,
+    bodyPhysiqueWeight: 0.55,
+    /**
+     * Rungs of bias per district. Positive is bigger.
+     *
+     * The career districts are the largest entry because their tributes have
+     * been fed and trained for this since they could walk. District 11 and 7
+     * are field and timber labour — real strength, built by work rather than by
+     * an academy, and not the same thing as volunteering.
+     */
+    districtBodyBias: {
+        1: 0.8, 2: 0.9, 4: 0.75,
+        7: 0.45, 11: 0.5, 10: 0.25,
+        3: -0.45, 5: -0.3, 6: -0.3, 8: -0.4, 9: -0.1, 12: -0.55,
+    } as Record<number, number>,
+    /** Age at which the body scales sit where the weights put them. */
+    bodyAgeAnchor: 17,
+    /** Rungs gained or lost per year either side of the anchor. */
+    bodyAgePerYear: 0.42,
+    /**
+     * The hard ceiling for the youngest tributes, as a rung index on both
+     * seven-rung scales. A bias big enough to move an eighteen-year-old to
+     * Massive must not carry a twelve-year-old there with it, and a soft pull
+     * alone cannot promise that — so this is a cap, applied last.
+     */
+    bodyYoungCeiling: { 12: 3, 13: 4, 14: 4, 15: 5 } as Record<number, number>,
     /** §3.1: roughly one tribute in ten leads with the other hand. */
     leftHandedShare: 0.11,
     /** Baseline sponsor trust before reputation modifiers. */

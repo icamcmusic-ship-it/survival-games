@@ -99,8 +99,10 @@ import { rollBody } from './physique';
  * tribute both exist, and `massOf` (cold, being moved, carry capacity) reads
  * information the strength stat does not already carry.
  */
-function rollBuild(rng: RNG, strength: number, heightCm: number) {
-    return rollBody(max => rng.nextInt(0, max), strength, heightCm);
+function rollBuild(rng: RNG, strength: number, heightCm: number, district: number, age: number) {
+    // REQUEST: where they are from and how old they are are inputs to the body,
+    // not decoration on it. See `rollBody`.
+    return rollBody(max => rng.nextInt(0, max), strength, heightCm, { district, age });
 }
 
 /**
@@ -499,7 +501,7 @@ export function generateTributes(
             const heightCm = gender === 'Male'
                 ? rng.nextInt(148 + (age - GENERATION.minAge) * 4, 168 + (age - GENERATION.minAge) * 4)
                 : rng.nextInt(142 + (age - GENERATION.minAge) * 4, 160 + (age - GENERATION.minAge) * 4);
-            const { frame, condition, build } = rollBuild(rng, attributes.strength, heightCm);
+            const { frame, condition, build } = rollBuild(rng, attributes.strength, heightCm, district, age);
             // §3.1: limb length is independent of standing height, and
             // handedness is what makes a scarred arm asymmetric.
             const limbRatio = rng.pick<LimbRatio>(['long', 'even', 'compact']);

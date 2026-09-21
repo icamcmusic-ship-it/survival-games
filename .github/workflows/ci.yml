@@ -94,6 +94,9 @@ jobs:
       # AUDIT-10 batch 2: the shared legal-action contract. "Validated twice"
       # is not something a reader can check by inspection.
       - run: npm run test:actions
+      # REQUEST: bodies weighted by rarity, district and age. A distribution is
+      # the one thing a positioned scene cannot check.
+      - run: npm run test:bodies
 
       # Content and structure.
       - run: npm run test:arenas

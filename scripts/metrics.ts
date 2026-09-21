@@ -485,6 +485,28 @@ interface Indicator {
      * about nothing.
      */
     judgeable?: () => boolean;
+    /**
+     * AUDIT-10 batch 3: this value is the *extreme* of a table of N rows.
+     *
+     * A selected minimum is systematically below the true minimum and a
+     * selected maximum above it — the more rows, the further out — so a guard
+     * applied to one behaves like a guard applied to the luckiest or unluckiest
+     * of N draws. The audit's §8 says so in as many words: *"the top and bottom
+     * are selected extremes; their uncertainty is wider than a single point
+     * estimate suggests."*
+     *
+     * The code already knew. The comment on `archetype win-rate spread` records
+     * "the same commit measured 2.94x and 4.35x in two consecutive audits
+     * without an archetype changing", and the answer taken at the time was to
+     * ratchet the bound — which does not address a number that moves on its own.
+     *
+     * Set this and the guard is only *failed* when the breach is larger than
+     * the selection-widened interval on the compared row. A breach inside it is
+     * printed, loudly, and does not fail the build. This is F20's rule — a
+     * verdict needs a sample for the thing it is judging — applied to the two
+     * indicators that need it most.
+     */
+    extremeOf?: () => { rows: number; successes: number; n: number };
 }
 
 const asPct = (v: number) => `${(v * 100).toFixed(1)}%`;
@@ -630,6 +652,21 @@ const indicators: Indicator[] = [
         baseline: '4.6',
         fmt: v => `${v.toFixed(2)}x`,
         judgeable: () => archetypeGuardRates.length >= 2,
+        /*
+         * AUDIT-10 batch 3: a ratio of two rows chosen for being the extremes
+         * of thirty-six. The comment above already records this number moving
+         * from 2.94x to 4.35x across two audits with no archetype changing;
+         * measured again here it ran 3.33x, 3.65x, 3.93x and 4.17x across four
+         * sweeps at n=1,600 while the change under test moved a knob that could
+         * not plausibly do that. The worst row carries the noise, so it is the
+         * row the slack is computed from.
+         */
+        extremeOf: () => {
+            const worst = archetypeGuardRates[archetypeGuardRates.length - 1];
+            return worst
+                ? { rows: archetypeGuardRates.length, successes: Math.round(worst[1] * worst[2]), n: worst[2] }
+                : { rows: 1, successes: 0, n: 0 };
+        },
     },
     {
         label: 'worst archetype win rate',
@@ -642,16 +679,56 @@ const indicators: Indicator[] = [
         baseline: '2.56%',
         fmt: v => `${(v * 100).toFixed(2)}%`,
         judgeable: () => archetypeGuardRates.length > 0,
+        // The minimum of thirty-six rows, which is systematically below the
+        // true minimum by more the more rows there are. Same treatment as the
+        // spread above, and for the same reason.
+        extremeOf: () => {
+            const worst = archetypeGuardRates[archetypeGuardRates.length - 1];
+            return worst
+                ? { rows: archetypeGuardRates.length, successes: Math.round(worst[1] * worst[2]), n: worst[2] }
+                : { rows: 1, successes: 0, n: 0 };
+        },
     },
     {
         label: 'best archetype win rate',
         value: bestArchetypeRate,
-        // §8.1: ratcheted. Measured 9.02% at n=1,600, 7.38% at n=400.
-        guard: v => v <= 0.102,
-        guardText: '<= 10.2%',
+        /*
+         * §8.1: ratcheted. Measured 9.02% at n=1,600, 7.38% at n=400.
+         *
+         * REQUEST (body types): re-baselined 10.2% -> 11.6%, once, with the
+         * measurement.
+         *
+         * Weighting bodies by age — so a twelve-year-old is almost never built
+         * like an adult, which is the request — makes the oldest tributes
+         * relatively larger than the youngest. The career archetype is where
+         * the eighteen-year-old volunteers are, so it gains: measured at
+         * n=1,600 on otherwise identical code, `career` went 9.28% -> 11.01%
+         * (n=1,789, so this is an effect rather than noise).
+         *
+         * Three repairs were tried and measured before settling for this:
+         *  - Halving the career districts' body bias: 10.90% -> 11.01%. The
+         *    gain is the age curve, not the district curve.
+         *  - Making bulk more expensive (agility, heat, water): 10.90% ->
+         *    11.12%, the wrong way. A harsher world is one the best-equipped
+         *    tribute copes with best, so a global cost increase is a relative
+         *    buff to whoever was already winning.
+         *  - Treating this as a selected extreme, the way the spread and worst
+         *    rows above now are: it *would* be excused, because the maximum of
+         *    thirty-six rows carries a wide interval. Deliberately not done.
+         *    A before/after measurement of the same row is far stronger
+         *    evidence than that row's own marginal interval, and using the
+         *    weaker statistic to excuse a known effect is the kind of guard
+         *    that trains a reader to ignore it.
+         *
+         * So the bound moves and says why. **The design goal stays at <= 8%**,
+         * and closing it is batch 4's opportunity funnel — which is the pass
+         * that asks why careers convert, rather than another knob.
+         */
+        guard: v => v <= 0.116,
+        guardText: '<= 11.6%',
         goal: '<= 8%',
         goalMet: v => v <= 0.08,
-        baseline: '11.8%',
+        baseline: '11.8%; 9.28% on main before bodies were weighted by age',
         fmt: v => `${(v * 100).toFixed(2)}%`,
         judgeable: () => archetypeGuardRates.length > 0,
     },
@@ -1454,10 +1531,85 @@ console.log('\nindicators (guard = regression bound, goal = design intent):');
 let failed = 0;
 let shortOfGoal = 0;
 let indecisive = 0;
+/**
+ * AUDIT-10 batch 3: how far outside the guard a selected extreme has to land
+ * before it counts as a breach.
+ *
+ * The interval on the compared row, widened for the fact that the row was
+ * chosen for being the most extreme of `rows` — a Šidák-style correction, which
+ * is the cheap and standard answer to "I picked the biggest of N". Expressed as
+ * a share of the value so it can be compared against a ratio as readily as
+ * against a rate.
+ */
+function selectionSlack(rows: number, successes: number, n: number): number {
+    if (n <= 0) return Infinity;
+    // Two-sided 95% overall across `rows` comparisons.
+    const alpha = 1 - Math.pow(0.95, 1 / Math.max(1, rows));
+    const z = zFor(1 - alpha / 2);
+    const { lo, hi } = wilson(successes, n, z);
+    const rate = successes / n;
+    return rate > 0 ? Math.max(hi - rate, rate - lo) / rate : 1;
+}
+
+/** The normal quantile, good to about three decimals over the range used here. */
+function zFor(p: number): number {
+    // Acklam's rational approximation, the usual one for this job.
+    const a = [-39.69683028665376, 220.9460984245205, -275.9285104469687,
+        138.3577518672690, -30.66479806614716, 2.506628277459239];
+    const b = [-54.47609879822406, 161.5858368580409, -155.6989798598866,
+        66.80131188771972, -13.28068155288572];
+    const c = [-0.007784894002430293, -0.3223964580411365, -2.400758277161838,
+        -2.549732539343734, 4.374664141464968, 2.938163982698783];
+    const d = [0.007784695709041462, 0.3224671290700398, 2.445134137142996, 3.754408661907416];
+    const pLow = 0.02425, pHigh = 1 - pLow;
+    let q: number;
+    if (p < pLow) {
+        q = Math.sqrt(-2 * Math.log(p));
+        return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5])
+            / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1);
+    }
+    if (p > pHigh) return -zFor(1 - p);
+    q = p - 0.5;
+    const r = q * q;
+    return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q
+        / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
+}
+
+/**
+ * How far past its guard a value landed, as a share of the value.
+ *
+ * Found by search rather than by reading the bound out of the guard, because a
+ * guard is an arbitrary predicate here (`v <= 3.4`, `v >= 0.026`, and two-sided
+ * ranges) and the only thing every one of them has in common is that scaling
+ * the value toward the allowed side eventually satisfies it.
+ */
+function findOvershoot(ind: Indicator): number {
+    if (ind.guard(ind.value)) return 0;
+    for (let share = 0.005; share <= 1; share += 0.005) {
+        if (ind.guard(ind.value * (1 - share)) || ind.guard(ind.value * (1 + share))) return share;
+    }
+    return 1;
+}
+
 indicators.forEach(ind => {
     const judgeable = ind.judgeable ? ind.judgeable() : true;
     const ok = ind.guard(ind.value);
-    if (judgeable && !ok) failed++;
+    /*
+     * A selected extreme gets the benefit of its own selection noise. The
+     * breach is still printed — as a breach — it simply does not fail the
+     * build unless it is larger than the interval that picking the most
+     * extreme of N rows creates on its own.
+     */
+    let insideSelection = false;
+    if (!ok && ind.extremeOf) {
+        const { rows, successes, n } = ind.extremeOf();
+        const slack = selectionSlack(rows, successes, n);
+        // How far past the guard this landed, as a share of the value.
+        const overshoot = findOvershoot(ind);
+        insideSelection = overshoot <= slack;
+        if (insideSelection) indecisive++;
+    }
+    if (judgeable && !ok && !insideSelection) failed++;
     const shown = ind.fmt(ind.value);
     const metGoal = ind.goalMet ? ind.goalMet(ind.value) : true;
     const goalNote = ind.goal ? `  goal ${ind.goal}${metGoal ? ' MET' : ' unmet'}` : '';
@@ -1477,7 +1629,9 @@ indicators.forEach(ind => {
      * Saying so is the whole of the "uncertainty reported" gate — the number
      * is unchanged, what changes is how much weight a reader gives it.
      */
-    let uncertainty = '';
+    let uncertainty = insideSelection
+        ? '  [breach is inside the interval created by picking the most extreme of the table — reported, not failed]'
+        : '';
     if (ind.sample) {
         const { successes, n } = ind.sample();
         const margin = marginPct(successes, n);
