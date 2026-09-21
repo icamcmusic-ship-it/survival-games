@@ -28,7 +28,7 @@ commit already in history.
 the current catalogue and test inventory, generated from the tables themselves.
 As of the AUDIT-10 revision: 45 authored arenas plus procedural generation, 36
 archetypes, 153 rollable traits, 396 run achievements and 22 meta achievements,
-80 items, and 24 of 24 checks running in CI. Do not restate a number here that
+80 items, and 25 of 25 checks running in CI. Do not restate a number here that
 `npm run catalog` can produce — three of them had gone stale before anybody
 noticed.
 

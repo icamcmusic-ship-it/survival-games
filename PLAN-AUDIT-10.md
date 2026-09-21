@@ -4,9 +4,9 @@ The companion to `AUDIT-10.md`. That document is the audit; this one is what we
 are doing about it, in what order, and what has to be true before each step is
 allowed to count as done.
 
-**Status:** batch 1 (the twenty-one confirmed defects, F01–F21) is implemented
-and merged. Batch 1b (the death-mix settings) is implemented and merged.
-Batches 2–6 below are planned, not built.
+**Status:** batch 1 (the twenty-one confirmed defects, F01–F21), batch 1b (the
+death-mix settings) and batch 2 (the shared physical rulebook) are implemented
+and merged. Batches 3–6 below are planned, not built.
 
 The audit's own framing governs the whole plan and is the thing most easily
 lost once implementation starts:
@@ -110,14 +110,19 @@ full-field Games` (12–19).
 
 ---
 
-## Batch 2 — one physical rulebook
+## Done — batch 2: one physical rulebook
 
 **The audit's §4 "shared legal-action contract", and the half of item 2 that
 batch 1 left.** Batch 1 repaired nine individual violations of physical rules.
 It did not give the engine a place to state those rules once, which is why
 there were nine of them.
 
-### B2-01 — the action specification
+`src/engine/actions.ts` is that place, and `npm run test:actions` is nine
+scenes proving it — including the one thing a reader cannot check by
+inspection, which is that an action is validated *again* immediately before it
+resolves.
+
+### Done — B2-01: the action specification
 
 An action carries: actor IDs, required capability, origin and target location
 and level, resources reserved, duration, interruption policy, success criteria,
@@ -132,9 +137,20 @@ else* — it does not prove somebody is not in transit, or has free hands, or ha
 time. Rope reach is not medical contact. Hearing a scream is not identifying
 its speaker.
 
-*Acceptance:* the F04–F15 scenes pass when rewritten against the contract
-rather than against each subsystem's own checks; a new subsystem that forgets a
-check fails a lint-style guard the way `test:knobs` catches a dead knob.
+Shipped: `canAct` (which is *not* `isActive` — it also refuses somebody
+mid-crossing), `canReach` (contact), `canSpanTo` (a rope, which may be paid
+down a level and never up), `canObserve`, `canSpend`, `canCarry`, `canTransfer`
+and `canTravelTo`. Each returns a named refusal rather than a boolean, because
+the audit's measurement list needs impossible attempts to be *countable* and a
+branch nobody took cannot be counted.
+
+`perform()` validates, validates again, then spends the hours, then resolves.
+The rescue line, level changes, alliance hearings and downed treatment all go
+through it; the longhand reach checks batch 1 wrote in each of them are gone.
+
+*Still to do:* a guard that fails the build when a new subsystem invents its
+own check, the way `test:knobs` catches a dead knob. The contract exists; using
+it is still a convention.
 
 ### B2-02 — stable equipment identity
 
@@ -144,12 +160,28 @@ prerequisite for the audit's §10 heirloom, crafting and food-batch items, and
 for F13's "did they still have the rope" question being answerable rather than
 inferable.
 
-### B2-03 — behaviour metrics
+### Done — B2-03: behaviour metrics (the first half)
 
-Impossible-action attempts, affordable-plan completion, fallback usefulness,
-repeated no-op cycles, wasted journeys, rescue opportunity vs attempt vs
-success, resource and time conservation. The audit is explicit about why:
-*"these reveal failures that 'event fired at least once' cannot."*
+`state.actionLedger` counts attempts and refusals per action kind and reason;
+`test:metrics` prints the ledger. The audit is explicit about why: *"these
+reveal failures that 'event fired at least once' cannot."*
+
+It earned its place immediately. The first run found `change-level` at 0% —
+the hours charge F15 added had made the whole verticality feature unreachable,
+and every existing check passed, because "a chain that never fires" and "a
+chain that is meant to be rare" look identical to all of them. Measured at 200
+runs after the repair:
+
+| Action | Per run | Reading |
+|---|---|---|
+| `rescue-line` | 2.7 done, 0 refused | F07's filter-first selection works: nobody is chosen who cannot act |
+| `change-level` | 13.3 done, 68% through | healthy; refusals are hours and crossings, both correct |
+| `treat-downed` | 1.5 done, 13% through | 6.9 refusals a run are `out-of-contact` — F09's level separation, working as intended and worth watching |
+| `alliance-hearing` | 0.2 done, 32% through | **a chain that barely fires.** Not tuned here; named for batch 5 |
+
+*Still to do:* affordable-plan completion, fallback usefulness, repeated no-op
+cycles, wasted journeys, and the rescue opportunity/attempt/success funnel.
+Those need the plan layer in B2-04, which does not exist yet.
 
 ### B2-04 — decisions without omniscience
 

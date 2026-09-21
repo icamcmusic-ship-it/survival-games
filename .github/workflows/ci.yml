@@ -91,6 +91,9 @@ jobs:
       # rather than dead, and two of them were dead when written.
       - run: npm run test:batch4
       - run: npm run test:audit10-fixes
+      # AUDIT-10 batch 2: the shared legal-action contract. "Validated twice"
+      # is not something a reader can check by inspection.
+      - run: npm run test:actions
 
       # Content and structure.
       - run: npm run test:arenas
