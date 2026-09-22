@@ -34,6 +34,7 @@ import { notorietyOf } from '../engine/notoriety';
 import { isVeteran } from '../engine/veterans';
 import { charterSummary } from '../engine/allianceCharter';
 import { quirkEffect } from '../data/quirks';
+import { DayPanel } from './DayPanel';
 
 const PROFICIENCY_LABELS: Record<string, string> = {
     forage: 'Foraging', melee: 'Melee', ranged: 'Ranged', medicine: 'Medicine', tracking: 'Tracking',
@@ -885,6 +886,10 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                         {/* Quirks, motive and the reaping note live on the Story
                             tab now — they are biography, not a stat block. */}
                     </section>
+
+                    {/* B3-02: hours, the half-built thing, who is actually in
+                        reach, and what is on its way here. */}
+                    <DayPanel tribute={tribute} gameState={gameState} />
 
                     <SponsorPanel tribute={tribute} gameState={gameState} />
                     </>}
