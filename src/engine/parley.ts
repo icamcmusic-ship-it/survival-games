@@ -781,6 +781,14 @@ function attemptBluff(ctx: SimContext, bluffer: Tribute, mark: Tribute): boolean
     // Somebody has to be the sort of person who tries it.
     const nerve = PARLEY.bluffChance + Math.max(0, treacheryOf(bluffer)) * PARLEY.bluffTreacheryWeight;
     if (!ctx.rng.chance(nerve)) return false;
+    /*
+     * `deception` is the mirror of `readingPeople`, and the odds below were
+     * reading `persuasion` for it. Persuasion is what you use when you mean
+     * it; a bluff is the opposite trade, and the two came apart everywhere
+     * else in the engine — `Honest` and `Treacherous` are different people —
+     * except here, where the liar was scored as a diplomat.
+     */
+    trainProficiency(bluffer, 'deception', undefined, PROFICIENCY.deceptionAttemptShare);
 
     // AUDIT-6 §12.2 `haggle`: talking a shakedown down is the bargaining the
     // parley layer actually contains, so this is where a hard bargainer shows.
@@ -788,6 +796,7 @@ function attemptBluff(ctx: SimContext, bluffer: Tribute, mark: Tribute): boolean
         PARLEY.bluffBase
         + traitMod(bluffer, 'haggle')
         + profOf(bluffer, 'persuasion') * PARLEY.bluffPerPersuasion
+        + profOf(bluffer, 'deception') * PROFICIENCY.deceptionBluffWeight
         + (bluffer.attributes.charisma - 5) * PARLEY.bluffPerCharisma
         - (mark.attributes.intelligence - 5) * PARLEY.bluffPerMarkIntelligence
         /*
@@ -809,6 +818,8 @@ function attemptBluff(ctx: SimContext, bluffer: Tribute, mark: Tribute): boolean
         && getRel(bluffer, o.id) > 0);
 
     if (ctx.rng.chance(odds)) {
+        // One that lands is worth more than one that was merely tried.
+        trainProficiency(bluffer, 'deception', ctx);
         // It lands. The mark does not know they have been had — but something
         // about the conversation sits wrong afterwards, which is what
         // suspicion is for.

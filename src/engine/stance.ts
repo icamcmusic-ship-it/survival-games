@@ -1,4 +1,4 @@
-import { GameState, Stance, TraceReason, Tribute } from '../models/types';
+import { GameState, Stance, TraceReason, Tribute, ArchetypeId } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { DECISION_TRACE, FEAR, RISK, RIVAL_READ, STANCE, STANCE_HOLD, STANCE_MODES, STEALTH, VITALS } from '../data/balance';
 import { STANCES, STANCE_PROFILES } from '../data/stances';
@@ -979,4 +979,29 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
     t.stanceChurn = Math.min(STANCE.churnMax, (t.stanceChurn ?? 0) + 1);
     if (bestStance !== 'Fortified') { t.fortifiedCycles = 0; t.fortifiedBeatShown = undefined; }
     settleShadowing();
+}
+
+/**
+ * The stance a tribute takes before anything has happened to them.
+ *
+ * Deliberately *not* a scoring function. `updateStance` is the scorer and it
+ * needs a context, occupants and a live arena — none of which exist at the
+ * reaping — and writing a second one here would be a second opinion that can
+ * disagree with the first, which this codebase has been bitten by before.
+ *
+ * So this reads the archetype's own `stanceBias`, which has existed on every
+ * archetype since they were written and which nothing consulted at generation.
+ * It is the archetype saying how this person stands when nobody has told them
+ * anything yet. Ties and archetypes with no bias fall back to `Defensive`,
+ * which is what everybody used to get.
+ */
+export function openingStance(archetype: ArchetypeId): Stance {
+    const bias = ARCHETYPES[archetype]?.stanceBias;
+    if (!bias) return 'Defensive';
+    let best: Stance = 'Defensive';
+    let bestScore = bias.Defensive ?? 0;
+    (Object.entries(bias) as Array<[Stance, number]>).forEach(([stance, score]) => {
+        if (score > bestScore) { best = stance; bestScore = score; }
+    });
+    return best;
 }

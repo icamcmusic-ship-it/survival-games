@@ -275,7 +275,40 @@ export type Proficiency = 'forage' | 'melee' | 'ranged' | 'medicine' | 'tracking
      *    `tracking` standing in again — which is why tracking shows up in
      *    seeing through a bluff.
      */
-    | 'signalling' | 'fieldcookery' | 'pacing' | 'readingPeople';
+    | 'signalling' | 'fieldcookery' | 'pacing' | 'readingPeople'
+    /*
+     * Ten more, on the same rule the two batches above set: an axis is only
+     * worth adding where the engine already rolls the thing repeatedly and
+     * resolves it through an attribute, a trait mod or nothing at all. Each
+     * one below names the gate it took over.
+     *
+     *  - `firecraft` — `lightFire`'s no-tool branch read `intelligence` and
+     *    *`forage`*, which is the wrong skill wearing fire's name.
+     *  - `waterlore` — drinking from a foul source was a flat `foulPoisonChance`
+     *    with nothing on either side of it, in a game where dehydration is a
+     *    named cause of death.
+     *  - `herbalism` — `treatInfection` read `medicine` for what is really two
+     *    competences: packing a wound, and knowing what to pack it with.
+     *  - `knots` — three of the five trap kinds are a line and a bend in it,
+     *    and the build roll read carpentry for all five.
+     *  - `camouflage` — mud and leaf litter was the one fieldcraft action with
+     *    no skill behind it at all: `applyCamouflage` rolled `buildChance` and
+     *    the concealment it bought was a flat constant.
+     *  - `throwing` — `weaponProficiency` folds thrown weapons into `ranged`,
+     *    so a spear and a bow were the same hand. They are not.
+     *  - `sprinting` — breaking contact. The parting-shot roll read raw
+     *    `stealth`, which is being unseen, not being quick.
+     *  - `scavenging` — turning up what nobody left on purpose. Gated on the
+     *    `scavenge` trait mod alone, so a tribute without the trait could
+     *    never get better at it.
+     *  - `deception` — the other half of `readingPeople`. Running a bluff read
+     *    `persuasion`, and persuasion is what you use when you mean it.
+     *  - `vigilance` — `awareness` was intelligence, traits and stance: the
+     *    watching half of the stealth system had no skill, while the hiding
+     *    half got one in the batch above.
+     */
+    | 'firecraft' | 'waterlore' | 'herbalism' | 'knots' | 'camouflage'
+    | 'throwing' | 'sprinting' | 'scavenging' | 'deception' | 'vigilance';
 
 /** Why a tribute is walking somewhere. Drives the chronicle copy as well as the route. */
 export type ObjectiveReason = 'water' | 'shelter' | 'feast' | 'ally' | 'forage'

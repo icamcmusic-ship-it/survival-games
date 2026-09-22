@@ -8,7 +8,7 @@ import { Item, Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
 import { traitMod } from '../../data/traits';
 import { ARCHETYPES } from '../../data/archetypes';
-import { ALLIANCES, BLOODBATH, QUALITY_BIAS, TRAINING } from '../../data/balance';
+import { ALLIANCES, BLOODBATH, ESCALATION, QUALITY_BIAS, TRAINING } from '../../data/balance';
 import { registerAlliance } from '../alliance';
 
 /**
@@ -510,11 +510,25 @@ export function processBloodbath(ctx: SimContext) {
     const rigged = ctx.state.tributes.find(t => t.id === ctx.state.riggedVictorId);
     if (rigged) {
         ctx.logEvent(
-            `This Games has already been decided. ${rigged.name} of District ${rigged.district} is coming home, `
-            + 'and everything the arena does between now and then is arrangement.',
+            `This Games has been arranged. Every advantage the Capitol can hand ${rigged.name} of District `
+            + `${rigged.district} without being seen to has been handed to them, and the field can feel it. `
+            + 'Arrangements are not guarantees, which is the only reason this is still worth watching.',
             [rigged.id],
             { important: true, category: 'system' },
         );
+        /*
+         * REQUEST: cater to them winning rather than save them.
+         *
+         * The Capitol has made it clear whose story this year is, and a field
+         * that has been told that does not go looking for them. Done with the
+         * fear the engine already has rather than a special case inside target
+         * selection: avoidance is exactly what fear is for, and it means the
+         * arrangement shows up in the chronicle as people keeping their
+         * distance instead of as blows that mysteriously miss.
+         */
+        getAlive(ctx.state)
+            .filter(t => t.id !== rigged.id)
+            .forEach(t => addFear(t, rigged.id, ESCALATION.riggedFear, rigged));
     }
 
     // 1. Who runs at the horn and who runs away from it.

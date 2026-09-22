@@ -5,6 +5,7 @@ import { BETRAYAL, BLEEDING, MEMORY, RELATIONSHIPS, SUSPICION } from '../data/ba
 import { SimContext } from './context';
 import { resolveCombat } from './combat';
 import { allianceOf, cacheValue, emptyCache } from './alliance';
+import { trainProficiency } from './proficiency';
 import { addZoneThreat, noteContact, raiseSuspicion, rememberedThreat, suspicionOf } from './memory';
 import { giveItem } from './items';
 import { noteTraffic, reachableZones, severedEdgeSet } from './map';
@@ -147,6 +148,10 @@ export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Trib
             checkTraps(ctx, victim);
             // The victim does not know why they are there; the betrayer does.
             addZoneThreat(ctx.state, betrayer, deathTrap.name, MEMORY.hazardThreat);
+            // A lure is a lie that worked, told to somebody who had every
+            // reason to trust it. The parley bluff is the other site; this is
+            // the one where it costs a life, which is why it is granted whole.
+            trainProficiency(betrayer, 'deception', ctx);
             applyBetrayalFallout(ctx, betrayer, victim, members);
             delete betrayer.allianceId;
             ctx.logEvent(

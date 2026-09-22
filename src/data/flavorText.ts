@@ -511,6 +511,47 @@ export const CAESAR_QUESTIONS = {
             'Caesar asks {tribute} what he is thinking. {tribute} tells him, and Caesar moves the interview on rather quickly.',
             '"You are reading me," Caesar says. {tribute} says they are reading the hands, and that the face is very good.',
         ],
+        // The post-AUDIT-8 batch, asked about the same way as the rest.
+        firecraft: [
+            'Caesar asks {tribute} how long it takes them to get a fire going. {tribute} asks whether it is raining in the arena this year.',
+            '"With nothing at all?" Caesar says. {tribute} says with nothing at all, and does not elaborate, and the room wants them to.',
+        ],
+        waterlore: [
+            'Caesar asks {tribute} how you tell good water from bad. The answer is long, unglamorous, and the most useful thing said all night.',
+            '"You would not have drunk that," Caesar says, about last year. {tribute} agrees that they would not have.',
+        ],
+        herbalism: [
+            'Caesar asks {tribute} to name something that grows at home. {tribute} names eleven, and what each one is for.',
+            '"Half of what you just listed is poison," Caesar says. {tribute} says that depends entirely on the amount.',
+        ],
+        knots: [
+            'Caesar hands {tribute} a length of cord as a joke. {tribute} ties something in it without looking down and hands it back.',
+            '"Does that hold?" Caesar asks. {tribute} says it holds until you pull the right end, and declines to show him which.',
+        ],
+        camouflage: [
+            'Caesar asks {tribute} whether they intend to hide. {tribute} says hiding is standing still; this is something else.',
+            '"You would put mud on that face?" Caesar asks, appalled and delighted. {tribute} says mud and considerably worse.',
+        ],
+        throwing: [
+            'Caesar asks {tribute} what they can hit from thirty feet. {tribute} asks him how big it is and whether it is moving.',
+            '"And if you miss?" Caesar asks. {tribute} points out that they are then a person who has thrown away their knife.',
+        ],
+        sprinting: [
+            'Caesar asks {tribute} whether they are fast. {tribute} says fast enough over the first twenty feet, which is the part that counts.',
+            '"You would run?" Caesar says, as though it were a confession. {tribute} says they would run, and the Capitol laughs, and {tribute} does not.',
+        ],
+        scavenging: [
+            'Caesar asks {tribute} what people throw away. The list goes on long enough that the front row stops finding it funny.',
+            '"There is nothing out there," Caesar says of the arena. {tribute} says there is always something out there.',
+        ],
+        deception: [
+            'Caesar asks {tribute} whether they have ever lied on this couch. {tribute} says no, pleasantly, and the pause afterwards is the segment.',
+            '"You are very convincing," Caesar tells {tribute}. {tribute} thanks him for it as though it were about something else.',
+        ],
+        vigilance: [
+            'Caesar asks {tribute} what they noticed on the way in. {tribute} tells him, in order, including two things Caesar had not.',
+            '"Do you sleep?" Caesar asks. {tribute} says somebody has to not be, and leaves it there.',
+        ],
     },
     /** Keyed on the district's trade, so a tribute is asked about home properly. */
     district: [
@@ -4392,20 +4433,20 @@ export const TRAINING_FAILURE: Record<string, string[]> = {
         '{tribute} takes the {station} and fails it, publicly, twice. The trainer stops correcting them the second time.',
         'The {station} beats {tribute} in front of half the floor. They get up. They do not try it again today.',
         '{tribute} misjudges the {station} badly enough that a trainer steps in, and the room goes quiet in the particular way rooms do.',
-        'Whatever {tribute} was trying at the {station}, it does not work, and everyone who was watching has now stopped.',
+        'Whatever {tribute} was trying at the {station}, it does not work. {watcher} keeps watching after everybody else has stopped.',
         '{tribute} comes off the {station} with nothing to show for the hour but the knowledge that they cannot do it.',
         '{tribute} has three goes at the {station} and gets worse each time. The gallery finds something else to look at.',
         'The {station} is not difficult, which is the worst part of watching {tribute} fail it.',
-        '{tribute} freezes at the {station} — not for long, but long enough that four people notice and one of them files it away.',
+        '{tribute} freezes at the {station} — not for long, but long enough that half the floor notices and {watcher} files it away.',
         'A trainer takes the equipment out of {tribute}\'s hands at the {station} without saying anything. That is somehow worse than being shouted at.',
         '{tribute} drops it. Then picks it up and drops it again. The {station} is having a better day than they are.',
         '{tribute} attempts the {station} the way somebody attempts something they have already decided they will fail at.',
-        'The Careers watch {tribute} fail the {station} from across the room and do not bother pretending otherwise.',
+        '{watcher} watches {tribute} fail the {station} from across the room and does not bother pretending otherwise.',
     ],
     career: [
         '{tribute} fails the {station}, which is not supposed to happen to somebody with an academy behind them, and the whole floor understands what it means.',
-        'Something goes wrong for {tribute} at the {station}. Two other Careers see it. Nobody says anything, which is the point.',
-        '{tribute} loses the {station} badly, and for the first time this week somebody in the room stops being afraid of them.',
+        'Something goes wrong for {tribute} at the {station}. {watcher} sees it. Neither of them says anything, which is the point.',
+        '{tribute} loses the {station} badly, and for the first time this week {watcher} stops being afraid of them.',
         'The academy paid for eight years of {tribute} not failing the {station}. The floor watches them do it anyway.',
         '{tribute} comes off the {station} having proved something about themselves that their district would rather was private.',
         'A Career failing the {station} is worth more to the other twenty-two tributes than any amount of training, and {tribute} has just handed it to them.',
@@ -4676,6 +4717,97 @@ export const TRAINING_PACT_BROKEN: string[] = [
     '{other} hears from a third party what {tribute} has been saying about them, and the agreement between them is over by the evening.',
     '{tribute} and {other} have a short conversation at the {station} that ends with both of them looking somewhere else. The pact is dead.',
     '{tribute} gets a better offer and takes it. {other} finds out at the {station}, from somebody who is not {tribute}.',
+];
+
+/**
+ * §(requests): the floor in threes and fours.
+ *
+ * Measured baseline: 4.9% of training-phase log lines named three or more
+ * tributes, because every social beat on the floor was a disjoint pair. A
+ * training centre is twenty-four people in one hall; the group that forms
+ * around a rack is the unit the source material actually shows, and it was the
+ * one shape the phase could not produce.
+ *
+ * Every template names all three placeholders on purpose — `npm run
+ * test:unnamed` ratchets on lines that carry a tribute on their cast list
+ * without naming them, and a group line is the easiest way to break it.
+ */
+export const TRAINING_GROUP_TALK: string[] = [
+    '{tribute}, {other} and {third} end up working the {station} as a three, and talk about {topic} while they do it.',
+    '{tribute} shows {other} and {third} a grip at the {station} that none of the trainers teach.',
+    '{other} and {third} fall in behind {tribute} at the {station}, and the three of them run the rotation together.',
+    '{tribute}, {other} and {third} take turns at the {station} and spend the gaps arguing about {topic}.',
+    'A knot forms at the {station}: {tribute}, {other} and {third}, heads together over {topic}.',
+    '{third} asks a question at the {station} that {tribute} and {other} both answer at once, and the three of them are still talking about {topic} at the bell.',
+    '{tribute} and {other} make room at the {station} for {third}, which is the first time all week anybody has made room for anybody.',
+    '{other} counts {tribute} and {third} in on whatever is being planned at the {station}, out loud, in front of the room.',
+    '{tribute}, {other} and {third} work the {station} in a rotation of their own devising and finish ahead of everybody else on it.',
+    '{third} keeps the tally while {tribute} and {other} work the {station}, and by the end the three of them have a system.',
+    'Somebody has to hold the rope at the {station}. {tribute} holds it, {other} climbs, {third} talks them both through it.',
+    '{tribute}, {other} and {third} eat their break standing at the {station} rather than break up whatever they have going.',
+];
+
+/**
+ * §(requests): and the same shape, cold. A circle that closes around two people
+ * arguing is a different event from the argument, and the floor had neither —
+ * hostile beats were strictly pairwise, which is why the measured baseline had
+ * exactly zero negative lines involving three or more tributes.
+ */
+export const TRAINING_GROUP_TENSION: string[] = [
+    '{tribute} says something to {other} at the {station} that {third} is clearly meant to hear, and does.',
+    'A circle closes at the {station} around {tribute} and {other}. {third} is in it, and does not step in.',
+    '{tribute} and {third} work the {station} in a way that leaves {other} standing at the edge of it holding nothing.',
+    '{other} is talked over at the {station} by {tribute} and then by {third}, and gives up on the third attempt.',
+    'The three of them — {tribute}, {other}, {third} — stop working at the {station} at the same moment, and none of them says why.',
+    '{tribute} tells {third} loudly at the {station} what {other} is worth. {other} is four feet away.',
+    'Trainers have to split the {station} rotation because {tribute}, {other} and {third} will not share it.',
+    '{tribute} and {third} decide at the {station} that {other} is a problem, and do not lower their voices about it.',
+    'Something is said at the {station} about {topic} and by the end of it {tribute}, {other} and {third} are all standing.',
+    '{other} walks off the {station} rather than finish the drill with {tribute} and {third}, and everybody watches them go.',
+    '{tribute} squares up to {other} at the {station}. {third} moves in behind {tribute}, which settles the question.',
+    'It takes two trainers to get {tribute}, {other} and {third} off the {station} mat, and none of the three has a mark on them.',
+];
+
+/**
+ * §(requests): the lunch tables, which are the week's most legible social fact.
+ *
+ * Lunch seated people in pairs, so the canteen produced twelve two-person beats
+ * a day and nothing that looked like a table. A table is three to five trays
+ * and it is what the rest of the room reads the alliances off.
+ */
+export const TRAINING_LUNCH_TABLE: string[] = [
+    '{tribute}, {other} and {third} eat at the same table, and the room revises its list.',
+    '{other} sits down with {tribute}. {third} arrives with a tray two minutes later and is not asked to leave.',
+    '{tribute} holds a bench at lunch until {other} and {third} both have somewhere to sit.',
+    '{tribute}, {other} and {third} spend the whole lunch hour on {topic} and are the last three out of the room.',
+    'A table forms around {tribute}: {other} on one side, {third} on the other, trays untouched.',
+    '{third} takes the empty place between {tribute} and {other}, which nobody had claimed and everybody had noticed.',
+    '{tribute}, {other} and {third} pool what is on their trays, which is a district habit and reads as one.',
+    '{other} makes the introduction at lunch: {tribute} to {third}, by name and by district.',
+    '{tribute}, {other} and {third} sit with their backs to the Career table and talk about {topic} instead.',
+    'Three trays, one bench: {tribute}, {other} and {third}, for the second day running.',
+    '{tribute} says something at lunch that makes both {other} and {third} laugh, and half the hall turns round.',
+    '{third} sits with {tribute} and {other} without being invited, and stays because neither of them objects.',
+];
+
+/**
+ * §(requests): lunch is also where it goes wrong in front of everybody. The
+ * canteen had no hostile register at all — a room with no weapons in it is
+ * exactly where a week of this comes out.
+ */
+export const TRAINING_LUNCH_CLASH: string[] = [
+    '{tribute} puts their tray down at {other}\'s table without being asked. {third} moves theirs away.',
+    'Something {tribute} says at lunch about {other} carries. {third} hears it, and so does the rest of the hall.',
+    '{other} is told there is no room at a table with room at it. {tribute} does the telling; {third} says nothing.',
+    '{tribute} and {third} stand up at the same time as {other} passes, and the hall goes quiet for it.',
+    'A tray goes over at lunch. {tribute} says it was an accident, {other} does not, and {third} saw it.',
+    '{tribute} follows {other} the length of the hall at lunch, talking. {third} watches the whole walk.',
+    '{other} eats standing because {tribute} and {third} have taken both ends of the bench.',
+    'The lunch hall hears {tribute} put a number on {other}\'s chances. {third} laughs, which is the part {other} remembers.',
+    '{tribute} asks {other} across two tables about {topic}. It is not a question, and {third} does not pretend it is.',
+    '{third} is between {tribute} and {other} at lunch, and is not enjoying it.',
+    'Peacekeepers look in at the lunch hall because of {tribute} and {other}. {third} is the one who fetched them.',
+    '{tribute} leaves the table when {other} joins it. {third} stays, and that is noted by both of them.',
 ];
 
 export const TRAINING_TEAMUP: string[] = [

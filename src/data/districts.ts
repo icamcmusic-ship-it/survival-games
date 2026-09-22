@@ -341,6 +341,36 @@ export function legacyOf(district: number): DistrictLegacy {
 export interface DistrictCraft {
     proficiencies: Partial<Record<Proficiency, number>>;
     /**
+     * §(requests): the one skill this district's children are *already good at*
+     * when they step off the train.
+     *
+     * `proficiencies` above is a nudge — 0.6 on a scale of 6, against a
+     * `competentBand` of 2 — so a District 11 tribute who has picked fruit
+     * since they could walk arrived a quarter of the way to "competent
+     * forager" and read, on the tribute sheet, as having no band at all.
+     * Sampled over 40 casts (1,280 tributes) before the change: mean starting
+     * grade in the district's own signature skill 0.17, and *no* tribute in
+     * the sample arrived with any skill at competent or better — the archetype
+     * head start of 1.0 plus a 0.6 trade nudge cannot reach a band of 2, so
+     * every tribute in every field started unbanded. Twelve years of doing one
+     * thing every day
+     * is worth more than that, and it is the cheapest way to make a district
+     * read as a place rather than as a number on a jersey.
+     *
+     * One signature per district, floored at `competentBand` on arrival by
+     * `blankProficiencies`, and deliberately *distinct* across all sixteen:
+     * the signature is the district's fingerprint, while `proficiencies` stays
+     * the broader (and overlapping) spread of what the trade also touches.
+     *
+     * The two Career districts deliberately do not get `melee` here. Their
+     * edge is already the academy, the affinity table and `trainingMerit`, and
+     * handing them the one axis that also feeds `combatPower` would compound
+     * a lead the metrics already show at 11.3% (storied) against 2.8% (thin).
+     * What D1 gets instead is the thing D1 actually is — a district that has
+     * been selling itself to the Capitol its whole life.
+     */
+    signatureSkill?: Proficiency;
+    /**
      * §(requests): the one weapon this district is *known* for.
      *
      * `affinityItems` says what a tribute is good with once they have it;
@@ -376,31 +406,31 @@ export const DISTRICT_CRAFT: Record<number, DistrictCraft> = {
     // are gone. The comment on `hungerResilience` in `survival.ts` already
     // said "District 12 rations better than District 1 does"; this is the
     // first version where that is literally true.
-    1:  { proficiencies: { melee: TRADE },                        signatureWeapon: 'sword', affinityItems: ['sword', 'machete', 'rapier', 'falchion'],   affinityClasses: ['melee'],            hungerResilience: 1.28, blurb: 'raised on fine steel and the academy floor, and never once hungry' },
-    2:  { proficiencies: { melee: TRADE, tracking: TRADE_MINOR }, signatureWeapon: 'mace', affinityItems: ['mace', 'axe', 'sword', 'warhammer', 'halberd'], affinityClasses: ['melee'],          hungerResilience: 1.22, blurb: 'quarry work and the academy: heavy weapons, and the arm to use them' },
-    3:  { proficiencies: { tracking: TRADE, medicine: TRADE_MINOR }, signatureWeapon: 'bolas', affinityItems: ['wire', 'slingshot', 'bolas', 'crossbow'], affinityClasses: [],                 blurb: 'factory-raised: traps, wire, and an eye for how the arena is wired together' },
+    1:  { proficiencies: { melee: TRADE }, signatureSkill: 'persuasion',                        signatureWeapon: 'sword', affinityItems: ['sword', 'machete', 'rapier', 'falchion'],   affinityClasses: ['melee'],            hungerResilience: 1.28, blurb: 'raised on fine steel and the academy floor, and never once hungry' },
+    2:  { proficiencies: { melee: TRADE, tracking: TRADE_MINOR }, signatureSkill: 'intimidation', signatureWeapon: 'mace', affinityItems: ['mace', 'axe', 'sword', 'warhammer', 'halberd'], affinityClasses: ['melee'],          hungerResilience: 1.22, blurb: 'quarry work and the academy: heavy weapons, and the arm to use them' },
+    3:  { proficiencies: { tracking: TRADE, medicine: TRADE_MINOR }, signatureSkill: 'signalling', signatureWeapon: 'bolas', affinityItems: ['wire', 'slingshot', 'bolas', 'crossbow'], affinityClasses: [],                 blurb: 'factory-raised: traps, wire, and an eye for how the arena is wired together' },
     // District 4 is a Career district that still works for a living, so it
     // sits between the two: the academy, but also the boats.
-    4:  { proficiencies: { forage: TRADE, melee: TRADE_MINOR },   signatureWeapon: 'trident', affinityItems: ['trident', 'spear', 'harpoon', 'net'],    affinityClasses: ['thrown'],           hungerResilience: 1.08, blurb: 'a childhood on the boats: nets, gaffs, deep water, and the trident' },
-    5:  { proficiencies: { tracking: TRADE },                     signatureWeapon: 'crossbow', affinityItems: ['wire', 'crossbow'],               affinityClasses: [],                   blurb: 'power-plant shifts: they read machinery the way others read weather' },
-    6:  { proficiencies: { tracking: TRADE },                     signatureWeapon: 'whip', affinityItems: ['whip', 'bolas'],                     affinityClasses: [],                   blurb: 'transport yards: they know how to move and how not to be seen doing it' },
-    7:  { proficiencies: { forage: TRADE_MINOR, melee: TRADE },   signatureWeapon: 'axe', affinityItems: ['axe', 'machete', 'throwing-axes', 'billhook'],     affinityClasses: ['melee'],            blurb: 'lumber crews: climbing, felling, and an axe that has never been a weapon until now' },
-    8:  { proficiencies: { medicine: TRADE },                     signatureWeapon: 'garrote', affinityItems: ['wire', 'garrote', 'whip'],    affinityClasses: [],                   blurb: 'textile floors: fast hands, and they can dress a wound properly' },
-    9:  { proficiencies: { forage: TRADE },                       signatureWeapon: 'sickle', affinityItems: ['sickle', 'billhook', 'reedspear'],             affinityClasses: [],                   hungerResilience: 0.92, blurb: 'grain country: they know what is edible and what a lean year feels like' },
+    4:  { proficiencies: { forage: TRADE, melee: TRADE_MINOR }, signatureSkill: 'swimming',   signatureWeapon: 'trident', affinityItems: ['trident', 'spear', 'harpoon', 'net'],    affinityClasses: ['thrown'],           hungerResilience: 1.08, blurb: 'a childhood on the boats: nets, gaffs, deep water, and the trident' },
+    5:  { proficiencies: { tracking: TRADE }, signatureSkill: 'tracking',                     signatureWeapon: 'crossbow', affinityItems: ['wire', 'crossbow'],               affinityClasses: [],                   blurb: 'power-plant shifts: they read machinery the way others read weather' },
+    6:  { proficiencies: { tracking: TRADE }, signatureSkill: 'navigation',                     signatureWeapon: 'whip', affinityItems: ['whip', 'bolas'],                     affinityClasses: [],                   blurb: 'transport yards: they know how to move and how not to be seen doing it' },
+    7:  { proficiencies: { forage: TRADE_MINOR, melee: TRADE }, signatureSkill: 'climbing',   signatureWeapon: 'axe', affinityItems: ['axe', 'machete', 'throwing-axes', 'billhook'],     affinityClasses: ['melee'],            blurb: 'lumber crews: climbing, felling, and an axe that has never been a weapon until now' },
+    8:  { proficiencies: { medicine: TRADE }, signatureSkill: 'medicine',                     signatureWeapon: 'garrote', affinityItems: ['wire', 'garrote', 'whip'],    affinityClasses: [],                   blurb: 'textile floors: fast hands, and they can dress a wound properly' },
+    9:  { proficiencies: { forage: TRADE }, signatureSkill: 'fieldcookery',                       signatureWeapon: 'sickle', affinityItems: ['sickle', 'billhook', 'reedspear'],             affinityClasses: [],                   hungerResilience: 0.92, blurb: 'grain country: they know what is edible and what a lean year feels like' },
     // §3.3: D10 was the weakest row in the table (no resilience, no affinity
     // class, two minor skills) and won 0.8% of runs — those two facts are the
     // same fact. Stockyard work is butchery: a real blade trade, the stomach
     // for close work, and animals do not feed themselves in a lean winter.
-    10: { proficiencies: { medicine: TRADE_MINOR, melee: TRADE },     signatureWeapon: 'cleaver', affinityItems: ['sickle', 'knife', 'machete', 'cleaver', 'boarspear'], affinityClasses: ['melee'], hungerResilience: 0.95, blurb: 'stockyards: unsqueamish, steady with a blade, and used to a struggling animal' },
-    11: { proficiencies: { forage: TRADE, medicine: TRADE_MINOR }, signatureWeapon: 'slingshot', affinityItems: ['sickle', 'slingshot', 'billhook'], affinityClasses: [],                 hungerResilience: 0.9,  blurb: 'orchard work: they know on sight which plants will kill them' },
-    12: { proficiencies: { forage: TRADE_MINOR, tracking: TRADE_MINOR }, signatureWeapon: 'bow', affinityItems: ['knife', 'bow', 'dagger'],       affinityClasses: [],                   hungerResilience: 0.82, blurb: 'the Seam: poaching, the mines, and a lifetime of being hungry' },
+    10: { proficiencies: { medicine: TRADE_MINOR, melee: TRADE }, signatureSkill: 'butchery',     signatureWeapon: 'cleaver', affinityItems: ['sickle', 'knife', 'machete', 'cleaver', 'boarspear'], affinityClasses: ['melee'], hungerResilience: 0.95, blurb: 'stockyards: unsqueamish, steady with a blade, and used to a struggling animal' },
+    11: { proficiencies: { forage: TRADE, medicine: TRADE_MINOR }, signatureSkill: 'forage', signatureWeapon: 'slingshot', affinityItems: ['sickle', 'slingshot', 'billhook'], affinityClasses: [],                 hungerResilience: 0.9,  blurb: 'orchard work: they know on sight which plants will kill them' },
+    12: { proficiencies: { forage: TRADE_MINOR, tracking: TRADE_MINOR }, signatureSkill: 'stealth', signatureWeapon: 'bow', affinityItems: ['knife', 'bow', 'dagger'],       affinityClasses: [],                   hungerResilience: 0.82, blurb: 'the Seam: poaching, the mines, and a lifetime of being hungry' },
     // §1.1: the expanded Games territories. Written as real trades rather
     // than filler, because `craftOf` returning an empty craft is the
     // difference between a district and a number.
-    13: { proficiencies: { tracking: TRADE, medicine: TRADE_MINOR }, signatureWeapon: 'dagger', affinityItems: ['wire', 'knife', 'dagger', 'crossbow'],   affinityClasses: [],                   hungerResilience: 0.86, blurb: 'graphite pits and shell lines: steady hands, bad lungs, and a working knowledge of what goes bang' },
-    14: { proficiencies: { forage: TRADE_MINOR, melee: TRADE },   signatureWeapon: 'kukri', affinityItems: ['machete', 'knife', 'kukri', 'cleaver'],   affinityClasses: ['melee'],            hungerResilience: 1.05, blurb: 'the salt flats and the cold rooms: hard labour, hard water, and meat that keeps' },
-    15: { proficiencies: { medicine: TRADE_MINOR, tracking: TRADE_MINOR }, signatureWeapon: 'rapier', affinityItems: ['knife', 'garrote', 'glass-shiv', 'rapier'], affinityClasses: [],             hungerResilience: 0.9,  blurb: 'the glassworks: heat, patience, and an intimate understanding of how things shatter' },
-    16: { proficiencies: { forage: TRADE, melee: TRADE_MINOR },   signatureWeapon: 'gaff', affinityItems: ['spear', 'gaff', 'trident', 'harpoon', 'javelin'], affinityClasses: ['thrown'],      hungerResilience: 0.88, blurb: 'the deepwater rigs: months offshore, and nothing to eat that they did not pull out of the sea themselves' },
+    13: { proficiencies: { tracking: TRADE, medicine: TRADE_MINOR }, signatureSkill: 'ranged', signatureWeapon: 'dagger', affinityItems: ['wire', 'knife', 'dagger', 'crossbow'],   affinityClasses: [],                   hungerResilience: 0.86, blurb: 'graphite pits and shell lines: steady hands, bad lungs, and a working knowledge of what goes bang' },
+    14: { proficiencies: { forage: TRADE_MINOR, melee: TRADE }, signatureSkill: 'pacing',   signatureWeapon: 'kukri', affinityItems: ['machete', 'knife', 'kukri', 'cleaver'],   affinityClasses: ['melee'],            hungerResilience: 1.05, blurb: 'the salt flats and the cold rooms: hard labour, hard water, and meat that keeps' },
+    15: { proficiencies: { medicine: TRADE_MINOR, tracking: TRADE_MINOR }, signatureSkill: 'crafting', signatureWeapon: 'rapier', affinityItems: ['knife', 'garrote', 'glass-shiv', 'rapier'], affinityClasses: [],             hungerResilience: 0.9,  blurb: 'the glassworks: heat, patience, and an intimate understanding of how things shatter' },
+    16: { proficiencies: { forage: TRADE, melee: TRADE_MINOR }, signatureSkill: 'carpentry',   signatureWeapon: 'gaff', affinityItems: ['spear', 'gaff', 'trident', 'harpoon', 'javelin'], affinityClasses: ['thrown'],      hungerResilience: 0.88, blurb: 'the deepwater rigs: months offshore, and nothing to eat that they did not pull out of the sea themselves' },
 };
 
 export function craftOf(district: number): DistrictCraft {

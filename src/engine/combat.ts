@@ -303,31 +303,6 @@ function arenaOverBudget(ctx: SimContext, alive: number): boolean {
  */
 const UNSCALED_DAMAGE: ReadonlyArray<DamageRecord['kind']> = ['tribute', 'gamemaker'];
 
-/**
- * REQUEST: pull a killing blow aimed at the tribute the Gamemakers have fixed.
- *
- * Separate function because it has to happen before the armour, the injury
- * absorption and every other save, and because the reason it is happening
- * deserves to be findable by name rather than inferred from a condition
- * buried in the middle of `applyDamage`.
- *
- * Left visibly hurt rather than untouched: a fixed Games is still a Games, and
- * a tribute who walks out of a mutt attack without a mark on them would tell
- * the audience what has been arranged. `riggedFloor` is what the Capitol will
- * let the cameras see.
- */
-function finishRiggedSave(ctx: SimContext, t: Tribute, amount: number): boolean {
-    const floor = Math.min(t.health, ESCALATION.riggedFloor);
-    const taken = Math.max(0, t.health - floor);
-    if (taken > 0) {
-        t.health -= taken;
-        recordWound(t, { ...t.lastDamage, cause: t.lastDamage?.cause ?? 'The arena, and the Gamemakers\' opinion of it', kind: 'gamemaker', cycle: cycleOf(ctx.state), amount: taken });
-        clampTribute(t);
-    }
-    void amount;
-    return true;
-}
-
 export function applyDamage(
     ctx: SimContext,
     t: Tribute,
@@ -407,8 +382,30 @@ export function applyDamage(
      * them at a hair's breadth and re-kill them forever. Reporting the rescue
      * lets the status tick relieve the actual cause.
      */
-    if (ctx.state.riggedVictorId === t.id && amount >= t.health) {
-        return finishRiggedSave(ctx, t, amount);
+    /*
+     * REQUEST: "make it so that forced victors don't survive/cheat death, just
+     * have the simulation cater to them winning".
+     *
+     * This used to pull any killing blow aimed at the nominated tribute, which
+     * bought the outcome and cost two things. It made the arrangement visible
+     * — somebody who cannot die stops being watchable — and it wrecked the
+     * endgame: an immortal finalist meant the arena had to finish everybody
+     * else off around them, and rigged runs measured **4.7 days longer** than
+     * the same seeds unrigged.
+     *
+     * The Games are arranged in their favour now instead of decided. They take
+     * less, they hit harder, and the room looks elsewhere — the thumb is on the
+     * scale from the gong rather than under the last blow.
+     */
+    if (ctx.state.riggedVictorId === t.id) {
+        /*
+         * The Capitol does not kill the victor it has arranged. A Gamemaker
+         * strike landing on the nominated tribute is the booth working against
+         * its own instruction, which is not a dramatic risk — it is an
+         * inconsistency, and it accounted for two of fourteen losses.
+         */
+        if (record.kind === 'gamemaker') return false;
+        amount *= ESCALATION.riggedDamageTakenShare;
     }
 
     // §7: the Gamemakers want a victor, not an empty arena.
@@ -544,6 +541,20 @@ export function applyDamage(
  */
 export function selfInflictedDeath(ctx: SimContext, t: Tribute, cause: string, silent = false, code: DeathCauseCode = 'self-inflicted') {
     if (t.status !== 'alive') return;
+    /*
+     * REQUEST: a nominated tribute does not choose to stop.
+     *
+     * Not a death save — it is the one death in the game that is a *decision*,
+     * and somebody who has been told in front of the whole country that they
+     * are coming home makes it differently. Measured before adding it: five of
+     * the fourteen losses in a 60-seed sweep were the nightlock or the border
+     * walk, which is the arrangement being undone by the one person it was
+     * arranged for.
+     *
+     * The arena can still kill them and so can anybody in it. They simply will
+     * not do it themselves.
+     */
+    if (ctx.state.riggedVictorId === t.id) return;
     // The health goes first: `recordWound` stamps what the blow left them at
     // from `t.health`, and recording before zeroing put eight tributes who
     // stepped off the plate on the ledger as finished by a blow that left them
@@ -666,6 +677,14 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
             power += Math.floor(effectiveStrength(t) / COMBAT.thrownStrengthDivisor)
                 + Math.floor(effectiveAgility(t) / COMBAT.thrownAgilityDivisor)
                 + traitMod(t, 'rangedPower') * 0.5 + traitMod(t, 'meleePower') * 0.5;
+            /*
+             * `weaponProficiency` folds thrown into `ranged`, so a tribute six
+             * days into a bow was six days into a spear as well. Throwing is
+             * its own hand — release point, lead, the weight coming off the
+             * fingers — and this is the only weapon class in the game that a
+             * tribute can *make*, which is what makes it worth separating.
+             */
+            power += profOf(t, 'throwing') * PROFICIENCY.throwingCombatWeight;
         }
         // Practice with the class of weapon actually in their hands.
         power += profOf(t, weaponProficiency(weapon.weaponClass)) * PROFICIENCY.combatWeight;
@@ -976,7 +995,13 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
     // §(requests): the weapon decides how hard the blow lands, not only who
     // lands it. See `COMBAT.weaponLethalityBase` for why — in short, a
     // slingshot used to finish people at a trident's rate.
-    const weight = multiplier * weaponLethality(weapon);
+    /*
+     * REQUEST: the nominated tribute hits harder. Applied to the *weight*
+     * rather than to the final number so it scales the floor and the ceiling
+     * together, the way every other multiplier here does.
+     */
+    const rigging = ctx.state.riggedVictorId === attacker.id ? ESCALATION.riggedDamageDealtBonus : 1;
+    const weight = multiplier * weaponLethality(weapon) * rigging;
     const raw = (COMBAT.baseHitDamage + edge * COMBAT.damagePerPowerPoint + ctx.rng.nextInt(-3, 4)) * weight;
     // Both bounds scale with the multiplier, or a sub-1 multiplier puts the
     // floor above the ceiling.
@@ -1055,6 +1080,8 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
     // how you learn the stories were bigger than the person.
     reduceFear(attacker, defender.id, FEAR.realityCorrection);
     if (weapon) trainProficiency(attacker, weaponProficiency(weapon.weaponClass), ctx);
+    // ...and the thrown class trains the hand as well as the bucket.
+    if (weapon?.weaponClass === 'thrown') trainProficiency(attacker, 'throwing', ctx);
     clampTribute(defender);
     return damage;
 }
@@ -1261,8 +1288,17 @@ export function resolveCombat(
             noteFled(fleer, stayer.id);
             // Running turns your back on someone holding a weapon — unless you
             // are good at not being where they swing.
+            /*
+             * `sprinting` is the read. Breaking contact was raw `stealth`,
+             * which is the skill of not being seen — and the person running is
+             * being looked straight at. Getting out of somebody's reach is a
+             * different thing, it is the thing a tribute does most often in
+             * this engine, and until now nobody got better at it.
+             */
+            trainProficiency(fleer, 'sprinting', undefined, PROFICIENCY.sprintingRetreatShare);
             const partingChance = Math.max(0.05,
-                COMBAT.partingShotChance - fleer.attributes.stealth * STEALTH.disengagePerPoint);
+                COMBAT.partingShotChance - fleer.attributes.stealth * STEALTH.disengagePerPoint
+                    - profOf(fleer, 'sprinting') * PROFICIENCY.sprintingPartingRelief);
             if (ctx.rng.chance(partingChance)) {
                 const parting = bestWeapon(stayer);
                 landHit(ctx, stayer, fleer, 2, parting);
@@ -1272,6 +1308,9 @@ export function resolveCombat(
                     break;
                 }
             }
+            // Clean away is the lesson; the share above is what the attempt
+            // was worth whether or not it cost them a hit on the way out.
+            trainProficiency(fleer, 'sprinting', ctx);
             ctx.logEvent(
                 fill(ctx.pickText(DUEL_TEXTS.retreat), { fleer: fleer.name, stayer: stayer.name, zone: stayer.zone }),
                 [fleer.id, stayer.id],
@@ -1735,7 +1774,6 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
      * in the engine passes through — which makes it the only place that can
      * promise the protection holds for a route somebody adds later.
      */
-    if (ctx.state.riggedVictorId === victim.id) return;
     victim.status = 'dead';
     // Carry capacity can shrink under a tribute — losing the Backpack is the
     // usual way — and only the per-cycle upkeep in `dayNight` repairs the

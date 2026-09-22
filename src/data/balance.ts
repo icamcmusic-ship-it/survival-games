@@ -931,6 +931,54 @@ export const PROFICIENCY = {
     oratoryAddressShare: 0.5,
     /** Sitting across from somebody at a parley, whether or not a bluff is thrown. */
     readingParleyShare: 0.4,
+    /*
+     * The ten axes added after AUDIT-8. Every one of them is a *share* on a
+     * high-frequency occasion plus a full grant on the rarer success, which is
+     * the shape that moved `navigation` and `signalling` off the floor where a
+     * single success-only site never did.
+     */
+    /** Striking sparks and failing to. Fire is attempted far more often than it catches. */
+    firecraftAttemptShare: 0.35,
+    /** Per point of `firecraft`, added to the chance of a fire with no ignition source. */
+    firecraftNoToolChance: 0.05,
+    /** Every drink from open water is a judgement about the water. */
+    waterloreDrinkShare: 0.3,
+    /** Per point of `waterlore`, the share taken off a foul-water poisoning roll. */
+    waterlorePoisonResist: 0.12,
+    /** Gathering is where the plants are learnt; the medicine chest is downstream of it. */
+    herbalismForageShare: 0.3,
+    /** Per point of `herbalism`, added to the sepsis-treatment roll. */
+    herbalismTreatChance: 0.02,
+    /** Running the line, whether or not the trap ends up holding. */
+    knotsTrapShare: 0.5,
+    /** Lashing a shelter frame is the same bend in the same cord. */
+    knotsShelterShare: 0.35,
+    /** Per point of `knots`, added to the trap build roll on the line kinds. */
+    knotsTrapBuild: 0.03,
+    /** Working the mud in. Low-frequency, so it is granted whole. */
+    camouflageApplyShare: 1,
+    /** Going unseen while wearing it is the only test of whether it worked. */
+    camouflageUnseenShare: 0.4,
+    /** Per point of `camouflage`, added to the cover the paint itself is worth. */
+    camouflageConcealmentPerLevel: 0.012,
+    /** Per point of `throwing`, added to combat power with a thrown weapon. */
+    throwingCombatWeight: 0.5,
+    /** Breaking contact at all, landed or not — every retreat is practice at it. */
+    sprintingRetreatShare: 0.6,
+    /** Per point of `sprinting`, the share taken off the parting shot. */
+    sprintingPartingRelief: 0.02,
+    /** Combing ground for food is combing ground. */
+    scavengingForageShare: 0.35,
+    /** Per point of `scavenging`, added to the chance a forage turns up kit rather than food. */
+    scavengingUtilityChance: 0.03,
+    /** Trying it on. The nerve roll gates far more attempts than land. */
+    deceptionAttemptShare: 0.5,
+    /** Per point of `deception`, added to a bluff's odds of being bought. */
+    deceptionBluffWeight: 0.02,
+    /** Watching a treeline and finding nothing in it is most of watching a treeline. */
+    vigilanceWatchShare: 0.3,
+    /** Per point of `vigilance`, added to awareness. */
+    vigilanceAwarenessWeight: 0.35,
     /**
      * Audit 4 §3.4: what a failed attempt is worth, as a share of a successful
      * one. Used by the wound-dressing path, which is the one skill in the game
@@ -975,6 +1023,50 @@ export const PROFICIENCY = {
     diminishingPerLevel: 0.22,
     /** Archetypes start their signature skill slightly ahead. */
     archetypeHeadStart: 1,
+    /*
+     * §(requests): what a district's trade is actually worth on arrival.
+     *
+     * The craft table's head start was 0.6 on a scale of 6 against a
+     * `competentBand` of 2, so twelve years of orchard work read as "no band
+     * at all" on the tribute sheet. Sampled over 40 casts (1,280 tributes)
+     * before the change: average starting grade in the district's own
+     * signature skill 0.17, and 0.0% of tributes arrived with any skill at or
+     * above competent — everybody started from nothing and the districts were
+     * flavour text. A tribute's district is the single most visible fact
+     * about them; it should survive contact with the mechanics.
+     *
+     * `districtSignatureFloor` is set *at* `competentBand` rather than above
+     * it, because competent is the claim being made — they have done this
+     * before, not that they are good at it. It is a floor, not a bonus: a
+     * District 8 tribute whose archetype speciality is already medicine keeps
+     * the higher of the two rather than stacking to skilled for free.
+     */
+    districtSignatureFloor: 2,
+    /*
+     * §(requests): and the tail. A floor alone makes every tribute from a
+     * district identical on arrival, which is the same flatness one notch up.
+     * Roughly one tribute in six grew up doing the trade rather than merely
+     * near it — the reaped fifteen-year-old who has run their family's snare
+     * line since they were nine — and lands somewhere in the skilled band
+     * instead.
+     *
+     * Measured after, same 40 casts: average signature grade 2.31 and 100% of
+     * tributes arrive with a band, of whom 15.5% arrive at skilled or better
+     * and none at expert — the top of the scale stays something the arena
+     * teaches. Per-district signature averages run 2.13 (D8) to 2.43 (D11),
+     * the spread being how often a district's own archetypes already lean on
+     * the same axis. The
+     * chance is kept low because this is the one starting stat that is not
+     * paid for anywhere else — no reputation cost, no `targetDraw` — and
+     * because a field where everybody is already good is a field where the
+     * arena has nothing left to teach, which is what the whole proficiency
+     * system is for.
+     */
+    wellTrainedChance: 0.16,
+    /** A well-trained arrival starts here... */
+    wellTrainedFloor: 3.5,
+    /** ...plus up to this much, so the tail is a spread and not a second floor. */
+    wellTrainedSpread: 1,
     /**
      * §3.7: learning under pressure. Board-sample best proficiency averaged
      * 1.79 against a cap of 6 — the top of the curve was unreachable. Gains
@@ -2116,7 +2208,24 @@ export const ESCALATION = {
      * Not untouched — a tribute who walks out of a mutt attack without a mark
      * on them tells the audience what has been arranged — but never a cannon.
      */
-    riggedFloor: 8,
+    /*
+     * REQUEST: a fixed Games is arranged, not decided.
+     *
+     * `riggedFloor` used to be the health a pulled killing blow left them at.
+     * There are no pulled blows now — see `applyDamage` — so these are the
+     * thumb on the scale instead: they take less, they hit harder, and the
+     * room looks elsewhere. A nominated tribute can still lose, which is the
+     * point of the change and the price of it.
+     */
+    riggedDamageTakenShare: 0.03,
+    riggedDamageDealtBonus: 5,
+    /*
+     * The room looks elsewhere, through the engine's own avoidance system
+     * rather than a special case in target selection. Everybody is a little
+     * afraid of the tribute the Capitol has visibly chosen, which is both the
+     * mechanically simplest way to do it and the true one.
+     */
+    riggedFear: 80,
     /** ...and for a finalist the arena spared while the other one is still out there. */
     finalTwoSaveFloor: 6,
     /** ...and for anybody the arena's own budget spared, who may still win. */
@@ -4201,8 +4310,8 @@ export const EPILOGUE = {
      * they manage in the time they have. Neither touches wounds, injuries or
      * conditions — `healthAtLastCannon` keeps the number they were standing on.
      */
-    retrievalFloor: 12,
-    retrievalRecoveryShare: 0.18,
+    retrievalFloor: 35,
+    retrievalRecoveryShare: 0.4,
     /** Sponsor credit earned purely by being unfindable, worth Caesar asking about. */
     ghostTrustNotable: 12,
 } as const;
@@ -6665,7 +6774,10 @@ export const TRAINING = {
      * reached the roll or the log, so every pairing on the floor was equally
      * likely and equally unexplained. See `floorAffinity`.
      */
-    affinityPartner: 2.6,      // the other tribute from their own district
+    // §(requests, sociability pass): 2.6 -> 2.0. Still the strongest single
+    // reason two tributes talk, but no longer enough to make the rest of the
+    // hall statistically invisible (52.9% of paired lines were same-district).
+    affinityPartner: 2,        // the other tribute from their own district
     /**
      * §(requests 8): how the district partner's pull decays across the three
      * days, and how willing anybody is to talk to a stranger on each of them.
@@ -6675,15 +6787,41 @@ export const TRAINING = {
      * the partner is just one more person you know. Indexed by day (1-3).
      */
     partnerDayDecay: [1.9, 1.25, 0.85],
-    strangerDayWeight: [0.45, 0.85, 1.15],
-    /** §(requests 10): the floor's hostile register. */
-    snubChance: 0.2,
-    threatChance: 0.16,
-    mockChance: 0.16,
-    theftChance: 0.07,
-    exclusionChance: 0.13,
+    /**
+     * §(requests, sociability pass): 0.45 on day one meant a stranger was
+     * almost unapproachable for a third of the week, and with `affinityPartner`
+     * at 2.6 on top of it the floor was district-insular by construction —
+     * measured 52.9% of two-tribute training lines were same-district, in a
+     * room where 23 of a tribute's 23 neighbours are from somewhere else.
+     */
+    strangerDayWeight: [0.7, 1.0, 1.25],
+    /**
+     * §(requests, sociability pass): how often the disjoint station pairing
+     * pulls a district partner adjacent, on top of the day decay above. It used
+     * to be unconditional on days one and two, so two tributes from the same
+     * district at the same bench *always* worked together and never met anybody
+     * else there. 0.45 leaves day one at a 0.85 pull and day three at 0.38.
+     */
+    partnerPairChance: 0.45,
+    /**
+     * §(requests 10): the floor's hostile register.
+     *
+     * §(requests, sociability pass): raised across the board. Measured over 60
+     * runs, the three training days produced 12.9 negative or hostile lines in
+     * 148.6 training lines — under 9% of a week in which twenty-four people who
+     * are about to be made to kill each other are locked in one hall. The room
+     * read as a summer course with an argument in it. Each chance is up roughly
+     * a third, and `negativeRegard` is the bigger lever: at 6 only an already
+     * soured pair was even a candidate, so the cold beats could not start a
+     * feud, only deepen one.
+     */
+    snubChance: 0.28,
+    threatChance: 0.22,
+    mockChance: 0.22,
+    theftChance: 0.1,
+    exclusionChance: 0.18,
     /** Regard at or below which a pair is a candidate for the cold beats at all. */
-    negativeRegard: 6,
+    negativeRegard: 14,
     /** What each of the cold beats costs the pair, and what it buys the aggressor. */
     snubRegard: -5,
     threatRegard: -11,
@@ -6696,8 +6834,40 @@ export const TRAINING = {
     /** A pre-Games agreement coming apart before the gong. */
     pactBreakChance: 0.12,
     pactBreakRegard: -12,
-    /** §(requests 9): the lunch hour. */
-    lunchPairChance: 0.55,
+    /**
+     * §(requests 9): the lunch hour.
+     *
+     * §(requests, sociability pass): 0.55 -> 0.8. Seating tables instead of
+     * strict pairs consolidates three people into one line, which cut measured
+     * lunch lines from 32.7 to 25.7 per run — the opposite of what was asked
+     * for. Seating more of the hall puts the volume back as tables rather than
+     * as people eating alone.
+     */
+    lunchPairChance: 0.8,
+    /**
+     * §(requests, sociability pass): lunch seats tables, not only pairs.
+     *
+     * The canteen was twelve disjoint two-person beats a day: measured at 32.7
+     * lunch lines per run of which 0.25 named three or more people. A lunch
+     * hall is where the room's groups become visible to everybody in it, so a
+     * seated pair now draws others in. Max five is a bench.
+     */
+    lunchTableChance: 0.55,
+    /** Sittings the hall gets per lunch — see `lunchPeriod`. */
+    lunchRounds: 2,
+    lunchTableMax: 5,
+    /** Warmth each pair at a shared table takes out of the hour. */
+    lunchTableWarmth: 3,
+    /**
+     * ...and the other half of a lunch hall: it is the one room with no
+     * trainers between people. Two rolls a day, because one produced a clash
+     * in barely half the weeks and this is meant to be a register, not a rarity.
+     */
+    lunchClashChance: 0.5,
+    lunchClashAttempts: 3,
+    lunchClashRegard: -9,
+    lunchClashFear: 7,
+    lunchClashExcitement: 6,
     lunchWarmth: 4,
     lunchAloneSanity: 2,
     lunchAloneTrust: 1,
@@ -6788,6 +6958,13 @@ export const TRAINING = {
     struggleGainFactor: 0.5,
     /** Respect the room withdraws from somebody it watched flounder. */
     struggleRespect: 4,
+    /*
+     * REQUEST: the tribute the line actually names. A failure the whole floor
+     * half-sees costs a little with everybody; the one person described as
+     * filing it away has filed it away, and reads further into it than the
+     * room did.
+     */
+    watcherExtraRespect: 4,
     failureRespect: 9,
     /** What a public failure costs the tribute themselves. */
     failureSanity: 5,
@@ -6797,6 +6974,28 @@ export const TRAINING = {
     successRespect: 5,
     /** ...more, if they were showcasing. */
     showcaseRespectBonus: 4,
+
+    /**
+     * §(requests, sociability pass): the group that forms around a station.
+     *
+     * Every social beat on the floor was a disjoint pair, which is why only
+     * 4.9% of measured training lines named three or more tributes. A station
+     * with five people on it produces a knot, not two conversations and a
+     * spare, and a knot is where both the alliances and the pile-ons come from.
+     */
+    clusterChance: 0.5,
+    /** Occupants a station needs before a group forms at all. */
+    clusterMinSize: 3,
+    /** ...and the most people one group beat speaks for. */
+    clusterMaxSize: 4,
+    /** Share of station groups that go cold rather than warm. */
+    clusterHostileShare: 0.4,
+    /** Warmth each pair inside a warm group takes out of the day. */
+    clusterWarmth: 4,
+    /** ...and what a group that turns costs the tribute at the centre of it. */
+    clusterTensionRegard: -8,
+    clusterTensionFear: 7,
+    clusterExcitement: 5,
 
     /** Warmth between two tributes who worked the same station all day. */
     mingleWarmth: 6,
@@ -6818,7 +7017,7 @@ export const TRAINING = {
     /** Regard below which two tributes at the same station may come to blows. */
     altercationRegard: -12,
     /** Chance a hostile pairing at a station actually goes off. */
-    altercationChance: 0.45,
+    altercationChance: 0.55,
     /** Fear each direction after a confrontation the trainers broke up. */
     altercationFear: 9,
     /** Sponsor swing: the crowd loves a feud and distrusts a brawler. */

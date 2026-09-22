@@ -180,17 +180,19 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
             {onRig && (
                 <div className="panel p-4 space-y-2 animate-riseIn" style={{ borderColor: 'var(--color-coin-400)' }}>
                     <div className="flex items-baseline justify-between flex-wrap gap-2">
-                        <span className="eyebrow text-[var(--color-coin-400)]">Fix the Games</span>
+                        <span className="eyebrow text-[var(--color-coin-400)]">Arrange the Games</span>
                         <span className="text-mini text-[var(--color-ink-500)]">
-                            The Gamemakers decide who comes home. They still fight, still lose fights, still
-                            go down — there is simply never a cannon for them.
+                            The Capitol puts its thumb on the scale for one tribute: they take almost nothing,
+                            hit like a Career, and the field keeps its distance. They win about nineteen times
+                            in twenty — it is an arrangement, not a guarantee, and the twentieth is what makes
+                            the other nineteen worth watching.
                         </span>
                     </div>
                     <label className="text-mini text-[var(--color-ink-500)]">
                         Victor{' '}
                         <select
                             className="field text-xs w-auto"
-                            aria-label="Fix the Games: choose the victor"
+                            aria-label="Arrange the Games: choose who the Capitol favours"
                             value={gameState?.riggedVictorId ?? ''}
                             onChange={e => onRig(e.target.value || null)}
                         >
@@ -202,7 +204,7 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
                     </label>
                     {gameState?.riggedVictorId && (
                         <p className="text-micro text-[var(--color-coin-400)] m-0">
-                            This Games is fixed, and the chronicle and the Hall of Fame will say so.
+                            This Games is arranged, and the chronicle and the Hall of Fame will say so.
                         </p>
                     )}
                 </div>

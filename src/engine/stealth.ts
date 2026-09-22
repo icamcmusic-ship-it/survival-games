@@ -85,7 +85,11 @@ export function concealment(
         const coverScale = zone
             ? Math.max(0.2, 1 + (zoneFeatures(zone).cover - CRAFTING.camouflageCoverPivot) * CRAFTING.camouflageCoverWeight)
             : 1;
-        value += CRAFTING.camouflageConcealment * coverScale;
+        // ...and how well it was put on. `camouflage` is the skill half of the
+        // same trade: the ground decides how much there is to imitate, the
+        // tribute decides how much of it they actually managed to imitate.
+        value += (CRAFTING.camouflageConcealment
+            + profOf(t, 'camouflage') * PROFICIENCY.camouflageConcealmentPerLevel) * coverScale;
     }
 
     if (zone) {
@@ -130,6 +134,14 @@ export function awareness(t: Tribute, dark = false): number {
         value -= STEALTH.nightAwarenessPenalty;
     }
 
+    /*
+     * The watching half of the system. AUDIT-7 gave `stealth` — hiding — a
+     * proficiency and left the other side of every one of those rolls reading
+     * intelligence and a trait mod, so a lookout who had caught people out of
+     * a treeline all week was no better at it than somebody who had spent the
+     * week asleep. `isNoticed` trains it on both outcomes.
+     */
+    value += profOf(t, 'vigilance') * PROFICIENCY.vigilanceAwarenessWeight;
     value += traitMod(t, 'awareness');
     // §8c: awareness that only exists after dark. An insomniac is not a better
     // lookout at noon; they are simply the one who is still awake at three.
@@ -199,6 +211,15 @@ export function isNoticed(ctx: SimContext, hider: Tribute, seeker: Tribute, zone
      */
     if (!noticed) trainProficiency(hider, 'stealth');
     else trainProficiency(hider, 'stealth', undefined, PROFICIENCY.stealthCaughtShare);
+    // The same roll from the other side. Finding somebody is the lesson;
+    // scanning ground and finding nothing in it is the smaller one, and it is
+    // the one that happens constantly, which is what keeps the axis moving.
+    if (noticed) trainProficiency(seeker, 'vigilance');
+    else trainProficiency(seeker, 'vigilance', undefined, PROFICIENCY.vigilanceWatchShare);
+    // Paint that worked is the only evidence that the paint works.
+    if (!noticed && camp?.camouflage !== undefined && cycle < camp.camouflage) {
+        trainProficiency(hider, 'camouflage', undefined, PROFICIENCY.camouflageUnseenShare);
+    }
     return !noticed;
 }
 

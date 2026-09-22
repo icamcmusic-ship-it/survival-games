@@ -209,8 +209,19 @@ export function setTrap(ctx: SimContext, t: Tribute) {
         .filter(([key]) => key.split('|').includes(t.zone))
         .reduce((a, [, n]) => a + n, 0);
     chance += Math.min(TRAPS.buildTrafficCap, traffic * TRAPS.buildPerTraffic);
+    /*
+     * `knots` is what the line kinds are actually made of. Carpentry covers
+     * the deadfall and the pit — the things that are shaped — and read the
+     * snare and the tripwire too, which are not shaped at all: they are a cord
+     * and the right bend in it, and a bad bend is the reason a snare comes up
+     * empty rather than a bad frame.
+     */
+    const runsLine = kind === 'snare' || kind === 'tripwire';
+    if (runsLine) chance += profOf(t, 'knots') * PROFICIENCY.knotsTrapBuild;
 
     if (!ctx.rng.chance(Math.min(0.95, chance))) {
+        // The tangle of nothing is where anybody learns cordage.
+        if (runsLine) trainProficiency(t, 'knots', undefined, PROFICIENCY.knotsTrapShare);
         ctx.logEvent(
             `${t.name} spends an hour on a ${kind} in ${t.zone} and ends up with a tangle of nothing.`,
             [t.id],
@@ -279,6 +290,7 @@ export function setTrap(ctx: SimContext, t: Tribute) {
     // goes; carpentry is making it hold. The second half was not being trained.
     trainProficiency(t, 'tracking');
     trainProficiency(t, 'carpentry', ctx, PROFICIENCY.trapCarpentryShare);
+    if (runsLine) trainProficiency(t, 'knots', ctx);
     ctx.logEvent(TRAP_SET_LINES[kind](t.name, t.zone), [t.id], { type: `trap-set-${kind}`, category: 'survival' });
 }
 
@@ -623,7 +635,18 @@ export function lightFire(ctx: SimContext, t: Tribute): boolean {
             + t.attributes.intelligence * CRAFTING.fireNoToolPerIntelligence
             + profOf(t, 'forage') * CRAFTING.fireNoToolPerForageProficiency;
     }
-    if (!ctx.rng.chance(chance)) return false;
+    /*
+     * The bow drill is the read site for `firecraft`. The branch above leant on
+     * `forage` for it — finding dry tinder, at a stretch — which is the same
+     * borrowing that had `carpentry` reading as `crafting` before AUDIT-7.
+     */
+    chance += profOf(t, 'firecraft') * PROFICIENCY.firecraftNoToolChance;
+    // A fire that does not catch is still an evening spent learning why.
+    if (!ctx.rng.chance(chance)) {
+        trainProficiency(t, 'firecraft', undefined, PROFICIENCY.firecraftAttemptShare);
+        return false;
+    }
+    trainProficiency(t, 'firecraft', ctx);
 
     campOf(ctx, t).fire = cycleOf(ctx.state) + CRAFTING.fireCycles;
     t.vitals.sanity = Math.min(100, t.vitals.sanity + CRAFTING.fireSanityRecovery);
@@ -716,6 +739,9 @@ export function buildShelter(ctx: SimContext, t: Tribute): boolean {
      */
     trainProficiency(t, 'carpentry', ctx);
     trainProficiency(t, 'forage', ctx, PROFICIENCY.shelterForageShare);
+    // A shelter is a frame plus everything holding the frame together, which
+    // is the same bend in the same cord a snare is made of.
+    trainProficiency(t, 'knots', undefined, PROFICIENCY.knotsShelterShare);
     // §3.10: a shelter going up in front of you is a lesson whether or not
     // the person building it meant it as one.
     observeProficiency(ctx, t, 'carpentry');
@@ -731,6 +757,11 @@ export function buildShelter(ctx: SimContext, t: Tribute): boolean {
 export function applyCamouflage(ctx: SimContext, t: Tribute): boolean {
     if (hasCamp(ctx, t, 'camouflage')) return false;
     if (!ctx.rng.chance(buildChance(t))) return false;
+    // The one fieldcraft action with no skill behind it: the roll was
+    // `buildChance` and the cover it bought was a flat constant, so a tribute
+    // who had done this every night all week did it exactly as well as one
+    // trying it for the first time. See `concealment` for the read.
+    trainProficiency(t, 'camouflage', ctx, PROFICIENCY.camouflageApplyShare);
 
     // §6.5: camouflage copies the ground, so it is only as good as the
     // ground. Rich cover (forest, deep wetland) supplies the materials and
@@ -777,6 +808,10 @@ export function poisonWeapon(ctx: SimContext, t: Tribute): boolean {
 
     weapon.poison = true;
     trainProficiency(t, 'medicine');
+    // Rendering a plant down into something that kills is the same knowledge
+    // as rendering one down into something that heals, learnt from the
+    // dangerous end. The read is in `treatInfection`.
+    trainProficiency(t, 'herbalism', ctx);
     ctx.logEvent(
         `${t.name} works ${source.name} into a paste and coats their ${weapon.name} with it.`,
         [t.id],

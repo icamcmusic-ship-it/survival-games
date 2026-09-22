@@ -463,6 +463,10 @@ function drinkFromZone(ctx: SimContext, t: Tribute) {
      * walks away feeling fine; `tickExposure` decides days later whether they
      * were.
      */
+    // Every drink from open water is a judgement about the water — where in
+    // the flow to take it from, whether the smell is the pool or the season.
+    // The read is on the foul branch below.
+    trainProficiency(t, 'waterlore', undefined, PROFICIENCY.waterloreDrinkShare);
     const contaminated = hasEffect(ctx.state, t.zone, 'contaminated');
     const foul = climateOf(ctx.state.arena.id)?.foulWater === true || contaminated;
     // Purification is a property of the item now, not a hardcoded id list, so
@@ -475,6 +479,7 @@ function drinkFromZone(ctx: SimContext, t: Tribute) {
     if (foul && !purifier && hasCamp(ctx, t, 'fire')) {
         t.vitals.thirst = Math.max(0, t.vitals.thirst - WATER.zoneDrinkRelief);
         t.vitals.fatigue = Math.min(100, t.vitals.fatigue + CRAFTING.fireBoilFatigue);
+        trainProficiency(t, 'waterlore', ctx);
         ctx.logEvent(
             `${t.name} boils water from ${t.zone} over their fire until it is safe to drink. It costs the hour, and it is worth the hour.`,
             [t.id],
@@ -492,7 +497,16 @@ function drinkFromZone(ctx: SimContext, t: Tribute) {
         if (contaminated && !t.waterborne) {
             t.waterborne = { fromZone: t.zone, dueCycle: cycleOf(ctx.state) + WATER.waterborneIncubationCycles };
         }
-        if (!t.injuries.poisoned && ctx.rng.chance(WATER.foulPoisonChance)) {
+        /*
+         * The read site. Drinking something questionable was a flat chance
+         * with nothing on either side of it, in a game where dehydration is a
+         * named cause of death and the fallback for having no tablets is to
+         * risk it. Somebody who has been drinking out of this arena for a week
+         * has learnt which part of a pool to take it from.
+         */
+        const risk = WATER.foulPoisonChance
+            * Math.max(0, 1 - profOf(t, 'waterlore') * PROFICIENCY.waterlorePoisonResist);
+        if (!t.injuries.poisoned && ctx.rng.chance(risk)) {
             injure(t, 'poisoned');
             ctx.logEvent(
                 `${t.name} is thirsty enough to drink from ${t.zone} untreated. The water goes down foul and stays down worse.`,
