@@ -8864,6 +8864,23 @@ export const CONFUSION = {
  * Slightly above neutral, so it is a thing you do for people you have some
  * time for rather than for anybody in earshot.
  */
+/**
+ * AUDIT-10 B5-03: being shown how.
+ *
+ * `minGap` is a whole grade, so this is teaching rather than two equals
+ * comparing notes. `chance` keeps it an occasional thing rather than something
+ * that happens every time two people stand near a plank — a lesson is a
+ * moment, not a state.
+ */
+export const APPRENTICESHIP = {
+    minGap: 1,
+    minRegard: 0,
+    chance: 0.35,
+    learnerShare: 1.4,
+    teacherShare: 0.35,
+    regard: 4,
+};
+
 export const WARNINGS = {
     minRegard: 5,
     /*

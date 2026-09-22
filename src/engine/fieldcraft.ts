@@ -17,6 +17,7 @@ import { traitMod } from '../data/traits';
 import { conditionOf, consumeOne, hasTool } from './items';
 import { isAggressiveStance, isEvasiveStance } from '../data/stances';
 import { sanityBandOf } from './sanityBands';
+import { offerApprenticeship } from './apprenticeship';
 
 /**
  * Fieldcraft: traps, fire, shelter, camouflage and poison.
@@ -668,6 +669,8 @@ export function buildShelter(ctx: SimContext, t: Tribute): boolean {
      * somebody was here, which is information the finder has and the audience
      * would otherwise miss.
      */
+    // B5-03: somebody who knows how, standing right there, while it goes badly.
+    offerApprenticeship(ctx, t, 'carpentry');
     const inherited = projectAt(ctx.state, t, 'shelter');
     if (inherited && !inherited.workerIds.includes(t.id) && inherited.hoursDone > 0) {
         const builders = inherited.workerIds
