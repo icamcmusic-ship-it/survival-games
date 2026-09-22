@@ -8898,6 +8898,22 @@ export const TRIAGE = {
     refusedTrust: 6,
 };
 
+/**
+ * AUDIT-10 B5-01: finding somebody again.
+ *
+ * `apartCycles` is three because that is where the measurement says a real
+ * absence starts: 658 pairs of allies come back into the same place across 80
+ * runs and only 124 of those were apart that long. Gating lower would narrate
+ * two people who walked around a rock in opposite directions.
+ */
+export const REUNION = {
+    apartCycles: 3,
+    regard: 6,
+    trust: 5,
+    /** A relief, not a heal. The arena has not got any safer. */
+    sanityRelief: 8,
+};
+
 export const APPRENTICESHIP = {
     minGap: 1,
     minRegard: 0,

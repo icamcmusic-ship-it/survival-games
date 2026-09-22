@@ -83,7 +83,9 @@ export type MilestoneId =
      */
     | 'treatment-scarcity'
     | 'treatment-given'
-    | 'treatment-refused';
+    | 'treatment-refused'
+    /** AUDIT-10 B5-01: two allies found each other again after days apart. */
+    | 'reunion';
 
 /*
  * Deliberately *not* here: traps and mutts. Both were on the first draft of

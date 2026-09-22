@@ -786,6 +786,24 @@ export interface Tribute {
      * unsay it.
      */
     everAllied?: boolean;
+    /**
+     * AUDIT-10 B5-01: the cycle this tribute was last standing with each ally.
+     *
+     * The engine knew a pack could be "separated" and nothing marked the moment
+     * it stopped being. Days apart in an arena that is actively trying to kill
+     * both of you is the strongest thing an alliance has going for it, and
+     * walking back into each other was mechanically identical to having never
+     * left.
+     *
+     * Bounded by the cast rather than by the run: the keys are tribute ids, so
+     * there are at most twenty-three of them however long the Games goes on.
+     *
+     * Deliberately *not* cleared when an alliance ends. A pair who were allies,
+     * split up, and find themselves in one again have been apart for exactly as
+     * long as the ledger says, and that is the thing a reunion is about — the
+     * time, not the paperwork.
+     */
+    lastTogetherCycle?: Record<string, number>;
     /** Everything this tribute has learned since the reaping. */
     memory: TributeMemory;
     /** The last thing that hurt them — the real cause of death, not a guess. */
