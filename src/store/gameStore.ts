@@ -1,4 +1,5 @@
 import { InterviewPersona, GameState, GameConfig, HallOfFameEntry, CampaignSnapshot, InterventionRecord } from '../models/types';
+import { balanceFingerprint, balanceMatches } from '../engine/balanceFingerprint';
 import { Bet, REWIND_PERSIST, SAVED_RUN_SPEC, SAVE_SLOT_SPECS, SavedRun, SideBet, SideBetKind, packRewind } from '../utils/saveMigrations';
 import { SIDE_BETS } from '../data/balance';
 import { SideBetTarget, SideQuote, priceSideBet, quoteSideMarkets, settleSideBet, sideBettingOpen, marketRulesOf } from '../engine/sideMarkets';
@@ -226,6 +227,10 @@ function writeSave() {
         // checkpoint — see its comment for why that is exact.
         ...packRewind(rewindDepth > 0 ? rewindStack.slice(-rewindDepth) : [], log),
         bets, sideBets, betsResolved, hofSaved, isReplayedRun, savedAt,
+        // Batch 6: which balance produced this run, so a resume after a knob
+        // has moved can say so instead of silently stitching two rule sets
+        // together. See `SavedRun.balanceFingerprint`.
+        balanceFingerprint: balanceFingerprint(),
         note: autosaveNote,
     } as SavedRun);
 
@@ -806,6 +811,36 @@ export const gameActions = {
         autosaveNote = saved.note;
         const { Simulator } = await loadEngine();
         const { gameState } = saved;
+        /*
+         * Batch 6: a run resumed under a different balance is a hybrid, and
+         * the chronicle is the place to say so.
+         *
+         * Recording the fingerprint and never reading it would be the
+         * dead-vocabulary bug this batch opened by fixing — a fact with a
+         * writer and no reader. So the seam goes in the run's own record,
+         * where anybody reading the chronicle afterwards can see that the
+         * numbers changed underneath it, rather than only in a dialog that is
+         * gone as soon as it is dismissed.
+         *
+         * `unknown` — a save written before the fingerprint existed — is left
+         * silent. It is not a mismatch, and warning about every pre-existing
+         * save would train the reader to ignore the line that matters.
+         */
+        if (balanceMatches(saved.balanceFingerprint) === 'mismatch') {
+            gameState.log = [...gameState.log, {
+                id: `e${(gameState.logCounter ?? 0) + 1}`,
+                day: gameState.day,
+                phase: gameState.phase,
+                clock: '',
+                text: 'This run was saved under a different set of balance numbers than the ones now '
+                    + 'running. What happens from here follows the current rules, so it will not match '
+                    + 'what the same seed produced before.',
+                tributesInvolved: [],
+                important: true,
+                category: 'system',
+            }];
+            gameState.logCounter = (gameState.logCounter ?? 0) + 1;
+        }
         if (!gameState.baseConfig) gameState.baseConfig = gameState.config;
         gameStore.setState({
             gameState,

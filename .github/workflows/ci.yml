@@ -150,6 +150,9 @@ jobs:
       # (a feed demoted into silence), both absolute rather than derived from
       # the knob they guard.
       - run: npm run test:pacing
+      # B6: a run records which balance produced it. The schema version tracks
+      # the payload's shape and says nothing about the rules inside it.
+      - run: npm run test:fingerprint
 
       # Content and structure.
       - run: npm run test:arenas

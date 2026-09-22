@@ -82,6 +82,25 @@ export const REWIND_PERSIST = 3;
 export interface SavedRun {
     gameState: GameState;
     /**
+     * AUDIT-10 batch 6: which balance produced this run.
+     *
+     * `SAVED_RUN_VERSION` a few lines down is a *schema* version — its own
+     * comment says v0 and v1 "differ only in the envelope". It tracks the
+     * shape of this payload so an older save can still be parsed, and says
+     * nothing about the simulation that produced the run inside it.
+     *
+     * So a save written before a balance number moved resumes under the new
+     * one: the first half of the chronicle was produced by one set of rules
+     * and the second half by another, stitched together with no seam and no
+     * notice. "The same seed replays the same Games" is the one promise the
+     * engine makes about itself, and this is the field that lets a resume
+     * notice when it cannot keep it.
+     *
+     * Absent on every save written before this existed, which reads as
+     * *unknown* rather than as a mismatch — see `balanceMatches`.
+     */
+    balanceFingerprint?: string;
+    /**
      * §2.2: the tail of the undo stack, oldest first — the same order the
      * in-memory stack uses, so resuming is a straight assignment. Optional:
      * every save written before this existed simply resumes with no history,
