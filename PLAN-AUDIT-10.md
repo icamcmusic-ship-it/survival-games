@@ -412,9 +412,30 @@ actually asking for.
 | water versus shelter | `waterSource` and `shelterQuality` as zone features | the trip itself as a costed choice against staying put |
 | contaminated dressing | `sepsis` through `engine/infection` | provenance on the dressing, so an infection traces to a batch rather than to bad luck |
 
-The trap row is the smallest and the most characterful: ownership exists, so
-separating "who set it" from "who last touched it" is a field and a decision
-rather than a system. It is the obvious next one to build.
+The trap row looked like the obvious next one to build and is not, which is
+worth recording because the reason generalises.
+
+Two of its three options already exist and are well made: **mark** it (`knownBy`
+plus zone threat, "reads the ground, steps around it, files the spot away") and
+**dismantle** it, with a botched-disarm branch that leaves the thing armed.
+Only **turn** it is missing, and turning is a field and a branch.
+
+But the branch is unreachable. Measured across 80 runs:
+
+    148 traps ever set
+    206 cycles with any trap standing
+    119 of those with a stranger standing on an unknown trap
+      3 spots, in total
+
+The opportunity arises 119 times and the awareness roll — `chance(awareness/20)
+&& !chance(concealment)` — converts about 2.5% of it. Adding a third option to a
+branch taken three times in eighty runs is the shared-cooking mistake with more
+ceremony: the beat would be correct, tested, narrated, and never seen.
+
+So the work on this row is the **opportunity**, not the option, and that is
+precisely what B4-02's funnel was built to be able to say. Whoever takes it
+should move the spot rate first and add turning afterwards, on a branch that
+somebody reaches.
 
 The audit's §6 table (one per arena) and §7 table (twelve universal chains).
 Each row needs a warning, an avoidance or mitigation, a nonfatal result and a
