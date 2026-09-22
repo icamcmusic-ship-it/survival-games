@@ -9,6 +9,7 @@ import { getZone } from './map';
 import { believes } from './rapport';
 import { SimContext } from './context';
 import { arenaIsSilent } from './gamesProfile';
+import { adjustBelief, credibilityWeight } from './relationships';
 
 /**
  * Tribute memory: the difference between an AI that reacts to the current
@@ -693,7 +694,16 @@ export function writeHearsay(state: GameState, teller: Tribute, listener: Tribut
     const tellerSlot = ensureMemory(teller).zones[zone];
     const tellerConfidence = confidenceOf(state, tellerSlot);
     slot.hops = (tellerSlot?.hops ?? 0) + 1;
-    slot.confidence = Math.max(0, tellerConfidence * INTEL.hopConfidenceLoss);
+    /*
+     * AUDIT-10 B5-01: and discounted for who is doing the telling.
+     *
+     * The hop loss is about the chain; this is about the mouth. A tribute who
+     * has been caught passing on something that did not survive being looked at
+     * is believed less next time, which is what being caught out actually costs
+     * — not regard, and not safety.
+     */
+    slot.confidence = Math.max(0, Math.min(1,
+        tellerConfidence * INTEL.hopConfidenceLoss * credibilityWeight(listener, teller.id)));
     slot.expiresCycle = cycleOf(state) + Math.round(MEMORY.sightingLifetime * INTEL.hearsayLifetimeShare);
 }
 
@@ -828,13 +838,29 @@ export function checkIntelLies(ctx: SimContext) {
         // can have an honest impression caught by this. That is not a defect
         // worth fixing — it is what being caught out once does to everything
         // else you were told by the same mouth.
-        if (!teller || !teller.liedTo?.includes(t.id)) return;
+        /*
+         * AUDIT-10 B5-01: standing in the place you were told about settles
+         * the account either way.
+         *
+         * Credibility that can only fall is not an axis, it is a countdown —
+         * every teller ends the run at the floor and the intel layer goes
+         * quiet. A tribute who told the truth and is now being looked in the
+         * face for it earns some back, more slowly than a lie costs, because
+         * that is the asymmetry being believed actually has.
+         */
+        if (!teller) return;
+        if (!teller.liedTo?.includes(t.id)) {
+            adjustBelief(t, teller.id, RELATIONSHIPS.corroboratedBelief);
+            return;
+        }
         if (!lieIsExposed(t, t.zone, slot, state)) return;
         if (!ctx.rng.chance(INTEL.lieDiscoveryChance)) return;
 
         delete ensureMemory(t).zones[t.zone];
         nudgeRel(t, teller.id, -INTEL.lieDiscoveredCost);
         raiseSuspicion(t, teller.id, SUSPICION.perWitnessedBetrayal);
+        // B5-01: and the thing it should have cost all along.
+        adjustBelief(t, teller.id, -RELATIONSHIPS.lieCaughtBelief);
         const severe = (t.relationships[teller.id] || 0) <= -RELATIONSHIPS.stickyMagnitude;
         if (severe) swearVengeance(t, teller.id);
         ctx.logEvent(

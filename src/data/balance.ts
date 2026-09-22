@@ -4665,6 +4665,23 @@ export const RELATIONSHIPS = {
     trustBetrayedPenalty: 40,
     trustSuspicionWeight: 0.4,
     trustCreditorBonus: 10,
+    /*
+     * AUDIT-10 B5-01: credibility, the third contextual axis.
+     *
+     * `credibilityScale` is the belief that doubles (or halves) the weight of a
+     * retelling, and the floor and ceiling keep both ends honest: somebody
+     * caught lying twice is not worth *nothing*, because a broken clock is
+     * still evidence, and somebody right four times running does not get to
+     * write certainties into other people's heads, because they can still be
+     * wrong and the arena can still have changed since they looked.
+     */
+    credibilityScale: 30,
+    credibilityFloor: 0.35,
+    credibilityCeiling: 1.5,
+    /** Caught passing on something that did not survive being looked at. */
+    lieCaughtBelief: 22,
+    /** What they said was there, was there. Slower to build than to lose. */
+    corroboratedBelief: 7,
     /**
      * §4.5: how much trust affection can buy on its own.
      *

@@ -291,7 +291,7 @@ among holders of "Outlived The Pack" is not evidence the trait is strong.
 a physical interaction, and the point of batch 2 is that there is one rulebook
 for those.
 
-### B5-01 — relationships with distinct jobs
+### B5-01 — relationships with distinct jobs — **contextual trust done; the rest open**
 
 Contextual trust (repayment, combat support, information — a liar can be a
 reliable shield); shared decisions with a recorded proposal, voters, positions

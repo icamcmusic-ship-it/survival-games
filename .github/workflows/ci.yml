@@ -121,6 +121,9 @@ jobs:
       # B5-02: a forecast due on the cycle it is announced is a log line, not an
       # intervention window. Also reports how many hazards arrive unannounced.
       - run: npm run test:warnings
+      # B5-01: "a liar can be a reliable shield" is only true if the axes can
+      # come apart, so that is asserted rather than assumed.
+      - run: npm run test:credibility
 
       # Content and structure.
       - run: npm run test:arenas

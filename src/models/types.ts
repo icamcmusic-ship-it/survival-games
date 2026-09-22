@@ -1159,6 +1159,26 @@ export interface Tribute {
      */
     trusts?: Record<string, number>;
     /**
+     * AUDIT-10 B5-01: contextual trust — specifically, credibility.
+     *
+     * The audit's phrasing is the clearest statement of why one number was
+     * never enough: *"a liar can be a reliable shield"*. Being caught lying
+     * used to cost regard and raise suspicion, which are the axes for "do I
+     * like you" and "will you knife me" — so a tribute who passed on a bad
+     * sighting became less safe to stand next to, which is not what being
+     * caught out means. What it means is that the next thing they say is worth
+     * less.
+     *
+     * `respects` is already the combat-support axis (you can rate someone as a
+     * fighter and never sleep unguarded near them); `debts` is the repayment
+     * one. This is the third the audit names, and the one nothing modelled.
+     *
+     * Written by caught lies and by corroboration, read by how much weight a
+     * retelling carries. Optional and absent on every save written before it,
+     * like the two axes added the same way before it.
+     */
+    believes?: Record<string, number>;
+    /**
      * §4.4/§6.3: the angle they took with Caesar. A showmance is a strategy
      * chosen before the arena; so is publicly inviting allies, so is naming
      * the person you intend to kill in front of the whole country.
