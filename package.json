@@ -43,6 +43,7 @@
     "test:wounds": "tsx scripts/check-wound-ledger.ts",
     "test:replay": "tsx scripts/check-replay.ts",
     "test:textscale": "node scripts/check-textscale.mjs",
+    "cohorts": "tsx scripts/cohorts.ts",
     "catalog": "tsx scripts/catalog.ts",
     "diagnose:archetypes": "tsx scripts/diagnose-archetypes.ts"
   },

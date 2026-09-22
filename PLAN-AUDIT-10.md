@@ -248,7 +248,7 @@ causal estimates: district, arena, preferred traits, age, body, starting items
 and available opponents confound them, and the top and bottom are selected
 extremes.
 
-### B4-01 — matched cohorts
+### B4-01 — matched cohorts — **done**
 
 Compare otherwise-matched casts across archetype and trait changes using fixed
 scenario inputs and deterministic random streams. **A shared seed alone is not
