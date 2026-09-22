@@ -693,6 +693,17 @@ export interface DamageRecord {
     /** Cycle index the wound landed. */
     cycle: number;
     amount: number;
+    /**
+     * AUDIT-10 B3-02: health immediately after this blow, captured where it
+     * landed.
+     *
+     * The ledger's first draft reconstructed this by subtracting backwards
+     * from the tribute's current health, which is exact for the last wound and
+     * a lie for every earlier one: it silently assumes nobody ever healed, and
+     * a tribute who ate, slept and had a wound dressed heals a great deal.
+     * Recording it at the site costs a number and cannot drift.
+     */
+    healthAfter?: number;
 }
 
 export interface Tribute {
@@ -760,6 +771,15 @@ export interface Tribute {
     memory: TributeMemory;
     /** The last thing that hurt them — the real cause of death, not a guess. */
     lastDamage?: DamageRecord;
+    /**
+     * AUDIT-10 B3-02: every wound, in the order they landed.
+     *
+     * `lastDamage` is the killing blow, and a killing blow explains a death the
+     * way the final domino explains the row: a tribute who bled out on day six
+     * was cut on day two, and only the chronicle ever said so. Bounded and
+     * written through `recordWound` — see `engine/wounds`.
+     */
+    wounds?: DamageRecord[];
     /**
      * AUDIT-9 stage C §3: hours left in this cycle. See `engine/actionBudget`.
      *

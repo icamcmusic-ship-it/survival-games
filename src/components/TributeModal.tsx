@@ -36,6 +36,7 @@ import { charterSummary } from '../engine/allianceCharter';
 import { quirkEffect } from '../data/quirks';
 import { DayPanel } from './DayPanel';
 import { AllianceLedger } from './AllianceLedger';
+import { WoundLedger } from './WoundLedger';
 
 const PROFICIENCY_LABELS: Record<string, string> = {
     forage: 'Foraging', melee: 'Melee', ranged: 'Ranged', medicine: 'Medicine', tracking: 'Tracking',
@@ -896,6 +897,10 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                     </>}
 
                     {tab === 'combat' && <>
+                    {/* B3-02: the account of how they got from a hundred to here.
+                        The cause of death is the last line of it, not the whole. */}
+                    <WoundLedger tribute={tribute} gameState={gameState} />
+
                     <section>
                         <h4 className="panel-title mb-2">Injuries</h4>
                         <div className="flex items-start gap-4">

@@ -40,6 +40,7 @@
     "test:death-targets": "tsx scripts/check-death-targets.ts",
     "test:rigged": "tsx scripts/check-rigged.ts",
     "test:milestones": "tsx scripts/check-milestones.ts",
+    "test:wounds": "tsx scripts/check-wound-ledger.ts",
     "test:textscale": "node scripts/check-textscale.mjs",
     "catalog": "tsx scripts/catalog.ts",
     "diagnose:archetypes": "tsx scripts/diagnose-archetypes.ts"

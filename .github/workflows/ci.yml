@@ -109,6 +109,9 @@ jobs:
       # B3-03: an achievement must survive the save falling back to a short
       # chronicle tail. The migrated entries are guarded; the rest are listed.
       - run: npm run test:milestones
+      # B3-02: the wound ledger is a second account of what the simulation did,
+      # so it is only worth having if it cannot disagree with the first.
+      - run: npm run test:wounds
 
       # Content and structure.
       - run: npm run test:arenas
