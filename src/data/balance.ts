@@ -8838,6 +8838,33 @@ export const CONFUSION = {
  * shelter and setting a trap do not all fit, not that any one of them is
  * priced to the minute.
  */
+/**
+ * AUDIT-10 B5-03: what happens to work nobody comes back to.
+ *
+ * `abandonedAfterCycles` is deliberately longer than a night: a tribute who
+ * builds a frame, goes for water and comes back in the morning has not
+ * abandoned anything, and treating them as if they had would make building
+ * a thing you cannot leave.
+ */
+export const PROJECTS = {
+    /*
+     * Measured, not chosen. At 4 cycles with 0.6 hours of weathering the
+     * chain ate the feature it was built on:  went from 11
+     * project-cycles with more than one worker to zero, because a frame was
+     * pulled apart or rained away before a second tribute could reach it.
+     * A shelter is five hours, so it has to stand long enough to be found.
+     */
+    abandonedAfterCycles: 8,
+    /** Hours of somebody else's frame a salvager takes down. */
+    salvagedHours: 2,
+    /** Pulling another tribute's joinery apart teaches you how they did it. */
+    salvageCarpentryShare: 0.6,
+    /** What the weather takes per cycle from work nobody is tending. */
+    weatherHoursPerCycle: 0.3,
+    /** Below this there is not enough frame left for its loss to be worth a line. */
+    weatherNoticeHours: 1.5,
+};
+
 export const ACTION_BUDGET = {
     /** AUDIT-9 stage E: hours off a crossing per point of `pacing`. */
     pacingHourRelief: 0.05,

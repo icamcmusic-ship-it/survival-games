@@ -315,7 +315,7 @@ propagation with capped chains and no accidental extra tick from iteration
 order. Recovery and opportunity, so late games are not all the same
 accumulation of punishment. Procedural compatibility from capability tags.
 
-### B5-03 — the chains
+### B5-03 — the chains — **first nonlethal chain built; the tables open**
 
 The audit's §6 table (one per arena) and §7 table (twelve universal chains).
 Each row needs a warning, an avoidance or mitigation, a nonfatal result and a
