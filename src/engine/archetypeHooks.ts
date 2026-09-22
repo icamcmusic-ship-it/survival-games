@@ -2,7 +2,7 @@ import { samePlace } from './verticality';
 import { EventType, Item, Objective, Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { severRandomEdge } from './zoneEffects';
-import { ARCHETYPE_HOOKS, EARNED_TRAIT_RULES, HUNTING, MEMORY } from '../data/balance';
+import { ARCHETYPE_HOOKS, EARNED_TRAIT_RULES, HUNTING, MEMORY, ZONES } from '../data/balance';
 import { earnTrait } from './earnedTraits';
 import { SimContext, getAlive } from './context';
 import { notorietyOf } from './notoriety';
@@ -17,7 +17,7 @@ import { healInjury, clearBleeding } from './wounds';
 import { clampTribute } from './vitals';
 import { trainProficiency } from './proficiency';
 import { getZone, zoneNames, zoneFeatures } from './map';
-import { addZoneThreat } from './memory';
+import { addZoneThreat, noteSighting } from './memory';
 import { hasTruce } from './parley';
 import { ARCHETYPE_SIGNATURE_TEXTS } from '../data/flavorText';
 import { canPromise, promise } from './obligations';
@@ -632,6 +632,30 @@ export const SIGNATURES: Record<string, Signature> = {
         say(ctx, t, 'trackerRead', [t.id, quarry.id], { quarry: quarry.name, heading: quarry.zone });
         // The only signature that hands its actor another tribute's position.
         addZoneThreat(ctx.state, t, quarry.zone, -MEMORY.hazardThreat);
+        /*
+         * AUDIT-10 B4-03: the read is information, and it was not being
+         * recorded as any.
+         *
+         * The beat set an attraction and a stalk and nothing else, so its
+         * entire value was contingent on catching somebody. The funnel says
+         * that is where it fails: the set piece fires for 42% of Trackers and
+         * only 38% of those firings ever turn into a contact, so most reads
+         * were worth nothing at all. The audit's instruction is exact —
+         * "reward useful information and avoided danger, not only pursuit".
+         *
+         * A sighting is the neutral form of that reward. It is what the
+         * tribute's own routing consults, and it serves approach and avoidance
+         * equally: a Tracker who reads the strongest tribute in the arena and
+         * decides to be somewhere else has used the information, and under the
+         * old beat that decision was unsupported by anything the engine knew.
+         *
+         * It is a *true* sighting rather than a hint, because that is what
+         * reading a trail is: `rivals` and `barren` are counted from the zone
+         * as it actually is.
+         */
+        noteSighting(ctx.state, t, quarry.zone,
+            getAlive(ctx.state).filter(o => o.id !== t.id && o.zone === quarry.zone).length,
+            (ctx.state.zoneDepletion?.[quarry.zone] ?? 0) >= 1 - ZONES.minYieldFraction ? 1 : 0);
         t.objective = { kind: 'stalk', targetId: quarry.id, expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.trackerStalkCycles };
         addFear(quarry, t.id, ARCHETYPE_HOOKS.trackerReadFear, t);
         addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);

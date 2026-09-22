@@ -263,7 +263,7 @@ benefit. This is what stops an opportunity failure being hidden behind a larger
 bonus, which is the failure mode behind every one of the low-signature
 archetypes.
 
-### B4-03 — the named cases
+### B4-03 — the named cases — **Tracker done; the premise revisited**
 
 Tracker (3.51%, lowest): measure target discovery, route feasibility, safe
 intercepts, and outcomes after a tracked contact. Reward useful information and
