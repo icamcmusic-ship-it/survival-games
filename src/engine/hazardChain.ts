@@ -116,7 +116,7 @@ export function mitigate(ctx: SimContext, t: Tribute): boolean {
     // Somebody who knows what they are doing gets more out of the same hours.
     const hours = ACTION_BUDGET.shelterHours
         * Math.max(HAZARD_CHAIN.minSkillMultiplier, 1 - profOf(t, 'carpentry') * HAZARD_CHAIN.carpentryHourRelief);
-    const done = work(t, kindWork, hours);
+    const done = work(t, kindWork, hours, { state: ctx.state, cycle: cycleOf(ctx.state) });
     trainProficiency(t, 'carpentry', undefined, HAZARD_CHAIN.carpentryTrainShare);
     if (!done) {
         ctx.logEvent(

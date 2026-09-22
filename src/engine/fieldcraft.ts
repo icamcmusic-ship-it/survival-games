@@ -1,7 +1,7 @@
 import { Item, Tribute, Trap } from '../models/types';
 import { ACTION_BUDGET, BLEEDING, CRAFTING, EARNED_TRAIT_RULES, ENDGAME, HUNTING, POISONING, PROFICIENCY, TRAPS, STANCE_MODES } from '../data/balance';
 import { SimContext } from './context';
-import { canAfford, progressOf, work } from './actionBudget';
+import { canAfford, progressOf, projectAt, work } from './actionBudget';
 import { applyDamage, checkDeath } from './combat';
 import { addZoneThreat, cycleOf, rattle, noteSighting } from './memory';
 import { endgameEdge } from './objectives';
@@ -163,7 +163,7 @@ export function setTrap(ctx: SimContext, t: Tribute) {
      * a half-set trap is not a trap. Same partial-work rule as the shelter:
      * the hours carry, changing your mind loses them.
      */
-    if (!work(t, `trap:${kind}`, ACTION_BUDGET.trapHours)) {
+    if (!work(t, `trap:${kind}`, ACTION_BUDGET.trapHours, { state: ctx.state, cycle: cycleOf(ctx.state) })) {
         if (progressOf(t, `trap:${kind}`, ACTION_BUDGET.trapHours) > 0) {
             ctx.logEvent(
                 `${t.name} works on a ${kind} in ${t.zone} until the light goes, and leaves it unset rather than leave it badly set.`,
@@ -653,7 +653,36 @@ export function buildShelter(ctx: SimContext, t: Tribute): boolean {
      * a tribute who keeps changing their mind ends the week with no shelter —
      * which is the cost of indecision the audit asked to be legible.
      */
-    if (!work(t, 'shelter', ACTION_BUDGET.shelterHours)) {
+    /*
+     * AUDIT-10 B5-02: somebody else's half-built shelter is a thing you can
+     * find.
+     *
+     * The project ledger is keyed by site, so a tribute arriving where somebody
+     * has been working picks up the hours already in it rather than starting
+     * from nothing. That is the audit's "discovered, finished ... or
+     * appropriated by somebody else", and it costs one line here because the
+     * ledger is doing the work — which is the argument for the ledger.
+     *
+     * Announced, because finding a stranger's frame standing in the trees is
+     * the kind of thing a chronicle should say out loud: it tells the reader
+     * somebody was here, which is information the finder has and the audience
+     * would otherwise miss.
+     */
+    const inherited = projectAt(ctx.state, t, 'shelter');
+    if (inherited && !inherited.workerIds.includes(t.id) && inherited.hoursDone > 0) {
+        const builders = inherited.workerIds
+            .map(id => ctx.state.tributes.find(o => o.id === id))
+            .filter((o): o is Tribute => o !== undefined);
+        ctx.logEvent(
+            `${t.name} finds the frame of a shelter already standing in ${t.zone} — somebody's afternoon, `
+            + `abandoned. ${builders.some(b => b.status === 'alive')
+                ? 'Whoever left it may well come back for it.'
+                : 'Whoever put it up is not coming back for it.'} ${t.name} picks up where they left off.`,
+            [t.id, ...inherited.workerIds],
+            { category: 'survival', zone: t.zone }
+        );
+    }
+    if (!work(t, 'shelter', ACTION_BUDGET.shelterHours, { state: ctx.state, cycle: cycleOf(ctx.state) })) {
         const done = progressOf(t, 'shelter', ACTION_BUDGET.shelterHours);
         if (done > 0) {
             ctx.logEvent(

@@ -817,7 +817,7 @@ export interface Tribute {
          * AUDIT-10 B10: where the work is, for a job that belongs to a place.
          * Absent on portable work, which travels with whoever is doing it.
          */
-        site?: { zone: string; level?: string };
+        site?: { zone: string; level?: ZoneLevel };
         /** The requirement in force when the hours went in, for the UI. */
         totalHours?: number;
     };
@@ -3395,6 +3395,32 @@ export interface GameState {
      * every ordinary run, which is deliberate — see `engine/funnel`.
      */
     funnel?: Record<string, Partial<Record<string, number>>>;
+    /**
+     * AUDIT-10 B5-02: unfinished work, belonging to the place rather than to
+     * the person.
+     *
+     * `Tribute.partialWork` records a site and is still private to the worker,
+     * so a half-built shelter was invisible to everybody standing next to it:
+     * it could not be discovered, continued, inherited or taken. The audit asks
+     * for "persistent projects that belong to the site and can be discovered,
+     * finished, damaged or appropriated by somebody else", and the first of
+     * those is the one the others need — a project nobody else can see is not
+     * a feature of the arena, it is a field on a tribute.
+     *
+     * Keyed by `zone|level` plus the kind, because two people can be building
+     * different things in the same place and a shelter is not a trap.
+     */
+    projects?: Record<string, {
+        zone: string;
+        level?: ZoneLevel;
+        kind: string;
+        hoursDone: number;
+        totalHours: number;
+        /** Everyone who has put hours in, in the order they started. */
+        workerIds: string[];
+        /** The cycle it was last touched, so an abandoned site reads as one. */
+        lastCycle: number;
+    }>;
     gamemakerCommands?: number;
     /**
      * AUDIT-10 B3-01: what the player actually pressed, in order.

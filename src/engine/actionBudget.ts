@@ -1,4 +1,4 @@
-import { Tribute, attr } from '../models/types';
+import { GameState, Tribute, ZoneLevel, attr } from '../models/types';
 import { ACTION_BUDGET } from '../data/balance';
 import { injuryGrade } from './wounds';
 import { isOverprepared, scoutsTheExit } from '../data/traits';
@@ -187,7 +187,15 @@ export function spendUpTo(t: Tribute, hours: number): number {
  */
 export interface JobSite {
     zone: string;
-    level?: string;
+    /*
+     * AUDIT-10 B5-02: `ZoneLevel`, not `string`.
+     *
+     * It is only ever assigned from `Tribute.zoneLevel`, and widening it to
+     * `string` meant a site's level could not be stored anywhere that wanted
+     * the real type without a cast. Narrowing is free here — every producer
+     * already satisfies it.
+     */
+    level?: ZoneLevel;
 }
 
 function siteOf(t: Tribute): JobSite {
@@ -215,7 +223,7 @@ export function work(
     t: Tribute,
     kind: string,
     totalHours: number,
-    opts: { fixed?: boolean } = {},
+    opts: { fixed?: boolean; state?: GameState; cycle?: number } = {},
 ): boolean {
     const fixed = opts.fixed !== false;
     const here = siteOf(t);
@@ -224,7 +232,24 @@ export function work(
         && carried.kind === kind
         && (!fixed || sameSite(carried.site, here));
     if (carried && !resumable) delete t.partialWork;
-    const done = resumable ? carried!.hoursDone : 0;
+    /*
+     * AUDIT-10 B5-02: sited work belongs to the site.
+     *
+     * A fixed job left hours on the tribute and nowhere else, so a half-built
+     * shelter was invisible to everybody standing next to it. The site's ledger
+     * is the authority for a fixed job now, which makes three things true at
+     * once and was one change rather than three: somebody arriving can see the
+     * work, somebody else can continue it, and a tribute who dies does not take
+     * the shelter's four hours with them.
+     *
+     * The tribute's own record is kept in step rather than replaced, because
+     * every reader of `partialWork` — the sheet, `progressOf`, the abandonment
+     * rule — is asking "what is this person working on", which is still a
+     * question about the person.
+     */
+    const site = fixed && opts.state ? siteKey(here, kind) : undefined;
+    const existing = site ? opts.state!.projects?.[site] : undefined;
+    const done = existing ? existing.hoursDone : (resumable ? carried!.hoursDone : 0);
     /*
      * AUDIT-10 B11: finish immediately when there is no work left to do.
      *
@@ -238,6 +263,7 @@ export function work(
     const remaining = totalHours - done;
     if (remaining <= 0) {
         delete t.partialWork;
+        if (site && opts.state?.projects) delete opts.state.projects[site];
         return true;
     }
     const spent = spendUpTo(t, remaining);
@@ -245,10 +271,62 @@ export function work(
     const total = done + spent;
     if (total >= totalHours) {
         delete t.partialWork;
+        if (site && opts.state?.projects) delete opts.state.projects[site];
         return true;
     }
     t.partialWork = { kind, hoursDone: total, site: fixed ? here : undefined, totalHours };
+    if (site && opts.state) {
+        const projects = opts.state.projects ?? (opts.state.projects = {});
+        const prior = projects[site];
+        projects[site] = {
+            zone: here.zone,
+            level: here.level,
+            kind,
+            hoursDone: total,
+            totalHours,
+            // Order of joining, deduplicated: who started it matters for who
+            // is entitled to be annoyed about somebody else finishing it.
+            workerIds: prior?.workerIds.includes(t.id) ? prior.workerIds : [...(prior?.workerIds ?? []), t.id],
+            lastCycle: opts.cycle ?? prior?.lastCycle ?? 0,
+        };
+    }
     return false;
+}
+
+/** A site and a kind: two people can build different things in one place. */
+function siteKey(site: JobSite, kind: string): string {
+    return `${site.zone}|${site.level ?? 'upper'}|${kind}`;
+}
+
+/**
+ * The unfinished work at a tribute's feet, whoever started it.
+ *
+ * This is the read side of the audit's "discovered ... by somebody else": a
+ * tribute standing on a half-built shelter can be told about it, and decide
+ * whether to finish somebody else's work or leave it.
+ */
+export function projectAt(state: GameState, t: Tribute, kind: string) {
+    return state.projects?.[siteKey({ zone: t.zone, level: t.zoneLevel }, kind)];
+}
+
+/**
+ * Knock a project back. A hazard at the site undoes some of the work.
+ *
+ * Capped at zero rather than deleted: a shelter beaten back to nothing is still
+ * a place somebody chose, and the entry carries who put the hours in.
+ */
+export function damageProject(state: GameState, zone: string, level: ZoneLevel | undefined, hours: number) {
+    const projects = state.projects;
+    if (!projects) return 0;
+    let undone = 0;
+    Object.entries(projects).forEach(([key, p]) => {
+        if (p.zone !== zone || (p.level ?? 'upper') !== (level ?? 'upper')) return;
+        const lost = Math.min(p.hoursDone, hours);
+        p.hoursDone -= lost;
+        undone += lost;
+        if (p.hoursDone <= 0) delete projects[key];
+    });
+    return undone;
 }
 
 /** How far along a piece of work is, 0 when it has not been started. */

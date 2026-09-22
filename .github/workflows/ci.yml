@@ -124,6 +124,9 @@ jobs:
       # B5-01: "a liar can be a reliable shield" is only true if the axes can
       # come apart, so that is asserted rather than assumed.
       - run: npm run test:credibility
+      # B5-02: a half-built shelter belongs to the place, so somebody else can
+      # find it, finish it, or inherit it from the dead.
+      - run: npm run test:projects
 
       # Content and structure.
       - run: npm run test:arenas
