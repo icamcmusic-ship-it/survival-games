@@ -28,6 +28,7 @@
     "test:causes": "tsx scripts/check-cause-codes.ts",
     "test:ui-affordances": "tsx scripts/check-ui-affordances.ts",
     "fix:rarity": "ACHIEVEMENT_EMIT_RARITY=1 tsx scripts/check-achievements.ts",
+    "gate": "node scripts/gate.mjs",
     "audit": "npm audit --audit-level=high",
     "test:scenarios": "tsx scripts/check-scenarios.ts",
     "test:audit10": "tsx scripts/check-audit10.ts",
