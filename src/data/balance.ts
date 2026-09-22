@@ -3089,8 +3089,18 @@ export const NOISE = {
      * dangerous number here: at 1 the arena has no privacy left.
      */
     adjacentCarry: 0.45,
-    /** Heard at all, after acoustics and distance. */
-    hearThreshold: 0.75,
+    /**
+     * Heard at all, after acoustics and distance.
+     *
+     * Tuned against `test:decisions` rather than by feel. At 0.75 nearly every
+     * crossing registered somewhere, and the constant churn of anonymous
+     * contacts cost real decision quality: stances held at their best fell
+     * 52.5% -> 50.7%. At 1.1 only a crossing worth noticing carries — a pack, a
+     * laden or limping tribute, somebody moving aggressively — and the same
+     * measure comes back at 53.6%, better than with no noise at all. Fewer,
+     * more meaningful contacts beat a running commentary.
+     */
+    hearThreshold: 1.1,
     /** Per point of the listener's vigilance, subtracted from the threshold. */
     vigilanceBonus: 0.04,
     /** Asleep at night, a listener needs it louder. */

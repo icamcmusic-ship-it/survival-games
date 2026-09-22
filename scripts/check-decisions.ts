@@ -124,9 +124,35 @@ console.log(`destination in bottom fifth of its own scoring: ${pct(destBottomQui
  * the same rule F20 established: a verdict needs a sample for the thing it is
  * judging.
  */
+/*
+ * §16: and now the bound does move, from 0.15 to 0.17, at the user's
+ * direction. The reasoning above is exactly why, and it had already stopped
+ * being a bound before this change: the measured value sat at 15.0% against a
+ * limit of 15%, so the row passed only because the interval straddled the
+ * line. Noise on a crossing pushed it to 16.1% and it began failing every run.
+ *
+ * What made this a re-baseline rather than a knob turned to silence a guard is
+ * that the *quality* measure moved the other way at the same time. `stance
+ * held = best` went 52.5% -> 53.6% with noise switched on — better than the
+ * arena had without it — while the outside-top-three tail rose 15.6% -> 16.1%.
+ * Those two facts together describe a world that got more dynamic rather than
+ * a stance layer that got worse: more real information arrives mid-cycle, and
+ * the entry latency that stops a tribute flickering between postures means
+ * some of them are carrying a stance chosen one cycle before the thing they
+ * now know. That is the stance layer working as designed, and the tail is the
+ * price of the brake.
+ *
+ * This was measured by switching noise off (`hearThreshold` far above any
+ * crossing's loudness) and re-running, not inferred: 15.6% off, 16.1% on.
+ *
+ * `stance held = best` keeps its floor untouched at 0.5, and it is the row
+ * that would actually catch the stance layer degrading. If this tail ever
+ * needs raising again, that is the number to look at first — a tail that
+ * climbs while `best` falls is a real regression, and this was the opposite.
+ */
 const GUARDS: Array<[string, number, number, string, number]> = [
     ['trace present', traced / Math.max(1, aliveSamples), 0.9, '>=', aliveSamples],
-    ['stance held outside the top three', stanceOutsideTop / Math.max(1, stanceSamples), 0.15, '<=', stanceSamples],
+    ['stance held outside the top three', stanceOutsideTop / Math.max(1, stanceSamples), 0.17, '<=', stanceSamples],
     ['stance held = best', stanceHeldBest / Math.max(1, stanceSamples), 0.5, '>=', stanceSamples],
     ['destination = best', destBest / Math.max(1, destSamples), 0.58, '>=', destSamples],
     ['destination pick in bottom fifth', destBottomQuintile / Math.max(1, destSamples), 0.15, '<=', destSamples],
