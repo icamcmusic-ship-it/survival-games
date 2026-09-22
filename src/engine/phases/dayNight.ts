@@ -19,6 +19,7 @@ import { canAfford, crossingsLeft, hoursLeft, noteCrossing, resetBudget, spend, 
 import { isNoticed } from '../stealth';
 import { pickDestination } from '../movement';
 import { objectiveHolds, objectiveLabel, objectiveStep, updateObjective } from '../objectives';
+import { announceCrossing } from '../noise';
 import { onObjectiveArrival } from '../objectiveArrival';
 import { checkTraps, hasCamp, tickTraps } from '../fieldcraft';
 import { allianceRecords, areLovers, fractureBlocs, isHostileTo, leaderFor } from '../alliance';
@@ -1618,6 +1619,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
                 }
             });
             noteTraffic(ctx.state, from, dest, arriving.length);
+            announceCrossing(ctx, arriving, dest, time);
             ctx.logEvent(
                 arriving.length === 1
                     ? `${t.name} finishes the hard crossing from ${from} and comes ashore in ${dest}, spent.`
@@ -1680,6 +1682,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
             const departed = t.zone;
             present.forEach(m => { m.zone = newZone; enterVerticalZone(ctx.state.arena, m); });
             noteTraffic(ctx.state, departed, newZone, present.length);
+            announceCrossing(ctx, present, newZone, time);
             if (isEvasiveStance(t.stance)) {
                 ctx.logEvent(`${present.map(m => m.name).join(', ')} slip out of ${departed} without a sound.`, present.map(m => m.id), { zone: newZone, category: 'travel' });
             } else {
@@ -1711,6 +1714,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
         t.zone = step.name;
         enterVerticalZone(ctx.state.arena, t);
         noteTraffic(ctx.state, from, step.name);
+        announceCrossing(ctx, [t], step.name, time);
         ctx.logEvent(
             `${t.name} leaves ${from} for ${step.name} — ${objectiveLabel(ctx.state, t).toLowerCase()}.`,
             [t.id],
@@ -1730,6 +1734,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
                 t.zone = second.name;
                 enterVerticalZone(ctx.state.arena, t);
                 noteTraffic(ctx.state, midpoint, second.name);
+                announceCrossing(ctx, [t], second.name, time);
                 ctx.logEvent(
                     `${t.name} does not stop in ${midpoint} — they are through it and into ${second.name} inside the hour.`,
                     [t.id],
@@ -1755,6 +1760,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
     // walked into on purpose.
     enterVerticalZone(ctx.state.arena, t);
     noteTraffic(ctx.state, oldZone, newZone);
+    announceCrossing(ctx, [t], newZone, time);
     if (isEvasiveStance(t.stance)) {
         ctx.logEvent(`${t.name} slips out of ${oldZone} without a sound.`, [t.id], { zone: newZone, category: 'travel' });
     } else {

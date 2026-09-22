@@ -136,6 +136,9 @@ jobs:
       # §16: an objective kind nobody ever holds is content that reads as
       # shipped. Asserts a floor and a ceiling on each of the five new ones.
       - run: npm run test:intentions
+      # §16: a crossing makes a sound. The ceiling is the real assertion —
+      # sound that carries too well deletes stealth, hiding and every ambush.
+      - run: npm run test:noise
 
       # Content and structure.
       - run: npm run test:arenas

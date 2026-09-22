@@ -3039,6 +3039,74 @@ export const COMBAT = {
  * dodge check on a handful of scripted hazards. It is the cheapest lever in
  * the game to give teeth to, because every tribute already has a number for it.
  */
+/**
+ * Noise, as a property of a crossing.
+ *
+ * `ZoneFeatures.acoustics` has always documented itself as "how far sound
+ * carries *out of*, and inside, this zone" — and in the whole engine it had
+ * exactly one reader, in `stealth.ts`, for how hard a zone is to hide in while
+ * standing still. The out-of half was never implemented. Nothing a tribute did
+ * while moving made a sound anybody could hear.
+ *
+ * Measured before it was written: 37.6% of living pairs are standing in
+ * adjacent zones, and in 67.6% of those the listener has no recent sighting of
+ * the mover. A quarter of all pairs in the arena are one zone apart in mutual
+ * ignorance, and 98.7% of crossings have somebody in or next to the
+ * destination. The room for this is enormous, which is the danger rather than
+ * the reassurance: noise that carries too well deletes stealth, hiding and
+ * every ambush in one change. The guard `test:noise` polices the ceiling for
+ * that reason, and the floor only because content nobody meets is not content.
+ */
+export const NOISE = {
+    /** What an ordinary body crossing ordinary ground is worth. */
+    baseCrossing: 1,
+    /** Per additional person moving together. A pack cannot be quiet. */
+    perExtraMover: 0.55,
+    /** Per point of total graded injury: you cannot limp softly. */
+    perInjuryGrade: 0.35,
+    /** Per unit of encumbrance (0-1): a full pack knocks and rattles. */
+    perEncumbrance: 0.6,
+    /**
+     * Posture. Shadowing and Evasive are the two stances whose whole content is
+     * not being found, so they are the two that buy real silence; Hunting and
+     * Aggressive are moving to close, which is not a quiet act. Anything
+     * unlisted crosses at the base rate.
+     */
+    stanceScale: {
+        Shadowing: 0.35,
+        Evasive: 0.5,
+        Fortified: 0.8,
+        Hunting: 1.25,
+        Aggressive: 1.4,
+        Desperate: 1.5,
+    } as Record<string, number>,
+    /** What a point of the stealth proficiency takes off a crossing's noise. */
+    stealthQuieting: 0.03,
+    /** Floor, so no amount of skill makes a crossing silent. */
+    minCrossing: 0.15,
+    /**
+     * How much of the noise survives one zone of separation. The single most
+     * dangerous number here: at 1 the arena has no privacy left.
+     */
+    adjacentCarry: 0.45,
+    /** Heard at all, after acoustics and distance. */
+    hearThreshold: 0.75,
+    /** Per point of the listener's vigilance, subtracted from the threshold. */
+    vigilanceBonus: 0.04,
+    /** Asleep at night, a listener needs it louder. */
+    nightThresholdBonus: 0.35,
+    /**
+     * What hearing something is worth as belief. Well under the 1 that standing
+     * in a place and looking at it writes — a listener who heard movement knows
+     * the ground is not empty and does not know who is on it.
+     */
+    heardConfidence: 0.45,
+    /** Share of `MEMORY.sightingLifetime` a heard impression lasts. */
+    heardLifetimeShare: 0.5,
+    /** Chance a heard crossing is also worth a chronicle line, per listener. */
+    lineChance: 0.22,
+} as const;
+
 export const STEALTH = {
     /** §(requests): what a point of the stealth proficiency is worth to concealment. */
     proficiencyScale: 0.022,
