@@ -106,6 +106,9 @@ jobs:
       # REQUEST: a fixed Games. The outcome is the easy half; the hard half is
       # that every other death in it is still a real, attributed, ordered death.
       - run: npm run test:rigged
+      # B3-03: an achievement must survive the save falling back to a short
+      # chronicle tail. The migrated entries are guarded; the rest are listed.
+      - run: npm run test:milestones
 
       # Content and structure.
       - run: npm run test:arenas

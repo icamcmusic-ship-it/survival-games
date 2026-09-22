@@ -7,6 +7,7 @@ import { legacyOf } from './districts';
 import { PROCEDURAL_BIOME_COUNT } from '../engine/arenaGenerator';
 import { ACHIEVEMENT_BARS } from './balance';
 import { isStarCrossed } from '../engine/alliance';
+import { happened, timesHappened } from '../engine/milestones';
 
 /**
  * REPLAY-04: achievements as a discovery layer, not a points system.
@@ -1233,7 +1234,8 @@ export const ACHIEVEMENTS: Achievement[] = [
         hint: 'See a fire spread from one sector into the next.',
         category: 'arena',
         rarity: 'rare',
-        test: state => state.log.some(e => /The fire in .* jumps to/.test(e.text)),
+        // AUDIT-10 B3-03: the recorded fact, not the sentence about it.
+        test: state => happened(state, 'fire-spread'),
     },
     {
         id: 'tesserae-crown',
@@ -1285,8 +1287,10 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Never Needed Anyone',
         hint: 'Crown a victor who never once joined an alliance.',
         category: 'social',
-        rarity: 'legendary',
-        test: (state, v) => !!v && !state.log.some(e => e.category === 'alliance' && e.tributesInvolved.includes(v.id)),
+        rarity: 'rare',
+        // B3-03: was a negation over the chronicle, which a trimmed save turned
+        // into a false positive — see `Tribute.everAllied`.
+        test: (state, v) => !!v && !v.everAllied,
     },
     {
         id: 'debt-unsettled',
@@ -1681,8 +1685,8 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'survival',
         rarity: 'rare',
         test: (_s, v) => !!v && (v.trapKills ?? 0) >= 1,
-        nearMiss: (state, v) => v && (v.trapKills ?? 0) === 0
-            && state.log.some(e => e.tributesInvolved.includes(v.id) && /\btrap\b/i.test(e.text))
+        // AUDIT-10 B3-03: `trapsSet` is the counter this was reaching for.
+        nearMiss: (_state, v) => v && (v.trapKills ?? 0) === 0 && (v.trapsSet ?? 0) > 0
             ? `${v.name} worked traps all Games and none of them ever closed on anybody`
             : undefined,
     },
@@ -1763,8 +1767,18 @@ export const ACHIEVEMENTS: Achievement[] = [
         // square gives it to the young and to volunteers who are not Careers,
         // which lands it in a quarter of runs.
         rarity: 'common',
-        test: state => state.log.some(e => /three[- ]finger/i.test(e.text))
-            || state.tributes.some(t => /three[- ]finger|three fingers/i.test(t.reapingNote ?? '')),
+        /*
+          * AUDIT-10 B3-03: this matched /three[- ]finger/i against the whole
+          * chronicle, and the arena flavour tables contain "a crack opens
+          * across {zone}, three fingers wide" and "the hold {tribute} has three
+          * fingers behind comes away whole". A crack in the ground was awarding
+          * a district's salute.
+          *
+          * The reaping note is kept as a second reading, because a run saved
+          * before the fact was recorded still carries it.
+          */
+        test: state => happened(state, 'salute-given')
+            || state.tributes.some(t => /three[- ]finger salute/i.test(t.reapingNote ?? '')),
     },
     {
         id: 'the-token',
@@ -3234,13 +3248,22 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'oddity',
         rarity: 'common',
         test: state => {
+            /*
+             * AUDIT-10 B3-03: `state.muttsSeen` is the run's bestiary — every
+             * mutt somebody actually met, by name, written where the meeting
+             * happens. This scanned the chronicle for the mutt's name as a
+             * substring instead, which is both trimming-hostage and wrong for
+             * any mutt whose name appears inside another's.
+             */
             const roster = state.arena.mutts ?? [];
             if (roster.length < 2) return false;
-            return roster.every(m => state.log.some(l => l.category === 'mutt' && l.text.includes(m)));
+            const met = new Set(state.muttsSeen ?? []);
+            return roster.every(m => met.has(m));
         },
         nearMiss: state => {
             const roster = state.arena.mutts ?? [];
-            const seen = roster.filter(m => state.log.some(l => l.category === 'mutt' && l.text.includes(m))).length;
+            const met = new Set(state.muttsSeen ?? []);
+            const seen = roster.filter(m => met.has(m)).length;
             return roster.length >= 2 && seen === roster.length - 1 ? `${seen} of the arena's ${roster.length} mutts were loosed — one never left its pen` : undefined;
         },
     },
@@ -3289,15 +3312,20 @@ export const ACHIEVEMENTS: Achievement[] = [
         hint: 'See an ally stop somebody\'s bleeding while standing over them.',
         category: 'survival',
         rarity: 'rare',
-        test: state => state.log.some(l => l.category === 'injury' && /bleeding stopped in/.test(l.text)),
+        test: state => happened(state, 'bleeding-stopped'),
     },
     {
         id: 'the-perimeter',
         name: 'The Perimeter',
         hint: 'See a pack post a patrol on its own ground.',
         category: 'social',
-        rarity: 'rare',
-        test: state => state.log.some(l => /walks the edge of|walks the perimeter of|does a slow lap of/.test(l.text)),
+        rarity: 'common',
+        /*
+          * AUDIT-10 B3-03: this matched three specific sentences out of the
+          * patrol flavour pool. The pool exists so the line varies; every other
+          * line in it was a patrol that did not count.
+          */
+        test: state => happened(state, 'patrol-posted'),
     },
 
     /* ======================================================================
@@ -3764,9 +3792,13 @@ export const ACHIEVEMENTS: Achievement[] = [
         hint: 'See the Capitol restock the Cornucopia twice in one Games.',
         category: 'arena',
         rarity: 'rare',
-        test: state => (state.lastRestockCycle !== undefined)
-            && state.log.filter(l => /restock|refilled|new crates|the horn is full again/i.test(l.text)).length >= 2,
-        nearMiss: state => (state.log.filter(l => /restock|refilled|new crates|the horn is full again/i.test(l.text)).length === 1
+        /*
+          * AUDIT-10 B3-03: `lastRestockCycle` is the *latest* restock, so the
+          * count came from grepping the chronicle for four words that also
+          * appear in unrelated prose. Counted where it happens now.
+          */
+        test: state => timesHappened(state, 'cornucopia-restocked') >= 2,
+        nearMiss: state => (timesHappened(state, 'cornucopia-restocked') === 1
             ? 'the horn was restocked once this year — twice is generosity'
             : undefined),
     },

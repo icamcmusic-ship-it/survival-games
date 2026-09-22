@@ -743,6 +743,19 @@ export interface Tribute {
     dayOfDeath?: number;
     zone: string;
     allianceId?: string;
+    /**
+     * AUDIT-10 B3-03: has this tribute *ever* been in an alliance.
+     *
+     * `allianceId` is the present tense and says nothing about a pack that
+     * broke up on day three, so "never once joined an alliance" was asked of
+     * the chronicle instead — and the chronicle is trimmed. `lone-wolf` is a
+     * negation over it, so a short tail did not cost the achievement, it
+     * *awarded* one: twenty per cent of trimmed runs crowned a "legendary"
+     * loner who had spent the first week in a pack. Stamped where an alliance
+     * is registered and again on every upkeep sweep, so leaving one cannot
+     * unsay it.
+     */
+    everAllied?: boolean;
     /** Everything this tribute has learned since the reaping. */
     memory: TributeMemory;
     /** The last thing that hurt them — the real cause of death, not a guess. */
@@ -3350,6 +3363,19 @@ export interface GameState {
      * corrupted record rather than a setting.
      */
     riggedVictorId?: string;
+    /**
+     * AUDIT-10 B3-03: typed facts about the run, recorded where they happen.
+     *
+     * Achievement predicates used to scan `log` for them — with regular
+     * expressions over the prose, in ten cases — which made a reworded line
+     * able to grant or withhold an achievement, and made *every* such predicate
+     * hostage to the chronicle trimming that `writeSave` performs when storage
+     * is short. Neither is a property a record should have.
+     *
+     * Bounded: one entry per kind of fact, not per occurrence. See
+     * `engine/milestones.ts`.
+     */
+    milestones?: Record<string, { count: number; firstCycle: number; who?: string[] }>;
 }
 
 export interface EventLog {

@@ -16,6 +16,7 @@ import { QUALITY_BIAS } from '../data/balance';
 import { giveItem, itemPhrase, mintItem } from './items';
 import { earnTrait } from './earnedTraits';
 import { loseSanity } from './sanityBands';
+import { noteMilestone, recordMilestone } from './milestones';
 
 /**
  * Zone effects: the arena in a state other than its printed one.
@@ -564,6 +565,9 @@ function spreadFire(ctx: SimContext, from: string) {
         const child = effectsIn(state, neighborName).find(e => e.kind === 'burning');
         if (child) child.chainLength = Math.max(child.chainLength ?? 1, parentChain + 1);
         state.fireChainMax = Math.max(state.fireChainMax ?? 1, parentChain + 1);
+        // B3-03: recorded as a fact, not left for a predicate to find by
+        // matching the sentence.
+        noteMilestone(ctx, 'fire-spread');
         ctx.logEvent(`The fire in ${from} jumps to ${neighborName}.`, [], { important: true, zone: neighborName, category: 'hazard' });
     });
 }
@@ -877,6 +881,9 @@ export function dropSupplies(ctx: SimContext) {
     // Audit 3 §1.3: the world needs to remember that this happened, so the
     // rumour layer has a true `restock` claim to mint off it.
     state.lastRestockCycle = cycleOf(state);
+    // B3-03: `lastRestockCycle` is the *latest* one; the achievement asking for
+    // two in a Games needs the count, which nothing kept.
+    recordMilestone(state, 'cornucopia-restocked', cycleOf(state));
 
     // §5.7: what comes down, not just when. An arena that declares a
     // `restockBias` drops kit that belongs to it — anybody standing at the

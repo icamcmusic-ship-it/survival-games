@@ -109,6 +109,11 @@ export function postActionUpkeep(ctx: SimContext) {
  * forecast resolves against where people actually were for the cycle.
  */
 export function worldClockUpkeep(ctx: SimContext) {
+    // B3-03: a tribute may be recruited into an existing alliance, which never
+    // passes through `registerAlliance`. Sweeping the live field each cycle
+    // catches every such join; between the two, missing one would take a pack
+    // that formed and dissolved inside a single cycle without a record.
+    ctx.state.tributes.forEach(t => { if (t.allianceId !== undefined) t.everAllied = true; });
     tickForecasts(ctx);
     tickExposure(ctx);
     tickZoneEffects(ctx);
