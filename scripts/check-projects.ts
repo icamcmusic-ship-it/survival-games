@@ -22,6 +22,8 @@ import { Simulator } from '../src/engine/simulator';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { GameState } from '../src/models/types';
 import { configForProfile, gamesProfileFor } from '../src/engine/gamesProfile';
+import { timesHappened } from '../src/engine/milestones';
+import { projectAt, work } from '../src/engine/actionBudget';
 
 /*
  * 160 rather than 80.
@@ -86,7 +88,9 @@ for (let i = 0; i < RUNS; i++) {
     if (s.phase !== 'ended') continue;
     completed++;
     if (any) runsWithAny++;
-    inherited += s.log.filter(l => l.text.includes('already standing in')).length;
+    // Typed, not matched out of the prose: `check-milestones` exists because a
+    // reworded line must not change what a test believes happened.
+    inherited += timesHappened(s, 'project-inherited');
 }
 
 console.log(`\nprojects: ${completed} runs, ${distinct} distinct sited projects across ${runsWithAny} runs`);
@@ -97,21 +101,55 @@ if (distinct === 0) {
     failures.push('no sited project was ever recorded — the ledger is not connected to `work()`');
 }
 /*
- * The inheritance is the feature, so its absence is a failure rather than a
- * note. The first version asserted on `shared` — project-cycles *observed* with
- * more than one worker — and it flaked in CI the first time an unrelated commit
- * shifted the random stream: pickups were still happening (seven of them) but
- * the sweep sampled the state between cycles and the project had completed or
- * been salvaged before the next look. It was asserting on a state it could miss
- * rather than on the event.
+ * The inheritance assertion took three goes to get right, and the third was the
+ * only honest one.
  *
- * The event leaves a line in the chronicle, and a line is not something a
- * snapshot can walk past. That is what is asserted, with the observed-state
- * counts kept as a report because when they disagree with the event count the
- * gap is informative.
+ *   1. It asserted on `shared` — project-cycles *observed* with more than one
+ *      worker — and flaked in CI the first time an unrelated commit shifted the
+ *      random stream. It was asserting on a state it could miss.
+ *   2. It counted a line in the chronicle instead. That looked robust and was
+ *      worse: the substring also matched `map.ts`'s "finds {guard} already
+ *      standing in it", an unrelated beat about a guarded pass, so the count
+ *      read 13 when the true figure was 2. A guard passing on a false match is
+ *      a guard that is not running.
+ *   3. A typed milestone — which is exactly what B3-03 spent a commit arguing
+ *      for, and the mistake in (2) is precisely the one it warned about, made by
+ *      the person who wrote the warning.
+ *
+ * With the real number in hand the sweep cannot carry this assertion: two
+ * occurrences in 160 runs is a coin flip, not a gate. So the sweep reports it,
+ * and the mechanism is asserted below on a constructed case, which is what this
+ * file's own note said the fix would be.
  */
-if (distinct > 0 && inherited === 0) {
-    failures.push('nobody ever picked up a project somebody else had started — sited work is still private in practice');
+
+/*
+ * The mechanism, decided rather than sampled: a project at a site, a different
+ * tribute standing on it, and the question of whether the ledger hands over the
+ * hours already in it. This is the whole feature — "discovered, finished ... or
+ * appropriated by somebody else" — and it does not depend on the draw.
+ */
+{
+    const state = { projects: {}, cycle: 3 } as unknown as GameState;
+    const starter = { id: 'a', zone: 'Ridge', hoursLeft: 4, vitals: { fatigue: 0 }, injuries: {}, health: 100,
+        attributes: { endurance: 5 } } as unknown as Parameters<typeof work>[0];
+    const finisher = { id: 'b', zone: 'Ridge', hoursLeft: 4, vitals: { fatigue: 0 }, injuries: {}, health: 100,
+        attributes: { endurance: 5 } } as unknown as Parameters<typeof work>[0];
+
+    const firstDone = work(starter, 'shelter', 6, { state, cycle: 3 });
+    if (firstDone) failures.push('a six-hour shelter finished in one four-hour day');
+    const project = projectAt(state, finisher, 'shelter');
+    if (!project) failures.push('work at a site left nothing on the site');
+    else if (!project.workerIds.includes('a')) failures.push('the site does not record who did the work');
+
+    // The second tribute picks up where the first stopped rather than at zero.
+    work(finisher, 'shelter', 6, { state, cycle: 4 });
+    const after = projectAt(state, finisher, 'shelter');
+    if (after) {
+        failures.push(`the second tribute did not finish the inherited work (${after.hoursDone} of ${after.totalHours})`);
+    }
+    if (starter.partialWork !== undefined && finisher.partialWork !== undefined) {
+        failures.push('a finished project left partial work on both tributes');
+    }
 }
 
 if (failures.length) {

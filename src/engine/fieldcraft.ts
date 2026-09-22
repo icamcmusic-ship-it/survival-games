@@ -18,6 +18,7 @@ import { conditionOf, consumeOne, hasTool } from './items';
 import { isAggressiveStance, isEvasiveStance } from '../data/stances';
 import { sanityBandOf } from './sanityBands';
 import { offerApprenticeship } from './apprenticeship';
+import { noteMilestone } from './milestones';
 
 /**
  * Fieldcraft: traps, fire, shelter, camouflage and poison.
@@ -676,6 +677,7 @@ export function buildShelter(ctx: SimContext, t: Tribute): boolean {
         const builders = inherited.workerIds
             .map(id => ctx.state.tributes.find(o => o.id === id))
             .filter((o): o is Tribute => o !== undefined);
+        noteMilestone(ctx, 'project-inherited', [t.id, ...inherited.workerIds]);
         ctx.logEvent(
             `${t.name} finds the frame of a shelter already standing in ${t.zone} — somebody's afternoon, `
             + `abandoned. ${builders.some(b => b.status === 'alive')
