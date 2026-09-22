@@ -299,7 +299,30 @@ among holders of "Outlived The Pack" is not evidence the trait is strong.
 a physical interaction, and the point of batch 2 is that there is one rulebook
 for those.
 
-### B5-01 — relationships with distinct jobs — **contextual trust done; the rest open**
+### B5-01 — relationships with distinct jobs — **contextual trust done; the rest surveyed**
+
+Done: contextual trust, the `believes` axis (see the commit; "a liar can be a
+reliable shield" is only true if the axes can come apart, and that is asserted
+on a constructed pair rather than hoped for in a sweep).
+
+The rest, surveyed rather than assumed, and the pattern from B5-02 and B5-03
+holds again — nearly all of it has a home already:
+
+| item | where it lives | what is actually missing |
+|---|---|---|
+| shared decisions with proposal, voters, positions, concession | `engine/allianceDispute`, `AllianceDisputeRecord` — split, fed, passed over, walkouts, who was present | the *proposal* as an object: the record stores what was decided, not what was put |
+| leadership succession | `successorId`, `engine/alliancePolitics` | whether an heir taking over changes routes and priorities, or only a label |
+| bounded obligations | `engine/obligations`, `Obligation` | **amount and quality.** Destination exists (`detail`, compared against a zone for escorts) and the deadline is `byCycle`; `broken` vs `lapsed` already encodes "could have and did not" against "could not", which is the exceptions idea |
+| witnessed events | `witnessed` in `downed` and `rescueLine` | private / suspected / proven as three distinct states, rather than seen-or-not |
+| coalitions with a target and an expiry | blocs in `alliancePolitics` | the target and the expiry |
+| fair scarcity with ration ledgers | F11, and `cacheContributions` now surfaced in the ledger panel | protected reserves |
+| real reunions | nothing — the `reunion` hit in `combat.ts` is unrelated | all of it |
+
+Worth noting about obligations, because it is this session's recurring theme in
+another costume: `Obligation.detail` is a free-text field that for escorts
+happens to hold a zone name and is compared structurally. It works, and it is
+one rename away from being a typed destination. An obligation whose *amount*
+lived there would not be checkable at all.
 
 Contextual trust (repayment, combat support, information — a liar can be a
 reliable shield); shared decisions with a recorded proposal, voters, positions
