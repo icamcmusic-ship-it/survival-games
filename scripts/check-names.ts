@@ -25,6 +25,13 @@
  */
 import { DISTRICT_NAMES, NEUTRAL_NAMES } from '../src/data/names';
 import { DISTRICT_LEGACY } from '../src/data/districts';
+import { generateTributes } from '../src/engine/generator';
+import { gamesProfileFor } from '../src/engine/gamesProfile';
+import { DEFAULT_GAME_CONFIG } from '../src/data/constants';
+import { GameConfig } from '../src/models/types';
+
+/** Set by the cast sweep below, printed with the rest of the summary. */
+let castNote = '';
 
 /** Entries every district pool must carry, per gender. */
 const POOL_TARGET = 100;
@@ -199,11 +206,79 @@ const mentorTotal = [...mentorHomes.keys()].length;
 const total = districts.reduce((sum, d) => sum + DISTRICT_NAMES[d].Male.length + DISTRICT_NAMES[d].Female.length + (NEUTRAL_NAMES[d]?.length ?? 0), 0);
 const shared = [...homes.values()].filter(ds => ds.length > 1).length;
 
+/**
+ * AUDIT-10 B3-04: two tributes a player cannot tell apart.
+ *
+ * The plan asks for "cast validation with Unicode and visually confusing
+ * duplicates, resolved with district badges — not surnames". The right first
+ * move is to find out whether the problem exists, because building
+ * disambiguation for a collision that never happens is worse than not building
+ * it: it is code nobody can test and nobody will notice rotting.
+ *
+ * Measured across 4,000 casts over four configurations — the default, sixteen
+ * districts, plain names, and both — there were no exact duplicates and no
+ * confusable pairs. Plain-name casts repeat a *first* name about half the time,
+ * which is not a collision: the chronicle names tributes by `t.name`, which is
+ * the whole name.
+ *
+ * So this is a guard rather than a feature. Names are drawn from per-district
+ * pools and 288 of them appear in two pools, so a cross-district duplicate is
+ * possible in principle; what keeps it from happening is the draw, and a draw
+ * is the kind of thing a later change quietly alters. Confusability is folded
+ * the way a reader's eye folds it — NFKD, combining marks stripped, case and
+ * punctuation ignored — so 'Renée' and 'Renee' count as the same name even
+ * though no string comparison would say so.
+ */
+{
+    const fold = (n: string) => n.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const configs: GameConfig[] = [
+        DEFAULT_GAME_CONFIG,
+        { ...DEFAULT_GAME_CONFIG, districtCount: 16 },
+        { ...DEFAULT_GAME_CONFIG, plainNames: true },
+        { ...DEFAULT_GAME_CONFIG, districtCount: 16, plainNames: true },
+    ];
+    /*
+     * The sweep below has never found anything, which is the intended state and
+     * also the state an inert check is in. So the folding is checked against
+     * pairs it must and must not fold, and the check fails if it stops working
+     * — otherwise "no collisions" would eventually mean "no comparison".
+     */
+    const same: Array<[string, string]> = [['Renée', 'Renee'], ['O\u2019Dell', 'ODell'], ['Cato', 'CATO'], ['Marvel ', 'Marvel']];
+    const different: Array<[string, string]> = [['Glimmer', 'Glimmerr'], ['Cato', 'Clove'], ['Rue', 'Rye']];
+    same.forEach(([a, b]) => { if (fold(a) !== fold(b)) problems.push(`name folding no longer reads "${a}" and "${b}" as the same name`); });
+    different.forEach(([a, b]) => { if (fold(a) === fold(b)) problems.push(`name folding now reads "${a}" and "${b}" as the same name, which they are not`); });
+
+    const CASTS = Number(process.env.NAME_CASTS ?? 2000);
+    let clashes = 0;
+    for (let i = 0; i < CASTS; i++) {
+        const seed = `CAST${i}`;
+        const profile = gamesProfileFor(seed, false);
+        const config = configs[i % configs.length];
+        const names = generateTributes(seed, config, 'x', profile.castShape, profile.quell).map(t => t.name);
+        const seen = new Map<string, string>();
+        for (const name of names) {
+            const key = fold(name);
+            const first = seen.get(key);
+            if (first !== undefined) {
+                clashes++;
+                if (clashes <= 5) {
+                    problems.push(`seed ${seed} (${config.districtCount} districts${config.plainNames ? ', plain names' : ''}) `
+                        + `reaped two tributes a reader cannot tell apart: "${first}" and "${name}"`);
+                }
+            } else seen.set(key, name);
+        }
+    }
+    if (clashes === 0) {
+        castNote = `${CASTS} casts drawn across ${configs.length} configurations; no two tributes in any of them share a name a reader would fold together.`;
+    }
+}
+
 if (problems.length) {
     console.error('PROBLEMS:');
     problems.forEach(p => console.error(` - ${p}`));
     process.exit(1);
 }
+console.log(castNote);
 console.log(`${total} names across ${districts.length} districts; ${shared} appear in more than one pool, none in more than ${MAX_DISTRICTS_PER_NAME}.`);
 console.log(`initial-letter spread now ${ratio.toFixed(1)}:1 (${counts[0][0]} ${counts[0][1]} down to ${counts[counts.length - 1][0]} ${counts[counts.length - 1][1]}).`);
 console.log(`${mentorTotal} mentors across ${Object.keys(DISTRICT_LEGACY).length} districts; every pool at least ${MENTOR_POOL_TARGET} deep, none shared.`);

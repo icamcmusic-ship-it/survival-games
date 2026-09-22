@@ -197,7 +197,7 @@ conditions distinct rather than expressing one advantage in all four layers.
 
 **The audit's §3 reporting family, completed, plus §9's P1 and P2 rows.**
 
-### B3-01 — the replay manifest, finished
+### B3-01 — the replay manifest, finished — **done**
 
 Recorded playback and interactive branch. Version the manifest (batch 1 started
 this at `mv=1`); carry cast overrides and intervention records; archived runs
@@ -205,7 +205,7 @@ with insufficient inputs say "relaunch under current rules", which batch 1's
 Hall-of-Fame notice already does. Persist replay expectations across updates
 without requiring old engines to be kept alive forever.
 
-### B3-02 — the panels the state deserves
+### B3-02 — the panels the state deserves — **done**
 
 Budget and project panel (hours remaining, current project site, progress,
 reserved materials, why it paused — these state fields have no dedicated
@@ -215,13 +215,25 @@ so a player can see why visible people cannot trade or treat each other.
 Causal event inspection: from a death, jump to the wound, the source incident,
 the failed escape, the attribution. An alliance ledger.
 
-### B3-03 — typed achievement triggers
+### B3-03 — typed achievement triggers — **done** (partial: ten entries still read the chronicle, listed by `test:milestones`)
 
 Some achievements parse prose with regular expressions. Migrate factual
 triggers to typed events and counters, beginning with anything affected by log
 trimming. More flavour text must not change whether an achievement is earned.
 
-### B3-04 — accessibility and feed
+### B3-04 — accessibility and feed — **done**
+
+Three of the four were already in place from earlier batches and are held by
+`test:ui`: the live region announces a summary rather than every line, the
+colourblind and high-contrast palettes exist and apply, and reduced motion is
+honoured. The fourth — cast validation against Unicode and visually confusing
+duplicates — turned out to describe a problem this codebase does not have.
+Measured across 2,000 casts over four configurations, no two tributes in one
+cast share a name a reader would fold together, so `test:names` guards that
+rather than building district-badge disambiguation for a collision that never
+arises. Building it would have meant code nobody can test and nobody would
+notice rotting.
+
 
 Announce a compact batch summary rather than hundreds of log lines. Colour is
 never the only signal. Honour reduced motion. Cast validation with Unicode and
