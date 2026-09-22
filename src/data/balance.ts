@@ -8872,6 +8872,32 @@ export const CONFUSION = {
  * that happens every time two people stand near a plank — a lesson is a
  * moment, not a state.
  */
+/**
+ * AUDIT-10 B5-03: two wounded people and one treatment.
+ *
+ * `refusalGap` is the line between triage and refusal, and it is deliberately
+ * well above zero. Treating your own open wound while somebody slightly worse
+ * off stands there is the ordinary thing and costs nothing; it becomes a thing
+ * they remember only when the difference was obvious to both of you.
+ */
+export const TRIAGE = {
+    bleedingNeed: 14,
+    infectedNeed: 18,
+    poisonedNeed: 22,
+    healthWeight: 0.35,
+    /** A creditor has a claim that is not affection. */
+    creditorPull: 12,
+    /** Easier to give to somebody obviously dying than to somebody merely worse. */
+    gapPull: 0.45,
+    giveThreshold: 26,
+    refusalGap: 22,
+    gratitudeRegard: 14,
+    gratitudeTrust: 10,
+    gratitudeBelief: 8,
+    refusedRegard: 7,
+    refusedTrust: 6,
+};
+
 export const APPRENTICESHIP = {
     minGap: 1,
     minRegard: 0,

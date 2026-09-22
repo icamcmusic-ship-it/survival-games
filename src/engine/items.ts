@@ -375,6 +375,21 @@ export function spoilageBonus(t: Tribute): number {
  * Takes one use out of a stack, removing the item only when the stack is empty.
  * Returns false if they did not have one.
  */
+/**
+ * Take one unit out of the pack and return it.
+ *
+ * **The returned object is not always detached.** On a stack of more than one
+ * this decrements and returns the object that is *still in `t.inventory`* —
+ * which is right for consuming (eat one ration, the rest stay) and wrong for
+ * anything that hands the result to somebody else. Giving that object to
+ * another tribute puts one object in two inventories, where it degrades and
+ * spoils in lockstep for both of them, and nothing in a chronicle would ever
+ * show it.
+ *
+ * A caller that means to *transfer* must either require `stack === 1` or split
+ * a fresh single-unit object off. `engine/triage` does the former, having done
+ * the latter wrong first.
+ */
 export function consumeOne(t: Tribute, predicate: (i: Item) => boolean): Item | undefined {
     const idx = t.inventory.findIndex(predicate);
     if (idx < 0) return undefined;

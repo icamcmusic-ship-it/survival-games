@@ -299,7 +299,30 @@ among holders of "Outlived The Pack" is not evidence the trait is strong.
 a physical interaction, and the point of batch 2 is that there is one rulebook
 for those.
 
-### B5-01 — relationships with distinct jobs — **contextual trust done; the rest open**
+### B5-01 — relationships with distinct jobs — **contextual trust done; the rest surveyed**
+
+Done: contextual trust, the `believes` axis (see the commit; "a liar can be a
+reliable shield" is only true if the axes can come apart, and that is asserted
+on a constructed pair rather than hoped for in a sweep).
+
+The rest, surveyed rather than assumed, and the pattern from B5-02 and B5-03
+holds again — nearly all of it has a home already:
+
+| item | where it lives | what is actually missing |
+|---|---|---|
+| shared decisions with proposal, voters, positions, concession | `engine/allianceDispute`, `AllianceDisputeRecord` — split, fed, passed over, walkouts, who was present | the *proposal* as an object: the record stores what was decided, not what was put |
+| leadership succession | `successorId`, `engine/alliancePolitics` | whether an heir taking over changes routes and priorities, or only a label |
+| bounded obligations | `engine/obligations`, `Obligation` | **amount and quality.** Destination exists (`detail`, compared against a zone for escorts) and the deadline is `byCycle`; `broken` vs `lapsed` already encodes "could have and did not" against "could not", which is the exceptions idea |
+| witnessed events | `witnessed` in `downed` and `rescueLine` | private / suspected / proven as three distinct states, rather than seen-or-not |
+| coalitions with a target and an expiry | blocs in `alliancePolitics` | the target and the expiry |
+| fair scarcity with ration ledgers | F11, and `cacheContributions` now surfaced in the ledger panel | protected reserves |
+| real reunions | nothing — the `reunion` hit in `combat.ts` is unrelated | all of it |
+
+Worth noting about obligations, because it is this session's recurring theme in
+another costume: `Obligation.detail` is a free-text field that for escorts
+happens to hold a zone name and is compared structurally. It works, and it is
+one rename away from being a typed destination. An obligation whose *amount*
+lived there would not be checkable at all.
 
 Contextual trust (repayment, combat support, information — a liar can be a
 reliable shield); shared decisions with a recorded proposal, voters, positions
@@ -393,15 +416,49 @@ rescue under load (`rescueLine`, with anchors and a cut-line attribution fixed
 in batch 1), failed stabilization (`attemptFieldDressing`, costing time and
 restarting the neglect clock).
 
-Verified absent: **treatment scarcity** as the audit describes it — two injured
-people, one treatment, and a choice about who gets it, with triage reading
-differently from deliberate refusal. The Medic's signature treats one person;
-nothing poses the scarcity.
+**Treatment scarcity is now built** — it was the one row verified absent, and
+it is . Posed 473 times across 69 of 80 runs, resolving 37%
+given / 32% noticed refusal / 32% kept quietly.
 
-Not yet surveyed: overloaded crossing, choking, entrapment while scavenging,
-pursuit past exhaustion, delayed trap interference, water versus shelter,
-contaminated dressing. Named here so the next pass starts from what is unknown
-rather than from the audit's table again.
+The remaining seven, surveyed. Every one has its death and most have the
+physical situation; what is missing in each case is the **decision** — the
+moment where somebody could have done otherwise, which is the part §7 is
+actually asking for.
+
+| row | present | missing |
+|---|---|---|
+| overloaded crossing | `collapsing` edges with a `crossings` budget; crossings that consume gear | carried weight feeding the failure, and the stagger-or-jettison choice |
+| choking | `asphyxiation` as a cause (ash, silk) | the rushed-meal prerequisite, and assisted recovery revealing hidden company |
+| entrapment while scavenging | `collapse` damage in arena signatures | the brace / fetch help / leave decision while looting |
+| pursuit past exhaustion | `exhaustion` deaths in `survival.ts` | the stop-or-continue decision mid-chase, and the spared rival remembering it |
+| delayed trap interference | discovery (`Trap.knownBy`), disarming, `ownerId` | **turning** a trap, and a modification history that separates who set it from who last altered it |
+| water versus shelter | `waterSource` and `shelterQuality` as zone features | the trip itself as a costed choice against staying put |
+| contaminated dressing | `sepsis` through `engine/infection` | provenance on the dressing, so an infection traces to a batch rather than to bad luck |
+
+The trap row looked like the obvious next one to build and is not, which is
+worth recording because the reason generalises.
+
+Two of its three options already exist and are well made: **mark** it (`knownBy`
+plus zone threat, "reads the ground, steps around it, files the spot away") and
+**dismantle** it, with a botched-disarm branch that leaves the thing armed.
+Only **turn** it is missing, and turning is a field and a branch.
+
+But the branch is unreachable. Measured across 80 runs:
+
+    148 traps ever set
+    206 cycles with any trap standing
+    119 of those with a stranger standing on an unknown trap
+      3 spots, in total
+
+The opportunity arises 119 times and the awareness roll — `chance(awareness/20)
+&& !chance(concealment)` — converts about 2.5% of it. Adding a third option to a
+branch taken three times in eighty runs is the shared-cooking mistake with more
+ceremony: the beat would be correct, tested, narrated, and never seen.
+
+So the work on this row is the **opportunity**, not the option, and that is
+precisely what B4-02's funnel was built to be able to say. Whoever takes it
+should move the spot rate first and add turning afterwards, on a branch that
+somebody reaches.
 
 The audit's §6 table (one per arena) and §7 table (twelve universal chains).
 Each row needs a warning, an avoidance or mitigation, a nonfatal result and a
