@@ -142,6 +142,10 @@ jobs:
       # B5-01 §16: who is said to have killed whom. The ceiling again — a claim
       # that spreads without friction turns the arena into a lynch mob.
       - run: npm run test:accusations
+      # B6 §16: opportunity coverage. `test:sim` catches a beat that reaches
+      # zero; this catches one declared and never emitted, and one emitted
+      # that the union does not declare.
+      - run: npm run test:coverage
 
       # Content and structure.
       - run: npm run test:arenas
