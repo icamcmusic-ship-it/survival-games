@@ -8857,6 +8857,22 @@ export const CONFUSION = {
  */
 export const WARNINGS = {
     minRegard: 5,
+    /*
+     * AUDIT-10 B5-03: a false alarm.
+     *
+     * One of the twelve nonlethal events the audit names, and the one that
+     * makes every other warning mean something. A forecast that always lands is
+     * not a warning, it is a countdown, and acting on it is not a decision — it
+     * is arithmetic. The only reason ignoring a warning can be a choice is that
+     * a warning can be wrong.
+     *
+     * Deliberately small. This is not a lever on how dangerous the arena is:
+     * every hazard that would have landed still lands somewhere, because the
+     * hazard budget is set by the death-mix sliders, not by the forecast queue.
+     * It is a lever on how much a warning is worth, and one in nine is enough
+     * to make ignoring one defensible without making heeding one foolish.
+     */
+    falseAlarmChance: 0.11,
     /** Per willing pair per cycle. A warning is a conversation, not a broadcast. */
     chancePerPair: 0.45,
 };
