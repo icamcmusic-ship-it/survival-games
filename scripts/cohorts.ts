@@ -65,7 +65,7 @@ import { generateTributes } from '../src/engine/generator';
 import { resolveArenaForRun } from '../src/engine/arenaSetup';
 import { Simulator } from '../src/engine/simulator';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../src/data/constants';
-import { ArchetypeId, GameState, Tribute } from '../src/models/types';
+import { ArchetypeId, GameState } from '../src/models/types';
 import { configForProfile, gamesProfileFor } from '../src/engine/gamesProfile';
 
 const PAIRS = Number(process.env.COHORT_PAIRS ?? 200);

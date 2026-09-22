@@ -1408,6 +1408,14 @@ export interface Tribute {
     /** A2: whether this tribute's once-per-run archetype signature has fired. */
     signatureFired?: boolean;
     /**
+     * AUDIT-10 B4-02: the set piece fired *and* left something behind.
+     *
+     * Only written while a measurement harness has the funnel switched on, and
+     * only for the archetypes whose outcome has been defined — see
+     * `engine/funnel`.
+     */
+    signatureBenefited?: boolean;
+    /**
      * §8: the Scholar's foreknowledge, banked by their signature and spent the
      * next time the arena tries to kill them. Their signature fired for 59% of
      * Scholars and converted into nothing: it moved them one zone and gave
@@ -3360,6 +3368,13 @@ export interface GameState {
      * phase, day) to reseed from; this counter is what makes their stream
      * reproducible across a save and resume. See `triggerGamemakerEvent`.
      */
+    /**
+     * AUDIT-10 B4-02: opportunity-funnel counts, per archetype per stage.
+     *
+     * Present only when a measurement harness called `enableFunnel`. Absent in
+     * every ordinary run, which is deliberate — see `engine/funnel`.
+     */
+    funnel?: Record<string, Partial<Record<string, number>>>;
     gamemakerCommands?: number;
     /**
      * AUDIT-10 B3-01: what the player actually pressed, in order.

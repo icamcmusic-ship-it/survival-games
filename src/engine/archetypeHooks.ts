@@ -26,6 +26,7 @@ import { loseSanity } from './sanityBands';
 import { addNotoriety } from './notoriety';
 import { incurDebt } from './debts';
 import { chokepointByName } from '../models/types';
+import { noteStage, runFunnelOutcomes } from './funnel';
 
 /**
  * A2: the behavioural half of an archetype.
@@ -616,6 +617,18 @@ export const SIGNATURES: Record<string, Signature> = {
             .filter(o => o.zone !== t.zone)
             .sort((a, b) => b.trainingScore - a.trainingScore)[0];
         if (!quarry) return false;
+        /*
+         * B4-02: the Tracker's beat has one prerequisite and it is almost
+         * always met — somebody, somewhere else. So its funnel is flat by
+         * construction, and that is the finding: a signature that fires easily
+         * and an archetype with the lowest win rate in the game cannot both be
+         * explained by the firing rate. Whatever is wrong with the Tracker is
+         * downstream of the set piece, which is what `benefited` is for and
+         * why counting `fired` alone was never going to locate it.
+         */
+        noteStage(ctx, t, 'available');
+        noteStage(ctx, t, 'aware');
+        noteStage(ctx, t, 'affordable');
         say(ctx, t, 'trackerRead', [t.id, quarry.id], { quarry: quarry.name, heading: quarry.zone });
         // The only signature that hands its actor another tribute's position.
         addZoneThreat(ctx.state, t, quarry.zone, -MEMORY.hazardThreat);
@@ -902,11 +915,36 @@ export const SIGNATURES: Record<string, Signature> = {
          * sell something to. Both are real clients. Adding a route to a set
          * piece means adding it.
          */
+        /*
+         * B4-02: the three stages this beat can fail at, counted apart.
+         *
+         * The comment block above records, by hand, that a previous audit found
+         * "nobody in the zone 77.7% of the time, against only 10.2% where the
+         * broker had nothing to trade" — which is precisely a funnel reading,
+         * taken once, written down, and never measurable again. These make it
+         * standing: `available` is somebody here at all, `aware` is somebody
+         * here who counts as a client, and `affordable` is the narrow one —
+         * holding the particular thing that client is short of, and able to
+         * spare it.
+         *
+         * `affordable` is deliberately narrower than the firing condition, so
+         * it reads lower than `fired` rather than above it. That is not a
+         * miscount: a broker also fires on two looser routes (somebody much
+         * needier than them, somebody with a smaller pack), and the gap between
+         * the two numbers is the interesting quantity — it is how often the
+         * beat lands as a vague transaction rather than as the trade the
+         * archetype is named for.
+         */
+        if (here.length > 0) noteStage(ctx, t, 'available');
         const client = here
             .filter(o => sellable(o).length > 0
                 || need(o) > need(t) + ARCHETYPE_HOOKS.brokerNeedGap
                 || o.inventory.length < t.inventory.length)
             .sort((a, b) => need(b) - need(a))[0];
+        if (client) {
+            noteStage(ctx, t, 'aware');
+            if (sellable(client).length > 0) noteStage(ctx, t, 'affordable');
+        }
         if (!client) {
             /*
              * AUDIT-9 stage E: a broker who cannot see a client goes looking
@@ -1175,11 +1213,19 @@ export function runArchetypeSignatures(ctx: SimContext) {
         if (!key) return;
         const fn = SIGNATURES[key];
         if (!fn) return;
+        // B4-02: the three stages this dispatch can see. Everything between
+        // `offered` and `fired` is inside the beat itself and is recorded
+        // there — the point of the funnel is that the gap between these two
+        // numbers is not one fact.
+        noteStage(ctx, t, 'eligible');
         // Signatures are set pieces, not per-cycle noise: they wait for a
         // cycle the beat can plausibly land on.
         if (!ctx.rng.chance(ARCHETYPE_HOOKS.signatureChancePerCycle)) return;
-        if (fn(ctx, t)) t.signatureFired = true;
+        noteStage(ctx, t, 'offered');
+        if (fn(ctx, t)) { t.signatureFired = true; noteStage(ctx, t, 'fired'); }
     });
+    // B4-02: and whether anything came of the ones that fired earlier.
+    runFunnelOutcomes(ctx);
 }
 
 /**

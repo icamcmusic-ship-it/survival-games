@@ -115,6 +115,9 @@ jobs:
       # B3-01: a link that says it replays a run has to replay it. The guard
       # fires real Gamemaker commands and compares the outcomes.
       - run: npm run test:replay
+      # B4-02: the funnel's own precondition — an instrument that changes what
+      # it measures is not an instrument. The report asserts it before printing.
+      - run: npm run funnel
 
       # Content and structure.
       - run: npm run test:arenas

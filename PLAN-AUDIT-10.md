@@ -255,7 +255,7 @@ scenario inputs and deterministic random streams. **A shared seed alone is not
 a clean counterfactual** if an earlier branch consumes different draws. This is
 the instrument the rest of the batch needs and it does not exist yet.
 
-### B4-02 — the opportunity funnel
+### B4-02 — the opportunity funnel — **done for the two named cases**
 
 Per signature: alive long enough → prerequisite available → aware of the
 opportunity → legal action affordable → attempted → succeeded → lasting
