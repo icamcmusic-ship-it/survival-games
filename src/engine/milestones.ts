@@ -71,7 +71,19 @@ export type MilestoneId =
      * A reworded line breaking a build is an annoyance rather than a silently
      * mis-awarded achievement, but the fix is identical and already written.
      */
-    | 'project-inherited';
+    | 'project-inherited'
+    /**
+     * AUDIT-10 B5-03: two wounded people, one treatment, and the moment the
+     * question was actually posed.
+     *
+     * Three ids rather than one, because the interesting number is not how
+     * often somebody was generous — it is how often the situation arose at all,
+     * and what share of those went each way. A count of gifts with no
+     * denominator says nothing about whether the beat is working.
+     */
+    | 'treatment-scarcity'
+    | 'treatment-given'
+    | 'treatment-refused';
 
 /*
  * Deliberately *not* here: traps and mutts. Both were on the first draft of

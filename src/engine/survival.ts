@@ -3,6 +3,7 @@ import { ARENA_LAWS, CAREER_APPETITE, ZONES, POISONING, FATIGUE_MISTAKES, SANITY
 import { SimContext, getAlive } from './context';
 import { adjustRel, getRel } from './relationships';
 import { samePlace } from './verticality';
+import { resolveTreatmentScarcity } from './triage';
 import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
 import { applyExposure } from './exposure';
@@ -635,6 +636,24 @@ function consumeSupplies(ctx: SimContext, t: Tribute) {
      * times is better at packing a wound; that is the whole premise of the
      * proficiency system, and this is the one place it was not applied.
      */
+    /*
+     * AUDIT-10 B5-03: treatment scarcity, posed before the kit is spent.
+     *
+     * It has to run here rather than after. A decision about who gets the last
+     * bandage, taken once the holder has already used it, is not a decision —
+     * it is a refund.
+     *
+     * Its result is deliberately ignored. A first version returned early when
+     * the kit was given away, which also skipped the splint, the willowbark and
+     * everything else below — so a tribute who handed over a bandage could no
+     * longer set their own broken arm, which is not what giving away a bandage
+     * means. Nothing needs to be skipped: the beat only fires when the holder
+     * has exactly one treatment item, so once it is gone every `consumeOne`
+     * below finds nothing of its own accord, and treatments for other injuries
+     * are untouched.
+     */
+    resolveTreatmentScarcity(ctx, t);
+
     // Antidote cures poison before it becomes lethal.
     if (t.injuries.poisoned) {
         /*

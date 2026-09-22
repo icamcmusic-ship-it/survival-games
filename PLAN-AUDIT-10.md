@@ -393,10 +393,9 @@ rescue under load (`rescueLine`, with anchors and a cut-line attribution fixed
 in batch 1), failed stabilization (`attemptFieldDressing`, costing time and
 restarting the neglect clock).
 
-Verified absent: **treatment scarcity** as the audit describes it — two injured
-people, one treatment, and a choice about who gets it, with triage reading
-differently from deliberate refusal. The Medic's signature treats one person;
-nothing poses the scarcity.
+**Treatment scarcity is now built** — it was the one row verified absent, and
+it is . Posed 473 times across 69 of 80 runs, resolving 37%
+given / 32% noticed refusal / 32% kept quietly.
 
 Not yet surveyed: overloaded crossing, choking, entrapment while scavenging,
 pursuit past exhaustion, delayed trap interference, water versus shelter,
