@@ -43,6 +43,7 @@
     "test:wounds": "tsx scripts/check-wound-ledger.ts",
     "test:replay": "tsx scripts/check-replay.ts",
     "test:textscale": "node scripts/check-textscale.mjs",
+    "test:warnings": "tsx scripts/check-warnings.ts",
     "funnel": "tsx scripts/funnel.ts",
     "cohorts": "tsx scripts/cohorts.ts",
     "catalog": "tsx scripts/catalog.ts",

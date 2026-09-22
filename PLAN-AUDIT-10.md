@@ -304,7 +304,7 @@ ledgers and protected reserves (batch 1 started this at F11); real reunions;
 coalitions with a target and an expiry; earned endgame relationships seeded
 through routes and contested resources rather than assigned at the finale.
 
-### B5-02 — arena systems
+### B5-02 — arena systems — **forecast lead time measured and guarded; the rest open**
 
 Topology that matters (directed and conditionally passable edges, capacity,
 traversal time, level, noise, load). Persistent projects that belong to the
