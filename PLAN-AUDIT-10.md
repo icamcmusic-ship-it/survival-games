@@ -320,10 +320,26 @@ guarded (no forecast may be due on the cycle it is announced); hazard warning
 coverage measured at 62%, reported rather than guarded because raising it means
 forecasting hazards that do not forecast today, which is a death-mix change.
 
-Open: topology that matters (directed and conditionally passable edges,
-capacity, traversal time, noise, load), recovery and opportunity so late games
-are not all accumulation of punishment, procedural compatibility from
-capability tags.
+Open, and smaller than the item's wording suggests. Surveyed rather than
+assumed, because the previous two items each turned out to be partly built:
+
+`EdgeRule` already covers directed edges (`oneWay`, `from`/`to`), conditional
+passability (`timeGated`, `hidden`, `contested`), capacity (`crossings`) and
+traversal time (`toll.timeCost`). Level is `ZoneLevel` and `engine/verticality`.
+Load is `engine/loadBearing`'s structural fatigue. Noise exists as a
+position-revealing consequence (`revealNoisyBreakdowns`, and `canObserve`'s
+sightlines) but **not** as a property of a crossing — a route that is loud to
+take is the one genuinely missing piece of the list.
+
+Also open: recovery and opportunity, so late games are not all accumulation of
+punishment; and procedural compatibility from capability tags.
+
+A note for whoever does the recovery item. `arenaSignature` already has a
+telegraph that lies (`PROC_SIGNATURE.falseChance*`, 15-35%), which was found
+*after* B5-03's forecast false alarm was built rather than before. The two are
+genuinely different — one is a Capitol broadcast with reason to mislead, the
+other is somebody reading the ground — but the search should have happened
+first.
 
 Topology that matters (directed and conditionally passable edges, capacity,
 traversal time, level, noise, load). Persistent projects that belong to the

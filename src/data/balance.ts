@@ -8897,6 +8897,14 @@ export const WARNINGS = {
      * hazard budget is set by the death-mix sliders, not by the forecast queue.
      * It is a lever on how much a warning is worth, and one in nine is enough
      * to make ignoring one defensible without making heeding one foolish.
+     *
+     * Lower than `PROC_SIGNATURE.falseChanceMin/Max` (0.15-0.35), and the gap
+     * is the point rather than an oversight. That is an arena signature's
+     * *telegraph* — a broadcast, which the Capitol has every reason to make
+     * misleading. This is a forecast, which is somebody reading the actual
+     * ground: it is wrong because weather is wrong, not because anybody is
+     * lying, so it should be wrong less often. Found after building this one,
+     * which is an argument for looking harder before adding a mechanism.
      */
     falseAlarmChance: 0.11,
     /** Per willing pair per cycle. A warning is a conversation, not a broadcast. */
