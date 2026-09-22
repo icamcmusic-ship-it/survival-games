@@ -38,6 +38,7 @@ import { armourOf, effectiveDamage, encumbranceOf, wearArmour } from './items';
 import { isAggressiveStance, isEvasiveStance } from '../data/stances';
 import { loseSanity } from './sanityBands';
 import { composureOf } from './composure';
+import { recordWound, reattributeWound } from './woundLedger';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -320,7 +321,7 @@ function finishRiggedSave(ctx: SimContext, t: Tribute, amount: number): boolean 
     const taken = Math.max(0, t.health - floor);
     if (taken > 0) {
         t.health -= taken;
-        t.lastDamage = { ...t.lastDamage, cause: t.lastDamage?.cause ?? 'The arena, and the Gamemakers\' opinion of it', kind: 'gamemaker', cycle: cycleOf(ctx.state), amount: taken };
+        recordWound(t, { ...t.lastDamage, cause: t.lastDamage?.cause ?? 'The arena, and the Gamemakers\' opinion of it', kind: 'gamemaker', cycle: cycleOf(ctx.state), amount: taken });
         clampTribute(t);
     }
     void amount;
@@ -509,7 +510,7 @@ export function applyDamage(
 
     const before = t.health;
     t.health -= amount;
-    t.lastDamage = { ...record, cycle: cycleOf(ctx.state), amount };
+    recordWound(t, { ...record, cycle: cycleOf(ctx.state), amount });
     clampTribute(t);
     // A §8: one blow that takes somebody through the line puts them in shock
     // for a cycle — a near-death that is not a wound and not a breakdown.
@@ -543,8 +544,13 @@ export function applyDamage(
  */
 export function selfInflictedDeath(ctx: SimContext, t: Tribute, cause: string, silent = false, code: DeathCauseCode = 'self-inflicted') {
     if (t.status !== 'alive') return;
-    t.lastDamage = { cause, code, kind: 'status', cycle: cycleOf(ctx.state), amount: t.health };
+    // The health goes first: `recordWound` stamps what the blow left them at
+    // from `t.health`, and recording before zeroing put eight tributes who
+    // stepped off the plate on the ledger as finished by a blow that left them
+    // at a hundred.
+    const taken = t.health;
     t.health = 0;
+    recordWound(t, { cause, code, kind: 'status', cycle: cycleOf(ctx.state), amount: taken });
     clampTribute(t);
     checkDeath(ctx, t, cause, silent);
 }
@@ -1767,7 +1773,7 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
     // every ordinary kill, because `applyDamage` wrote it moments ago — this
     // is a no-op. The marker goes with it: a corpse is not in a rescue window.
     if (killer && victim.lastDamage?.sourceId !== killer.id) {
-        victim.lastDamage = {
+        reattributeWound(victim, {
             cause: cause
                 || (weapon ? `Killed by ${killer.name} (${weapon.name})` : `Killed by ${killer.name}`),
             kind: 'tribute',
@@ -1775,7 +1781,7 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             sourceId: killer.id,
             cycle: cycleOf(ctx.state),
             amount: victim.lastDamage?.amount ?? 0,
-        };
+        });
     }
     delete victim.downed;
 

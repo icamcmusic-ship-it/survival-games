@@ -12,6 +12,7 @@ import { hopsTo, severedEdgeSet } from './map';
 import { canReach, noteAttempt, noteRefusal } from './actions';
 import { killTribute, enterShock } from './combat';
 import { loseSanity } from './sanityBands';
+import { reattributeWound } from './woundLedger';
 
 /**
  * §9.1: the downed state and the rescue window.
@@ -141,7 +142,7 @@ function finish(
         return;
     }
     delete t.downed;
-    t.lastDamage = {
+    reattributeWound(t, {
         cause,
         kind: killer ? 'tribute' : (arenaKind?.kind ?? t.lastDamage?.kind ?? 'status'),
         // A finished tribute is a tribute kill; an expired one keeps whatever
@@ -150,7 +151,7 @@ function finish(
         sourceId: killer?.id,
         cycle: cycleOf(ctx.state),
         amount: t.lastDamage?.amount ?? 0,
-    };
+    });
     killTribute(ctx, t, killer, { cause, silent });
 }
 

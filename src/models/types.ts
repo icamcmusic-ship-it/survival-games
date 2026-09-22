@@ -674,6 +674,15 @@ export type DeathCauseCode =
     /** Nothing claimed it. `check-cause-codes` fails the build on this. */
     | 'unknown';
 
+/** AUDIT-10 B3-01: one Gamemaker command, as recorded and as replayed. */
+export interface InterventionRecord {
+    cycle: number;
+    type: string;
+    targetId?: string;
+    /** Fired by the Capitol's calendar rather than by the player. */
+    scheduled?: boolean;
+}
+
 export interface DamageRecord {
     /** Human-readable cause, used verbatim as cause of death. */
     cause: string;
@@ -693,6 +702,17 @@ export interface DamageRecord {
     /** Cycle index the wound landed. */
     cycle: number;
     amount: number;
+    /**
+     * AUDIT-10 B3-02: health immediately after this blow, captured where it
+     * landed.
+     *
+     * The ledger's first draft reconstructed this by subtracting backwards
+     * from the tribute's current health, which is exact for the last wound and
+     * a lie for every earlier one: it silently assumes nobody ever healed, and
+     * a tribute who ate, slept and had a wound dressed heals a great deal.
+     * Recording it at the site costs a number and cannot drift.
+     */
+    healthAfter?: number;
 }
 
 export interface Tribute {
@@ -743,10 +763,32 @@ export interface Tribute {
     dayOfDeath?: number;
     zone: string;
     allianceId?: string;
+    /**
+     * AUDIT-10 B3-03: has this tribute *ever* been in an alliance.
+     *
+     * `allianceId` is the present tense and says nothing about a pack that
+     * broke up on day three, so "never once joined an alliance" was asked of
+     * the chronicle instead — and the chronicle is trimmed. `lone-wolf` is a
+     * negation over it, so a short tail did not cost the achievement, it
+     * *awarded* one: twenty per cent of trimmed runs crowned a "legendary"
+     * loner who had spent the first week in a pack. Stamped where an alliance
+     * is registered and again on every upkeep sweep, so leaving one cannot
+     * unsay it.
+     */
+    everAllied?: boolean;
     /** Everything this tribute has learned since the reaping. */
     memory: TributeMemory;
     /** The last thing that hurt them — the real cause of death, not a guess. */
     lastDamage?: DamageRecord;
+    /**
+     * AUDIT-10 B3-02: every wound, in the order they landed.
+     *
+     * `lastDamage` is the killing blow, and a killing blow explains a death the
+     * way the final domino explains the row: a tribute who bled out on day six
+     * was cut on day two, and only the chronicle ever said so. Bounded and
+     * written through `recordWound` — see `engine/wounds`.
+     */
+    wounds?: DamageRecord[];
     /**
      * AUDIT-9 stage C §3: hours left in this cycle. See `engine/actionBudget`.
      *
@@ -3319,6 +3361,40 @@ export interface GameState {
      * reproducible across a save and resume. See `triggerGamemakerEvent`.
      */
     gamemakerCommands?: number;
+    /**
+     * AUDIT-10 B3-01: what the player actually pressed, in order.
+     *
+     * `gamemakerCommands` is a counter, and a counter is enough to *declare* a
+     * run unreproducible and not enough to reproduce it. The log is, because
+     * the stream each command draws from is already derived from (seed, cycle,
+     * type, command index) rather than from wherever the shared stream was
+     * standing — see `triggerGamemakerEvent`. So the Nth command of a type on a
+     * cycle draws the same numbers however the run got there, and replaying
+     * the list in order replays the interventions exactly.
+     *
+     * `capitolSchedule` commands are the Capitol's own calendar rather than the
+     * player's, and they are recorded too: the receiver's calendar fires from
+     * the same seed, so a replay that re-fired them would double them.
+     */
+    interventionLog?: InterventionRecord[];
+    /**
+     * AUDIT-10 B3-01: interventions a replay link brought with it, waiting for
+     * their cycle.
+     *
+     * Only the player's own commands are here. The Capitol's scheduled ones are
+     * recorded in the log for honesty but never replayed: the receiver's
+     * calendar fires from the same seed, so replaying them would fire each one
+     * twice.
+     */
+    plannedInterventions?: InterventionRecord[];
+    /**
+     * AUDIT-10 B3-01: this run began as a replay and stopped being one.
+     *
+     * Set when the player fires a Gamemaker command during a replay, which
+     * abandons the rest of the recording. Read by the interface so a branched
+     * run is not still labelled as a replay of somebody else's Games.
+     */
+    replayBranched?: boolean;
     /** §6.6: tribute id -> cycle a player parachute last reached them. Blocs read it as "covered". */
     playerGiftCycle?: Record<string, number>;
     /** §7.6: tribute id -> cycle their mentor pointedly withheld a gift. */
@@ -3350,6 +3426,19 @@ export interface GameState {
      * corrupted record rather than a setting.
      */
     riggedVictorId?: string;
+    /**
+     * AUDIT-10 B3-03: typed facts about the run, recorded where they happen.
+     *
+     * Achievement predicates used to scan `log` for them — with regular
+     * expressions over the prose, in ten cases — which made a reworded line
+     * able to grant or withhold an achievement, and made *every* such predicate
+     * hostage to the chronicle trimming that `writeSave` performs when storage
+     * is short. Neither is a property a record should have.
+     *
+     * Bounded: one entry per kind of fact, not per occurrence. See
+     * `engine/milestones.ts`.
+     */
+    milestones?: Record<string, { count: number; firstCycle: number; who?: string[] }>;
 }
 
 export interface EventLog {

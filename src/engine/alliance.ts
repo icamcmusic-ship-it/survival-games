@@ -364,6 +364,9 @@ export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]
         roles: isLoversBond ? undefined : assignRoles(members, leader),
     };
     records[id] = record;
+    // B3-03: the permanent half of `allianceId`, which is only ever the
+    // present tense. See `Tribute.everAllied`.
+    members.forEach(m => { m.everAllied = true; });
     announceCharter(ctx, record, members);
     /*
      * AUDIT-8 §3.5: `oratory` is the skill for addressing a *group*, and it had

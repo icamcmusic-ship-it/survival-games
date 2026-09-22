@@ -126,6 +126,16 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                     const occupants = tributes.filter(t => t.status === 'alive' && t.zone === zone.name);
                     const isSelected = selectedZone === zone.name;
                     const stock = effectiveResources(gameState, zone);
+                    /*
+                     * B3-02: a hazard that has been announced and has not landed.
+                     * On the card rather than only in the dossier, because the
+                     * grid is where a player decides which sector to look at, and
+                     * a warning nobody opens is a warning nobody got.
+                     */
+                    const pending = (gameState.forecasts ?? []).filter(f => f.zone === zone.name);
+                    const soonest = pending.reduce<number | undefined>(
+                        (lo, f) => (lo === undefined || f.dueCycle < lo ? f.dueCycle : lo), undefined);
+                    const cyclesOut = soonest === undefined ? undefined : soonest - (gameState.cycle ?? 0);
 
                     return (
                         <button
@@ -134,7 +144,7 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                             aria-pressed={isSelected}
                             // The card's own text is a pile of glyphs and percentages;
                             // spoken, it needs to be one sentence about one sector.
-                            aria-label={`${zone.name} — ${zone.terrain}, ${dangerLabel(zone.danger)} danger, ${Math.round(stock * 100)}% supplies, ${occupants.length} tribute${occupants.length === 1 ? '' : 's'} present${isCollapsed ? ', out of bounds' : ''}. ${isSelected ? 'Selected — activate to clear' : 'Activate to show only its events'}`}
+                            aria-label={`${zone.name} — ${zone.terrain}, ${dangerLabel(zone.danger)} danger, ${Math.round(stock * 100)}% supplies, ${occupants.length} tribute${occupants.length === 1 ? '' : 's'} present${isCollapsed ? ', out of bounds' : ''}${pending.length > 0 ? `, ${pending.map(f => f.kind).join(' and ')} forecast${cyclesOut !== undefined && cyclesOut > 0 ? ` in ${cyclesOut} cycles` : ' now due'}` : ''}. ${isSelected ? 'Selected — activate to clear' : 'Activate to show only its events'}`}
                             className={`panel-flush p-3.5 text-left transition-all flex flex-col justify-between gap-3 min-h-[136px] hover:border-[var(--color-ink-600)] ${
                                 isSelected ? 'ring-2 ring-[var(--red)] border-[var(--red)]' : ''
                             } ${isCollapsed ? 'opacity-60' : ''}`}
@@ -144,9 +154,20 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                                     <span className="eyebrow" style={{ color: isCollapsed ? 'var(--cat-death)' : 'var(--cat-alliance)' }}>
                                         {isCollapsed ? '● Collapsed' : '● Active'}
                                     </span>
-                                    {occupants.length > 0 && (
-                                        <span className="chip chip-accent">{occupants.length} here</span>
-                                    )}
+                                    <span className="flex items-center gap-1 flex-none">
+                                        {pending.length > 0 && (
+                                            <span
+                                                className="chip"
+                                                style={{ color: 'var(--cat-hazard)', borderColor: 'var(--cat-hazard)' }}
+                                            >
+                                                {pending.map(f => f.kind).join(' · ')}
+                                                {cyclesOut !== undefined && (cyclesOut > 0 ? ` in ${cyclesOut}` : ' now')}
+                                            </span>
+                                        )}
+                                        {occupants.length > 0 && (
+                                            <span className="chip chip-accent">{occupants.length} here</span>
+                                        )}
+                                    </span>
                                 </div>
                                 <h4 className="font-extrabold text-sm leading-snug text-[var(--ink)]">
                                     {TERRAIN_ICONS[zone.terrain] || ''} {zone.name}

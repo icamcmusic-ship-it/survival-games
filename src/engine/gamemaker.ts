@@ -125,8 +125,37 @@ export function gamemakerCooldownRemaining(state: GameState, type: GamemakerEven
     return Math.max(0, GAMEMAKER.eventCooldownCycles - ((state.cycle ?? 0) - use.lastCycle));
 }
 
-export function triggerGamemakerEvent(ctx: SimContext, type: GamemakerEventType, targetId?: string, capitolSchedule = false) {
+export function triggerGamemakerEvent(ctx: SimContext, type: GamemakerEventType, targetId?: string, capitolSchedule = false, replaying = false) {
     if (!ctx.state.gamemakerMode) return;
+
+    /*
+     * AUDIT-10 B3-01: the interactive branch.
+     *
+     * A replay is a recording until somebody touches the controls. The moment
+     * the player fires a command of their own, the run stops being the one that
+     * was recorded, and firing the rest of the recording into it would splice
+     * two different Games together — the receiver would watch a run that is
+     * neither the sender's nor their own and be told it was the sender's.
+     *
+     * So the queue is abandoned on the first manual command, and the chronicle
+     * says so. Not silently: a player who took the controls deserves to know
+     * the recording stopped, and a run that quietly stopped being a replay
+     * while still wearing the Replay badge is the exact dishonesty F19 exists
+     * to prevent. The Capitol's own scheduled commands do not branch it — they
+     * are the receiver's calendar firing from the same seed, which the sender's
+     * run did too.
+     */
+    if (!replaying && !capitolSchedule && (ctx.state.plannedInterventions?.length ?? 0) > 0) {
+        const abandoned = ctx.state.plannedInterventions!.length;
+        delete ctx.state.plannedInterventions;
+        ctx.state.replayBranched = true;
+        ctx.logEvent(
+            `GAMEMAKER: the booth takes the controls. This was a replay of somebody else's Games; it is not any more. `
+            + `${abandoned} recorded command${abandoned === 1 ? '' : 's'} will not be played back, and what happens from here is yours.`,
+            [],
+            { category: 'gamemaker', important: true }
+        );
+    }
 
     // §6.7: per-event cooldown. The arena's machinery needs resetting between
     // uses, and the broadcast needs the intervention to still read as one.
@@ -172,6 +201,12 @@ export function triggerGamemakerEvent(ctx: SimContext, type: GamemakerEventType,
      */
     const commandIndex = (ctx.state.gamemakerCommands ?? 0) + 1;
     ctx.state.gamemakerCommands = commandIndex;
+    // B3-01: the counter says a run cannot be reproduced; the log is what makes
+    // it reproducible. Written here, beside the counter it qualifies, so the two
+    // cannot fall out of step.
+    (ctx.state.interventionLog ??= []).push({
+        cycle, type, ...(targetId ? { targetId } : {}), ...(capitolSchedule ? { scheduled: true } : {}),
+    });
     const ambient = ctx.rng;
     ctx.rng = new RNG(`${ctx.state.seed}-gm-${cycle}-${type}-${commandIndex}`);
     try {
@@ -179,6 +214,36 @@ export function triggerGamemakerEvent(ctx: SimContext, type: GamemakerEventType,
     } finally {
         ctx.rng = ambient;
     }
+}
+
+/**
+ * AUDIT-10 B3-01: fire the interventions a replay link brought with it.
+ *
+ * Called once per cycle, after the counter advances. Each command's random
+ * stream is derived from (seed, cycle, type, command index), so firing the same
+ * list at the same cycles in the same order draws the same numbers the sender's
+ * run drew — which is what makes this a replay rather than a re-enactment.
+ *
+ * Scheduled commands are skipped. They are in the log because a record of what
+ * happened should be complete, but the receiver's Capitol calendar fires from
+ * the same seed and will fire them itself; replaying them would double every
+ * one.
+ *
+ * Entries are consumed whether or not they land, including ones whose cycle has
+ * already gone past — a command left in the queue would fire late on some later
+ * cycle and put the replay further from the original than dropping it does.
+ */
+export function replayPlannedInterventions(ctx: SimContext) {
+    const queue = ctx.state.plannedInterventions;
+    if (!queue || queue.length === 0) return;
+    const now = cycleOf(ctx.state);
+    const due = queue.filter(a => a.cycle <= now);
+    if (due.length === 0) return;
+    ctx.state.plannedInterventions = queue.filter(a => a.cycle > now);
+    due.forEach(a => {
+        if (a.scheduled) return;
+        triggerGamemakerEvent(ctx, a.type as GamemakerEventType, a.targetId, false, true);
+    });
 }
 
 function runGamemakerEvent(

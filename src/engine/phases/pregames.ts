@@ -15,6 +15,7 @@ import { addNotoriety } from '../notoriety';
 import { campaignOf } from '../campaign';
 import { ordinal } from '../gamesProfile';
 import { loseSanity } from '../sanityBands';
+import { noteMilestone } from '../milestones';
 
 
 const fill = (template: string, vars: Record<string, string>) =>
@@ -211,6 +212,12 @@ export function processSquare(ctx: SimContext) {
                 const line = ctx.pickText(DISTRICT_SALUTE)
                     .split('{tribute}').join(t.name)
                     .split('{district}').join(String(t.district));
+                // B3-03: the salute, as a fact. The achievement for it used to
+                // match /three[- ]finger/i against the whole chronicle, and the
+                // arena flavour tables contain "a crack opens across {zone},
+                // three fingers wide" — a crack in the ground was awarding a
+                // district's salute.
+                noteMilestone(ctx, 'salute-given', [t.id]);
                 ctx.logEvent(line, [t.id], { important: true, category: 'system' });
                 t.reapingNote = `${t.reapingNote ?? ''} The district gave them the three-finger salute.`.trim();
                 addExcitement(t, PREGAMES.saluteExcitement);

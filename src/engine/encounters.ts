@@ -37,6 +37,7 @@ import { OBJECTIVES, QUALITY_BIAS } from '../data/balance';
 import { isAggressiveStance, isDefensiveStance, isEvasiveStance } from '../data/stances';
 import { exhaustedHere, freshGround, isBeingFollowed, layFalseTrail, noteForageFailure, noteForageSuccess } from './intent';
 import { loseSanity } from './sanityBands';
+import { noteMilestone } from './milestones';
 
 export function fill(template: string, vars: Record<string, string>): string {
     return Object.entries(vars).reduce(
@@ -1018,6 +1019,8 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
         if (ally) {
             if (ally.injuries.bleeding && ctx.rng.chance(STANCE_MODES.nursing.staunchBase + profOf(t, 'medicine') * STANCE_MODES.nursing.staunchPerMedicine)) {
                 clearBleeding(ally);
+                // B3-03: the fact, beside the sentence about it.
+                noteMilestone(ctx, 'bleeding-stopped', [t.id, ally.id]);
                 ctx.logEvent(`${t.name} gets ${ally.name}'s bleeding stopped in ${t.zone}.`, [t.id, ally.id], { category: 'injury', zone: t.zone });
             }
             ally.vitals.sanity = Math.min(100, ally.vitals.sanity + STANCE_MODES.nursing.allySanity);
@@ -1041,6 +1044,7 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
         if (t.injuries.bleeding
             && ctx.rng.chance(STANCE_MODES.tending.mendBase + profOf(t, 'medicine') * STANCE_MODES.tending.mendPerMedicine)) {
             clearBleeding(t);
+            noteMilestone(ctx, 'bleeding-stopped', [t.id]);
             ctx.logEvent(`${t.name} gets their own bleeding stopped in ${t.zone}.`, [t.id], { category: 'injury', zone: t.zone });
         }
         t.vitals.fatigue = Math.max(0, t.vitals.fatigue - STANCE_MODES.tending.fatigueRelief);
@@ -1071,6 +1075,10 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
 
     // Audit 5 §12: the perimeter. The turn is the neighbouring sectors.
     if (t.stance === 'Patrolling') {
+        // B3-03: the fact. The achievement for this matched three specific
+        // sentences out of the patrol flavour pool, so the other lines in that
+        // same pool — the ones the pool exists to vary between — did not count.
+        noteMilestone(ctx, 'patrol-posted', [t.id]);
         say('patrol');
         reachableZones(ctx.state.arena, t.zone, ctx.state.collapsedZones ?? []).forEach(z => {
             noteSighting(ctx.state, t, z.name, getAlive(ctx.state).filter(o => o.zone === z.name && o.allianceId !== t.allianceId).length, depletionOf(ctx.state, z.name));

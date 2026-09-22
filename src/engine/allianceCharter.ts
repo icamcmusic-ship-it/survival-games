@@ -38,6 +38,15 @@ const RULE_TEXT: Record<CharterRule, string> = {
     'leader-decides-targets': 'nobody picks a fight the leader has not picked',
 };
 
+/**
+ * The clause in the words the group swore it, for anything that has to name a
+ * single rule rather than summarise the lot — the ledger names a breach by the
+ * clause it broke, and 'no-looting-the-fallen' is an identifier, not a term.
+ */
+export function ruleText(rule: CharterRule): string {
+    return RULE_TEXT[rule];
+}
+
 /** Rolls the clauses a new alliance agrees to, from its members' natures. */
 export function rollCharter(rng: RNG, members: Tribute[]): CharterRule[] {
     // Each clause is weighted by who is signing it. A group with somebody

@@ -4,7 +4,7 @@
  */
 
 import { decodeCampaignResult } from './utils/campaignLink';
-import { fidelityMessage, fidelityOf } from './utils/replayManifest';
+import { fidelityMessage, fidelityOf, parseInterventionLog } from './utils/replayManifest';
 import React, { Suspense, lazy, useEffect, useState } from 'react';
 import { Settings2, Swords } from 'lucide-react';
 import { ShareButton } from './components/ShareButton';
@@ -185,6 +185,7 @@ export default function App() {
        * untrusted input and a malformed payload reads as no history.
        */
       const decoded = decodeCampaignResult(params.get('campaign'));
+      const plannedInterventions = parseInterventionLog(params.get('log'));
       /*
        * AUDIT-10 F19: say which of the four kinds of reproduction this is
        * before the Games starts, rather than letting every link imply the
@@ -197,12 +198,16 @@ export default function App() {
         revision: params.get('rev') ?? undefined,
         veteransSeated: Number(params.get('vets') ?? 0) || 0,
         interventions: Number(params.get('acts') ?? 0) || 0,
+        // B3-01: how many of them the link actually brought. A log that was
+        // truncated to fit, or mangled in transit, carries fewer than the count
+        // says — and the manifest is built to report exactly that gap.
+        carriedInterventions: plannedInterventions.length,
       };
       const fidelity = fidelityOf(fidelityInputs);
       const notice = decoded.status === 'rejected'
         ? `${decoded.reason ?? 'The campaign attached to this link could not be read.'} ${fidelityMessage(fidelity, fidelityInputs)}`
         : fidelity === 'exact' ? null : fidelityMessage(fidelity, fidelityInputs);
-      void gameActions.startGame(urlSeed, urlArena, urlGamemaker, config, true, false, pinnedQuellId, decoded.snapshot)
+      void gameActions.startGame(urlSeed, urlArena, urlGamemaker, config, true, false, pinnedQuellId, decoded.snapshot, plannedInterventions)
         .then(() => gameActions.setLinkNotice(notice));
       bootedFromLink = true;
       // Consume the replay params so a later refresh doesn't relaunch it.
@@ -255,7 +260,12 @@ export default function App() {
 
           <nav aria-label="Primary" className="flex gap-1 items-center flex-wrap">
             {isReplayedRun && gameState && (
-              <span className="chip chip-coin hidden sm:inline-flex">Replay · {gameState.seed}</span>
+              // B3-01: a run the player took the controls of is no longer a
+              // replay of anybody's Games, and a badge that still says so is
+              // the same false claim F19 exists to prevent.
+              <span className="chip chip-coin hidden sm:inline-flex">
+                {gameState.replayBranched ? 'Branched from' : 'Replay'} · {gameState.seed}
+              </span>
             )}
             <span className="chip chip-gold" role="status" aria-label={`${coins} Capitol Coins available for wagers`} title="Capitol Coins available for wagers">{coins} <span aria-hidden="true">⨷</span></span>
             {gameState && (
@@ -263,7 +273,9 @@ export default function App() {
                 // F19: the two inputs the link cannot carry, counted off the
                 // run so the control can describe itself honestly.
                 veteransSeated={gameState.veteransSeated?.length ?? 0}
-                interventions={gameState.gamemakerCommands ?? 0} />
+                interventions={gameState.gamemakerCommands ?? 0}
+                // B3-01: and the one it now can — the commands themselves.
+                interventionLog={gameState.interventionLog} />
             )}
             {/* Real links now that screens are real routes: the address bar
                 follows them, and middle-click / open-in-new-tab work. The click
