@@ -2954,6 +2954,16 @@ export interface GameState {
     /** Monotonic counter guaranteeing unique event log ids. */
     logCounter?: number;
     /**
+     * §16 / batch 6: the categories of the last few headlined lines.
+     *
+     * On the state rather than in the context for the same reason `usedText`
+     * is: a save/resume builds a fresh `SimContext`, and a context-local
+     * buffer would reset there, so a resumed run would headline a different
+     * set of lines than the same seed did first time round. Bounded to what
+     * `STORY_PACING.sameCategoryHeadlines` needs to look back over.
+     */
+    recentHeadlines?: string[];
+    /**
      * §13 (requests): how many lines the current (day, phase) has already
      * produced, and which (day, phase) that is. The arena clock walks forward
      * through a phase as its lines land, so a stamp is a position in the phase

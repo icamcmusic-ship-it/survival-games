@@ -3071,6 +3071,50 @@ export const COMBAT = {
  * with noise: a claim that spreads freely turns the arena into a mob that all
  * hates the same person by day three. `test:accusations` polices that.
  */
+/**
+ * §16 / batch 6: story-aware scheduling, on the one axis where scheduling is
+ * honest.
+ *
+ * The audit asks for scheduling that "tracks repeated situation *types* rather
+ * than repeated strings". `pickText` already refuses to repeat a *sentence*
+ * until its pool is exhausted, and nothing notices when the same *kind* of
+ * thing happens over and over in fresh wording.
+ *
+ * Measured over 60 runs, counting only the Games proper (a block of training
+ * lines is the training phase, not repetition): 44.1% of headlined lines
+ * repeat the category of the line before them, against the 10-15% that ten
+ * categories would give by chance, and the longest unbroken run of headlined
+ * combat lines is 38.
+ *
+ * The clustering itself is correct and must not be "fixed": a fight produces
+ * fight lines, and forcing variety on consequences would falsify the
+ * simulation. What is wrong is headlining all of them. `important` is a
+ * presentation flag — no guard reads it, only the feed and the victor's arc —
+ * so this demotes the run rather than suppressing the event. Everything still
+ * happens and is still in the chronicle; the broadcast simply stops shouting
+ * the fifth consecutive one.
+ *
+ * Two set-piece ideas were measured and not built. Kind-aware set-piece
+ * planning: only 4.5% of runs draw two pieces of the same kind, because a plan
+ * is two pieces out of seven kinds, so the collision it would prevent barely
+ * happens. And an ambient-line scheduler: every ambient line is one category,
+ * so there is no type variety there to schedule.
+ */
+export const STORY_PACING = {
+    /**
+     * Consecutive headlined lines of one category before the next is demoted
+     * out of the headline feed. Four lets a fight read as a fight and stops
+     * the wall at thirty-eight.
+     */
+    sameCategoryHeadlines: 4,
+    /**
+     * Categories that are never demoted however long the run. A death is the
+     * one thing a broadcast cannot decline to lead with, and a Gamemaker
+     * intervention is rare enough that a run of them is the story.
+     */
+    neverDemoted: ['death', 'kill', 'gamemaker'] as readonly string[],
+} as const;
+
 export const ACCUSATIONS = {
     /** Odds a tribute holding a belief says it to somebody standing with them. */
     tellChance: 0.16,

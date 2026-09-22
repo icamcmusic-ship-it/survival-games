@@ -146,6 +146,10 @@ jobs:
       # zero; this catches one declared and never emitted, and one emitted
       # that the union does not declare.
       - run: npm run test:coverage
+      # B6: story-aware scheduling. Ceiling (a wall of one category) and floor
+      # (a feed demoted into silence), both absolute rather than derived from
+      # the knob they guard.
+      - run: npm run test:pacing
 
       # Content and structure.
       - run: npm run test:arenas
