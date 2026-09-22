@@ -20,6 +20,7 @@ import { isNoticed } from '../stealth';
 import { pickDestination } from '../movement';
 import { objectiveHolds, objectiveLabel, objectiveStep, updateObjective } from '../objectives';
 import { announceCrossing } from '../noise';
+import { tradeAccusations } from '../accusations';
 import { onObjectiveArrival } from '../objectiveArrival';
 import { checkTraps, hasCamp, tickTraps } from '../fieldcraft';
 import { allianceRecords, areLovers, fractureBlocs, isHostileTo, leaderFor } from '../alliance';
@@ -463,6 +464,16 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // `decayFear` for the same reason: this cycle's belief is built on top of
     // what survived last cycle's forgetting, not underneath it.
     spreadNotoriety(ctx);
+    /*
+     * §16: and the one thing gossip could never carry — a name attached to a
+     * particular killing. `spreadNotoriety` moves a scalar, so before this the
+     * field could learn that somebody was becoming notorious and never learn
+     * what they were supposed to have done. Placed immediately after it, and
+     * before `reputationPriors` turns what the field has heard into what it
+     * thinks, so a corroborated accusation reaches that read in the same cycle
+     * rather than a cycle late.
+     */
+    tradeAccusations(ctx);
     // AUDIT-6 §4.1: and what the field has heard becomes what it thinks.
     reputationPriors(ctx);
     decayNotoriety(ctx.state);

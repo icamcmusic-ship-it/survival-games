@@ -656,6 +656,36 @@ export interface TributeMemory {
     perceivedBonds?: Record<string, number>;
     /** Ids this tribute has sworn to kill, most recent first. */
     vengeance: string[];
+    /**
+     * AUDIT-10 B5-01 §16: what this tribute believes about who killed whom,
+     * and how sure they are entitled to be.
+     *
+     * The audit asks for witnessed events held as private, suspected or
+     * proven. Every ingredient existed and none of them was this: a death's
+     * fallout computed `witnessed` / `nearby` / misattributed as three local
+     * booleans inside one function and threw them away, `suspicion` is graded
+     * but is about a *person* rather than an act, and `rumours` carry a
+     * proposition that can be false and planted — but only ever about a
+     * *zone*. Nothing in the simulation could express "A is saying B killed
+     * C", so a tribute who watched a killing could not tell anybody.
+     *
+     * Keyed by the accused. `private` is the level a witness holds and has
+     * told nobody; `suspected` is what a listener takes away from one telling;
+     * `proven` is either seeing it yourself or hearing it from two people who
+     * did not hear it from each other. Corroboration is the whole point — one
+     * mouth is a claim, two independent mouths is a fact, and that is the only
+     * honest difference between the two in an arena with no evidence in it.
+     */
+    accusations?: Record<string, {
+        /** Who they are said to have killed. */
+        victimId: string;
+        level: 'private' | 'suspected' | 'proven';
+        /** Who told them, in order. Empty when they saw it themselves. */
+        toldBy: string[];
+        /** Whether the claim is actually true, for the falsity bookkeeping. */
+        isTrue: boolean;
+        cycle: number;
+    }>;
     /** Ids that have personally betrayed them. */
     betrayedBy: string[];
     /** How many times they have been sold out. Drives blanket distrust. */

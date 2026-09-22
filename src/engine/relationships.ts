@@ -9,6 +9,7 @@ import { carryCapacity, giveItem } from './items';
 import { clampTribute } from './vitals';
 import { cyclesSinceContact, ensureMemory, hasStoodBy, raiseSuspicion, rattle, swearVengeance, noteContact } from './memory';
 import { getZone } from './map';
+import { suspectKilling, witnessKilling } from './accusations';
 import { arenaIsSilent } from './gamesProfile';
 import { areLovers } from './alliance';
 import { GRIEF_TEXTS, VENGEANCE_TEXTS, RELIEF_TEXTS, BETRAYAL_WITNESS_TEXTS } from '../data/flavorText';
@@ -389,6 +390,27 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
                 && (killZone?.adjacent.includes(other.zone) ?? false)
                 && ctx.rng.chance(RELATIONSHIPS.killerIdentifiedNearby);
             const knowsKiller = witnessed || nearby;
+
+            /*
+             * §16: and now the name is written down somewhere it can travel.
+             *
+             * The comment a few lines up says a griever "does not have a name
+             * to put it on — until the rumour layer hands them one, which is
+             * what makes a rumour worth anything." The rumour layer never did:
+             * a rumour is a claim about a *zone*, so there has never been a
+             * way to say who did something. These three booleans were computed
+             * carefully and then dropped on the floor at the end of the call.
+             *
+             * Seeing it is `private` until they say it out loud. Piecing it
+             * together from the next zone is `suspected`, because that is what
+             * it is — and it is the branch `FEAR.misattributionChance` can put
+             * the wrong name in, which is why a claim carries whether it is
+             * actually true.
+             */
+            if (killer && killer.id !== other.id) {
+                if (witnessed) witnessKilling(ctx, other, killer, victim);
+                else if (nearby) suspectKilling(ctx, other, killer.id, victim.id, true);
+            }
 
             if (killer && killer.id !== other.id && knowsKiller) {
                 const hatred = RELATIONSHIPS.griefTowardKiller * intensity
