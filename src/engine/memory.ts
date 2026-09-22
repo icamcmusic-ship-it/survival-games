@@ -1,5 +1,5 @@
 import { GameState, RivalRecord, Tribute, TributeMemory, ZoneMemory } from '../models/types';
-import { FEAR, HUNTING, INTEL, MEMORY, RELATIONSHIPS, RIVAL_READ, SANITY_BANDS, SUSPICION, ZONES } from '../data/balance';
+import { FEAR, HUNTING, INTEL, MEMORY, NOISE, RELATIONSHIPS, RIVAL_READ, SANITY_BANDS, SUSPICION, ZONES } from '../data/balance';
 import { arenaHasLaw } from './gamesProfile';
 import { profOf } from './proficiency';
 import { ARCHETYPES } from '../data/archetypes';
@@ -666,6 +666,37 @@ export function tradeableZones(state: GameState, teller: Tribute, listener: Trib
         }))
         .sort((a, b) => (Number(b.novel) - Number(a.novel)) || (b.worth - a.worth))
         .map(entry => entry.zone);
+}
+
+/**
+ * §16: what a listener writes down when they heard something and saw nothing.
+ *
+ * Deliberately neither of the two channels that already existed. `noteSighting`
+ * is "I stood there and looked" and writes `confidence: 1, hops: 0`;
+ * `writeHearsay` is "somebody told me" and discounts for the chain and for how
+ * much the teller is believed. Hearing a crossing from the next zone is
+ * first-hand — there is no teller and nobody's credibility is involved — but it
+ * is the *least precise* first-hand thing in the game: the listener knows the
+ * ground over there is not empty, roughly how many, and nothing whatsoever
+ * about who. So it keeps `hearsay: false` and takes a confidence well under a
+ * look, at one hop, expiring faster.
+ *
+ * It never overwrites a better belief. Somebody who walked that zone this cycle
+ * knows more than somebody who heard a branch go, and a louder noise arriving
+ * after a quieter one is the same comparison again.
+ */
+export function noteHeard(state: GameState, listener: Tribute, zone: string, rivals: number, confidence: number) {
+    const slot = zoneSlot(listener, zone);
+    const existing = confidenceOf(state, slot);
+    if (existing >= confidence) return false;
+    slot.seen = cycleOf(state);
+    slot.rivals = Math.max(0, rivals);
+    slot.confidence = Math.max(0, Math.min(1, confidence));
+    slot.hops = 1;
+    slot.hearsay = false;
+    delete slot.toldById;
+    slot.expiresCycle = cycleOf(state) + Math.round(MEMORY.sightingLifetime * NOISE.heardLifetimeShare);
+    return true;
 }
 
 /** Copies one of the teller's impressions into the listener, flagged as told. */
