@@ -274,7 +274,7 @@ Career: inspect finishing credit, free repeated actions, starting kit and
 target selection — batch 1b already priced one of these (`careerReachBonus`)
 and the same method applies to the rest.
 
-### B4-04 — honest sampling everywhere — **done for the whole-table verdicts; rare-trait oversampling still open**
+### B4-04 — honest sampling everywhere — **done**
 
 F20 fixed the trait table's verdict. The same rule — a release gate needs
 adequate samples *for the compared rows*, with intervals, and exploratory
