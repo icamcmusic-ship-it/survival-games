@@ -367,10 +367,41 @@ Already present and not rebuilt: borrowed equipment (`Tribute.loans`), an honest
 refusal (batch 2's named `Refusal` contract), restitution and a public promise
 (debts, charters, pacts).
 
-Open: a disputed map, disputed credit, an escort that succeeds; and the whole
-§6/§7 lethal table. The instruction that governs it stands — **do not simply
-add lethality to the existing scheduler**, and every opportunity is checked for
+Open: a disputed map, disputed credit, an escort that succeeds; and the §6/§7
+lethal table. The instruction that governs it stands — **do not simply add
+lethality to the existing scheduler** — and every opportunity is checked for
 whether it can arise before the beat is written.
+
+#### The lethal table, surveyed
+
+A partial survey, done before writing anything, because three items this batch
+turned out to be built already and one beat was nearly shipped dead. **Every one
+of the twelve deaths already exists**: `DeathCauseCode` carries sepsis,
+infection, asphyxiation, drowning, fall, collapse, trap, exhaustion, poison and
+dehydration, and `check-cause-codes` asserts every death the engine produces
+carries one.
+
+So the gap is not the deaths. It is the *shape* around them — the warning, the
+choice, the nonfatal outcome and the durable record that §7 asks of every row.
+Adding lethality would be the one thing the audit explicitly says not to do.
+
+Verified present, and therefore needing only the missing parts of the shape
+rather than a mechanism: smoke in a refuge (`forecastConfinedSmoke` — already a
+forecast, so it already has a warning and a window), a contaminated batch
+(`waterborne`, with an incubation delay the drinker does not know about),
+rescue under load (`rescueLine`, with anchors and a cut-line attribution fixed
+in batch 1), failed stabilization (`attemptFieldDressing`, costing time and
+restarting the neglect clock).
+
+Verified absent: **treatment scarcity** as the audit describes it — two injured
+people, one treatment, and a choice about who gets it, with triage reading
+differently from deliberate refusal. The Medic's signature treats one person;
+nothing poses the scarcity.
+
+Not yet surveyed: overloaded crossing, choking, entrapment while scavenging,
+pursuit past exhaustion, delayed trap interference, water versus shelter,
+contaminated dressing. Named here so the next pass starts from what is unknown
+rather than from the audit's table again.
 
 The audit's §6 table (one per arena) and §7 table (twelve universal chains).
 Each row needs a warning, an avoidance or mitigation, a nonfatal result and a
