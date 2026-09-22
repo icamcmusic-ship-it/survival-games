@@ -397,10 +397,24 @@ restarting the neglect clock).
 it is . Posed 473 times across 69 of 80 runs, resolving 37%
 given / 32% noticed refusal / 32% kept quietly.
 
-Not yet surveyed: overloaded crossing, choking, entrapment while scavenging,
-pursuit past exhaustion, delayed trap interference, water versus shelter,
-contaminated dressing. Named here so the next pass starts from what is unknown
-rather than from the audit's table again.
+The remaining seven, surveyed. Every one has its death and most have the
+physical situation; what is missing in each case is the **decision** — the
+moment where somebody could have done otherwise, which is the part §7 is
+actually asking for.
+
+| row | present | missing |
+|---|---|---|
+| overloaded crossing | `collapsing` edges with a `crossings` budget; crossings that consume gear | carried weight feeding the failure, and the stagger-or-jettison choice |
+| choking | `asphyxiation` as a cause (ash, silk) | the rushed-meal prerequisite, and assisted recovery revealing hidden company |
+| entrapment while scavenging | `collapse` damage in arena signatures | the brace / fetch help / leave decision while looting |
+| pursuit past exhaustion | `exhaustion` deaths in `survival.ts` | the stop-or-continue decision mid-chase, and the spared rival remembering it |
+| delayed trap interference | discovery (`Trap.knownBy`), disarming, `ownerId` | **turning** a trap, and a modification history that separates who set it from who last altered it |
+| water versus shelter | `waterSource` and `shelterQuality` as zone features | the trip itself as a costed choice against staying put |
+| contaminated dressing | `sepsis` through `engine/infection` | provenance on the dressing, so an infection traces to a batch rather than to bad luck |
+
+The trap row is the smallest and the most characterful: ownership exists, so
+separating "who set it" from "who last touched it" is a field and a decision
+rather than a system. It is the obvious next one to build.
 
 The audit's §6 table (one per arena) and §7 table (twelve universal chains).
 Each row needs a warning, an avoidance or mitigation, a nonfatal result and a
