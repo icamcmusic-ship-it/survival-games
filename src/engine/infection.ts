@@ -36,7 +36,7 @@
  * new field.
  */
 import { InjurySite, Tribute } from '../models/types';
-import { INFECTION, VITALS } from '../data/balance';
+import { INFECTION, PROFICIENCY, VITALS } from '../data/balance';
 import { SimContext } from './context';
 import { applyDamage } from './combat';
 import { injure, injuryGrade, healInjury } from './wounds';
@@ -221,6 +221,15 @@ export function treatInfection(ctx: SimContext, t: Tribute, medic?: Tribute): bo
     const chance = Math.min(INFECTION.treatMaxChance,
         INFECTION.treatBaseChance
         + profOf(healer, 'medicine') * INFECTION.treatPerMedicine
+        /*
+         * `herbalism` is the other half of this and was folded into
+         * `medicine`. Cleaning a septic wound out properly is two competences
+         * — the hands, and knowing what to pack it with — and in an arena the
+         * second one is mostly plants, because the medical kit runs out on day
+         * three and the treeline does not. Small next to `medicine`: it is the
+         * supplement, not the surgeon.
+         */
+        + profOf(healer, 'herbalism') * PROFICIENCY.herbalismTreatChance
         + healer.attributes.intelligence * INFECTION.treatPerIntelligence
         + (medic ? INFECTION.treatAllyBonus : 0));
     trainProficiency(healer, 'medicine');

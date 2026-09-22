@@ -7,6 +7,7 @@ import {
     TRAINING_OBSERVATION, TRAINING_STRUGGLE, TRAINING_TEAMUP,
     FLOOR_TOPICS, TRAINING_SNUB, TRAINING_THREAT, TRAINING_MOCK, TRAINING_THEFT,
     TRAINING_EXCLUSION, TRAINING_PACT_BROKEN, TRAINING_LUNCH_SIT, TRAINING_LUNCH_ALONE, TRAINING_LUNCH_CAREER,
+    TRAINING_GROUP_TALK, TRAINING_GROUP_TENSION, TRAINING_LUNCH_TABLE, TRAINING_LUNCH_CLASH,
     SCORE_REACTIONS,
 } from '../../data/flavorText';
 import { FEAR, PREGAMES, PRE_ARENA, RESPECT, TRAINING, TRAINING_FLOOR, TRAINING_SCORE } from '../../data/balance';
@@ -282,9 +283,30 @@ function attemptStation(
         return outcome;
     }
 
+    /*
+     * REQUEST: "sometimes in training logs, it mentions other tributes but does
+     * not name the tribute and give an effect".
+     *
+     * Exactly right, and it was only ever the prose. The floor already lost
+     * respect and the Careers already stopped being afraid — the mechanics were
+     * there. What the line said was "four people notice and one of them files
+     * it away", which names nobody, so the reader cannot follow it up and the
+     * one who filed it away was not a person the run contains.
+     *
+     * The lines that reference a watcher carry a `{watcher}` token now, and it
+     * is filled with somebody who is actually standing there. That tribute is
+     * named in the event's participants — so the chronicle filter finds it —
+     * and takes a sharper read than the rest of the room, because paying
+     * attention is the thing the line says they did.
+     */
+    const line = ctx.pickText(variantPool(TRAINING_FAILURE, t));
+    const audience = floor.filter(o => o.id !== t.id);
+    const watcher = line.includes('{watcher}') && audience.length > 0
+        ? audience[ctx.rng.nextInt(0, audience.length)]
+        : undefined;
     ctx.logEvent(
-        fillLine(ctx.pickText(variantPool(TRAINING_FAILURE, t)), { tribute: t.name, station }),
-        [t.id],
+        fillLine(line, { tribute: t.name, station, watcher: watcher?.name ?? 'somebody' }),
+        watcher ? [t.id, watcher.id] : [t.id],
         { type: 'tribute-paid', important: true, category: 'training' }
     );
     loseSanity(t, TRAINING.failureSanity);
@@ -292,6 +314,8 @@ function attemptStation(
     floor.forEach(o => {
         if (o.id === t.id) return;
         adjustRespect(o, t.id, -TRAINING.failureRespect);
+        // The one who was watching properly reads more into it than the room did.
+        if (o.id === watcher?.id) adjustRespect(o, t.id, -TRAINING.watcherExtraRespect);
         // A Career who watches somebody fail publicly stops being wary of them
         // and starts thinking of them as a name to get out of the way early.
         // This is the other half of what makes concealing a genuine gamble.
@@ -361,20 +385,104 @@ function runWitnessRevisions(
  * same bench on the first morning will find each other before either of them
  * talks to a stranger.
  */
-function pairDistrictsFirst(group: Tribute[], day: number): Tribute[] {
-    const chance = TRAINING.partnerDayDecay[day - 1] ?? 1;
-    // Above 1 the pull is certain; below it, it fades with the day.
-    if (chance < 1 && day > 2) return group;
+function pairDistrictsFirst(ctx: SimContext, group: Tribute[], day: number): Tribute[] {
+    /*
+     * §(requests, sociability pass): the pull is a roll, not a rule.
+     *
+     * It used to be unconditional on days one and two and off on day three,
+     * so a district pair standing at the same bench on the first morning
+     * *always* worked together — which, stacked on `affinityPartner`, is most
+     * of why 52.9% of measured two-tribute training lines were same-district
+     * in a room where 23 of anybody's 23 neighbours are from elsewhere.
+     */
+    const pull = (TRAINING.partnerDayDecay[day - 1] ?? 1) * TRAINING.partnerPairChance;
     const out: Tribute[] = [];
     const taken = new Set<string>();
     group.forEach(t => {
         if (taken.has(t.id)) return;
         taken.add(t.id);
         out.push(t);
+        if (!ctx.rng.chance(pull)) return;
         const partner = group.find(o => !taken.has(o.id) && o.district === t.district);
         if (partner) { taken.add(partner.id); out.push(partner); }
     });
     return out;
+}
+
+/**
+ * §(requests, sociability pass): the knot that forms at a busy station.
+ *
+ * The floor's only social unit was the disjoint pair, and it showed: 4.9% of
+ * measured training-phase lines named three or more tributes, and *none* of
+ * the hostile ones did. Five people at one rack do not hold two private
+ * conversations and leave one person out of both — they form a group, and the
+ * group either closes around somebody or excludes them. Both halves are here,
+ * split by `clusterHostileShare`.
+ *
+ * Deliberately drawn across districts first: the group is the cheapest way a
+ * tribute meets somebody they were not reaped beside.
+ */
+function runStationCluster(ctx: SimContext, group: Tribute[], station: string, day: number) {
+    if (group.length < TRAINING.clusterMinSize) return;
+    if (!ctx.rng.chance(TRAINING.clusterChance)) return;
+
+    const shuffled = ctx.rng.shuffle(group);
+    const picked: Tribute[] = [];
+    const districts = new Set<number>();
+    // One pass taking only new districts, then a second to top up: a group of
+    // three from the same district is a district pair with an audience, which
+    // the floor already had plenty of.
+    shuffled.forEach(t => {
+        if (picked.length >= TRAINING.clusterMaxSize || districts.has(t.district)) return;
+        picked.push(t); districts.add(t.district);
+    });
+    shuffled.forEach(t => {
+        if (picked.length >= TRAINING.clusterMaxSize || picked.includes(t)) return;
+        picked.push(t);
+    });
+    if (picked.length < TRAINING.clusterMinSize) return;
+
+    const [tribute, other, third] = picked;
+    const vars = {
+        tribute: tribute.name, other: other.name, third: third.name,
+        station, topic: ctx.pickText(FLOOR_TOPICS),
+    };
+    // A group of people who already dislike each other turns more often than
+    // the base share; the share alone made the cold groups feel unmotivated.
+    const sour = picked.some(a => picked.some(b => a.id !== b.id && getRel(a, b.id) <= TRAINING.negativeRegard));
+    const hostile = ctx.rng.chance(sour ? TRAINING.clusterHostileShare * 2 : TRAINING.clusterHostileShare);
+
+    if (hostile) {
+        ctx.logEvent(
+            fillLine(ctx.pickText(TRAINING_GROUP_TENSION), vars),
+            picked.slice(0, 3).map(t => t.id),
+            { important: true, category: 'training' }
+        );
+        // `other` is the one the group closed around — every template above is
+        // written that way round, so the bookkeeping matches the sentence.
+        picked.forEach(t => {
+            if (t.id === other.id) return;
+            adjustMutual(ctx.state, t, other, TRAINING.clusterTensionRegard);
+            addFear(other, t.id, TRAINING.clusterTensionFear, t);
+            addExcitement(t, TRAINING.clusterExcitement);
+        });
+        loseSanity(other, TRAINING.lunchAloneSanity);
+        clampTribute(other);
+        noteFight(ctx.state, tribute, other);
+        return;
+    }
+
+    ctx.logEvent(
+        fillLine(ctx.pickText(TRAINING_GROUP_TALK), vars),
+        picked.slice(0, 3).map(t => t.id),
+        { category: 'training' }
+    );
+    picked.forEach(a => picked.forEach(b => {
+        if (a.id >= b.id) return;
+        adjustMutual(ctx.state, a, b, Math.round(TRAINING.clusterWarmth * floorAffinity(a, b, day).weight));
+        noteContact(ctx.state, a, b);
+    }));
+    picked.forEach(t => trainProficiency(t, 'persuasion'));
 }
 
 /**
@@ -504,6 +612,52 @@ function pactWillingness(a: Tribute, b: Tribute): number {
  * find each other first on day one and the room widens out across the three,
  * which is the same curve `floorAffinity` runs on.
  */
+function runLunchClashes(ctx: SimContext, day: number, cast: Tribute[]) {
+    for (let attempt = 0; attempt < TRAINING.lunchClashAttempts; attempt++) {
+        if (!ctx.rng.chance(TRAINING.lunchClashChance)) continue;
+        // The coldest pair in the hall, and whoever is sitting closest to it.
+        const pairs: Array<{ a: Tribute; b: Tribute; regard: number }> = [];
+        cast.forEach(a => cast.forEach(b => {
+            if (a.id >= b.id) return;
+            pairs.push({ a, b, regard: Math.min(getRel(a, b.id), getRel(b, a.id)) });
+        }));
+        const worst = pairs.sort((x, y) => x.regard - y.regard)[0];
+        if (!worst || worst.regard > TRAINING.negativeRegard) continue;
+        const third = ctx.rng.pickOrUndefined(cast.filter(t => t.id !== worst.a.id && t.id !== worst.b.id));
+        if (!third) continue;
+        // The aggressor is the one who thinks less of the other, same rule the
+        // station beats use, so the hall and the floor agree about who is who.
+        const aggressor = getRel(worst.a, worst.b.id) <= getRel(worst.b, worst.a.id) ? worst.a : worst.b;
+        const target = aggressor === worst.a ? worst.b : worst.a;
+        ctx.logEvent(
+            fillLine(ctx.pickText(TRAINING_LUNCH_CLASH), {
+                tribute: aggressor.name, other: target.name, third: third.name,
+                topic: ctx.pickText(FLOOR_TOPICS),
+            }),
+            [aggressor.id, target.id, third.id],
+            { important: true, category: 'training' }
+        );
+        adjustMutual(ctx.state, aggressor, target, TRAINING.lunchClashRegard);
+        addFear(target, aggressor.id, TRAINING.lunchClashFear, aggressor);
+        addExcitement(aggressor, TRAINING.lunchClashExcitement);
+        loseSanity(target, TRAINING.lunchAloneSanity);
+        clampTribute(target);
+        noteFight(ctx.state, aggressor, target);
+        // A witness is not neutral: they have watched somebody decide, in front
+        // of the room, what they are prepared to do before the Games start.
+        addFear(third, aggressor.id, TRAINING.lunchClashFear, aggressor);
+    }
+}
+
+/**
+ * §(requests, sociability pass): the lunch hall's cold register.
+ *
+ * A room with no weapons in it and no trainers between people is where a week
+ * of this comes out, and the canteen had no hostile beats at all — measured,
+ * zero of 12.9 negative training lines per run happened at lunch and zero
+ * involved three people. Rolled twice a day so it is a register rather than a
+ * rarity, and a witness is always named.
+ */
 function lunchPeriod(ctx: SimContext, day: number, cast: Tribute[]) {
     ctx.logEvent(
         day === 1
@@ -545,35 +699,93 @@ function lunchPeriod(ctx: SimContext, day: number, cast: Tribute[]) {
     // Everyone who is not sitting at the Career table pairs off — district
     // partners first, then whoever they have most reason to sit with.
     const room = ctx.rng.shuffle(cast.filter(t => !(careers.length >= 2 && isCareerish(t))));
-    const seated = new Set<string>();
-    room.forEach(t => {
-        if (seated.has(t.id)) return;
-        const candidates = room.filter(o => o.id !== t.id && !seated.has(o.id));
-        if (candidates.length === 0) return;
-        // Score the room the way the floor does, so lunch and the stations
-        // agree about who these people are.
-        const best = candidates
-            .map(o => ({ o, weight: floorAffinity(t, o, day).weight * mingleWillingness(t, o) }))
-            .sort((x, y) => y.weight - x.weight);
-        const pick = best[0];
-        if (!pick || !ctx.rng.chance(TRAINING.lunchPairChance * Math.min(2, pick.weight))) return;
-        seated.add(t.id);
-        seated.add(pick.o.id);
-        const affinity = floorAffinity(t, pick.o, day);
-        adjustMutual(ctx.state, t, pick.o, Math.round(TRAINING.lunchWarmth * Math.min(2, affinity.weight)));
-        noteContact(ctx.state, t, pick.o);
-        trainProficiency(t, 'persuasion');
-        ctx.logEvent(
-            fillLine(ctx.pickText(TRAINING_LUNCH_SIT), {
-                tribute: t.name, other: pick.o.name, topic: ctx.pickText(FLOOR_TOPICS),
-            }),
-            [t.id, pick.o.id],
-            { category: 'training' }
-        );
-    });
+    /*
+     * §(requests, sociability pass): lunch is an hour, not one sitting.
+     *
+     * Seating tables rather than strict pairs consolidated three people into
+     * one line and cut measured lunch lines from 32.7 to 25.7 per run, which
+     * is the wrong direction — the hall is supposed to be the busiest part of
+     * the day. Each round re-seats the room from scratch, so somebody who ate
+     * with their district partner can still end up at a second bench with
+     * strangers before the bell, which is what actually happens in a canteen.
+     */
+    const everSeated = new Set<string>();
+    for (let round = 0; round < TRAINING.lunchRounds; round++) {
+        const seated = new Set<string>();
+        room.forEach(t => {
+            if (seated.has(t.id)) return;
+            const candidates = room.filter(o => o.id !== t.id && !seated.has(o.id));
+            if (candidates.length === 0) return;
+            // Score the room the way the floor does, so lunch and the stations
+            // agree about who these people are.
+            const best = candidates
+                .map(o => ({ o, weight: floorAffinity(t, o, day).weight * mingleWillingness(t, o) }))
+                .sort((x, y) => y.weight - x.weight);
+            const pick = best[0];
+            if (!pick || !ctx.rng.chance(TRAINING.lunchPairChance * Math.min(2, pick.weight))) return;
+            seated.add(t.id);
+            seated.add(pick.o.id);
+            const affinity = floorAffinity(t, pick.o, day);
+            adjustMutual(ctx.state, t, pick.o, Math.round(TRAINING.lunchWarmth * Math.min(2, affinity.weight)));
+            noteContact(ctx.state, t, pick.o);
+            trainProficiency(t, 'persuasion');
+
+            /*
+             * §(requests, sociability pass): a seated pair draws a table.
+             *
+             * Lunch was twelve disjoint pairs a day — 32.7 lunch lines per run, of
+             * which 0.25 named three or more people. Nobody eats in a hall of
+             * twenty-four in strict twos, and the table is the thing the rest of
+             * the room reads the week's alliances off. Preference goes to a
+             * district the bench does not already have, for the same reason the
+             * station groups draw that way.
+             */
+            const table = [t, pick.o];
+            if (ctx.rng.chance(TRAINING.lunchTableChance)) {
+                best.slice(1).forEach(c => {
+                    if (table.length >= TRAINING.lunchTableMax) return;
+                    if (seated.has(c.o.id)) return;
+                    if (table.some(x => x.district === c.o.district)) return;
+                    table.push(c.o);
+                    seated.add(c.o.id);
+                });
+            }
+
+            if (table.length >= 3) {
+                const [a, b, c] = table;
+                const extras = table.slice(3);
+                const line = fillLine(ctx.pickText(TRAINING_LUNCH_TABLE), {
+                    tribute: a.name, other: b.name, third: c.name, topic: ctx.pickText(FLOOR_TOPICS),
+                }) + (extras.length > 0
+                    // Named rather than implied: `npm run test:unnamed` ratchets on
+                    // exactly this, and everybody at the bench is on the cast list.
+                    ? ` ${extras.map(x => x.name).join(' and ')} ${extras.length > 1 ? 'pull' : 'pulls'} up at the same bench.`
+                    : '');
+                table.forEach(x => table.forEach(y => {
+                    if (x.id >= y.id) return;
+                    adjustMutual(ctx.state, x, y, TRAINING.lunchTableWarmth);
+                    noteContact(ctx.state, x, y);
+                }));
+                table.forEach(x => trainProficiency(x, 'persuasion'));
+                ctx.logEvent(line, table.map(x => x.id), { important: true, category: 'training' });
+                return;
+            }
+
+            ctx.logEvent(
+                fillLine(ctx.pickText(TRAINING_LUNCH_SIT), {
+                    tribute: t.name, other: pick.o.name, topic: ctx.pickText(FLOOR_TOPICS),
+                }),
+                [t.id, pick.o.id],
+                { category: 'training' }
+            );
+        });
+    seated.forEach(id => everSeated.add(id));
+    }
+
+    runLunchClashes(ctx, day, cast);
 
     // And the ones nobody sat with, which is its own fact about the week.
-    cast.filter(t => !seated.has(t.id) && !(careers.length >= 2 && isCareerish(t))).forEach(t => {
+    cast.filter(t => !everSeated.has(t.id) && !(careers.length >= 2 && isCareerish(t))).forEach(t => {
         ctx.logEvent(
             fillLine(ctx.pickText(TRAINING_LUNCH_ALONE), { tribute: t.name }),
             [t.id],
@@ -622,7 +834,10 @@ function runFloorSocial(
         // split across two other people. The pull is strongest on day one.
         const ordered = ctx.rng.shuffle(group)
             .sort((a, b) => Number(isCareerish(b)) - Number(isCareerish(a)));
-        const partners = pairDistrictsFirst(ordered, day + 1);
+        const partners = pairDistrictsFirst(ctx, ordered, day + 1);
+        // §(requests, sociability pass): the station's group beat, before the
+        // pairs — a knot forming is what the pairs then happen inside.
+        runStationCluster(ctx, group, station, day + 1);
         for (let i = 0; i + 1 < partners.length; i += 2) {
             {
                 const a = partners[i];

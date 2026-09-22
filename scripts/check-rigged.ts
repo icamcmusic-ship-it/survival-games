@@ -47,22 +47,48 @@ const weakest = (cast: Tribute[]) => [...cast]
     .sort((a, b) => (a.attributes.strength + a.attributes.agility)
         - (b.attributes.strength + b.attributes.agility))[0];
 
+/**
+ * Measured at 56/60 over a sixty-seed sweep. The floor is well under that
+ * because this suite runs far fewer seeds, and a rate asserted on a small
+ * sample needs room to breathe — the point of the check is to catch the
+ * arrangement being switched off, not to pin the number.
+ */
+const RIGGED_MIN_WIN_RATE = 0.7;
+
 const runs = Array.from({ length: RUNS }, (_, i) => riggedRun(i, weakest));
 
 scenario(
-    'the nominated tribute is crowned, even when they are the weakest in the cast',
-    'the Gamemakers have decided who comes home',
+    'the nominated tribute usually comes home, even as the weakest in the cast',
+    'an arrangement that does not move the outcome is not an arrangement',
     () => {
-        runs.forEach((state, i) => {
-            const survivors = state.tributes.filter(t => t.status === 'alive');
-            check(survivors.some(t => t.id === state.riggedVictorId),
-                `run ${i}: the nominated tribute did not come home`);
-        });
+        /*
+         * REQUEST: "make it so that forced victors don't survive/cheat death,
+         * just have the simulation cater to them winning."
+         *
+         * This scenario used to assert a *guarantee*, which was true when the
+         * engine pulled every killing blow aimed at the nominated tribute and
+         * is deliberately not true any more. The saves cost two things: they
+         * made the arrangement visible — somebody who cannot die stops being
+         * watchable — and they dragged rigged runs 4.7 days longer than the
+         * same seeds unrigged, because the arena had to finish everybody else
+         * off around an immortal finalist.
+         *
+         * So the assertion is a rate, and it is a rate against the weakest
+         * tribute in the cast, which is the hard case. A quarter of the field's
+         * worth of wins would mean the thumb is not on the scale; a hundred per
+         * cent would mean the saves are back.
+         */
+        const crowned = runs.filter(state =>
+            state.tributes.some(t => t.status === 'alive' && t.id === state.riggedVictorId)).length;
+        check(crowned >= Math.ceil(runs.length * RIGGED_MIN_WIN_RATE),
+            `the nominated tribute came home ${crowned}/${runs.length}, below the arranged rate`);
+        check(crowned < runs.length || runs.length < 8,
+            `the nominated tribute came home every single time — that is a guarantee, not an arrangement`);
     },
 );
 
 scenario(
-    'every other death in a fixed Games is a real death',
+    'every other death in an arranged Games is a real death',
     'the setting must not corrupt the record of everything around it',
     () => {
         runs.forEach((state, i) => {
@@ -86,7 +112,7 @@ scenario(
 );
 
 scenario(
-    'a fixed Games says so, in the chronicle',
+    'an arranged Games says so, in the chronicle',
     'a setting that quietly changes the outcome and reads like an ordinary Games is a corrupted record',
     () => {
         /*
@@ -102,11 +128,18 @@ scenario(
          * six counters that had been "reading lines that were not the beat at
          * all". The typed field is what actually decides; the line is what the
          * audience gets told, and both are worth asserting.
+         *
+         * The probe is anchored to the whole opening sentence rather than a
+         * phrase. Renaming the setting broke it immediately: an interview line
+         * in `flavorText` has a tribute say their chances depend "on what has
+         * been arranged", and a loose match called every ordinary Games
+         * arranged. Fourth substring collision of this session, and the second
+         * in this file.
          */
         runs.forEach((state, i) => {
             eq(state.riggedVictorId !== undefined, true, `run ${i}: nothing was nominated`);
-            check(state.log.some(l => /already been decided/i.test(l.text)),
-                `run ${i}: the chronicle does not admit the Games was fixed`);
+            check(state.log.some(l => /This Games has been arranged\./.test(l.text)),
+                `run ${i}: the chronicle does not admit the Games was arranged`);
         });
     },
 );
@@ -142,8 +175,8 @@ scenario(
         // reworded admission line would satisfy the prose half by no longer
         // existing, and this would pass on a Games that had in fact been fixed.
         eq(state.riggedVictorId, undefined, 'nothing nominated itself');
-        check(!state.log.some(l => /already been decided/i.test(l.text)),
-            'an ordinary Games claimed to be fixed');
+        check(!state.log.some(l => /This Games has been arranged\./.test(l.text)),
+            'an ordinary Games claimed to be arranged');
         check(state.tributes.filter(t => t.status === 'dead').length > 1, 'and it still ran');
     },
 );

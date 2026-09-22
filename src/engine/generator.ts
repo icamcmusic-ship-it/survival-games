@@ -16,6 +16,7 @@ import { CastShape, Quell } from '../data/gamesProfile';
 import { ITEMS } from '../data/constants';
 import { giveItem, mintItem } from './items';
 import { QUIRKS } from '../data/quirks';
+import { openingStance } from './stance';
 
 /** Weighted draw from the district's archetype table. */
 function pickArchetype(rng: RNG, district: number, careerBias = 0, castShape?: string): ArchetypeId {
@@ -540,7 +541,27 @@ export function generateTributes(
                 health: 100,
                 status: 'alive',
                 inventory: [],
-                stance: 'Defensive',
+                /*
+                 * REQUEST (district signature skills): the opening stance is
+                 * chosen, not assigned.
+                 *
+                 * Every tribute used to start `Defensive` regardless of who
+                 * they were. That was harmless while everybody arrived with no
+                 * skills — Defensive is a reasonable crouch for a blank slate —
+                 * and stopped being harmless the moment tributes started
+                 * arriving competent at something: `test:decisions` went from
+                 * 15.0% to 16.3% of tribute-cycles held outside the top three
+                 * stances, past its guard, because a District 5 tracker was
+                 * opening the Games in the same crouch as everybody else.
+                 *
+                 * `stanceBias` has been on every archetype all along and
+                 * nothing read it at generation. It is the archetype's own
+                 * statement about how this person stands when nobody has told
+                 * them anything yet, which is exactly the question being asked
+                 * here, and using it means no second scoring function that can
+                 * disagree with `updateStance`.
+                 */
+                stance: openingStance(archetype),
                 relationships: {},
                 excitementRating: 0,
                 sponsorTrust: Math.max(5, Math.min(95, reputation)),
@@ -551,7 +572,7 @@ export function generateTributes(
                 daysSurvived: 0,
                 mentorLegacy: rng.pick(legacy.mentors),
                 memory: blankMemory(),
-                proficiencies: blankProficiencies(archetype, district),
+                proficiencies: blankProficiencies(archetype, district, rng),
                 bleedSeverity: 0,
                 momentum: 0,
                 objective: { kind: 'survive' },

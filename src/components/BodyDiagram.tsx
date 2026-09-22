@@ -18,6 +18,46 @@ const SEVERITY_COLOR = [
  * where". Forty lines of SVG answers it at a glance, and the list stays below
  * for anyone who wants the exact words.
  */
+/**
+ * The five ungraded conditions, drawn as badges rather than tints.
+ *
+ * `Injuries` has nine fields; only the four sited ones (head/torso/arms/legs)
+ * plus `bleeding` were ever drawn, so `infected`, `poisoned`, `burned` and
+ * `frostbitten` were invisible on the one graphic whose whole job is "what is
+ * wrong with this tribute". Measured over 40 default runs (960 tributes, state
+ * at end of run): infected 10.8%, poisoned 10.9%, burned 10.4%, frostbitten
+ * 4.0% — and 14.4/15.3/13.5/9.2% respectively at some point during the run.
+ * None of these is a rare edge case; roughly one tribute in three ends a run
+ * carrying at least one condition the diagram did not mention.
+ *
+ * They are not sites, so they cannot be tints: a tint needs somewhere to sit,
+ * and "poisoned" is not anywhere. Each gets its own outline SHAPE and a
+ * two-letter cap, so the condition is readable with no colour perceived at all
+ * — the standing rule against colour-alone state. The category colour is the
+ * stroke only, and the badge body stays `--paper-flush` so the letters keep
+ * full contrast in either theme.
+ */
+const CONDITIONS = [
+    { key: 'bleeding', shape: 'circle', cap: 'Bd', word: 'bleeding', color: 'var(--cat-death)' },
+    { key: 'infected', shape: 'square', cap: 'In', word: 'infected', color: 'var(--cat-injury)' },
+    { key: 'poisoned', shape: 'triangle', cap: 'Po', word: 'poisoned', color: 'var(--cat-mutt)' },
+    { key: 'burned', shape: 'diamond', cap: 'Bu', word: 'burned', color: 'var(--cat-hazard)' },
+    { key: 'frostbitten', shape: 'hexagon', cap: 'Fr', word: 'frostbitten', color: 'var(--cat-travel)' },
+] as const;
+
+/** Badge outline at (cx, cy), r≈5. Shape is the non-colour channel, so each is distinct in silhouette. */
+function conditionShape(shape: (typeof CONDITIONS)[number]['shape'], cx: number, cy: number, color: string) {
+    const props = { fill: 'var(--paper-flush)', stroke: color, strokeWidth: 1.5 };
+    if (shape === 'circle') return <circle cx={cx} cy={cy} r={5} {...props} />;
+    if (shape === 'square') return <rect x={cx - 4.5} y={cy - 4.5} width={9} height={9} {...props} />;
+    if (shape === 'triangle') return <polygon points={`${cx},${cy - 5.5} ${cx + 5},${cy + 4} ${cx - 5},${cy + 4}`} {...props} />;
+    if (shape === 'diamond') return <polygon points={`${cx},${cy - 5.5} ${cx + 5.5},${cy} ${cx},${cy + 5.5} ${cx - 5.5},${cy}`} {...props} />;
+    const hex = [0, 1, 2, 3, 4, 5]
+        .map(i => `${(cx + 5 * Math.cos(Math.PI / 3 * i)).toFixed(2)},${(cy + 5 * Math.sin(Math.PI / 3 * i)).toFixed(2)}`)
+        .join(' ');
+    return <polygon points={hex} {...props} />;
+}
+
 export function BodyDiagram({ tribute }: { tribute: Tribute }) {
     const fill = (site: (typeof BODY_SITES)[number]) => SEVERITY_COLOR[Math.min(3, severityOf(tribute, site))];
     const label = (site: (typeof BODY_SITES)[number]) =>
@@ -38,15 +78,18 @@ export function BodyDiagram({ tribute }: { tribute: Tribute }) {
         // Only the hurt arm is tinted once a side is known; the other one is sound.
         tribute.injuries.arms && side !== woundedSide ? SEVERITY_COLOR[0] : fill('arms');
 
+    const conditions = CONDITIONS.filter(c => tribute.injuries[c.key]);
+
     const summary = BODY_SITES.map(label).join(', ')
         + (favouring ? `, favouring their ${favouring}` : '')
-        + (BODY_SITES.some(scarred) ? `, scarred ${BODY_SITES.filter(scarred).join(' and ')}` : '');
+        + (BODY_SITES.some(scarred) ? `, scarred ${BODY_SITES.filter(scarred).join(' and ')}` : '')
+        + (conditions.length ? `, ${conditions.map(c => c.word).join(', ')}` : '');
 
     return (
         <svg
-            viewBox="0 0 60 110"
+            viewBox="0 0 60 122"
             width="70"
-            height="128"
+            height="142"
             className="flex-none"
             role="img"
             aria-label={`Injury map — ${summary}`}
@@ -94,13 +137,28 @@ export function BodyDiagram({ tribute }: { tribute: Tribute }) {
                     <rect x="31" y="63" width="9" height="40" fill="url(#scar-hatch)" stroke="none" />
                 </g>
             )}
-            {/* Bleeding is a rate rather than a site: a mark, not a tint. */}
-            {tribute.injuries.bleeding && (
-                <g>
-                    <circle cx="47" cy="66" r="3.5" fill="var(--cat-death)" />
-                    <title>bleeding</title>
-                </g>
-            )}
+            {/* Conditions are rates and states rather than sites: badges, not
+                tints. Bleeding moved here from its own bare dot beside the hip
+                so all five read as one row and none of them is colour-only. */}
+            {conditions.map((c, i) => {
+                const cx = 30 - (conditions.length - 1) * 5.5 + i * 11;
+                return (
+                    <g key={c.key}>
+                        {conditionShape(c.shape, cx, 114, c.color)}
+                        <text
+                            x={cx}
+                            y={115.6}
+                            textAnchor="middle"
+                            fontSize="4.2"
+                            fontWeight="700"
+                            fill="var(--ink)"
+                        >
+                            {c.cap}
+                        </text>
+                        <title>{c.word}</title>
+                    </g>
+                );
+            })}
         </svg>
     );
 }

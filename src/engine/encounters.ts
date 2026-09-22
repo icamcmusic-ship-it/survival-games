@@ -800,7 +800,11 @@ function attemptForage(
     // coil of wire in the ruins, matches in a dead tribute's coat.
     const pool = ctx.rng.chance(ZONES.nightlockChance)
         ? ITEMS.filter(i => i.id === 'nightlock')
-        : ctx.rng.chance(traitMod(t, 'scavenge'))
+        // `scavenging` is the read: what turns up is partly what is there and
+        // partly whether the person looking knows a coil of wire from a root.
+        // Gated on the trait mod alone, this was a competence a tribute
+        // without the trait could never acquire.
+        : ctx.rng.chance(traitMod(t, 'scavenge') + profOf(t, 'scavenging') * PROFICIENCY.scavengingUtilityChance)
             ? ITEMS.filter(i => i.type === 'utility' && i.id !== 'nightlock')
             : ITEMS.filter(i => i.type === 'food' || i.type === 'water');
     const item = ctx.rng.pick(pool);
@@ -809,6 +813,11 @@ function attemptForage(
     if (fresh.type === 'food' && fresh.spoilage !== undefined) fresh.spoilage += spoilageBonus(t);
     const dropped = giveItem(t, fresh);
     trainProficiency(t, 'forage', ctx);
+    // Combing ground for food is combing ground, and the plants you handle
+    // doing it are the plants you later pack a wound with. Both are partial:
+    // the forage roll is the thing actually being attempted.
+    trainProficiency(t, 'scavenging', undefined, PROFICIENCY.scavengingForageShare);
+    trainProficiency(t, 'herbalism', undefined, PROFICIENCY.herbalismForageShare);
     noteForageSuccess(t, t.zone);
     // §3.10: anybody standing here watched them do it.
     observeProficiency(ctx, t, 'forage');
