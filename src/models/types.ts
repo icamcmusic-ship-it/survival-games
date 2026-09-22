@@ -1773,6 +1773,26 @@ export interface AllianceDisputeRecord {
     allianceId: string;
     /** The three honest ways to be short, each unfair to somebody. */
     split: 'equal' | 'by-contribution' | 'by-need';
+    /**
+     * AUDIT-10 B5-01: what was *put*, as distinct from what was decided.
+     *
+     * The audit asks for "shared decisions with a recorded proposal, voters,
+     * positions and concession", and this record had four of those five and not
+     * the first. It stored the outcome — the split, who was fed, who was passed
+     * over, who walked out — which is a record of a *result*. A record of a
+     * decision has to say what was on the table, or "they chose by need" and
+     * "by need was the only thing anybody suggested" are the same sentence.
+     *
+     * `proposedById` is who put it; `positions` is where each member stood,
+     * which is derivable from their own interest and is the thing that makes
+     * the outcome politics rather than a dice roll; `conceded` is everyone
+     * whose position lost, so being overruled repeatedly is a fact somebody
+     * can hold rather than a feeling.
+     */
+    proposal?: 'equal' | 'by-contribution' | 'by-need';
+    proposedById?: string;
+    positions?: Record<string, 'equal' | 'by-contribution' | 'by-need'>;
+    conceded?: string[];
     fedIds: string[];
     passedOverIds: string[];
     /** Of those passed over, the ones who left over it. */

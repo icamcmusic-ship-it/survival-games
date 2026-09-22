@@ -310,13 +310,13 @@ holds again — nearly all of it has a home already:
 
 | item | where it lives | what is actually missing |
 |---|---|---|
-| shared decisions with proposal, voters, positions, concession | `engine/allianceDispute`, `AllianceDisputeRecord` — split, fed, passed over, walkouts, who was present | the *proposal* as an object: the record stores what was decided, not what was put |
+| shared decisions with proposal, voters, positions, concession | **done** — `proposal`, `proposedById`, `positions`, `conceded`, and `decideSplit` counts the room instead of rolling | — |
 | leadership succession | `successorId`, `engine/alliancePolitics` | whether an heir taking over changes routes and priorities, or only a label |
 | bounded obligations | `engine/obligations`, `Obligation` | **amount and quality.** Destination exists (`detail`, compared against a zone for escorts) and the deadline is `byCycle`; `broken` vs `lapsed` already encodes "could have and did not" against "could not", which is the exceptions idea |
 | witnessed events | `witnessed` in `downed` and `rescueLine` | private / suspected / proven as three distinct states, rather than seen-or-not |
-| coalitions with a target and an expiry | blocs in `alliancePolitics` | the target and the expiry |
+| coalitions with a target and an expiry | **already complete.** `Faction.againstId` *is* the target, and factions are recomputed from live suspicion every cycle, so one dissolves — and its `heat` resets — when the feeling fades. An expiry by cooling rather than by deadline, which is the better version | — |
 | fair scarcity with ration ledgers | F11, and `cacheContributions` now surfaced in the ledger panel | protected reserves |
-| real reunions | nothing — the `reunion` hit in `combat.ts` is unrelated | all of it |
+| real reunions | nothing. Two allies who were separated for days and find each other again is not a beat; `alliance.ts` knows a group can be "separated" and nothing marks the moment it stops being | all of it — the one B5-01 item absent outright |
 
 Worth noting about obligations, because it is this session's recurring theme in
 another costume: `Obligation.detail` is a free-text field that for escorts

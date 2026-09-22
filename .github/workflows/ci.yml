@@ -127,6 +127,9 @@ jobs:
       # B5-03: two wounded, one kit. Asserts the split, and that the kit
       # physically moves rather than being copied.
       - run: npm run test:triage
+      # B5-01: a shared decision needs a room that can disagree and a proposal
+      # that can lose, or it is a dice roll with minutes attached.
+      - run: npm run test:hearings
       # B5-02: a half-built shelter belongs to the place, so somebody else can
       # find it, finish it, or inherit it from the dead.
       - run: npm run test:projects

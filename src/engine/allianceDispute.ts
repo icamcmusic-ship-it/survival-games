@@ -139,6 +139,50 @@ function contributionOf(record: Alliance, t: Tribute): number {
  * hurt member in front of them finds it very hard to argue for anything but
  * need. The roll only decides between whatever is left after that.
  */
+type Split = AllianceDisputeRecord['split'];
+
+/**
+ * AUDIT-10 B5-01: where one member stands, from their own interest.
+ *
+ * Not a preference they were assigned — a reading of the room from where they
+ * are standing in it. Somebody who filled the pile wants it counted; somebody
+ * who is starving wants need counted; everybody else wants the rule that cannot
+ * be argued with. That is most of why these arguments happen at all.
+ *
+ * Deliberately self-interested rather than principled. A member who has
+ * contributed nothing and is not hungry votes `equal`, which is the honest
+ * shape of "I would like a share, thank you" — and it is also why `equal` wins
+ * most hearings, because most of a group is usually in that position.
+ */
+function positionOf(record: Alliance, t: Tribute, members: Tribute[]): Split {
+    const mine = contributionOf(record, t);
+    const most = Math.max(...members.map(m => contributionOf(record, m)), 0);
+    const need = needOf(t);
+    const worst = Math.max(...members.map(needOf), 0);
+    // Whichever claim is strongest for *them*, and only when it is actually
+    // strong — a marginal edge is not a position worth taking against friends.
+    const contributionClaim = most > 0 && mine >= most ? ALLIANCE_DISPUTE.contributionClaim : 0;
+    const needClaim = need >= worst && need > ALLIANCE_DISPUTE.hungryLine ? ALLIANCE_DISPUTE.needClaim : 0;
+    if (contributionClaim === 0 && needClaim === 0) return 'equal';
+    return contributionClaim >= needClaim ? 'by-contribution' : 'by-need';
+}
+
+/**
+ * AUDIT-10 B5-01: who puts a rule forward.
+ *
+ * The leader, in a group that has one who does anything — a proposal is an act
+ * of authority, and `leaderStyle` is already the field that says whether this
+ * leader performs any. Where the leader is absent it falls to whoever has the
+ * strongest claim, because somebody short of food will say so whether or not
+ * anybody is chairing.
+ */
+function proposerOf(record: Alliance, members: Tribute[]): Tribute {
+    const leader = members.find(m => m.id === record.leaderId);
+    if (leader && record.leaderStyle !== 'absent') return leader;
+    return [...members].sort((a, b) =>
+        (contributionOf(record, b) + needOf(b)) - (contributionOf(record, a) + needOf(a)))[0] ?? members[0];
+}
+
 function decideSplit(
     ctx: SimContext,
     record: Alliance,
@@ -146,19 +190,45 @@ function decideSplit(
 ): AllianceDisputeRecord['split'] {
     const sworn = (record.charter ?? []).includes('share-food');
     const desperate = members.some(m => needOf(m) > ALLIANCE_DISPUTE.desperateNeed);
-    const weights: Array<[AllianceDisputeRecord['split'], number]> = [
-        ['equal', ALLIANCE_DISPUTE.equalBase + (sworn ? ALLIANCE_DISPUTE.swornEqualBonus : 0)],
-        ['by-contribution', ALLIANCE_DISPUTE.contributionBase
-            + (record.leaderStyle === 'tyrant' ? ALLIANCE_DISPUTE.tyrantContributionBonus : 0)],
-        ['by-need', ALLIANCE_DISPUTE.needBase + (desperate ? ALLIANCE_DISPUTE.desperateNeedBonus : 0)],
-    ];
-    const total = weights.reduce((sum, [, w]) => sum + w, 0);
-    let roll = ctx.rng.nextFloat() * total;
-    for (const [kind, w] of weights) {
-        roll -= w;
-        if (roll <= 0) return kind;
-    }
-    return 'equal';
+    /*
+     * AUDIT-10 B5-01: the room decides, and the room is made of people with
+     * interests.
+     *
+     * This was a weighted roll over three rules — the group "chose" by dice,
+     * with the charter and the leader's temperament nudging the odds. It gave
+     * plausible *rates* and no politics: nobody put anything forward, nobody
+     * had a position, and a member overruled at every hearing they ever
+     * attended had no way to know.
+     *
+     * Now each attending member holds a position from their own interest and
+     * those positions are counted. The old weights survive as the standing
+     * pull on the room — a group that swore to share food finds `equal` hard
+     * to argue against, a desperate member makes `by-need` hard to dismiss —
+     * which is what those knobs always meant. The roll is the tiebreak rather
+     * than the decision, because a tie in a room of four is a real thing and
+     * somebody still has to hand the food out.
+     *
+     * `leaderStyle` finally does something mechanical here. A tyrant's position
+     * counts for several members; a democrat's counts for a little more than
+     * one; an absent leader's counts for exactly one, like everybody else's.
+     */
+    const tally: Record<Split, number> = { 'equal': 0, 'by-contribution': 0, 'by-need': 0 };
+    members.forEach(m => {
+        const weight = m.id === record.leaderId
+            ? (record.leaderStyle === 'tyrant' ? ALLIANCE_DISPUTE.tyrantWeight
+                : record.leaderStyle === 'democratic' ? ALLIANCE_DISPUTE.democraticLeaderWeight : 1)
+            : 1;
+        tally[positionOf(record, m, members)] += weight;
+    });
+    // The room's standing pull, in the units the vote is counted in.
+    tally.equal += ALLIANCE_DISPUTE.equalBase + (sworn ? ALLIANCE_DISPUTE.swornEqualBonus : 0);
+    tally['by-contribution'] += ALLIANCE_DISPUTE.contributionBase
+        + (record.leaderStyle === 'tyrant' ? ALLIANCE_DISPUTE.tyrantContributionBonus : 0);
+    tally['by-need'] += ALLIANCE_DISPUTE.needBase + (desperate ? ALLIANCE_DISPUTE.desperateNeedBonus : 0);
+
+    const best = Math.max(...Object.values(tally));
+    const tied = (Object.keys(tally) as Split[]).filter(k => tally[k] === best);
+    return tied.length === 1 ? tied[0] : tied[Math.floor(ctx.rng.nextFloat() * tied.length)];
 }
 
 /**
@@ -240,6 +310,13 @@ function holdHearing(ctx: SimContext, record: Alliance, members: Tribute[], abse
     attending.forEach(m => spend(m, ALLIANCE_DISPUTE.hearingHours));
     noteAttempt(state, 'alliance-hearing');
     members = attending;
+    /*
+     * B5-01: the proposal and the positions, taken before the decision because
+     * that is when they exist. A position read afterwards is a rationalisation.
+     */
+    const proposer = proposerOf(record, members);
+    const positions = Object.fromEntries(members.map(m => [m.id, positionOf(record, m, members)]));
+    const proposal = positions[proposer.id];
     const split = decideSplit(ctx, record, members);
 
     // Who gets it, on this group's chosen rule. One *portion* to each, in
@@ -387,6 +464,14 @@ function holdHearing(ctx: SimContext, record: Alliance, members: Tribute[], abse
         // F13: the membership as it stood at the hearing, so the follow-up can
         // tell "never came back" from "came back".
         memberIdsAtHearing: members.map(m => m.id),
+        // B5-01: what was put, by whom, where everybody stood, and who lost.
+        proposal,
+        proposedById: proposer.id,
+        positions,
+        // Everyone whose position was not what the room settled on. Recorded
+        // even when they were fed, because being overruled and being hungry are
+        // different grievances and a group can produce either on its own.
+        conceded: members.filter(m => positions[m.id] !== split).map(m => m.id),
     });
 }
 
