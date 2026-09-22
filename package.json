@@ -46,6 +46,7 @@
     "test:textscale": "node scripts/check-textscale.mjs",
     "test:projects": "tsx scripts/check-projects.ts",
     "test:hearings": "tsx scripts/check-hearings.ts",
+    "test:intentions": "tsx scripts/check-intentions.ts",
     "test:triage": "tsx scripts/check-triage.ts",
     "test:credibility": "tsx scripts/check-credibility.ts",
     "test:warnings": "tsx scripts/check-warnings.ts",

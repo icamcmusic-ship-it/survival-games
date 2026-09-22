@@ -98,6 +98,41 @@ function announce(ctx: SimContext, t: Tribute, objective: Objective) {
                 { type: 'objective-formed', important: true, category: 'alliance' }
             );
             return;
+        case 'scavenge':
+            ctx.logEvent(
+                `${t.name} works out where ${name(objective.ownerId)} went down, and starts walking to ${objective.zone}.`,
+                [t.id, objective.ownerId],
+                { type: 'objective-formed', category: 'loot' }
+            );
+            return;
+        case 'court':
+            ctx.logEvent(
+                `${t.name} decides they are not doing this alone, and goes looking for ${name(objective.targetId)}.`,
+                [t.id, objective.targetId],
+                { type: 'objective-formed', important: true, category: 'alliance' }
+            );
+            return;
+        case 'mourn':
+            ctx.logEvent(
+                `${t.name} turns back toward ${objective.zone}, where ${name(objective.forId)} fell. There is nothing there for them.`,
+                [t.id, objective.forId],
+                { type: 'objective-formed', important: true, category: 'travel' }
+            );
+            return;
+        case 'recover':
+            ctx.logEvent(
+                `${t.name} stops, takes stock of the damage, and decides ${objective.zone} will have to do until it closes.`,
+                [t.id],
+                { type: 'objective-formed', category: 'survival' }
+            );
+            return;
+        case 'scout':
+            ctx.logEvent(
+                `${t.name} realises they have not seen another living soul in days, and sets off for the high ground at ${objective.zone}.`,
+                [t.id],
+                { type: 'objective-formed', category: 'travel' }
+            );
+            return;
         default:
             return;
     }
@@ -129,9 +164,32 @@ export function isObjectiveValid(ctx: SimContext, t: Tribute): boolean {
         case 'reach':
             // Arrived, or the ground went out of bounds under the destination.
             return t.zone !== objective.zone && !collapsed.includes(objective.zone);
+        // §16: resting joins holding and waiting — all three are expressed by
+        // staying where the decision was made. The comment belongs above the
+        // group rather than between two of its labels: a comment between case
+        // labels reads as a statement to `no-fallthrough`, which is a lint
+        // error for behaviour that was always correct.
         case 'hold':
         case 'wait':
+        case 'recover':
             return t.zone === objective.zone && !collapsed.includes(objective.zone);
+        // §16: the travelling intentions end the same way `reach` does —
+        // arriving is what finishes them, and the ground going out of bounds
+        // is what cancels them. `scavenge` has one extra way to end: somebody
+        // else got there first, and there is nothing to walk to any more.
+        case 'scavenge':
+            return t.zone !== objective.zone && !collapsed.includes(objective.zone)
+                && (ctx.state.abandonedCamps ?? []).some(c =>
+                    c.zone === objective.zone && c.ownerId === objective.ownerId && c.foundBy === undefined);
+        case 'mourn':
+        case 'scout':
+            return t.zone !== objective.zone && !collapsed.includes(objective.zone);
+        // §16: courting ends when you are standing in front of them — the
+        // asking itself is the alliance layer's business, not this one's.
+        case 'court': {
+            const them = living(objective.targetId);
+            return !!them && them.zone !== t.zone;
+        }
         case 'flee':
             return t.zone === objective.from;
         default:
@@ -168,7 +226,12 @@ function isObjectiveReachable(ctx: SimContext, t: Tribute, goal: Objective): boo
         case 'protect': return !!living(goal.wardId);
         case 'reach': return !collapsed.includes(goal.zone) && t.zone !== goal.zone;
         case 'hold':
-        case 'wait': return !collapsed.includes(goal.zone);
+        case 'wait':
+        case 'recover': return !collapsed.includes(goal.zone);
+        case 'scavenge':
+        case 'mourn':
+        case 'scout': return !collapsed.includes(goal.zone) && t.zone !== goal.zone;
+        case 'court': return !!living(goal.targetId);
         default: return false;
     }
 }
@@ -379,6 +442,34 @@ function chooseObjective(
             });
             if (o) return o;
         }
+    }
+
+    // 3c. §16: a named pile. Somebody died or ran, and their kit is still on
+    //     the ground where it happened — the cannon told the whole arena
+    //     where. This is not `reach ... forage`, which is walking toward
+    //     ground that might have something on it; this is walking toward a
+    //     specific cache with a specific dead owner's name on it, which is
+    //     also what makes arriving worth a line.
+    const cache = (state.abandonedCamps ?? [])
+        .filter(c => c.foundBy === undefined && c.zone !== t.zone
+            && !collapsed.includes(c.zone)
+            && cycle - c.cycle <= OBJECTIVES.scavengeStaleAfter)
+        .map(c => ({ c, hops: hopsTo(state.arena, t.zone, c.zone, collapsed, severedEdgeSet(state)) }))
+        .filter((m): m is { c: typeof m.c; hops: number } => m.hops !== undefined)
+        .sort((a, b) => a.hops - b.hops)[0];
+    // Above the hunt rung, and only for somebody with nothing to hunt *with*.
+    // A tribute holding a weapon has better things to do than pick over a
+    // corpse; a tribute holding nothing, who knows exactly where a dead
+    // Career's kit is lying, going hunting anyway was the cascade at its
+    // least sensible.
+    // The leg-injury gate that used to sit here was redundant: a tribute hurt
+    // enough not to walk reaches the `recover` rung two clauses down, which
+    // is a better answer than silently declining to have an intention.
+    if (cache) {
+        const o = offer(OBJECTIVES.scavengeTier, {
+            kind: 'scavenge', zone: cache.c.zone, ownerId: cache.c.ownerId, expires: expiry(OBJECTIVES.scavengeCycles),
+        });
+        if (o) return o;
     }
 
     // 4. Somebody to kill. Either sworn, or simply the nearest rival a hunter
@@ -599,6 +690,17 @@ function chooseObjective(
         }
     }
 
+    // 5c. §16: a body that cannot be spent. The rung below already sends a
+    //     tribute to shelter on fatigue, low health or frostbite — none of
+    //     which is an *injury*, and a tribute with a split arm and 70 health
+    //     therefore had no reason to stop at all. Chosen on graded damage,
+    //     and only where nobody is standing over them.
+    const totalGrade = injuryGrade(t, 'legs') + injuryGrade(t, 'arms') + injuryGrade(t, 'torso');
+    if (totalGrade >= OBJECTIVES.recoverInjuryGrade && hostilesHere.length === 0) {
+        const o = offer(OBJECTIVES.recoverTier, { kind: 'recover', zone: t.zone, expires: expiry(OBJECTIVES.recoverCycles) });
+        if (o) return o;
+    }
+
     // 6. Somewhere to sleep it off — or somewhere to get warm before the
     // cold finishes what it started (§7.7).
     // A2: `objectiveBias.reach` is an archetype more willing to *go somewhere*
@@ -614,6 +716,70 @@ function chooseObjective(
         }
         if (shelter === t.zone) {
             const o = offer(40, { kind: 'hold', zone: t.zone, expires: expiry(OBJECTIVES.holdCycles) });
+            if (o) return o;
+        }
+    }
+
+    // §16: somebody to ask. Every other person-shaped intention in this
+    // cascade is adversarial or already settled — a tribute who has concluded
+    // they cannot do this alone had no way to say so, and no way to go and do
+    // anything about it. The warmth test is deliberately on the relationship
+    // rather than on the archetype: wanting company is a position you arrive
+    // at, not a disposition you were printed with.
+    if (t.allianceId === undefined) {
+        const worthAsking = state.tributes
+            .filter(o => o.status === 'alive' && o.id !== t.id && o.allianceId === undefined
+                && getRel(t, o.id) >= OBJECTIVES.courtWarmth
+                && fearOf(t, o.id) < OBJECTIVES.fleeFear
+                && cyclesSinceContact(state, t, o.id) <= OBJECTIVES.courtSightingAge)
+            .sort((a, b) => getRel(t, b.id) - getRel(t, a.id))[0];
+        if (worthAsking) {
+            const o = offer(OBJECTIVES.courtTier, {
+                kind: 'court', targetId: worthAsking.id, expires: expiry(OBJECTIVES.courtCycles),
+            });
+            if (o) return o;
+        }
+    }
+
+    // §16: the ground somebody fell on. No survival value whatsoever, which
+    // is the whole reason it is in the list — every other rung is a tribute
+    // doing arithmetic, and a run in which nobody ever does anything that
+    // costs them is a run about eight optimisers.
+    //
+    // Written first against `abandonedCamps`, which was the wrong source and
+    // measured 0.00 of these per run: a camp is only minted for the dead
+    // under the `salvage` arena law, so in most arenas nobody left a trace to
+    // walk back to. A corpse's `zone` is where it fell, it is always there,
+    // and it is what the intention was always about.
+    const grieved = state.tributes
+        .filter(o => o.status === 'dead' && o.zone !== t.zone && !collapsed.includes(o.zone)
+            && getRel(t, o.id) >= OBJECTIVES.mournBond
+            // Recent, in the only clock a corpse carries. A tribute does not
+            // walk back across the arena for somebody who died on day one.
+            && state.day - (o.dayOfDeath ?? -Infinity) <= OBJECTIVES.mournRecentDays)
+        .sort((x, y) => getRel(t, y.id) - getRel(t, x.id))[0];
+    if (grieved) {
+        const o = offer(OBJECTIVES.mournTier, {
+            kind: 'mourn', zone: grieved.zone, forId: grieved.id, expires: expiry(OBJECTIVES.mournCycles),
+        });
+        if (o) return o;
+    }
+
+    // §16: a map gone cold. A tribute who has not laid eyes on another
+    // person in days is not calm, they are blind — and until now the two were
+    // indistinguishable, because the cascade only ever reacted to people it
+    // could already see. This is the one rung that goes looking for
+    // information rather than for a thing.
+    const field = state.tributes.filter(o => o.status === 'alive' && o.id !== t.id);
+    // Blindness as a *share* of the field. Requiring it of every living
+    // rival measured 0.03 climbs per run: in a field of twelve, one stale
+    // sighting of one person was enough to call a tribute well-informed.
+    const known = field.filter(o => cyclesSinceContact(state, t, o.id) <= OBJECTIVES.scoutBlindFor).length;
+    const blind = field.length > 0 && known / field.length <= OBJECTIVES.scoutKnownShare;
+    if (blind) {
+        const vantage = nearestZoneMatching(ctx, t, active, z => zoneFeatures(z).elevation === true);
+        if (vantage) {
+            const o = offer(OBJECTIVES.scoutTier, { kind: 'scout', zone: vantage, expires: expiry(OBJECTIVES.scoutCycles) });
             if (o) return o;
         }
     }
@@ -890,6 +1056,11 @@ function hesitate(ctx: SimContext, t: Tribute, chosen: Objective, other: Objecti
             case 'flee': return 'getting out';
             case 'hold': return `staying where they are`;
             case 'wait': return `sitting on ${o.zone}`;
+            case 'scavenge': return `what ${name(o.ownerId)} left in ${o.zone}`;
+            case 'court': return `finding ${name(o.targetId)}`;
+            case 'mourn': return `going back for ${name(o.forId)}`;
+            case 'recover': return 'letting the wound close';
+            case 'scout': return `getting eyes on the arena from ${o.zone}`;
             case 'reach': return {
                 water: 'finding water', shelter: 'finding somewhere to sleep',
                 feast: 'the feast', ally: 'reaching their allies', forage: 'finding food',
@@ -915,6 +1086,10 @@ function sameObjective(a: Objective | undefined, b: Objective): boolean {
     if (a.kind === 'wait' && b.kind === 'wait') return a.zone === b.zone;
     if (a.kind === 'protect' && b.kind === 'protect') return a.wardId === b.wardId;
     if (a.kind === 'reach' && b.kind === 'reach') return a.zone === b.zone;
+    // §16: two intentions of the same zone-shaped kind are the same plan when
+    // they name the same place; the two person-shaped ones, the same person.
+    if (a.kind === b.kind && 'zone' in a && 'zone' in b) return a.zone === b.zone;
+    if (a.kind === b.kind && 'targetId' in a && 'targetId' in b) return a.targetId === b.targetId;
     if (a.kind === 'hold' && b.kind === 'hold') return a.zone === b.zone;
     if (a.kind === 'flee' && b.kind === 'flee') return a.from === b.from;
     return true;
@@ -933,9 +1108,24 @@ export function objectiveZone(ctx: SimContext, t: Tribute): string | undefined {
     switch (objective.kind) {
         case 'reach':
             return objective.zone;
+        // The three that stay put, and the three §16 ones that are a walk to a
+        // place for three different reasons. Both groups answer with the zone
+        // written on the objective.
         case 'hold':
         case 'wait':
+        case 'recover':
+        case 'scavenge':
+        case 'mourn':
+        case 'scout':
             return objective.zone;
+        // §16: courting reads the same rule as protecting — you go to where
+        // you last saw them, not to where they actually are.
+        case 'court': {
+            const them = state.tributes.find(o => o.id === objective.targetId && o.status === 'alive');
+            if (!them) return undefined;
+            if (them.zone !== t.zone && cyclesSinceContact(state, t, them.id) > MEMORY.sightingLifetime) return undefined;
+            return them.zone;
+        }
         case 'stalk':
         case 'hunt': {
             const target = state.tributes.find(o => o.id === objective.targetId && o.status === 'alive');
@@ -967,7 +1157,7 @@ export function objectiveStep(ctx: SimContext, t: Tribute, options: Zone[]): Zon
     if (!objective || objective.kind === 'survive') return undefined;
     const collapsed = ctx.state.collapsedZones ?? [];
 
-    if (objective.kind === 'hold' || objective.kind === 'wait') {
+    if (objective.kind === 'hold' || objective.kind === 'wait' || objective.kind === 'recover') {
         // Holding is expressed by not moving, which the caller handles.
         return undefined;
     }
@@ -1018,6 +1208,20 @@ function recordObjectiveOutcome(ctx: SimContext, t: Tribute, previous: Objective
         case 'protect': { const w = find(previous.wardId); won = !!w && w.status === 'alive'; break; }
         case 'hold':
         case 'wait': won = t.zone === previous.zone && t.status === 'alive'; break;
+        // §16: arriving is the win for all three walks. Scavenging asks for
+        // one thing more — the cache has to have been theirs when they got
+        // there, otherwise they walked across the arena to look at a
+        // trampled patch, which is a loss and should be remembered as one.
+        case 'scavenge': won = t.zone === previous.zone
+            && (state.abandonedCamps ?? []).some(c => c.zone === previous.zone && c.foundBy === t.id); break;
+        case 'mourn':
+        case 'scout': won = t.zone === previous.zone; break;
+        // §16: the win is standing in front of them. Whether they said yes is
+        // the alliance layer's question, and it is asked one rung later.
+        case 'court': { const them = find(previous.targetId); won = !!them && them.zone === t.zone; break; }
+        // §16: resting worked if the wound is smaller than it was.
+        case 'recover': won = injuryGrade(t, 'legs') + injuryGrade(t, 'arms') + injuryGrade(t, 'torso')
+            < OBJECTIVES.recoverInjuryGrade; break;
         default: return;
     }
     t.objectiveOutcomes = t.objectiveOutcomes ?? {};
@@ -1033,7 +1237,9 @@ function recordObjectiveOutcome(ctx: SimContext, t: Tribute, previous: Objective
 
 /** True when the objective says to stay put this cycle. */
 export function objectiveHolds(t: Tribute): boolean {
-    return t.objective?.kind === 'hold' || t.objective?.kind === 'wait';
+    return t.objective?.kind === 'hold' || t.objective?.kind === 'wait'
+        // §16: recovering is the third way of deciding not to move.
+        || t.objective?.kind === 'recover';
 }
 
 /** Short label for the UI, so a reader can see what a tribute is trying to do. */
@@ -1048,6 +1254,11 @@ export function objectiveLabel(state: { tributes: Tribute[] }, t: Tribute): stri
         case 'protect': return `Protecting ${name(objective.wardId)}`;
         case 'hold': return `Holding ${objective.zone}`;
         case 'flee': return `Fleeing ${objective.from}`;
+        case 'scavenge': return `Going for ${name(objective.ownerId)}'s kit in ${objective.zone}`;
+        case 'court': return `Looking for ${name(objective.targetId)}`;
+        case 'mourn': return `Going back to where ${name(objective.forId)} fell`;
+        case 'recover': return `Resting up in ${objective.zone}`;
+        case 'scout': return `Climbing ${objective.zone} for a look`;
         case 'reach': {
             const why = {
                 water: 'for water', shelter: 'for shelter', feast: 'for the feast',

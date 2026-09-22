@@ -3,7 +3,7 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { ARCHETYPES, archetypeCompatibility } from '../../data/archetypes';
-import { RESPECT, ALLIANCES, BETRAYAL, PROFICIENCY, PROTECTOR_BOND, QUELL_MECHANICS, RELATIONSHIPS, ROMANCE, SUSPICION } from '../../data/balance';
+import { RESPECT, ALLIANCES, BETRAYAL, OBJECTIVES, PROFICIENCY, PROTECTOR_BOND, QUELL_MECHANICS, RELATIONSHIPS, ROMANCE, SUSPICION } from '../../data/balance';
 import { profOf, trainProficiency } from '../proficiency';
 import { applyDamage, checkDeath } from '../combat';
 import { clampTribute } from '../vitals';
@@ -492,7 +492,15 @@ export function processAlliances(ctx: SimContext) {
                     // §3.2 (audit): dread is a reason to want company. This
                     // is the first thing outside the stance scorer to read it.
                     const dread = (dreadOf(ctx, t1) + dreadOf(ctx, t2)) / 2;
-                    const formChance = Math.max(
+                    // §16: one of them walked here to ask. The `court`
+                    // intention is only a walk until arrival does something,
+                    // and this is the something: an offer put to somebody's
+                    // face beats two loners happening to share a zone.
+                    const asking = (a: Tribute, b: Tribute) =>
+                        a.objective?.kind === 'court' && a.objective.targetId === b.id;
+                    const suitor = asking(t1, t2) ? t1 : asking(t2, t1) ? t2 : undefined;
+                    const asked = suitor ? (suitor === t1 ? t2 : t1) : undefined;
+                    const baseChance = Math.max(
                         ALLIANCES.minFormChance,
                         (ALLIANCES.baseFormChance + affinity + compat + persona + history) / trustCost
                             * (1 + dread * ALLIANCES.dreadFormationWeight)
@@ -502,6 +510,11 @@ export function processAlliances(ctx: SimContext) {
                             // a hard bar so the exceptional case stays possible.
                             * careerSocialFactor(t1, t2)
                     );
+                    // Additive on the probability, then capped: asking helps a
+                    // lot and settles nothing.
+                    const formChance = suitor
+                        ? Math.min(ALLIANCES.maxFormChance, baseChance + OBJECTIVES.courtProposalBonus)
+                        : baseChance;
                     const relThreshold = (ALLIANCES.baseRelThreshold - compat * 100 - persona * 60) * trustCost;
 
                     if (rel > relThreshold && ctx.rng.chance(formChance)) {
@@ -511,9 +524,18 @@ export function processAlliances(ctx: SimContext) {
                         noteContact(ctx.state, t1, t2);
                         registerAlliance(ctx, newId, [t1, t2]);
                         ctx.logEvent(
-                            fill(ctx.pickText(ALLIANCE_TEXTS.form), { t1: t1.name, t2: t2.name, zone: t1.zone }),
+                            suitor && asked
+                                ? `${suitor.name} came to ${suitor.zone} looking for ${asked.name}, and asks outright. ${asked.name} agrees.`
+                                : fill(ctx.pickText(ALLIANCE_TEXTS.form), { t1: t1.name, t2: t2.name, zone: t1.zone }),
                             [t1.id, t2.id],
                             { important: true, category: 'alliance' }
+                        );
+                    } else if (suitor && asked) {
+                        noteContact(ctx.state, t1, t2);
+                        ctx.logEvent(
+                            `${suitor.name} finds ${asked.name} in ${suitor.zone} and asks to team up. ${asked.name} says no and they part.`,
+                            [suitor.id, asked.id],
+                            { category: 'alliance' }
                         );
                     }
                 }

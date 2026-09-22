@@ -26,7 +26,7 @@ import { craftOf } from '../data/districts';
 import { traitMod } from '../data/traits';
 import { addExcitement } from './audience';
 import { earnTrait } from './earnedTraits';
-import { PROFICIENCY, SLEEP, SOCIAL_AXES } from '../data/balance';
+import { OBJECTIVES, PROFICIENCY, SLEEP, SOCIAL_AXES } from '../data/balance';
 import { bodyLabel, driftCondition, effectiveAgility, hungerDrainMultiplier, starvationBuffer, waterNeedMultiplier, youthRecoveryMultiplier } from './physique';
 import { arenaHasLaw, wildcardIs } from './gamesProfile';
 import { isEvasiveStance } from '../data/stances';
@@ -830,6 +830,10 @@ function applyNaturalRecovery(ctx: SimContext, t: Tribute, time: 'day' | 'night'
     if (isEvasiveStance(t.stance) || hasCamp(ctx, t, 'camouflage')) amount += RECOVERY.darkAndHiddenBonus;
     // Someone keeping watch is the difference between sleeping and lying awake.
     if (alliesPresent > 0) amount += RECOVERY.allyWatchBonus;
+    // §16: they are not sleeping here by accident — this is the night they
+    // set aside for it. A share on top of whatever the night was already
+    // worth, so a bad place to rest is still a bad place to rest.
+    if (t.objective?.kind === 'recover') amount *= 1 + OBJECTIVES.recoverHealingBonus;
     // Exhaustion eats the whole benefit as it approaches the ceiling.
     amount *= Math.max(0, 1 - t.vitals.fatigue / RECOVERY.fatigueCeiling);
 

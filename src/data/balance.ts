@@ -3434,6 +3434,67 @@ export const OBJECTIVES = {
     avengerDeterrent: 0.05,
     /** §4: what attacking somebody your ally has a truce with costs on the board. */
     thirdPartyTruceCost: 30,
+
+    // ---- §16: the six intentions added after the cascade was surveyed ----
+    /*
+     * Tiers were chosen against a measured cascade rather than by feel. A
+     * probe over 12,597 tribute-cycles found the empty `survive` intention
+     * standing in only 3.7% of them, so a new rung that only takes the idle
+     * ones is barely content; each of these is pitched at the rung whose
+     * *situation* it describes better than the incumbent did. A seventh
+     * candidate — carrying medicine to a hurt ally — measured 0.3% and was
+     * not written.
+     */
+    /** A specific person's dropped kit, in a zone they can walk to. Beats generic shelter. */
+    scavengeTier: 44,
+    scavengeCycles: 4,
+    /** How many cycles old a cache can be and still be worth the walk. */
+    scavengeStaleAfter: 12,
+    /** Injured badly enough to stop. Sits just above the shelter rung it refines. */
+    recoverTier: 42,
+    recoverCycles: 3,
+    /** Total graded injury across all sites at or above which resting becomes the plan. */
+    recoverInjuryGrade: 1,
+    /** Extra share of a cycle's natural healing a tribute who chose to rest gets. */
+    recoverHealingBonus: 0.6,
+    /** Looking for somebody to team up with. Common, so deliberately low. */
+    courtTier: 34,
+    courtCycles: 3,
+    /** Relationship with a known loner at or above which they are worth approaching. */
+    courtWarmth: 15,
+    /** How stale a sighting of them may be and still count as knowing where they are. */
+    courtSightingAge: 6,
+    /** Added to the odds an alliance actually forms when one party came to ask. */
+    courtProposalBonus: 0.35,
+    /*
+     * A seventh intention — going to take apart somebody else's half-built
+     * work — was written, measured and cut. Its prerequisite (a foreign,
+     * unfinished project the tribute knows about) stood in 0.5% of
+     * tribute-cycles and it was chosen 0.03 times per run, against 0.37 to
+     * 1.90 for the six that shipped. Widening what counts as knowing about it
+     * moved the number not at all: the exclusions doing the cutting are the
+     * ones that should (you do not wreck your own shelter, or your alliance's),
+     * so there was nothing left to loosen that was not simply wrong.
+     */
+    /** Going to where a friend fell. Below waiting: it is the least useful thing on the list. */
+    mournTier: 26,
+    mournCycles: 3,
+    /** Days since they fell, within which their ground still pulls. */
+    mournRecentDays: 2,
+    /** Relationship with the fallen at or above which their ground pulls. */
+    mournBond: 20,
+    /** Resolve returned by standing there, and the sanity it costs to look. */
+    mournResolve: 8,
+    mournSanity: 4,
+    /** Climbing something to find out where the field went. The last rung before nothing. */
+    scoutTier: 24,
+    scoutCycles: 3,
+    /** Cycles since the last sighting of anybody, above which their map has gone cold. */
+    scoutBlindFor: 5,
+    /** Share of the living field they may still have a fresh sighting of and still count as blind. */
+    scoutKnownShare: 0.25,
+    /** Zones out from the vantage a successful climb refreshes rival memory in. */
+    scoutSweepHops: 2,
 } as const;
 
 /**
@@ -5497,6 +5558,13 @@ export const ALLIANCES = {
     careerRecruitThresholdFactor: 0.6,
     baseFormChance: 0.2,
     minFormChance: 0.02,
+    /**
+     * Ceiling on the formation roll once `OBJECTIVES.courtProposalBonus` has
+     * been added to it. Somebody who walked across the arena to ask is much
+     * likelier to be taken up on it, but never certain — the whole point of
+     * the `court` intention is that it is an ask that can be refused.
+     */
+    maxFormChance: 0.9,
     baseRelThreshold: 40,
     /** Field size above which new alliances still form at all. */
     formationFieldSize: 4,
