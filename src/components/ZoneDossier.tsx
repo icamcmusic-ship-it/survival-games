@@ -4,6 +4,7 @@ import { ZONES, LOAD_BEARING } from '../data/balance';
 import { structuralFatigueOf } from '../engine/loadBearing';
 import { frontName } from '../engine/weatherFront';
 import { isVertical } from '../engine/verticality';
+import { abandonedAt } from '../engine/abandonedWork';
 
 /**
  * §2.2: a sector, as a place with a history.
@@ -147,6 +148,11 @@ export function ZoneDossier({ gameState, zone }: { gameState: GameState; zone: s
             {/* B3-02: which level they are on, where the zone has levels. Two
                 tributes in the same sector on opposite ends of a rope cannot
                 reach each other, and a single list said they could. */}
+            {/* B5-03: work somebody walked away from. Visible because the
+                whole point of the project ledger is that the site knows. */}
+            {abandonedAt(gameState, zone) && row('Left behind', (
+                <span>Half-built work nobody has come back to. The weather is taking it, and anybody standing here could finish it or pull it apart.</span>
+            ))}
             {row('Standing', here.length === 0 ? 'Empty.' : (
                 vertical
                     ? ['upper', 'lower'].map(l => {

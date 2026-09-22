@@ -527,6 +527,16 @@ export interface ZoneMemory {
     /** §9.7: who told them, so a lie has an author to be furious with. */
     toldById?: string;
     /**
+     * AUDIT-10 B5-03: who warned them a hazard was coming here.
+     *
+     * Kept apart from `toldById`, which is provenance for an *impression* of a
+     * place — who is there, how picked over it is. A warning is a claim about
+     * the future, and it is settled by a different event: the hazard arriving,
+     * or not. Sharing the field would mean a warning that came true silently
+     * vouching for a sighting that was a lie.
+     */
+    warnedById?: string;
+    /**
      * AUDIT-9 stage C §3: how sure they are, 0 to 1.
      *
      * The audit asked for a belief to carry "claim, source, observed time,
@@ -817,7 +827,7 @@ export interface Tribute {
          * AUDIT-10 B10: where the work is, for a job that belongs to a place.
          * Absent on portable work, which travels with whoever is doing it.
          */
-        site?: { zone: string; level?: string };
+        site?: { zone: string; level?: ZoneLevel };
         /** The requirement in force when the hours went in, for the UI. */
         totalHours?: number;
     };
@@ -1159,6 +1169,26 @@ export interface Tribute {
      */
     trusts?: Record<string, number>;
     /**
+     * AUDIT-10 B5-01: contextual trust — specifically, credibility.
+     *
+     * The audit's phrasing is the clearest statement of why one number was
+     * never enough: *"a liar can be a reliable shield"*. Being caught lying
+     * used to cost regard and raise suspicion, which are the axes for "do I
+     * like you" and "will you knife me" — so a tribute who passed on a bad
+     * sighting became less safe to stand next to, which is not what being
+     * caught out means. What it means is that the next thing they say is worth
+     * less.
+     *
+     * `respects` is already the combat-support axis (you can rate someone as a
+     * fighter and never sleep unguarded near them); `debts` is the repayment
+     * one. This is the third the audit names, and the one nothing modelled.
+     *
+     * Written by caught lies and by corroboration, read by how much weight a
+     * retelling carries. Optional and absent on every save written before it,
+     * like the two axes added the same way before it.
+     */
+    believes?: Record<string, number>;
+    /**
      * §4.4/§6.3: the angle they took with Caesar. A showmance is a strategy
      * chosen before the arena; so is publicly inviting allies, so is naming
      * the person you intend to kill in front of the whole country.
@@ -1407,6 +1437,14 @@ export interface Tribute {
     // ---- A2: archetype hook state ----
     /** A2: whether this tribute's once-per-run archetype signature has fired. */
     signatureFired?: boolean;
+    /**
+     * AUDIT-10 B4-02: the set piece fired *and* left something behind.
+     *
+     * Only written while a measurement harness has the funnel switched on, and
+     * only for the archetypes whose outcome has been defined — see
+     * `engine/funnel`.
+     */
+    signatureBenefited?: boolean;
     /**
      * §8: the Scholar's foreknowledge, banked by their signature and spent the
      * next time the arena tries to kill them. Their signature fired for 59% of
@@ -3360,6 +3398,39 @@ export interface GameState {
      * phase, day) to reseed from; this counter is what makes their stream
      * reproducible across a save and resume. See `triggerGamemakerEvent`.
      */
+    /**
+     * AUDIT-10 B4-02: opportunity-funnel counts, per archetype per stage.
+     *
+     * Present only when a measurement harness called `enableFunnel`. Absent in
+     * every ordinary run, which is deliberate — see `engine/funnel`.
+     */
+    funnel?: Record<string, Partial<Record<string, number>>>;
+    /**
+     * AUDIT-10 B5-02: unfinished work, belonging to the place rather than to
+     * the person.
+     *
+     * `Tribute.partialWork` records a site and is still private to the worker,
+     * so a half-built shelter was invisible to everybody standing next to it:
+     * it could not be discovered, continued, inherited or taken. The audit asks
+     * for "persistent projects that belong to the site and can be discovered,
+     * finished, damaged or appropriated by somebody else", and the first of
+     * those is the one the others need — a project nobody else can see is not
+     * a feature of the arena, it is a field on a tribute.
+     *
+     * Keyed by `zone|level` plus the kind, because two people can be building
+     * different things in the same place and a shelter is not a trap.
+     */
+    projects?: Record<string, {
+        zone: string;
+        level?: ZoneLevel;
+        kind: string;
+        hoursDone: number;
+        totalHours: number;
+        /** Everyone who has put hours in, in the order they started. */
+        workerIds: string[];
+        /** The cycle it was last touched, so an abandoned site reads as one. */
+        lastCycle: number;
+    }>;
     gamemakerCommands?: number;
     /**
      * AUDIT-10 B3-01: what the player actually pressed, in order.

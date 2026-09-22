@@ -4,9 +4,17 @@ The companion to `AUDIT-10.md`. That document is the audit; this one is what we
 are doing about it, in what order, and what has to be true before each step is
 allowed to count as done.
 
-**Status:** batch 1 (the twenty-one confirmed defects, F01–F21), batch 1b (the
-death-mix settings) and batch 2 (the shared physical rulebook) are implemented
-and merged. Batches 3–6 below are planned, not built.
+**Status:** batches 1, 1b, 2 and 3 are implemented and merged. Batch 4 is
+complete and batch 5 is part-built — see each item's own heading, which carries
+what is done and what is open rather than leaving it to this line. Batch 6 is
+planned, not built.
+
+Batch 4 produced a finding that governs how the rest of the plan treats §8: the
+matched-cohort instrument says the archetype win-rate gaps are mostly
+confounding. Swapping career and tracker moves survival by less than a third of
+a day in either direction, with both intervals spanning zero, against a ranking
+table reporting 11.0% and 3.51%. Nothing below is tuned toward closing those
+gaps; a set piece is changed when it is bad on its own terms.
 
 The audit's own framing governs the whole plan and is the thing most easily
 lost once implementation starts:
@@ -248,14 +256,14 @@ causal estimates: district, arena, preferred traits, age, body, starting items
 and available opponents confound them, and the top and bottom are selected
 extremes.
 
-### B4-01 — matched cohorts
+### B4-01 — matched cohorts — **done**
 
 Compare otherwise-matched casts across archetype and trait changes using fixed
 scenario inputs and deterministic random streams. **A shared seed alone is not
 a clean counterfactual** if an earlier branch consumes different draws. This is
 the instrument the rest of the batch needs and it does not exist yet.
 
-### B4-02 — the opportunity funnel
+### B4-02 — the opportunity funnel — **done for the two named cases**
 
 Per signature: alive long enough → prerequisite available → aware of the
 opportunity → legal action affordable → attempted → succeeded → lasting
@@ -263,7 +271,7 @@ benefit. This is what stops an opportunity failure being hidden behind a larger
 bonus, which is the failure mode behind every one of the low-signature
 archetypes.
 
-### B4-03 — the named cases
+### B4-03 — the named cases — **Tracker done; the premise revisited**
 
 Tracker (3.51%, lowest): measure target discovery, route feasibility, safe
 intercepts, and outcomes after a tracked contact. Reward useful information and
@@ -274,7 +282,7 @@ Career: inspect finishing credit, free repeated actions, starting kit and
 target selection — batch 1b already priced one of these (`careerReachBonus`)
 and the same method applies to the rest.
 
-### B4-04 — honest sampling everywhere
+### B4-04 — honest sampling everywhere — **done**
 
 F20 fixed the trait table's verdict. The same rule — a release gate needs
 adequate samples *for the compared rows*, with intervals, and exploratory
@@ -291,7 +299,7 @@ among holders of "Outlived The Pack" is not evidence the trait is strong.
 a physical interaction, and the point of batch 2 is that there is one rulebook
 for those.
 
-### B5-01 — relationships with distinct jobs
+### B5-01 — relationships with distinct jobs — **contextual trust done; the rest open**
 
 Contextual trust (repayment, combat support, information — a liar can be a
 reliable shield); shared decisions with a recorded proposal, voters, positions
@@ -304,7 +312,34 @@ ledgers and protected reserves (batch 1 started this at F11); real reunions;
 coalitions with a target and an expiry; earned endgame relationships seeded
 through routes and contested resources rather than assigned at the finale.
 
-### B5-02 — arena systems
+### B5-02 — arena systems — **projects and forecast lead time done; topology and recovery open**
+
+Done: sited work belongs to the site (`GameState.projects`) and can be
+discovered, continued, inherited and damaged; forecast lead time measured and
+guarded (no forecast may be due on the cycle it is announced); hazard warning
+coverage measured at 62%, reported rather than guarded because raising it means
+forecasting hazards that do not forecast today, which is a death-mix change.
+
+Open, and smaller than the item's wording suggests. Surveyed rather than
+assumed, because the previous two items each turned out to be partly built:
+
+`EdgeRule` already covers directed edges (`oneWay`, `from`/`to`), conditional
+passability (`timeGated`, `hidden`, `contested`), capacity (`crossings`) and
+traversal time (`toll.timeCost`). Level is `ZoneLevel` and `engine/verticality`.
+Load is `engine/loadBearing`'s structural fatigue. Noise exists as a
+position-revealing consequence (`revealNoisyBreakdowns`, and `canObserve`'s
+sightlines) but **not** as a property of a crossing — a route that is loud to
+take is the one genuinely missing piece of the list.
+
+Also open: recovery and opportunity, so late games are not all accumulation of
+punishment; and procedural compatibility from capability tags.
+
+A note for whoever does the recovery item. `arenaSignature` already has a
+telegraph that lies (`PROC_SIGNATURE.falseChance*`, 15-35%), which was found
+*after* B5-03's forecast false alarm was built rather than before. The two are
+genuinely different — one is a Capitol broadcast with reason to mislead, the
+other is somebody reading the ground — but the search should have happened
+first.
 
 Topology that matters (directed and conditionally passable edges, capacity,
 traversal time, level, noise, load). Persistent projects that belong to the
@@ -315,7 +350,58 @@ propagation with capped chains and no accidental extra tick from iteration
 order. Recovery and opportunity, so late games are not all the same
 accumulation of punishment. Procedural compatibility from capability tags.
 
-### B5-03 — the chains
+### B5-03 — the chains — **five nonlethal events built; the lethal table open**
+
+Built, each with the four parts §7 asks of every row — a warning, a choice, a
+nonfatal result and a durable record:
+
+| event | what it needed |
+|---|---|
+| an abandoned project | the project ledger; it then ate the ledger's own feature until the guard caught it |
+| exchanged warnings | forecasts could not be passed on at all; now weighted by credibility |
+| a false alarm | a forecast that always lands is a countdown, not a warning |
+| shared cooking | would have been dead content gated on a fire — one qualifying case in 40 runs |
+| a repair apprenticeship | `trainProficiency` was solitary: you got better by doing, never by being shown |
+
+Already present and not rebuilt: borrowed equipment (`Tribute.loans`), an honest
+refusal (batch 2's named `Refusal` contract), restitution and a public promise
+(debts, charters, pacts).
+
+Open: a disputed map, disputed credit, an escort that succeeds; and the §6/§7
+lethal table. The instruction that governs it stands — **do not simply add
+lethality to the existing scheduler** — and every opportunity is checked for
+whether it can arise before the beat is written.
+
+#### The lethal table, surveyed
+
+A partial survey, done before writing anything, because three items this batch
+turned out to be built already and one beat was nearly shipped dead. **Every one
+of the twelve deaths already exists**: `DeathCauseCode` carries sepsis,
+infection, asphyxiation, drowning, fall, collapse, trap, exhaustion, poison and
+dehydration, and `check-cause-codes` asserts every death the engine produces
+carries one.
+
+So the gap is not the deaths. It is the *shape* around them — the warning, the
+choice, the nonfatal outcome and the durable record that §7 asks of every row.
+Adding lethality would be the one thing the audit explicitly says not to do.
+
+Verified present, and therefore needing only the missing parts of the shape
+rather than a mechanism: smoke in a refuge (`forecastConfinedSmoke` — already a
+forecast, so it already has a warning and a window), a contaminated batch
+(`waterborne`, with an incubation delay the drinker does not know about),
+rescue under load (`rescueLine`, with anchors and a cut-line attribution fixed
+in batch 1), failed stabilization (`attemptFieldDressing`, costing time and
+restarting the neglect clock).
+
+Verified absent: **treatment scarcity** as the audit describes it — two injured
+people, one treatment, and a choice about who gets it, with triage reading
+differently from deliberate refusal. The Medic's signature treats one person;
+nothing poses the scarcity.
+
+Not yet surveyed: overloaded crossing, choking, entrapment while scavenging,
+pursuit past exhaustion, delayed trap interference, water versus shelter,
+contaminated dressing. Named here so the next pass starts from what is unknown
+rather than from the audit's table again.
 
 The audit's §6 table (one per arena) and §7 table (twelve universal chains).
 Each row needs a warning, an avoidance or mitigation, a nonfatal result and a

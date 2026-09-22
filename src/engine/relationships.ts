@@ -78,6 +78,41 @@ export function trustOf(a: Tribute, b: Tribute): number {
     return Math.max(RELATIONSHIPS.min, Math.min(RELATIONSHIPS.max, trust));
 }
 
+/**
+ * AUDIT-10 B5-01: how much weight this tribute gives what that one tells them.
+ *
+ * Zero is "no history either way", which is where everybody starts and which
+ * has to mean *believed by default* — a field where nobody credits a stranger's
+ * warning is a field where the intel layer does nothing. So the read side
+ * scales a retelling's confidence by `1 + belief/scale`, clamped, rather than
+ * gating on it.
+ */
+export function beliefIn(a: Tribute, bId: string): number {
+    return Math.max(RELATIONSHIPS.min, Math.min(RELATIONSHIPS.max, a.believes?.[bId] ?? 0));
+}
+
+export function adjustBelief(a: Tribute, bId: string, delta: number): void {
+    a.believes = a.believes ?? {};
+    a.believes[bId] = Math.max(RELATIONSHIPS.min, Math.min(RELATIONSHIPS.max, (a.believes[bId] ?? 0) + delta));
+}
+
+/**
+ * The multiplier a teller's credibility puts on what they say.
+ *
+ * Bounded at both ends on purpose. Somebody caught lying twice is not worth
+ * *nothing* — a broken clock is still evidence — and somebody who has been
+ * right four times running does not get to write certainties into other
+ * people's heads, because they can still be wrong and the arena can still have
+ * changed since they looked.
+ */
+export function credibilityWeight(listener: Tribute, tellerId: string): number {
+    const belief = beliefIn(listener, tellerId);
+    return Math.max(
+        RELATIONSHIPS.credibilityFloor,
+        Math.min(RELATIONSHIPS.credibilityCeiling, 1 + belief / RELATIONSHIPS.credibilityScale),
+    );
+}
+
 /** §4.2 (audit): the stored trust history alone, without the derivation. */
 export function trustHistoryOf(a: Tribute, bId: string): number {
     return a.trusts?.[bId] ?? 0;

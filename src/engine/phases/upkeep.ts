@@ -9,6 +9,8 @@ import { decayAllianceRegard, decayTrust } from '../relationships';
 import { tickForecasts } from '../hazardChain';
 import { tickExposure } from '../survival';
 import { tickZoneEffects } from '../zoneEffects';
+import { tickAbandonedWork } from '../abandonedWork';
+import { exchangeWarnings } from '../warnings';
 
 /**
  * AUDIT-9 B01: the upkeep every elapsed phase owes, in one place.
@@ -109,6 +111,12 @@ export function postActionUpkeep(ctx: SimContext) {
  * forecast resolves against where people actually were for the cycle.
  */
 export function worldClockUpkeep(ctx: SimContext) {
+    // B5-03: work nobody has come back to, taken by the weather or by whoever
+    // is standing on it.
+    tickAbandonedWork(ctx);
+    // B5-03: and a forecast anybody knows about can be passed on before it
+    // lands, which is the only window in which telling somebody helps.
+    exchangeWarnings(ctx);
     // B3-03: a tribute may be recruited into an existing alliance, which never
     // passes through `registerAlliance`. Sweeping the live field each cycle
     // catches every such join; between the two, missing one would take a pack

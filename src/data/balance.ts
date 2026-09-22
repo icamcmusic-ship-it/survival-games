@@ -3892,6 +3892,15 @@ export const CRAFTING = {
      * the time it takes; and by daylight the smoke column is a signal every
      * ridge in range can read.
      */
+    /*
+     * AUDIT-10 B5-03: shared cooking. `sharedCookFeed` is under `foodRelief`
+     * on purpose — the guest is being fed from somebody else's pot, and a
+     * share that matched a whole ration would make carrying food pointless.
+     */
+    sharedCookFeed: 18,
+    shareCookingMinRegard: -10,
+    shareCookingRegard: 3,
+    shareCookingTrainShare: 0.5,
     cookFeedBonus: 12,
     cookLineChance: 0.3,
     /** Boiling foul water works with no purifier at all — it just takes the hour. */
@@ -4665,6 +4674,23 @@ export const RELATIONSHIPS = {
     trustBetrayedPenalty: 40,
     trustSuspicionWeight: 0.4,
     trustCreditorBonus: 10,
+    /*
+     * AUDIT-10 B5-01: credibility, the third contextual axis.
+     *
+     * `credibilityScale` is the belief that doubles (or halves) the weight of a
+     * retelling, and the floor and ceiling keep both ends honest: somebody
+     * caught lying twice is not worth *nothing*, because a broken clock is
+     * still evidence, and somebody right four times running does not get to
+     * write certainties into other people's heads, because they can still be
+     * wrong and the arena can still have changed since they looked.
+     */
+    credibilityScale: 30,
+    credibilityFloor: 0.35,
+    credibilityCeiling: 1.5,
+    /** Caught passing on something that did not survive being looked at. */
+    lieCaughtBelief: 22,
+    /** What they said was there, was there. Slower to build than to lose. */
+    corroboratedBelief: 7,
     /**
      * §4.5: how much trust affection can buy on its own.
      *
@@ -8821,6 +8847,89 @@ export const CONFUSION = {
  * shelter and setting a trap do not all fit, not that any one of them is
  * priced to the minute.
  */
+/**
+ * AUDIT-10 B5-03: what happens to work nobody comes back to.
+ *
+ * `abandonedAfterCycles` is deliberately longer than a night: a tribute who
+ * builds a frame, goes for water and comes back in the morning has not
+ * abandoned anything, and treating them as if they had would make building
+ * a thing you cannot leave.
+ */
+/**
+ * AUDIT-10 B5-03: passing a warning on.
+ *
+ * `minRegard` is the reason a warning is worth something. A tribute who tells
+ * everybody indiscriminately is not being generous, they are being a public
+ * address system, and the credibility they would earn for it would be free.
+ * Slightly above neutral, so it is a thing you do for people you have some
+ * time for rather than for anybody in earshot.
+ */
+/**
+ * AUDIT-10 B5-03: being shown how.
+ *
+ * `minGap` is a whole grade, so this is teaching rather than two equals
+ * comparing notes. `chance` keeps it an occasional thing rather than something
+ * that happens every time two people stand near a plank — a lesson is a
+ * moment, not a state.
+ */
+export const APPRENTICESHIP = {
+    minGap: 1,
+    minRegard: 0,
+    chance: 0.35,
+    learnerShare: 1.4,
+    teacherShare: 0.35,
+    regard: 4,
+};
+
+export const WARNINGS = {
+    minRegard: 5,
+    /*
+     * AUDIT-10 B5-03: a false alarm.
+     *
+     * One of the twelve nonlethal events the audit names, and the one that
+     * makes every other warning mean something. A forecast that always lands is
+     * not a warning, it is a countdown, and acting on it is not a decision — it
+     * is arithmetic. The only reason ignoring a warning can be a choice is that
+     * a warning can be wrong.
+     *
+     * Deliberately small. This is not a lever on how dangerous the arena is:
+     * every hazard that would have landed still lands somewhere, because the
+     * hazard budget is set by the death-mix sliders, not by the forecast queue.
+     * It is a lever on how much a warning is worth, and one in nine is enough
+     * to make ignoring one defensible without making heeding one foolish.
+     *
+     * Lower than `PROC_SIGNATURE.falseChanceMin/Max` (0.15-0.35), and the gap
+     * is the point rather than an oversight. That is an arena signature's
+     * *telegraph* — a broadcast, which the Capitol has every reason to make
+     * misleading. This is a forecast, which is somebody reading the actual
+     * ground: it is wrong because weather is wrong, not because anybody is
+     * lying, so it should be wrong less often. Found after building this one,
+     * which is an argument for looking harder before adding a mechanism.
+     */
+    falseAlarmChance: 0.11,
+    /** Per willing pair per cycle. A warning is a conversation, not a broadcast. */
+    chancePerPair: 0.45,
+};
+
+export const PROJECTS = {
+    /*
+     * Measured, not chosen. At 4 cycles with 0.6 hours of weathering the
+     * chain ate the feature it was built on:  went from 11
+     * project-cycles with more than one worker to zero, because a frame was
+     * pulled apart or rained away before a second tribute could reach it.
+     * A shelter is five hours, so it has to stand long enough to be found.
+     */
+    abandonedAfterCycles: 8,
+    /** Hours of somebody else's frame a salvager takes down. */
+    salvagedHours: 2,
+    /** Pulling another tribute's joinery apart teaches you how they did it. */
+    salvageCarpentryShare: 0.6,
+    /** What the weather takes per cycle from work nobody is tending. */
+    weatherHoursPerCycle: 0.3,
+    /** Below this there is not enough frame left for its loss to be worth a line. */
+    weatherNoticeHours: 1.5,
+};
+
 export const ACTION_BUDGET = {
     /** AUDIT-9 stage E: hours off a crossing per point of `pacing`. */
     pacingHourRelief: 0.05,

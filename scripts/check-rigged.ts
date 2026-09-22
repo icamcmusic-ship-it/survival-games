@@ -89,7 +89,22 @@ scenario(
     'a fixed Games says so, in the chronicle',
     'a setting that quietly changes the outcome and reads like an ordinary Games is a corrupted record',
     () => {
+        /*
+         * AUDIT-10: paired with a typed assertion, because a prose probe can
+         * fail in two directions and only one of them is loud.
+         *
+         * A reword breaks the positive check here, which is an annoyance and
+         * gets noticed. The negative check in the scene below is the dangerous
+         * one: a reword makes "an ordinary Games did not claim to be fixed"
+         * pass because the string no longer exists anywhere, and it passes
+         * silently and forever. `check-projects` was caught doing the same
+         * class of thing this afternoon — and `soak.ts`'s own header records
+         * six counters that had been "reading lines that were not the beat at
+         * all". The typed field is what actually decides; the line is what the
+         * audience gets told, and both are worth asserting.
+         */
         runs.forEach((state, i) => {
+            eq(state.riggedVictorId !== undefined, true, `run ${i}: nothing was nominated`);
             check(state.log.some(l => /already been decided/i.test(l.text)),
                 `run ${i}: the chronicle does not admit the Games was fixed`);
         });
@@ -123,6 +138,9 @@ scenario(
             else if (!sim.processTurn()) break;
             state = sim.getState();
         }
+        // The typed half is what makes this scene mean anything: without it, a
+        // reworded admission line would satisfy the prose half by no longer
+        // existing, and this would pass on a Games that had in fact been fixed.
         eq(state.riggedVictorId, undefined, 'nothing nominated itself');
         check(!state.log.some(l => /already been decided/i.test(l.text)),
             'an ordinary Games claimed to be fixed');

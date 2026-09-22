@@ -61,7 +61,17 @@ export type MilestoneId =
     /** The Capitol restocked the Cornucopia. */
     | 'cornucopia-restocked'
     /** A district gave the three-finger salute at the reaping. */
-    | 'salute-given';
+    | 'salute-given'
+    /**
+     * AUDIT-10 B5-03: somebody picked up work another tribute had started.
+     *
+     * Here rather than counted from the chronicle, which is what
+     * `check-projects` did first — and matching prose in a test is the same
+     * mistake B3-03 spent a commit arguing against, with a milder consequence.
+     * A reworded line breaking a build is an annoyance rather than a silently
+     * mis-awarded achievement, but the fix is identical and already written.
+     */
+    | 'project-inherited';
 
 /*
  * Deliberately *not* here: traps and mutts. Both were on the first draft of

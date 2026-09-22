@@ -115,6 +115,18 @@ jobs:
       # B3-01: a link that says it replays a run has to replay it. The guard
       # fires real Gamemaker commands and compares the outcomes.
       - run: npm run test:replay
+      # B4-02: the funnel's own precondition — an instrument that changes what
+      # it measures is not an instrument. The report asserts it before printing.
+      - run: npm run funnel
+      # B5-02: a forecast due on the cycle it is announced is a log line, not an
+      # intervention window. Also reports how many hazards arrive unannounced.
+      - run: npm run test:warnings
+      # B5-01: "a liar can be a reliable shield" is only true if the axes can
+      # come apart, so that is asserted rather than assumed.
+      - run: npm run test:credibility
+      # B5-02: a half-built shelter belongs to the place, so somebody else can
+      # find it, finish it, or inherit it from the dead.
+      - run: npm run test:projects
 
       # Content and structure.
       - run: npm run test:arenas

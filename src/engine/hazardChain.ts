@@ -7,6 +7,8 @@ import { startZoneEffect, effectsFor } from './zoneEffects';
 import { work, canAfford } from './actionBudget';
 import { ACTION_BUDGET } from '../data/balance';
 import { profOf, trainProficiency } from './proficiency';
+import { settleWarnings } from './warnings';
+import { WARNINGS } from '../data/balance';
 
 /**
  * AUDIT-9 stage C §5: the missing thirds of a persistent hazard.
@@ -116,7 +118,7 @@ export function mitigate(ctx: SimContext, t: Tribute): boolean {
     // Somebody who knows what they are doing gets more out of the same hours.
     const hours = ACTION_BUDGET.shelterHours
         * Math.max(HAZARD_CHAIN.minSkillMultiplier, 1 - profOf(t, 'carpentry') * HAZARD_CHAIN.carpentryHourRelief);
-    const done = work(t, kindWork, hours);
+    const done = work(t, kindWork, hours, { state: ctx.state, cycle: cycleOf(ctx.state) });
     trainProficiency(t, 'carpentry', undefined, HAZARD_CHAIN.carpentryTrainShare);
     if (!done) {
         ctx.logEvent(
@@ -183,6 +185,32 @@ export function tickForecasts(ctx: SimContext) {
             // The achievement check caught those two unlocking on identical
             // runs, which they did because averting *requires* mitigating.
             state.avertedKinds = [...new Set([...(state.avertedKinds ?? []), f.kind])];
+            // B5-03: the warning was still right — something did come. Whoever
+            // passed it on earns that, and the work it prompted is the reason
+            // it landed on ready ground.
+            settleWarnings(ctx, f.zone);
+            return;
+        }
+
+        /*
+         * B5-03: sometimes it simply does not come.
+         *
+         * Rolled here rather than at forecast time on purpose. A forecast that
+         * knew at birth it was false would be a different object — the engine
+         * would be able to tell, and so would anything that read it — and the
+         * whole point is that nobody can tell a true warning from a false one
+         * until the cycle it is due. That includes the tribute who passed it on:
+         * `settleWarnings` is not called here, so relaying a warning that came
+         * to nothing costs the teller nothing and earns them nothing, which is
+         * the honest accounting. They were not wrong; the sky was.
+         */
+        if (ctx.rng.chance(WARNINGS.falseAlarmChance)) {
+            ctx.logEvent(
+                `Whatever was coming to ${f.zone} does not come. The light changes, the air goes back to `
+                + `normal, and the people who moved on account of it have moved for nothing.`,
+                [],
+                { zone: f.zone, category: 'hazard' },
+            );
             return;
         }
 
@@ -195,6 +223,8 @@ export function tickForecasts(ctx: SimContext) {
             effect.source = f.source;
             effect.byId = f.byId;
         }
+        // B5-03: and everybody who was told it was coming now knows who was right.
+        settleWarnings(ctx, f.zone);
     });
 
     state.forecasts = remaining;
