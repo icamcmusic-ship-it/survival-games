@@ -1,3 +1,4 @@
+import { STORY_PACING } from '../data/balance';
 import { GameState, LogOptions, Phase, Tribute } from '../models/types';
 import { RNG } from '../utils/rng';
 
@@ -209,6 +210,43 @@ export function createContext(state: GameState, rng: RNG): SimContext {
             const nextId = (ctx.state.logCounter ?? 0) + 1;
             ctx.state.logCounter = nextId;
 
+            /*
+             * §16 / batch 6: story-aware scheduling, on the one axis where
+             * scheduling is honest.
+             *
+             * `pickText` above refuses to repeat a *sentence* until its pool
+             * is exhausted. Nothing noticed the same *kind* of thing happening
+             * over and over in fresh wording: measured across the Games proper,
+             * 44.1% of headlined lines repeat the category of the line before,
+             * and the longest unbroken run of headlined combat is 38.
+             *
+             * The clustering is correct and is deliberately left alone — a
+             * fight produces fight lines, and forcing variety on consequences
+             * would falsify the run. This demotes the fifth consecutive
+             * headline of one category out of the headline feed. The event
+             * still happens, still goes in the chronicle, and is still
+             * filterable; the broadcast simply stops shouting.
+             *
+             * Deaths, kills and Gamemaker interventions are never demoted: a
+             * broadcast cannot decline to lead with a cannon, and a run of
+             * Gamemaker beats *is* the story rather than a monotony.
+             */
+            const category = opts.category ?? 'system';
+            let important = opts.important ?? false;
+            if (important) {
+                const recent = ctx.state.recentHeadlines ?? (ctx.state.recentHeadlines = []);
+                const bar = STORY_PACING.sameCategoryHeadlines;
+                const protectedCategory = STORY_PACING.neverDemoted.includes(category);
+                if (!protectedCategory
+                    && recent.length >= bar
+                    && recent.slice(-bar).every(c => c === category)) {
+                    important = false;
+                } else {
+                    recent.push(category);
+                    if (recent.length > bar) recent.splice(0, recent.length - bar);
+                }
+            }
+
             ctx.state.log.push({
                 id: `e${nextId}`,
                 day: ctx.state.day,
@@ -216,9 +254,9 @@ export function createContext(state: GameState, rng: RNG): SimContext {
                 clock: arenaClock(ctx.state),
                 text,
                 tributesInvolved,
-                important: opts.important ?? false,
+                important,
                 zone: resolvedZone,
-                category: opts.category ?? 'system',
+                category,
                 // §(requests): the stripped-down chronicle's version of this
                 // line, where the caller knows something the prose does not
                 // say outright. Derived from the entry elsewhere.
