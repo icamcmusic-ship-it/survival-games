@@ -9276,4 +9276,18 @@ export const ALLIANCE_DISPUTE = {
      * AUDIT-10 F15: a hearing is people standing round a box, which is time.
      */
     hearingHours: 0.5,
+    /*
+     * AUDIT-10 B5-01: how strongly a member argues their own corner.
+     *
+     * A contributor's claim is worth slightly more than a hungry member's,
+     * which is not a moral judgement — it is that "I put this here" is easier
+     * to say out loud in front of people than "I need it more than you do",
+     * and the second one costs something to say.
+     */
+    contributionClaim: 10,
+    needClaim: 9,
+    /** A tyrant's own position counts for this many members' worth. */
+    tyrantWeight: 4,
+    /** A democratic leader still speaks first, and it carries a little. */
+    democraticLeaderWeight: 2,
 } as const;
