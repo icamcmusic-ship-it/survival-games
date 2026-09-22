@@ -747,6 +747,23 @@ const indicators: Indicator[] = [
         // AUDIT-7 §1.6: a spread needs a table. At 400 runs two traits clear
         // GUARD_MIN_SAMPLE and this row read 1.20x against a real 2.20x.
         judgeable: () => reapingTraitGuardRates.length >= TRAIT_SPREAD_MIN_POPULATION,
+        /*
+         * AUDIT-10 B4-04: F20's rule, applied the rest of the way.
+         *
+         * `judgeable` asks whether there are enough *rows* to call this a
+         * table, which was F20's first half and is not the whole of it. The
+         * second half is whether the row being compared has a sample decisive
+         * enough to judge: a ratio's denominator is the minimum of a table, and
+         * the minimum of a table is systematically below the true minimum by
+         * more the more rows there are. Without this the spread could fail the
+         * build on a worst-trait row of forty entrants.
+         */
+        extremeOf: () => {
+            const worst = reapingTraitGuardRates[reapingTraitGuardRates.length - 1];
+            return worst
+                ? { rows: reapingTraitGuardRates.length, successes: Math.round(worst[1] * worst[2]), n: worst[2] }
+                : { rows: 1, successes: 0, n: 0 };
+        },
     },
     {
         /*
@@ -1133,6 +1150,25 @@ const indicators: Indicator[] = [
         goalMet: v => v <= 0.55,
         baseline: '74.9%',
         fmt: asPct,
+        /*
+         * AUDIT-10 B4-04: "the top three" is a rank, not a group.
+         *
+         * This reads like a fixed cohort and is not one. The three districts
+         * are chosen *after* the sweep, by being the three highest — so the
+         * statistic is the sum of three selected extremes out of twelve, and it
+         * is biased upward for exactly the reason the archetype rows are biased
+         * outward. A run of twelve fair dice has a top three well above a
+         * quarter of the total, and this indicator would read that as a
+         * problem.
+         *
+         * Selection is over the twelve districts. The compared quantity is the
+         * share itself, so the widened interval is the one on that proportion.
+         */
+        extremeOf: () => ({
+            rows: Math.max(1, Object.keys(victorsByDistrict).length),
+            successes: Math.round(topThreeDistrictShare * victors),
+            n: victors,
+        }),
     },
     {
         // The same thing from the other side, and the one a player actually
@@ -1145,6 +1181,20 @@ const indicators: Indicator[] = [
         goalMet: v => v >= 8,
         baseline: '3',
         fmt: v => `${v}/12`,
+        /*
+         * AUDIT-10 B4-04: a count of rows over a threshold is not a proportion,
+         * so `extremeOf` does not apply — but it has the same disease in a
+         * different form. Every district sitting near 4% flips this integer on
+         * noise, and twelve districts near the line make it a coin-flip
+         * counter rather than a measurement.
+         *
+         * The honest gate is on the sample behind a single row: at `victors`
+         * wins spread over twelve districts, a 4% rate is about `victors/25`
+         * wins, and telling 4% from 3% needs the count to be big enough for
+         * that difference to survive its own interval. Below a hundred victors
+         * this is reported and does not judge.
+         */
+        judgeable: () => victors >= 100,
     },
     {
         // §5. The two most iconic threats in the source material — Gamemaker
