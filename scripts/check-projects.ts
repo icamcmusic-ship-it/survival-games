@@ -23,7 +23,17 @@ import { ARENAS, DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { GameState } from '../src/models/types';
 import { configForProfile, gamesProfileFor } from '../src/engine/gamesProfile';
 
-const RUNS = Number(process.env.PROJECT_RUNS ?? 80);
+/*
+ * 160 rather than 80.
+ *
+ * The inheritance assertion below is a rare-event assertion — pickups happen
+ * about seven times in eighty runs — and this file has already watched one
+ * rare-event assertion fall to zero when an unrelated commit shifted the random
+ * stream. Doubling the sweep costs about twelve seconds and roughly squares the
+ * odds against a spurious red. The alternative is asserting less, which is how
+ * a guard stops being one.
+ */
+const RUNS = Number(process.env.PROJECT_RUNS ?? 160);
 
 const failures: string[] = [];
 let distinct = 0, runsWithAny = 0, shared = 0, completed = 0, inherited = 0, mostWorkers = 0;
