@@ -304,7 +304,18 @@ ledgers and protected reserves (batch 1 started this at F11); real reunions;
 coalitions with a target and an expiry; earned endgame relationships seeded
 through routes and contested resources rather than assigned at the finale.
 
-### B5-02 — arena systems — **forecast lead time measured and guarded; the rest open**
+### B5-02 — arena systems — **projects and forecast lead time done; topology and recovery open**
+
+Done: sited work belongs to the site (`GameState.projects`) and can be
+discovered, continued, inherited and damaged; forecast lead time measured and
+guarded (no forecast may be due on the cycle it is announced); hazard warning
+coverage measured at 62%, reported rather than guarded because raising it means
+forecasting hazards that do not forecast today, which is a death-mix change.
+
+Open: topology that matters (directed and conditionally passable edges,
+capacity, traversal time, noise, load), recovery and opportunity so late games
+are not all accumulation of punishment, procedural compatibility from
+capability tags.
 
 Topology that matters (directed and conditionally passable edges, capacity,
 traversal time, level, noise, load). Persistent projects that belong to the
@@ -315,7 +326,27 @@ propagation with capped chains and no accidental extra tick from iteration
 order. Recovery and opportunity, so late games are not all the same
 accumulation of punishment. Procedural compatibility from capability tags.
 
-### B5-03 — the chains — **first nonlethal chain built; the tables open**
+### B5-03 — the chains — **five nonlethal events built; the lethal table open**
+
+Built, each with the four parts §7 asks of every row — a warning, a choice, a
+nonfatal result and a durable record:
+
+| event | what it needed |
+|---|---|
+| an abandoned project | the project ledger; it then ate the ledger's own feature until the guard caught it |
+| exchanged warnings | forecasts could not be passed on at all; now weighted by credibility |
+| a false alarm | a forecast that always lands is a countdown, not a warning |
+| shared cooking | would have been dead content gated on a fire — one qualifying case in 40 runs |
+| a repair apprenticeship | `trainProficiency` was solitary: you got better by doing, never by being shown |
+
+Already present and not rebuilt: borrowed equipment (`Tribute.loans`), an honest
+refusal (batch 2's named `Refusal` contract), restitution and a public promise
+(debts, charters, pacts).
+
+Open: a disputed map, disputed credit, an escort that succeeds; and the whole
+§6/§7 lethal table. The instruction that governs it stands — **do not simply
+add lethality to the existing scheduler**, and every opportunity is checked for
+whether it can arise before the beat is written.
 
 The audit's §6 table (one per arena) and §7 table (twelve universal chains).
 Each row needs a warning, an avoidance or mitigation, a nonfatal result and a
