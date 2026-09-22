@@ -2,11 +2,23 @@ import React, { useState } from 'react';
 import { Hint } from './Hint';
 import { useTransientFlag } from '../ui/useTransientFlag';
 import { Share2, Check, Copy } from 'lucide-react';
-import { CampaignSnapshot, GameConfig } from '../models/types';
+import { CampaignSnapshot, GameConfig, GameState } from '../models/types';
 import { encodeCampaign } from '../utils/campaignLink';
 import { DEFAULT_GAME_CONFIG } from '../data/constants';
 import { copyMessage, copySucceeded, copyText } from '../utils/copyText';
 import { CONTENT_REVISION, fidelityOf, shareLabelFor } from '../utils/replayManifest';
+
+/**
+ * B3-01: how many interventions fit in the link.
+ *
+ * Browsers and the places links get pasted both have limits, and the campaign
+ * snapshot is already the expensive passenger. An entry is around twenty
+ * characters; forty of them is under a kilobyte, and a run with more than forty
+ * Gamemaker commands in it is a run the receiver will be told diverges rather
+ * than one silently truncated into a false 'exact'.
+ */
+// balance-exempt: a URL length budget, not a lever on anything the simulation does
+const MAX_LOGGED_ACTS = 40;
 
 /**
  * AUDIT-7 §1.1: the share payload, hoisted out of the component so a check can
@@ -30,7 +42,7 @@ export const SHARE_OMITS: ReadonlyArray<keyof GameConfig> = [
 ];
 
 export function shareParams(
-    { seed, arenaId, gamemakerMode, config, quellId, campaign, veteransSeated, interventions }:
+    { seed, arenaId, gamemakerMode, config, quellId, campaign, veteransSeated, interventions, interventionLog }:
     {
         seed: string; arenaId: string; gamemakerMode: boolean; config: GameConfig; quellId: string | null;
         /**
@@ -58,6 +70,16 @@ export function shareParams(
          */
         veteransSeated?: number;
         interventions?: number;
+        /**
+         * AUDIT-10 B3-01: the interventions themselves, not just how many.
+         *
+         * Each command's random stream is derived from (seed, cycle, type,
+         * command index), so firing the same list at the same cycles reproduces
+         * them exactly. Target ids are `d{district}-{gender}`, which is fixed by
+         * the config rather than the seed, so they resolve in the receiver's
+         * field too.
+         */
+        interventionLog?: GameState['interventionLog'];
     },
 ): URLSearchParams {
     const params = new URLSearchParams({
@@ -123,29 +145,44 @@ export function shareParams(
     /*
      * AUDIT-10 F19: version the manifest and state what it could not carry.
      *
-     * `mv` is the manifest version, so a future payload shape can be told from
-     * this one rather than guessed at. `rev` is the engine/content revision the
+     * `mv` is the manifest version — 2 since B3-01 added `log` — so a payload
+     * shape can be told from an older one rather than guessed at. `rev` is the engine/content revision the
      * run executed on, so a link recorded on another build is describable as
      * such instead of presented as a replay that quietly diverges. `vets` and
      * `acts` are counts of the two kinds of input the link is known not to
      * carry. None of them changes the simulation; all of them change what the
      * receiver is told.
      */
-    params.set('mv', '1');
+    params.set('mv', '2');
     params.set('rev', CONTENT_REVISION);
     if (veteransSeated) params.set('vets', String(veteransSeated));
     if (interventions) params.set('acts', String(interventions));
+    /*
+     * B3-01: `acts` is the count and `log` is the recording. A URL is a bounded
+     * place to put a list, so the log is capped and the count is not — which is
+     * exactly why the manifest asks how many were *carried* rather than
+     * assuming a log means all of them. A truncated log reads as `conditions`,
+     * which is the truth.
+     */
+    const carried = (interventionLog ?? []).slice(0, MAX_LOGGED_ACTS);
+    if (carried.length > 0) {
+        params.set('log', carried
+            .map(a => `${a.cycle}.${a.type}${a.targetId ? `.${a.targetId}` : ''}${a.scheduled ? '!' : ''}`)
+            .join('~'));
+    }
     return params;
 }
 
 export function ShareButton(
-    { seed, arenaId, gamemakerMode, config, quellId, campaign, veteransSeated = 0, interventions = 0 }:
+    { seed, arenaId, gamemakerMode, config, quellId, campaign, veteransSeated = 0, interventions = 0, interventionLog }:
     {
         seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig, quellId: string | null,
         campaign?: CampaignSnapshot,
         /** F19: inputs a link cannot carry. See `shareParams`. */
         veteransSeated?: number,
         interventions?: number,
+        /** B3-01: the ones it now can. */
+        interventionLog?: GameState['interventionLog'],
     },
 ) {
     const [status, setStatus] = useTransientFlag<'idle' | 'copied' | 'failed'>('idle', 2000);
@@ -187,13 +224,14 @@ export function ShareButton(
         revision: CONTENT_REVISION,
         veteransSeated,
         interventions,
+        carriedInterventions: Math.min(interventions, (interventionLog ?? []).length, MAX_LOGGED_ACTS),
     });
 
     const buildUrl = (withCampaign: boolean) => {
         const params = shareParams({
             seed, arenaId, gamemakerMode, config, quellId,
             campaign: withCampaign ? campaign : undefined,
-            veteransSeated, interventions,
+            veteransSeated, interventions, interventionLog,
         });
         return `${window.location.origin}${window.location.pathname}?${params.toString()}`;
     };

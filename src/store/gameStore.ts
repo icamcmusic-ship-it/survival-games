@@ -1,4 +1,4 @@
-import { InterviewPersona, GameState, GameConfig, HallOfFameEntry, CampaignSnapshot } from '../models/types';
+import { InterviewPersona, GameState, GameConfig, HallOfFameEntry, CampaignSnapshot, InterventionRecord } from '../models/types';
 import { Bet, REWIND_PERSIST, SAVED_RUN_SPEC, SAVE_SLOT_SPECS, SavedRun, SideBet, SideBetKind, packRewind } from '../utils/saveMigrations';
 import { SIDE_BETS } from '../data/balance';
 import { SideBetTarget, SideQuote, priceSideBet, quoteSideMarkets, settleSideBet, sideBettingOpen, marketRulesOf } from '../engine/sideMarkets';
@@ -993,7 +993,7 @@ export const gameActions = {
      * campaign applies, which is the "play this seed in my campaign" path and
      * the behaviour every existing link keeps.
      */
-    async startGame(seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig = DEFAULT_GAME_CONFIG, markReplayed = false, forceQuell = false, pinnedQuellId?: string | null, pinnedCampaign?: CampaignSnapshot) {
+    async startGame(seed: string, arenaId: string, gamemakerMode: boolean, config: GameConfig = DEFAULT_GAME_CONFIG, markReplayed = false, forceQuell = false, pinnedQuellId?: string | null, pinnedCampaign?: CampaignSnapshot, plannedInterventions?: InterventionRecord[]) {
         // Abandoning a run mid-wager used to silently pocket the player's coins.
         gameActions.refundOpenBets();
         cancelRunToEnd();
@@ -1108,6 +1108,11 @@ export const gameActions = {
         if (grudge.length > 0) gameStore.setState({ grudgeMatchIds: [] });
 
         const initialState: GameState = {
+            // AUDIT-10 B3-01: a replay link's recorded Gamemaker commands, which
+            // fire on the cycles they fired on in the run being replayed. An
+            // empty list is left off entirely so an ordinary run is byte-for-byte
+            // what it was before replay existed.
+            ...(plannedInterventions?.length ? { plannedInterventions } : {}),
             seed: safeSeed,
             arena,
             tributes,

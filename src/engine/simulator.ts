@@ -10,7 +10,7 @@ import { processAlliances } from './phases/alliances';
 import { announceFeastTheme, processFeast } from './phases/feast';
 import { processDayNight } from './phases/dayNight';
 import { processEpilogue } from './phases/epilogue';
-import { GamemakerEventType, triggerGamemakerEvent as triggerGamemakerEventPhase } from './gamemaker';
+import { GamemakerEventType, replayPlannedInterventions, triggerGamemakerEvent as triggerGamemakerEventPhase } from './gamemaker';
 import { checkDualVictory } from './victory';
 import { fireScheduledWildcard } from './wildcards';
 import { FEAST_TEXTS } from '../data/flavorText';
@@ -155,6 +155,21 @@ export class Simulator {
      * Returns false if the run is already over, so callers can stop looping.
      */
     public processTurn(): boolean {
+        /*
+         * AUDIT-10 B3-01: a replay link's recorded commands fire here, before
+         * the turn, because here is where a real one fires.
+         *
+         * The point in the cycle matters as much as the cycle. A player can
+         * only press a Gamemaker button between turns — the simulation is
+         * turn-stepped and nothing runs while the UI is waiting — so a recorded
+         * command landed between turns, and a replay that fired it anywhere
+         * else would reproduce the right command at the wrong moment. A first
+         * draft drained the queue inside the day phase, just after the cycle
+         * counter advanced, and the replayed run diverged from the one it was
+         * replaying: same commands, same cycles, different world when they
+         * landed. `npm run test:replay` is what caught it.
+         */
+        replayPlannedInterventions(this.ctx);
         if (this.state.phase === 'ended') return false;
         if (this.state.phase === 'epilogue') {
             // The epilogue is terminal for the simulation; the UI drives the

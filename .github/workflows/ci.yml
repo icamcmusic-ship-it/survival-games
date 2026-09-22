@@ -112,6 +112,9 @@ jobs:
       # B3-02: the wound ledger is a second account of what the simulation did,
       # so it is only worth having if it cannot disagree with the first.
       - run: npm run test:wounds
+      # B3-01: a link that says it replays a run has to replay it. The guard
+      # fires real Gamemaker commands and compares the outcomes.
+      - run: npm run test:replay
 
       # Content and structure.
       - run: npm run test:arenas

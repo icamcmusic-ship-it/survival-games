@@ -172,6 +172,12 @@ export function triggerGamemakerEvent(ctx: SimContext, type: GamemakerEventType,
      */
     const commandIndex = (ctx.state.gamemakerCommands ?? 0) + 1;
     ctx.state.gamemakerCommands = commandIndex;
+    // B3-01: the counter says a run cannot be reproduced; the log is what makes
+    // it reproducible. Written here, beside the counter it qualifies, so the two
+    // cannot fall out of step.
+    (ctx.state.interventionLog ??= []).push({
+        cycle, type, ...(targetId ? { targetId } : {}), ...(capitolSchedule ? { scheduled: true } : {}),
+    });
     const ambient = ctx.rng;
     ctx.rng = new RNG(`${ctx.state.seed}-gm-${cycle}-${type}-${commandIndex}`);
     try {
@@ -179,6 +185,36 @@ export function triggerGamemakerEvent(ctx: SimContext, type: GamemakerEventType,
     } finally {
         ctx.rng = ambient;
     }
+}
+
+/**
+ * AUDIT-10 B3-01: fire the interventions a replay link brought with it.
+ *
+ * Called once per cycle, after the counter advances. Each command's random
+ * stream is derived from (seed, cycle, type, command index), so firing the same
+ * list at the same cycles in the same order draws the same numbers the sender's
+ * run drew — which is what makes this a replay rather than a re-enactment.
+ *
+ * Scheduled commands are skipped. They are in the log because a record of what
+ * happened should be complete, but the receiver's Capitol calendar fires from
+ * the same seed and will fire them itself; replaying them would double every
+ * one.
+ *
+ * Entries are consumed whether or not they land, including ones whose cycle has
+ * already gone past — a command left in the queue would fire late on some later
+ * cycle and put the replay further from the original than dropping it does.
+ */
+export function replayPlannedInterventions(ctx: SimContext) {
+    const queue = ctx.state.plannedInterventions;
+    if (!queue || queue.length === 0) return;
+    const now = cycleOf(ctx.state);
+    const due = queue.filter(a => a.cycle <= now);
+    if (due.length === 0) return;
+    ctx.state.plannedInterventions = queue.filter(a => a.cycle > now);
+    due.forEach(a => {
+        if (a.scheduled) return;
+        triggerGamemakerEvent(ctx, a.type as GamemakerEventType, a.targetId);
+    });
 }
 
 function runGamemakerEvent(

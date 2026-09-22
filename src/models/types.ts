@@ -674,6 +674,15 @@ export type DeathCauseCode =
     /** Nothing claimed it. `check-cause-codes` fails the build on this. */
     | 'unknown';
 
+/** AUDIT-10 B3-01: one Gamemaker command, as recorded and as replayed. */
+export interface InterventionRecord {
+    cycle: number;
+    type: string;
+    targetId?: string;
+    /** Fired by the Capitol's calendar rather than by the player. */
+    scheduled?: boolean;
+}
+
 export interface DamageRecord {
     /** Human-readable cause, used verbatim as cause of death. */
     cause: string;
@@ -3352,6 +3361,32 @@ export interface GameState {
      * reproducible across a save and resume. See `triggerGamemakerEvent`.
      */
     gamemakerCommands?: number;
+    /**
+     * AUDIT-10 B3-01: what the player actually pressed, in order.
+     *
+     * `gamemakerCommands` is a counter, and a counter is enough to *declare* a
+     * run unreproducible and not enough to reproduce it. The log is, because
+     * the stream each command draws from is already derived from (seed, cycle,
+     * type, command index) rather than from wherever the shared stream was
+     * standing — see `triggerGamemakerEvent`. So the Nth command of a type on a
+     * cycle draws the same numbers however the run got there, and replaying
+     * the list in order replays the interventions exactly.
+     *
+     * `capitolSchedule` commands are the Capitol's own calendar rather than the
+     * player's, and they are recorded too: the receiver's calendar fires from
+     * the same seed, so a replay that re-fired them would double them.
+     */
+    interventionLog?: InterventionRecord[];
+    /**
+     * AUDIT-10 B3-01: interventions a replay link brought with it, waiting for
+     * their cycle.
+     *
+     * Only the player's own commands are here. The Capitol's scheduled ones are
+     * recorded in the log for honesty but never replayed: the receiver's
+     * calendar fires from the same seed, so replaying them would fire each one
+     * twice.
+     */
+    plannedInterventions?: InterventionRecord[];
     /** §6.6: tribute id -> cycle a player parachute last reached them. Blocs read it as "covered". */
     playerGiftCycle?: Record<string, number>;
     /** §7.6: tribute id -> cycle their mentor pointedly withheld a gift. */
