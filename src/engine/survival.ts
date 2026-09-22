@@ -1,6 +1,8 @@
 import { Tribute, attr } from '../models/types';
 import { ARENA_LAWS, CAREER_APPETITE, ZONES, POISONING, FATIGUE_MISTAKES, SANITY_BANDS, DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TOOLS, TRAIT_EFFECTS, UNIVERSAL_DEATHS, VITALS, WATER, SITUATIONAL_KIT } from '../data/balance';
 import { SimContext, getAlive } from './context';
+import { adjustRel, getRel } from './relationships';
+import { samePlace } from './verticality';
 import { applyDamage, checkDeath } from './combat';
 import { climateOf } from './climate';
 import { applyExposure } from './exposure';
@@ -549,7 +551,55 @@ function consumeSupplies(ctx: SimContext, t: Tribute) {
             // food is one of the things a fire is actually for.
             const cooked = hasCamp(ctx, t, 'fire');
             t.vitals.hunger = Math.max(0, t.vitals.hunger - VITALS.foodRelief - (cooked ? CRAFTING.cookFeedBonus : 0));
-            if (cooked && ctx.rng.chance(CRAFTING.cookLineChance)) {
+            /*
+             * AUDIT-10 B5-03: shared cooking.
+             *
+             * One of the twelve nonlethal events the audit names, and it needed
+             * nothing new — a fire, a ration and somebody else standing there
+             * were all already here and had never been put together.
+             *
+             * The generosity is real but it is not a donation: a pot over a
+             * fire is not twice the work for two people, so what is shared is
+             * the *cooking*, not the ration. The guest gets less than the cook
+             * does, the cook still eats, and nobody has to be talked into it —
+             * which is why this is a thing that happens between people who
+             * merely tolerate each other rather than a favour like a warning.
+             *
+             * It trains `fieldcookery` in the cook, because feeding two is how
+             * you learn to feed anybody, and it moves regard both ways: eating
+             * together is the most ordinary thing two people can do in an arena
+             * built to stop them.
+             *
+             * A first version required a fire, which made it dead content.
+             * Measured before shipping: 118 tribute-cycles across 40 runs have
+             * a fire at all, and the conjunction of fire *and* being hungry
+             * *and* carrying a ration happened once. That is exactly the
+             * opportunity failure B4-02's funnel was built to name — a beat
+             * whose prerequisite is starved several steps before anybody
+             * decides anything. Two people eating together is the event; the
+             * fire only ever made the meal go further, which it still does.
+             */
+            const guest = getAlive(ctx.state).find(o => o.id !== t.id
+                && samePlace(ctx.state.arena, t, o)
+                && o.vitals.hunger > VITALS.eatThreshold
+                && getRel(t, o.id) > CRAFTING.shareCookingMinRegard);
+            if (guest) {
+                guest.vitals.hunger = Math.max(0, guest.vitals.hunger - CRAFTING.sharedCookFeed);
+                trainProficiency(t, 'fieldcookery', ctx, CRAFTING.shareCookingTrainShare);
+                adjustRel(t, guest.id, CRAFTING.shareCookingRegard);
+                adjustRel(guest, t.id, CRAFTING.shareCookingRegard);
+                ctx.logEvent(
+                    cooked
+                        ? `${t.name} cooks their ${food.name} over the fire and puts half of it in front of `
+                          + `${guest.name}. Neither of them says much. It is the most ordinary thing either has `
+                          + `done since the reaping.`
+                        : `${t.name} splits their ${food.name} and hands half to ${guest.name} without being `
+                          + `asked. Neither of them says much. It is the most ordinary thing either has done `
+                          + `since the reaping.`,
+                    [t.id, guest.id],
+                    { category: 'survival' },
+                );
+            } else if (cooked && ctx.rng.chance(CRAFTING.cookLineChance)) {
                 ctx.logEvent(`${t.name} cooks their ${food.name} over the fire and eats properly for the first time in days.`, [t.id], { category: 'survival' });
             } else {
                 ctx.logEvent(`${t.name} eats their ${food.name}.`, [t.id], { category: 'survival' });

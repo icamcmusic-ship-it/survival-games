@@ -3892,6 +3892,15 @@ export const CRAFTING = {
      * the time it takes; and by daylight the smoke column is a signal every
      * ridge in range can read.
      */
+    /*
+     * AUDIT-10 B5-03: shared cooking. `sharedCookFeed` is under `foodRelief`
+     * on purpose — the guest is being fed from somebody else's pot, and a
+     * share that matched a whole ration would make carrying food pointless.
+     */
+    sharedCookFeed: 18,
+    shareCookingMinRegard: -10,
+    shareCookingRegard: 3,
+    shareCookingTrainShare: 0.5,
     cookFeedBonus: 12,
     cookLineChance: 0.3,
     /** Boiling foul water works with no purifier at all — it just takes the hour. */

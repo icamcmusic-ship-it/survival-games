@@ -26,7 +26,7 @@ import { configForProfile, gamesProfileFor } from '../src/engine/gamesProfile';
 const RUNS = Number(process.env.PROJECT_RUNS ?? 80);
 
 const failures: string[] = [];
-let distinct = 0, runsWithAny = 0, shared = 0, completed = 0, inherited = 0;
+let distinct = 0, runsWithAny = 0, shared = 0, completed = 0, inherited = 0, mostWorkers = 0;
 
 for (let i = 0; i < RUNS; i++) {
     const seed = `PRJ${i}`;
@@ -49,6 +49,7 @@ for (let i = 0; i < RUNS; i++) {
         Object.entries(s.projects ?? {}).forEach(([key, p]) => {
             if (!seen.has(key)) { seen.add(key); distinct++; any = true; }
             if (p.workerIds.length > 1) shared++;
+            mostWorkers = Math.max(mostWorkers, p.workerIds.length);
 
             // Hours are hours: never negative, never past the total, and never
             // rising by more than a full day's budget in one cycle.
@@ -79,7 +80,7 @@ for (let i = 0; i < RUNS; i++) {
 }
 
 console.log(`\nprojects: ${completed} runs, ${distinct} distinct sited projects across ${runsWithAny} runs`);
-console.log(`  project-cycles with more than one worker: ${shared}`);
+console.log(`  project-cycles observed with more than one worker: ${shared} (most workers on one project: ${mostWorkers})`);
 console.log(`  times somebody picked up a stranger's frame: ${inherited}`);
 
 if (distinct === 0) {
@@ -87,13 +88,20 @@ if (distinct === 0) {
 }
 /*
  * The inheritance is the feature, so its absence is a failure rather than a
- * note — but it is a rare event (six times in sixty runs when this landed), so
- * the bar is "it happens at all in the sweep" rather than a rate. If this ever
- * starts flaking, the fix is a larger sweep or a constructed case, not a
- * quieter assertion.
+ * note. The first version asserted on `shared` — project-cycles *observed* with
+ * more than one worker — and it flaked in CI the first time an unrelated commit
+ * shifted the random stream: pickups were still happening (seven of them) but
+ * the sweep sampled the state between cycles and the project had completed or
+ * been salvaged before the next look. It was asserting on a state it could miss
+ * rather than on the event.
+ *
+ * The event leaves a line in the chronicle, and a line is not something a
+ * snapshot can walk past. That is what is asserted, with the observed-state
+ * counts kept as a report because when they disagree with the event count the
+ * gap is informative.
  */
-if (distinct > 0 && shared === 0) {
-    failures.push('no project was ever worked by more than one tribute — sited work is still private in practice');
+if (distinct > 0 && inherited === 0) {
+    failures.push('nobody ever picked up a project somebody else had started — sited work is still private in practice');
 }
 
 if (failures.length) {
