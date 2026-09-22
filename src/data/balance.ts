@@ -8846,6 +8846,21 @@ export const CONFUSION = {
  * abandoned anything, and treating them as if they had would make building
  * a thing you cannot leave.
  */
+/**
+ * AUDIT-10 B5-03: passing a warning on.
+ *
+ * `minRegard` is the reason a warning is worth something. A tribute who tells
+ * everybody indiscriminately is not being generous, they are being a public
+ * address system, and the credibility they would earn for it would be free.
+ * Slightly above neutral, so it is a thing you do for people you have some
+ * time for rather than for anybody in earshot.
+ */
+export const WARNINGS = {
+    minRegard: 5,
+    /** Per willing pair per cycle. A warning is a conversation, not a broadcast. */
+    chancePerPair: 0.45,
+};
+
 export const PROJECTS = {
     /*
      * Measured, not chosen. At 4 cycles with 0.6 hours of weathering the

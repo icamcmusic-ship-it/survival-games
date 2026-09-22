@@ -7,6 +7,7 @@ import { startZoneEffect, effectsFor } from './zoneEffects';
 import { work, canAfford } from './actionBudget';
 import { ACTION_BUDGET } from '../data/balance';
 import { profOf, trainProficiency } from './proficiency';
+import { settleWarnings } from './warnings';
 
 /**
  * AUDIT-9 stage C §5: the missing thirds of a persistent hazard.
@@ -183,6 +184,10 @@ export function tickForecasts(ctx: SimContext) {
             // The achievement check caught those two unlocking on identical
             // runs, which they did because averting *requires* mitigating.
             state.avertedKinds = [...new Set([...(state.avertedKinds ?? []), f.kind])];
+            // B5-03: the warning was still right — something did come. Whoever
+            // passed it on earns that, and the work it prompted is the reason
+            // it landed on ready ground.
+            settleWarnings(ctx, f.zone);
             return;
         }
 
@@ -195,6 +200,8 @@ export function tickForecasts(ctx: SimContext) {
             effect.source = f.source;
             effect.byId = f.byId;
         }
+        // B5-03: and everybody who was told it was coming now knows who was right.
+        settleWarnings(ctx, f.zone);
     });
 
     state.forecasts = remaining;

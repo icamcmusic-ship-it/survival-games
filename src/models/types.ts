@@ -527,6 +527,16 @@ export interface ZoneMemory {
     /** §9.7: who told them, so a lie has an author to be furious with. */
     toldById?: string;
     /**
+     * AUDIT-10 B5-03: who warned them a hazard was coming here.
+     *
+     * Kept apart from `toldById`, which is provenance for an *impression* of a
+     * place — who is there, how picked over it is. A warning is a claim about
+     * the future, and it is settled by a different event: the hazard arriving,
+     * or not. Sharing the field would mean a warning that came true silently
+     * vouching for a sighting that was a lie.
+     */
+    warnedById?: string;
+    /**
      * AUDIT-9 stage C §3: how sure they are, 0 to 1.
      *
      * The audit asked for a belief to carry "claim, source, observed time,
