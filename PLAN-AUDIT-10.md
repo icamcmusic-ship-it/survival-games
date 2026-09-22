@@ -4,9 +4,17 @@ The companion to `AUDIT-10.md`. That document is the audit; this one is what we
 are doing about it, in what order, and what has to be true before each step is
 allowed to count as done.
 
-**Status:** batch 1 (the twenty-one confirmed defects, F01–F21), batch 1b (the
-death-mix settings) and batch 2 (the shared physical rulebook) are implemented
-and merged. Batches 3–6 below are planned, not built.
+**Status:** batches 1, 1b, 2 and 3 are implemented and merged. Batch 4 is
+complete and batch 5 is part-built — see each item's own heading, which carries
+what is done and what is open rather than leaving it to this line. Batch 6 is
+planned, not built.
+
+Batch 4 produced a finding that governs how the rest of the plan treats §8: the
+matched-cohort instrument says the archetype win-rate gaps are mostly
+confounding. Swapping career and tracker moves survival by less than a third of
+a day in either direction, with both intervals spanning zero, against a ranking
+table reporting 11.0% and 3.51%. Nothing below is tuned toward closing those
+gaps; a set piece is changed when it is bad on its own terms.
 
 The audit's own framing governs the whole plan and is the thing most easily
 lost once implementation starts:
