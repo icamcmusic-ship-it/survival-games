@@ -1,6 +1,6 @@
 import { spendUpTo } from './actionBudget';
 import { InjurySite, Tribute } from '../models/types';
-import { ACTION_BUDGET, BLEEDING, PROFICIENCY, SCARRING, VITALS, WOUND_RECOVERY } from '../data/balance';
+import { ACTION_BUDGET, BLEEDING, OBJECTIVES, PROFICIENCY, SCARRING, VITALS, WOUND_RECOVERY } from '../data/balance';
 import { SimContext } from './context';
 import { profOf, trainProficiency, observeProficiency } from './proficiency';
 import { traitMod } from '../data/traits';
@@ -118,7 +118,14 @@ export function tickWoundRecovery(ctx: SimContext, t: Tribute) {
             || t.vitals.fatigue > VITALS.interactionFatigueFrom;
         if (stalled) return;
         const needed = RECOVERY_CYCLES[site]!;
-        const progress = (t.recoveryProgress![site] ?? 0) + 1;
+        // §16: a tribute who has gone to ground specifically to let a wound
+        // close knits faster than one who is carrying it around.
+        // `recoverHealingBonus` is the share of an extra cycle's knitting the
+        // rest is worth, rolled each cycle rather than banked — a body mends
+        // on its own schedule and the rest only weights it.
+        const resting = t.objective?.kind === 'recover';
+        const restStep = resting && ctx.rng.chance(OBJECTIVES.recoverHealingBonus) ? 1 : 0;
+        const progress = (t.recoveryProgress![site] ?? 0) + 1 + restStep;
         if (progress < needed) {
             t.recoveryProgress![site] = progress;
             return;
@@ -137,8 +144,11 @@ export function tickWoundRecovery(ctx: SimContext, t: Tribute) {
         if (grade - 1 < floor) return;
         healInjury(t, site as Exclude<InjurySite, 'bleeding'>, 1);
         if (injuryGrade(t, site) === 0) {
+            const label = site === 'burned' ? 'burns' : site === 'frostbitten' ? 'frostbite' : `${site} wound`;
             ctx.logEvent(
-                `${t.name}'s ${site === 'burned' ? 'burns' : site === 'frostbitten' ? 'frostbite' : `${site} wound`} has closed over. It took as long as it took.`,
+                restStep > 0
+                    ? `${t.name}'s ${label} has closed. They stopped and lay up until it did.`
+                    : `${t.name}'s ${label} has closed over. It took as long as it took.`,
                 [t.id],
                 { category: 'survival' }
             );

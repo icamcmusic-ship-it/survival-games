@@ -343,7 +343,40 @@ export type Objective =
      * is holding ground worth having; this is holding ground worth *watching*,
      * and it is the only objective that wants nobody else to arrive.
      */
-    | { kind: 'wait'; zone: string; expires: number };
+    | { kind: 'wait'; zone: string; expires: number }
+    /**
+     * AUDIT-10 §16: a named cache somebody left behind. Distinct from
+     * `reach ... forage`, which is walking toward *ground that might have
+     * something on it* — this is walking toward a specific pile that a
+     * specific person is known to have dropped, and it is the only travelling
+     * intention with an owner's name attached to the destination.
+     */
+    | { kind: 'scavenge'; zone: string; ownerId: string; expires: number }
+    /**
+     * §16: going to find somebody in order to *ask*. Every existing
+     * person-shaped intention is adversarial (hunt, stalk) or already
+     * settled (protect, reach-for-ally); nothing expressed a tribute who has
+     * decided they cannot do this alone and has picked who to say so to.
+     */
+    | { kind: 'court'; targetId: string; expires: number }
+    /**
+     * §16: going to where somebody they cared about fell. The one intention
+     * with no survival value at all, which is the point of it.
+     */
+    | { kind: 'mourn'; zone: string; forId: string; expires: number }
+    /**
+     * §16: deliberately sitting still until a wound closes. Overlaps `hold`
+     * in posture and in nothing else — `hold` is ground worth having, this is
+     * a body that cannot currently be spent, and it is chosen on a graded
+     * injury rather than on a health number.
+     */
+    | { kind: 'recover'; zone: string; expires: number }
+    /**
+     * §16: going somewhere high to find out where everyone is. Chosen by a
+     * tribute whose memory of the field has gone completely cold, which was
+     * previously indistinguishable from calm.
+     */
+    | { kind: 'scout'; zone: string; expires: number };
 
 /**
  * §3.4: the objective that came second, and by how much.

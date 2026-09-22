@@ -133,6 +133,9 @@ jobs:
       # B5-02: a half-built shelter belongs to the place, so somebody else can
       # find it, finish it, or inherit it from the dead.
       - run: npm run test:projects
+      # §16: an objective kind nobody ever holds is content that reads as
+      # shipped. Asserts a floor and a ceiling on each of the five new ones.
+      - run: npm run test:intentions
 
       # Content and structure.
       - run: npm run test:arenas

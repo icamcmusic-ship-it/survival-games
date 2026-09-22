@@ -85,7 +85,11 @@ export type MilestoneId =
     | 'treatment-given'
     | 'treatment-refused'
     /** AUDIT-10 B5-01: two allies found each other again after days apart. */
-    | 'reunion';
+    | 'reunion'
+    /** §16: somebody walked back to where a tribute they cared about fell. */
+    | 'grave-visited'
+    /** §16: somebody climbed to a vantage and read the ground around it. */
+    | 'vantage-swept';
 
 /*
  * Deliberately *not* here: traps and mutts. Both were on the first draft of

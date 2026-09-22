@@ -104,8 +104,22 @@ function checkAbandonedCamps(ctx: SimContext, t: Tribute) {
     if (!camp) return;
     const age = cycleOf(state) - camp.cycle;
     if (age > ABANDONED_CAMPS.lifetimeCycles) return;
+    /*
+     * §16: whether they came here for this, or tripped over it.
+     *
+     * `updateObjective` runs earlier in the same cycle than this pass, and
+     * nothing clears a spent intention until the next one — so a tribute who
+     * has just arrived on a `scavenge` is still holding it here, naming this
+     * zone and this owner. That is the difference between a search and a
+     * coincidence, and it decides both the roll and the line.
+     */
+    const onPurpose = t.objective?.kind === 'scavenge'
+        && t.objective.zone === t.zone && t.objective.ownerId === camp.ownerId;
     // A cold camp is not hidden, exactly — it is just easy to walk past.
-    if (!ctx.rng.chance(ABANDONED_CAMPS.findBase + t.attributes.intelligence * ABANDONED_CAMPS.findPerIntelligence)) return;
+    // Unless you crossed the arena to stand on it, in which case you are not
+    // walking past anything.
+    if (!onPurpose
+        && !ctx.rng.chance(ABANDONED_CAMPS.findBase + t.attributes.intelligence * ABANDONED_CAMPS.findPerIntelligence)) return;
 
     camp.foundBy = t.id;
     camp.items.forEach(id => {
@@ -118,10 +132,14 @@ function checkAbandonedCamps(ctx: SimContext, t: Tribute) {
     if (owner && owner.status === 'alive') {
         noteSighting(state, t, owner.zone, 1, 0);
     }
+    const haul = camp.items.length > 0 ? 'things nobody walks away from on purpose' : 'nothing worth taking';
     ctx.logEvent(
-        `${t.name} finds a camp in ${t.zone} that somebody left standing: a cold fire, a windbreak still half up, `
-        + `and ${camp.items.length > 0 ? 'things nobody walks away from on purpose' : 'nothing worth taking'}. `
-        + `Whoever it was, they left ${age <= 1 ? 'within the hour' : 'a couple of days ago'}, and they left fast.`,
+        onPurpose
+            ? `${t.name} walked to ${t.zone} for ${camp.ownerName}'s kit, and it is still there: a cold fire, `
+              + `a windbreak still half up, and ${haul}. They did not have to look twice.`
+            : `${t.name} finds a camp in ${t.zone} that somebody left standing: a cold fire, a windbreak still half up, `
+              + `and ${haul}. `
+              + `Whoever it was, they left ${age <= 1 ? 'within the hour' : 'a couple of days ago'}, and they left fast.`,
         [t.id],
         { important: true, zone: t.zone, category: 'loot' }
     );

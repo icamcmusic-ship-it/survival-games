@@ -55,6 +55,10 @@ export function prerequisiteFor(ctx: SimContext, t: Tribute, goal: Objective): O
     // A goal that *is* the errand needs no errand in front of it.
     if (goal.kind === 'reach' && (goal.reason === 'water' || goal.reason === 'forage')) return undefined;
     if (goal.kind === 'flee' || goal.kind === 'protect') return undefined;
+    // §16: resting is not a journey, so nothing can be put in front of it —
+    // and an errand queued ahead of a `recover` would be the engine telling a
+    // tribute with a broken arm to go for a walk first.
+    if (goal.kind === 'recover') return undefined;
 
     const reason = needsWater ? 'water' : 'forage';
     const zone = bestZoneFor(ctx, t, reason);

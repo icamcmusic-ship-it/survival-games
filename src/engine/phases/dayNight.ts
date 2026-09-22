@@ -19,6 +19,7 @@ import { canAfford, crossingsLeft, hoursLeft, noteCrossing, resetBudget, spend, 
 import { isNoticed } from '../stealth';
 import { pickDestination } from '../movement';
 import { objectiveHolds, objectiveLabel, objectiveStep, updateObjective } from '../objectives';
+import { onObjectiveArrival } from '../objectiveArrival';
 import { checkTraps, hasCamp, tickTraps } from '../fieldcraft';
 import { allianceRecords, areLovers, fractureBlocs, isHostileTo, leaderFor } from '../alliance';
 
@@ -1688,6 +1689,10 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
                     { zone: newZone, category: 'travel' }
                 );
             }
+            // §16: the leader is the one holding the intention, so the leader
+            // is the one it lands on — the pack walked there, but it was not
+            // their friend and not their map.
+            onObjectiveArrival(ctx, t);
             return;
         }
     }
@@ -1711,6 +1716,9 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
             [t.id],
             { zone: step.name, category: 'travel' }
         );
+        // §16: arriving is the end of a walk, and two of the walks have
+        // something waiting at the end of them.
+        onObjectiveArrival(ctx, t);
         // A1: a hunter covers two zones a cycle. Somebody working a named
         // target closes ground faster than somebody drifting, which is most of
         // what makes Hunting frightening to be the subject of.
