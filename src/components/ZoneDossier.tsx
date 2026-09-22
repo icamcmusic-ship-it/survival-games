@@ -3,6 +3,7 @@ import { GameState } from '../models/types';
 import { ZONES, LOAD_BEARING } from '../data/balance';
 import { structuralFatigueOf } from '../engine/loadBearing';
 import { frontName } from '../engine/weatherFront';
+import { isVertical } from '../engine/verticality';
 
 /**
  * §2.2: a sector, as a place with a history.
@@ -38,8 +39,23 @@ export function ZoneDossier({ gameState, zone }: { gameState: GameState; zone: s
     const deaths = gameState.zoneDeaths?.[zone] ?? 0;
     const traffic = gameState.zoneTraffic?.[zone] ?? 0;
     const effects = gameState.zoneEffects?.[zone] ?? [];
+    /*
+     * AUDIT-10 B3-02: "forecasts on the map and dossier, distinguishing pending
+     * warnings from active effects".
+     *
+     * They are genuinely different facts and the dossier only had a row for one
+     * of them. `State` is what this sector is doing to you right now; a forecast
+     * is what it is going to do, and the gap between the two is the only window
+     * in which anybody — tribute or player — can act. A panel that folded them
+     * together would turn a warning into a weather report.
+     */
+    const cycle = gameState.cycle ?? 0;
+    const forecasts = (gameState.forecasts ?? [])
+        .filter(f => f.zone === zone)
+        .sort((a, b) => a.dueCycle - b.dueCycle);
     const here = gameState.tributes.filter(t => t.status === 'alive' && t.zone === zone);
     const fatigue = structuralFatigueOf(gameState, zone);
+    const vertical = isVertical(gameState.arena, zone);
     const front = gameState.weatherFront;
     const frontHere = front?.zone === zone;
     // Adjacent and not already crossed: the front has to go somewhere, and this
@@ -95,6 +111,23 @@ export function ZoneDossier({ gameState, zone }: { gameState: GameState; zone: s
                 ? 'Nobody has died here.'
                 : `${deaths} — ${fell.map(t => t.name).join(', ') || 'unrecorded'}`)}
             {effects.length > 0 && row('State', effects.map(e => e.kind).join(', '))}
+            {forecasts.length > 0 && row('Forecast', (
+                <span>
+                    {forecasts.map((f, i) => {
+                        const cycles = f.dueCycle - cycle;
+                        return (
+                            <span key={i} className={cycles <= 1 ? 'text-[var(--red)]' : undefined}>
+                                {i > 0 && ' · '}
+                                <strong>{f.kind}</strong>
+                                {cycles > 0 ? ` in ${cycles} cycle${cycles === 1 ? '' : 's'}` : ' — due now'}
+                                {/* A partly dug firebreak still takes the edge off,
+                                    so the mitigation is a number rather than a flag. */}
+                                {f.mitigation > 0 && ` (${Math.round(f.mitigation * 100)}% headed off)`}
+                            </span>
+                        );
+                    })}
+                </span>
+            ))}
             {fatigue > 0 && row('Structure', (
                 <span>
                     {Math.round(fatigue * 100)}% loaded
@@ -111,7 +144,17 @@ export function ZoneDossier({ gameState, zone }: { gameState: GameState; zone: s
                 </span>
             ))}
             {drift && drift.progress > 0.15 && row('Climate', `The arena is turning ${drift.toward} (${Math.round(drift.progress * 100)}% of the way)`)}
-            {row('Standing', here.length === 0 ? 'Empty.' : here.map(t => t.name).join(', '))}
+            {/* B3-02: which level they are on, where the zone has levels. Two
+                tributes in the same sector on opposite ends of a rope cannot
+                reach each other, and a single list said they could. */}
+            {row('Standing', here.length === 0 ? 'Empty.' : (
+                vertical
+                    ? ['upper', 'lower'].map(l => {
+                        const on = here.filter(t => (t.zoneLevel ?? 'lower') === l);
+                        return on.length === 0 ? null : `${l}: ${on.map(t => t.name).join(', ')}`;
+                    }).filter(Boolean).join(' · ')
+                    : here.map(t => t.name).join(', ')
+            ))}
         </div>
     );
 }
