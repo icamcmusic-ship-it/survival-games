@@ -35,6 +35,7 @@ import { isVeteran } from '../engine/veterans';
 import { charterSummary } from '../engine/allianceCharter';
 import { quirkEffect } from '../data/quirks';
 import { DayPanel } from './DayPanel';
+import { AllianceLedger } from './AllianceLedger';
 
 const PROFICIENCY_LABELS: Record<string, string> = {
     forage: 'Foraging', melee: 'Melee', ranged: 'Ranged', medicine: 'Medicine', tracking: 'Tracking',
@@ -1131,7 +1132,11 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                                 {alliance.campZone && (
                                     <div className="flex justify-between gap-2">
                                         <span className="text-[var(--color-ink-500)]">Camp</span>
-                                        <span className="text-[var(--color-ink-200)]">{alliance.campZone}</span>
+                                        {/* F10: the cache has a location of its own,
+                                            including which level of a vertical zone. */}
+                                        <span className="text-[var(--color-ink-200)]">
+                                            {alliance.campZone}{alliance.campLevel ? ` · ${alliance.campLevel}` : ''}
+                                        </span>
                                     </div>
                                 )}
                                 <div className="flex justify-between gap-2">
@@ -1179,6 +1184,9 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                                         <span className="text-[var(--color-ink-200)] text-right">{allianceStanding}</span>
                                     </div>
                                 )}
+                                {/* B3-02: the running account between the people in
+                                    it, which is the half that decides how it ends. */}
+                                <AllianceLedger alliance={alliance} gameState={gameState} />
                             </div>
                         </section>
                     )}
