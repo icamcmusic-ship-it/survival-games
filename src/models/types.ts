@@ -3739,14 +3739,30 @@ export interface LogOptions {
  * must not depend on its wording.
  */
 export type EventType =
+    /*
+     * AUDIT-10 B6 §16: three values were removed from here — `betrayal`,
+     * `romance` and `bond`. A coverage sweep over 120 runs found them emitted
+     * by nothing and read by nothing, and the reason is that the specific
+     * beats superseded them: betrayals type as `exotic-betrayals` or
+     * `preemptive-betrayals`, romance as `romance-tragedy`, bonds as
+     * `performed-bonds` or `district-bonds`.
+     *
+     * Leaving them declared was worse than untidy. `EventCategory` carries
+     * live `'betrayal'` and `'romance'` values of its own, so `e.type ===
+     * 'betrayal'` type-checked, read as obviously correct, and could never
+     * match anything — while the `e.category === 'betrayal'` a reader meant
+     * works. A vocabulary with a writer-less synonym of a live word in it is a
+     * trap for exactly the typed-facts reads B3-03 exists to encourage.
+     *
+     * `border-warning` and `border-collapse` were dead for a different reason
+     * — their beats existed and simply carried no type — so they are emitted
+     * now rather than removed.
+     */
     | 'vengeance-sworn'
     | 'group-fight'
     | 'ambush'
-    | 'betrayal'
     | 'truce'
     | 'standoff'
-    | 'romance'
-    | 'bond'
     | 'border-warning'
     | 'border-collapse'
     /*

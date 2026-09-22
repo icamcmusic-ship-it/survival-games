@@ -1282,7 +1282,11 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
         ctx.logEvent(
             fill(ctx.pickText(BORDER_TEXTS.telegraph), { zone: warned }),
             [],
-            { important: true, zone: warned, category: 'arena' }
+            // §16: `border-warning` has been a declared `EventType` since the
+            // union was written and was emitted by nothing, so the one beat
+            // that tells the field where the arena is about to close could
+            // only ever be found by matching its prose.
+            { type: 'border-warning', important: true, zone: warned, category: 'arena' }
         );
     }
 
@@ -1377,7 +1381,7 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
                     tribute: t.name, trapped: trappedZone, damage: String(damage), safe: newSafeZone,
                 }),
                 [t.id],
-                { important: true, zone: newSafeZone, category: 'hazard' }
+                { type: 'border-collapse', important: true, zone: newSafeZone, category: 'hazard' }
             );
         }
         t.zone = newSafeZone;
