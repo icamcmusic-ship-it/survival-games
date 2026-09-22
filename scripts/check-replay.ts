@@ -109,6 +109,33 @@ console.log('\nA run the player steered');
     else bad('recorded replay', 'the replayed run diverged from the one it recorded');
 }
 
+console.log('\nTaking the controls mid-replay');
+{
+    const steer: Array<[number, GamemakerEventType]> = [[2, 'burn'], [4, 'mutt'], [6, 'flood']];
+    const original = play('RP-branch', ARENAS[2].id, steer);
+    const recorded = (original.interventionLog ?? []).filter(a => !a.scheduled);
+
+    // Replay the same recording, but press a button of your own at cycle 3 —
+    // before two of the three recorded commands would have fired.
+    const branched = play('RP-branch', ARENAS[2].id, [[3, 'mercy']], recorded);
+
+    if (branched.replayBranched === true) ok('a manual command marks the run as branched');
+    else bad('branch', 'the run was steered by hand and still called itself a replay');
+
+    if ((branched.plannedInterventions?.length ?? 0) === 0) ok('the rest of the recording is abandoned rather than spliced in');
+    else bad('branch', `${branched.plannedInterventions?.length} recorded commands survived the branch`);
+
+    // The recorded commands that had already fired stay fired; the ones that
+    // had not, never do. Anything else would be two Games in one chronicle.
+    const after = (branched.interventionLog ?? []).filter(a => !a.scheduled && a.cycle > 3);
+    if (!after.some(a => recorded.some(r => r.cycle === a.cycle && r.type === a.type))) {
+        ok('no recorded command fires after the branch');
+    } else bad('branch', 'a recorded command fired after the player had taken over');
+
+    if (shapeOf(branched) !== shapeOf(original)) ok('and the branched run is a different Games');
+    else bad('branch', 'branching changed nothing about the outcome');
+}
+
 console.log('\nThe log through a link');
 {
     const encoded = '3.burn~5.mutt.d1-male~7.feast!';

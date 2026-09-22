@@ -3387,6 +3387,14 @@ export interface GameState {
      * twice.
      */
     plannedInterventions?: InterventionRecord[];
+    /**
+     * AUDIT-10 B3-01: this run began as a replay and stopped being one.
+     *
+     * Set when the player fires a Gamemaker command during a replay, which
+     * abandons the rest of the recording. Read by the interface so a branched
+     * run is not still labelled as a replay of somebody else's Games.
+     */
+    replayBranched?: boolean;
     /** §6.6: tribute id -> cycle a player parachute last reached them. Blocs read it as "covered". */
     playerGiftCycle?: Record<string, number>;
     /** §7.6: tribute id -> cycle their mentor pointedly withheld a gift. */

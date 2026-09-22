@@ -125,8 +125,37 @@ export function gamemakerCooldownRemaining(state: GameState, type: GamemakerEven
     return Math.max(0, GAMEMAKER.eventCooldownCycles - ((state.cycle ?? 0) - use.lastCycle));
 }
 
-export function triggerGamemakerEvent(ctx: SimContext, type: GamemakerEventType, targetId?: string, capitolSchedule = false) {
+export function triggerGamemakerEvent(ctx: SimContext, type: GamemakerEventType, targetId?: string, capitolSchedule = false, replaying = false) {
     if (!ctx.state.gamemakerMode) return;
+
+    /*
+     * AUDIT-10 B3-01: the interactive branch.
+     *
+     * A replay is a recording until somebody touches the controls. The moment
+     * the player fires a command of their own, the run stops being the one that
+     * was recorded, and firing the rest of the recording into it would splice
+     * two different Games together — the receiver would watch a run that is
+     * neither the sender's nor their own and be told it was the sender's.
+     *
+     * So the queue is abandoned on the first manual command, and the chronicle
+     * says so. Not silently: a player who took the controls deserves to know
+     * the recording stopped, and a run that quietly stopped being a replay
+     * while still wearing the Replay badge is the exact dishonesty F19 exists
+     * to prevent. The Capitol's own scheduled commands do not branch it — they
+     * are the receiver's calendar firing from the same seed, which the sender's
+     * run did too.
+     */
+    if (!replaying && !capitolSchedule && (ctx.state.plannedInterventions?.length ?? 0) > 0) {
+        const abandoned = ctx.state.plannedInterventions!.length;
+        delete ctx.state.plannedInterventions;
+        ctx.state.replayBranched = true;
+        ctx.logEvent(
+            `GAMEMAKER: the booth takes the controls. This was a replay of somebody else's Games; it is not any more. `
+            + `${abandoned} recorded command${abandoned === 1 ? '' : 's'} will not be played back, and what happens from here is yours.`,
+            [],
+            { category: 'gamemaker', important: true }
+        );
+    }
 
     // §6.7: per-event cooldown. The arena's machinery needs resetting between
     // uses, and the broadcast needs the intervention to still read as one.
@@ -213,7 +242,7 @@ export function replayPlannedInterventions(ctx: SimContext) {
     ctx.state.plannedInterventions = queue.filter(a => a.cycle > now);
     due.forEach(a => {
         if (a.scheduled) return;
-        triggerGamemakerEvent(ctx, a.type as GamemakerEventType, a.targetId);
+        triggerGamemakerEvent(ctx, a.type as GamemakerEventType, a.targetId, false, true);
     });
 }
 

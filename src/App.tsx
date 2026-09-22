@@ -260,7 +260,12 @@ export default function App() {
 
           <nav aria-label="Primary" className="flex gap-1 items-center flex-wrap">
             {isReplayedRun && gameState && (
-              <span className="chip chip-coin hidden sm:inline-flex">Replay · {gameState.seed}</span>
+              // B3-01: a run the player took the controls of is no longer a
+              // replay of anybody's Games, and a badge that still says so is
+              // the same false claim F19 exists to prevent.
+              <span className="chip chip-coin hidden sm:inline-flex">
+                {gameState.replayBranched ? 'Branched from' : 'Replay'} · {gameState.seed}
+              </span>
             )}
             <span className="chip chip-gold" role="status" aria-label={`${coins} Capitol Coins available for wagers`} title="Capitol Coins available for wagers">{coins} <span aria-hidden="true">⨷</span></span>
             {gameState && (
