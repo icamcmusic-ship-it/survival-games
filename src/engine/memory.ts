@@ -2,6 +2,7 @@ import { GameState, RivalRecord, Tribute, TributeMemory, ZoneMemory } from '../m
 import { FEAR, HUNTING, INTEL, MEMORY, NOISE, RELATIONSHIPS, RIVAL_READ, SANITY_BANDS, SUSPICION, ZONES } from '../data/balance';
 import { arenaHasLaw } from './gamesProfile';
 import { profOf } from './proficiency';
+import { suspectKilling } from './accusations';
 import { ARCHETYPES } from '../data/archetypes';
 import { needsSecondSource, traitMod } from '../data/traits';
 import { addFear } from './fear';
@@ -347,7 +348,21 @@ export function broadcastDeath(ctx: SimContext, victim: Tribute, killer?: Tribut
                     o.status === 'alive' && o.id !== other.id && o.id !== killer.id && o.id !== victim.id
                     && cyclesSinceContact(state, other, o.id) <= MEMORY.sightingLifetime * 2);
                 const suspect = suspects.length > 0 ? ctx.rng.pick(suspects) : undefined;
-                if (suspect) addFear(other, suspect.id, FEAR.distantKill);
+                if (suspect) {
+                    addFear(other, suspect.id, FEAR.distantKill);
+                    /*
+                     * §16: and the wrong name goes into the accusation ledger
+                     * as a claim that can travel and is false.
+                     *
+                     * This branch has always been the arena's one source of an
+                     * honestly-mistaken belief, and it could only ever express
+                     * itself as fear of the wrong person. Recording it as an
+                     * accusation is what lets somebody repeat it, lets a
+                     * second mouth corroborate something that never happened,
+                     * and lets both of them be believed less afterwards.
+                     */
+                    suspectKilling(ctx, other, suspect.id, victim.id, false);
+                }
             } else {
                 addFear(other, killer.id, FEAR.distantKill);
             }

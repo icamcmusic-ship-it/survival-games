@@ -3057,6 +3057,46 @@ export const COMBAT = {
  * every ambush in one change. The guard `test:noise` polices the ceiling for
  * that reason, and the floor only because content nobody meets is not content.
  */
+/**
+ * §16: accusations — who is said to have killed whom.
+ *
+ * Measured before it was written. Tributes hold 5.95 deed-beliefs per cycle
+ * between them, 6.4% of those already name somebody with no kills at all (the
+ * misattribution path in `applyDeathFallout` works), and 61.9% of co-present
+ * living pairs have an asymmetry — one of them knows something about a killing
+ * that the other does not. Against that, the only existing channel for a claim
+ * about anything, zone-rumours, mints 0.7 a run.
+ *
+ * So the raw material is abundant and the danger is the ceiling, exactly as
+ * with noise: a claim that spreads freely turns the arena into a mob that all
+ * hates the same person by day three. `test:accusations` polices that.
+ */
+export const ACCUSATIONS = {
+    /** Odds a tribute holding a belief says it to somebody standing with them. */
+    tellChance: 0.16,
+    /** ...raised for the talkative, per point of charisma above average. */
+    tellPerCharisma: 0.02,
+    /** Regard below which you do not say a thing like this out loud. */
+    tellMinRegard: 10,
+    /** They will not say it to the person it is about, nor to that person's ally. */
+    /** Suspicion a first telling puts on the accused, before credibility. */
+    suspectedSuspicion: 14,
+    /** ...and what a second, independent telling adds on top when it corroborates. */
+    provenSuspicion: 22,
+    /** Fear of somebody a tribute now believes, on two accounts, to be a killer. */
+    provenFear: 10,
+    /** Notoriety a proven belief adds to the accused, in the listener's own head. */
+    provenNotoriety: 0.18,
+    /** How much a telling must survive `credibilityWeight` to land at all. */
+    credibilityFloor: 0.6,
+    /** What being caught passing on a false killing costs the teller's credibility. */
+    falseClaimBelief: -12,
+    /** Cycles an unrefreshed accusation survives before it stops being repeated. */
+    lifetime: 12,
+    /** Chance the telling is worth a chronicle line. */
+    lineChance: 0.3,
+} as const;
+
 export const NOISE = {
     /** What an ordinary body crossing ordinary ground is worth. */
     baseCrossing: 1,
