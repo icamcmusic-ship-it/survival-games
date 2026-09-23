@@ -33,6 +33,9 @@ import { ARENAS, DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { GameState } from '../src/models/types';
 import { configForProfile, gamesProfileFor } from '../src/engine/gamesProfile';
 import { ensureMemory } from '../src/engine/memory';
+import { createContext } from '../src/engine/context';
+import { RNG } from '../src/utils/rng';
+import { correctAccusations } from '../src/engine/accusations';
 
 const RUNS = Number(process.env.ACCUSATION_RUNS ?? 40);
 const arenaIds = [...ARENAS.map(a => a.id), 'procedural'];
@@ -138,6 +141,51 @@ if (held > 0 && falseHeld === 0) {
 if (held > 0 && falseShare > 0.5) {
     failures.push(`${pct(falseHeld, held)} of beliefs are false — the layer is carrying more noise than signal`);
 }
+
+/*
+ * AUDIT-10 §12 requires a positive fixture and a near-miss fixture for a new
+ * achievement, and the aggregate rates above are neither: they say the beat
+ * happens, not that it happens for the reason claimed. These two construct
+ * the exact state and assert the correction fires on one and declines on the
+ * other.
+ *
+ * The near-miss is the one that matters. Holding a told claim and a
+ * first-hand claim at the same time is common; what licenses a correction is
+ * that they are about the *same victim*. A rule that fired on any two claims
+ * would look identical in the aggregate and be wrong.
+ */
+function fixtures(): string[] {
+    const problems: string[] = [];
+    const build = (toldVictim: string, seenVictim: string) => {
+        const state = start('FIXTURE', arenaIds[0], false);
+        const [holder, accused, realKiller] = state.tributes;
+        const mem = ensureMemory(holder);
+        mem.accusations = {
+            [accused.id]: { victimId: toldVictim, level: 'suspected', toldBy: ['someone'], isTrue: false, cycle: 1 },
+            [realKiller.id]: { victimId: seenVictim, level: 'private', toldBy: [], isTrue: true, cycle: 1 },
+        };
+        state.phase = 'day';
+        const ctx = createContext(state, new RNG('fixture'));
+        correctAccusations(ctx);
+        return { holder, accusedId: accused.id, state };
+    };
+    // Positive: both claims name the same victim, so the eyes win.
+    const victim = 'v1';
+    const pos = build(victim, victim);
+    if (ensureMemory(pos.holder).accusations?.[pos.accusedId]) {
+        problems.push('positive fixture: a told claim contradicted by first-hand sight of the same killing survived');
+    }
+    if (!(pos.state.milestones ?? {})['accusation-corrected']) {
+        problems.push('positive fixture: the correction left no typed evidence');
+    }
+    // Near miss: different victims, so there is no contradiction to resolve.
+    const near = build('v1', 'v2');
+    if (!ensureMemory(near.holder).accusations?.[near.accusedId]) {
+        problems.push('near-miss fixture: a told claim was overturned by sight of an unrelated killing');
+    }
+    return problems;
+}
+failures.push(...fixtures());
 
 if (failures.length) {
     console.error(`\n${failures.length} accusation problem(s):`);

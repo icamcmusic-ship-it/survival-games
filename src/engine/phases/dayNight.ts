@@ -20,7 +20,7 @@ import { isNoticed } from '../stealth';
 import { pickDestination } from '../movement';
 import { objectiveHolds, objectiveLabel, objectiveStep, updateObjective } from '../objectives';
 import { announceCrossing } from '../noise';
-import { tradeAccusations } from '../accusations';
+import { correctAccusations, tradeAccusations } from '../accusations';
 import { onObjectiveArrival } from '../objectiveArrival';
 import { checkTraps, hasCamp, tickTraps } from '../fieldcraft';
 import { allianceRecords, areLovers, fractureBlocs, isHostileTo, leaderFor } from '../alliance';
@@ -473,6 +473,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
      * thinks, so a corroborated accusation reaches that read in the same cycle
      * rather than a cycle late.
      */
+    // §12: your own eyes first, so a belief corrected this cycle is not
+    // re-spread by the trading pass below before it has been put right.
+    correctAccusations(ctx);
     tradeAccusations(ctx);
     // AUDIT-6 §4.1: and what the field has heard becomes what it thinks.
     reputationPriors(ctx);

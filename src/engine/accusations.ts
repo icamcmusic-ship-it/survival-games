@@ -4,6 +4,7 @@ import { ACCUSATIONS } from '../data/balance';
 import { cycleOf, ensureMemory, raiseSuspicion } from './memory';
 import { adjustBelief, credibilityWeight, getRel } from './relationships';
 import { addNotoriety } from './notoriety';
+import { noteMilestone } from './milestones';
 import { addFear } from './fear';
 
 /**
@@ -85,6 +86,60 @@ function willTell(ctx: SimContext, teller: Tribute, listener: Tribute, accusedId
     const chance = ACCUSATIONS.tellChance
         + Math.max(0, teller.attributes.charisma - 5) * ACCUSATIONS.tellPerCharisma;
     return ctx.rng.chance(chance);
+}
+
+/**
+ * §12: your own eyes against what you were told.
+ *
+ * Misattribution was a one-way door. `noteDeath` picks a recently-seen
+ * bystander and pins a killing on them, that false belief travels through
+ * `tradeAccusations`, a second mouth can corroborate something neither of them
+ * saw — and nothing could ever take it back. A tribute who personally watched
+ * Marvel kill Rue, and who had earlier been told that Cato did, carried both
+ * beliefs side by side for the rest of the run without noticing.
+ *
+ * The correction is the cheapest honest kind: no omniscience, no oracle, just
+ * precedence. A claim the holder witnessed themselves outranks a claim they
+ * were told, for the same victim. That is the audit's "using a recorded
+ * witness or item evidence, not global omniscience" — the witness is the
+ * holder, and the record is their own accusation ledger.
+ *
+ * Measured before it was written: 17.5% of runs put both beliefs in the same
+ * head, so this is a beat that gets seen rather than a rule nobody meets.
+ *
+ * The teller pays. Somebody who passed on a killing that the listener then saw
+ * was somebody else's is believed less afterwards — the same currency
+ * `writeHearsay` docks for a zone claim that did not survive being looked at.
+ */
+export function correctAccusations(ctx: SimContext) {
+    const state = ctx.state;
+    state.tributes.forEach(holder => {
+        if (holder.status !== 'alive') return;
+        const acc = ensureMemory(holder).accusations;
+        if (!acc) return;
+        const entries = Object.entries(acc);
+        // First-hand claims: no teller in the chain, so the holder saw it.
+        const seen = entries.filter(([, claim]) => claim.toldBy.length === 0);
+        if (seen.length === 0) return;
+        entries.forEach(([accusedId, claim]) => {
+            if (claim.toldBy.length === 0) return;
+            const contradicting = seen.find(([otherId, mine]) =>
+                otherId !== accusedId && mine.victimId === claim.victimId);
+            if (!contradicting) return;
+            const name = (id: string) => state.tributes.find(o => o.id === id)?.name ?? 'somebody';
+            // The tellers of the losing claim are believed less next time.
+            claim.toldBy.forEach(tellerId => adjustBelief(holder, tellerId, ACCUSATIONS.falseClaimBelief));
+            delete acc[accusedId];
+            noteMilestone(ctx, 'accusation-corrected', [holder.id, accusedId, contradicting[0]]);
+            ctx.logEvent(
+                `${holder.name} was told ${name(accusedId)} killed ${name(claim.victimId)}. `
+                + `${holder.name} was standing there when ${name(contradicting[0])} did it, `
+                + 'and stops believing the other thing.',
+                [holder.id, accusedId, contradicting[0]],
+                { important: true, category: 'alliance', zone: holder.zone }
+            );
+        });
+    });
 }
 
 /**

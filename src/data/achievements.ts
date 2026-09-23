@@ -474,7 +474,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Scavenger',
         hint: 'Crown a victor who went through four or more of the fallen.',
         category: 'survival',
-        rarity: 'rare',
+        rarity: 'legendary',
         /*
          * AUDIT-9 stage C: five was above the ceiling once actions started
          * costing the day. Looting a body takes time somebody now has to
@@ -2969,7 +2969,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Long Way Was Right',
         hint: 'Crown a victor who worked against a hazard and outlived the ones who did not.',
         category: 'survival',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: (state, v) => !!v && state.log.some(e =>
             e.type === 'hazard-mitigated' && e.tributesInvolved.includes(v.id)),
     },
@@ -3305,6 +3305,40 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'survival',
         rarity: 'rare',
         test: (_s, v) => !!v && v.traits.some(trait => trait === 'Frostbitten' || trait === 'Witness'),
+    },
+    {
+        /*
+         * AUDIT-10 §12, "Who Really Cut It": *"Resolve a rope-cut accusation
+         * using a recorded witness or item evidence, not global omniscience."*
+         *
+         * The first of the audit's 24 proposed achievements to ship, and it
+         * shipped because it survived the screen the audit asks for rather
+         * than because it was next on the list. Most of the 24 describe
+         * mechanics the game does not have — an over-limit group load split
+         * into legal trips, link capacity with a forecast closure, per-batch
+         * contamination — and two more were killed by measurement: a rumour
+         * publicly corrected needs `rumour.exposed`, which occurred in 0 of
+         * 120 runs, and "Different Debts" needs two kept obligations, which
+         * also never occurred.
+         *
+         * Rarity follows measured eligible opportunities, as the audit
+         * requires: the contradiction this reads — a tribute holding both a
+         * told killing and a first-hand one for the same victim — arises in
+         * 17.5% of runs, and the correction itself fires in 20.8%. The
+         * correction is the larger number because it *consumes* the
+         * contradiction: the 17.5% counts only the pairs still sitting in
+         * somebody's head at the end of a run, and this reads every one that
+         * was put right along the way.
+         *
+         * The evidence is typed rather than parsed, so no rewording can move
+         * it and log trimming cannot lose it.
+         */
+        id: 'who-really-cut-it',
+        name: 'Who Really Cut It',
+        hint: 'See a tribute overturn something they were told about a killing, because they saw it themselves.',
+        category: 'social',
+        rarity: 'rare',
+        test: state => happened(state, 'accusation-corrected'),
     },
     {
         /*
@@ -5480,7 +5514,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'a8-never-sent-anything',
         name: 'Never Sent Anything',
         hint: 'Crown a victor the sponsors ignored in a year when they were paying out.',
-        category: 'capitol', rarity: 'legendary',
+        category: 'capitol', rarity: 'rare',
         test: (state, v) => !!v && (v.memory?.giftsReceived ?? 0) === 0
             && state.tributes.some(o => (o.memory?.giftsReceived ?? 0) > 0),
     },

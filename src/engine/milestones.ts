@@ -89,7 +89,9 @@ export type MilestoneId =
     /** §16: somebody walked back to where a tribute they cared about fell. */
     | 'grave-visited'
     /** §16: somebody climbed to a vantage and read the ground around it. */
-    | 'vantage-swept';
+    | 'vantage-swept'
+    /** §12: a told killing overturned by the holder's own eyes. */
+    | 'accusation-corrected';
 
 /*
  * Deliberately *not* here: traps and mutts. Both were on the first draft of
