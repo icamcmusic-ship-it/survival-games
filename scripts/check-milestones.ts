@@ -37,7 +37,11 @@ const LOG_TAIL_FALLBACKS = [4000, 2000, 800, 200];
  * because "does this predicate read the log" is a question about a closure and
  * the honest way to ask it is to trim the log and look.
  */
-const MIGRATED = ['wildfire', 'lone-wolf', 'three-fingers', 'the-tended', 'the-perimeter', 'the-restocked-horn', 'the-whole-menagerie'];
+const MIGRATED = ['wildfire', 'lone-wolf', 'three-fingers', 'the-tended', 'the-perimeter', 'the-restocked-horn', 'the-whole-menagerie',
+    // AUDIT-10 §12 requires save/resume coverage for every new achievement.
+    // These three read typed milestones rather than the chronicle, so a
+    // trimmed log must not move them.
+    'the-returned', 'the-high-ground', 'who-really-cut-it'];
 
 const arenaIds = [...ARENAS.map(a => a.id), 'procedural'];
 
