@@ -72,6 +72,27 @@ export function layoutZones(arena: Arena): Record<string, Point> {
     const n = zones.length;
     const positions: Record<string, Point> = {};
 
+    /*
+     * The Cornucopia is the map's origin: everything on the floor is described
+     * in terms of how far from the horn it is, so drawing it wherever the
+     * force solver happened to leave it made the map harder to read than the
+     * arena actually is. It is pinned dead centre and the rest of the graph
+     * lays out around it.
+     *
+     * Identified exactly the way the rest of the engine identifies it
+     * (`/cornucopia/i` on the zone name — see engine/objectives.ts), because a
+     * second, different rule would eventually disagree with the first and the
+     * map would centre something the simulation does not treat as the horn.
+     * An arena with no such zone simply lays out as it always did.
+     */
+    const hornName = zones.find(z => /cornucopia/i.test(z.name))?.name;
+    const CENTRE: Point = { x: VIEW_W / 2, y: VIEW_H / 2 };
+    const pinHorn = () => {
+        if (!hornName) return;
+        positions[hornName].x = CENTRE.x;
+        positions[hornName].y = CENTRE.y;
+    };
+
     // Start on a circle: a decent opening guess for a small planar-ish graph,
     // and one that never starts two nodes on top of each other.
     zones.forEach((z, i) => {
@@ -136,6 +157,9 @@ export function layoutZones(arena: Arena): Record<string, Point> {
             pa.x += dx * cooling * 0.12;
             pa.y += dy * cooling * 0.12;
         });
+
+        // The horn is a fixed point the others solve around, not a free node.
+        pinHorn();
     }
 
     // Fit to the viewport with room for the labels under each node.
@@ -146,13 +170,32 @@ export function layoutZones(arena: Arena): Record<string, Point> {
     const pad = NODE_R + 34;
     const spanX = Math.max(1, maxX - minX);
     const spanY = Math.max(1, maxY - minY);
-    const scale = Math.min((VIEW_W - pad * 2) / spanX, (VIEW_H - pad * 2) / spanY);
 
-    zones.forEach(z => {
-        const p = positions[z.name];
-        p.x = pad + (p.x - minX) * scale;
-        p.y = pad + (p.y - minY) * scale;
-    });
+    if (hornName) {
+        /*
+         * With the horn pinned, the fit has to be symmetric about the centre —
+         * fitting the bounding box to the frame would slide the horn off
+         * centre again. So the scale is set by the node that reaches furthest
+         * from the middle, and everything is scaled about the middle. That
+         * gives up a little of the frame on the slack side, which is why the
+         * relaxation below runs afterwards on the drawn coordinates.
+         */
+        const reachX = Math.max(1, ...zones.map(z => Math.abs(positions[z.name].x - CENTRE.x)));
+        const reachY = Math.max(1, ...zones.map(z => Math.abs(positions[z.name].y - CENTRE.y)));
+        const scale = Math.min((VIEW_W / 2 - pad) / reachX, (VIEW_H / 2 - pad) / reachY);
+        zones.forEach(z => {
+            const p = positions[z.name];
+            p.x = CENTRE.x + (p.x - CENTRE.x) * scale;
+            p.y = CENTRE.y + (p.y - CENTRE.y) * scale;
+        });
+    } else {
+        const scale = Math.min((VIEW_W - pad * 2) / spanX, (VIEW_H - pad * 2) / spanY);
+        zones.forEach(z => {
+            const p = positions[z.name];
+            p.x = pad + (p.x - minX) * scale;
+            p.y = pad + (p.y - minY) * scale;
+        });
+    }
 
     // §2.10: minimum node separation, on the final drawn coordinates.
     //
@@ -182,9 +225,16 @@ export function layoutZones(arena: Arena): Record<string, Point> {
                     // has one.
                     const ux = dist < 0.001 ? 1 : vx / dist;
                     const uy = dist < 0.001 ? 0 : vy / dist;
-                    const push = (MIN_SEPARATION - dist) / 2;
-                    pa.x -= ux * push; pa.y -= uy * push;
-                    pb.x += ux * push; pb.y += uy * push;
+                    // The horn does not move: its partner takes the whole
+                    // push instead of half of it, so separation is still
+                    // satisfied without unpinning the centre.
+                    const aPinned = zones[i].name === hornName;
+                    const bPinned = zones[j].name === hornName;
+                    const gap = MIN_SEPARATION - dist;
+                    const pushA = bPinned ? gap : gap / 2;
+                    const pushB = aPinned ? gap : gap / 2;
+                    if (!aPinned) { pa.x -= ux * pushA; pa.y -= uy * pushA; }
+                    if (!bPinned) { pb.x += ux * pushB; pb.y += uy * pushB; }
                 }
             }
             if (!moved) break;
@@ -216,12 +266,20 @@ export function layoutZones(arena: Arena): Record<string, Point> {
                 moved = true;
                 // A one-pixel margin, so a pair that settles exactly flush
                 // does not read as touching.
+                // As in `separate`: a pinned horn hands its half of the
+                // shove to the other caption.
+                const aPinned = za.name === hornName;
+                const bPinned = zb.name === hornName;
                 if (overlapX <= overlapY) {
-                    const push = (overlapX + 1) / 2 * (pa.x <= pb.x ? -1 : 1);
-                    pa.x += push; pb.x -= push;
+                    const dir = pa.x <= pb.x ? -1 : 1;
+                    const push = (overlapX + 1) * dir;
+                    if (!aPinned) pa.x += push * (bPinned ? 1 : 0.5);
+                    if (!bPinned) pb.x -= push * (aPinned ? 1 : 0.5);
                 } else {
-                    const push = (overlapY + 1) / 2 * (pa.y <= pb.y ? -1 : 1);
-                    pa.y += push; pb.y -= push;
+                    const dir = pa.y <= pb.y ? -1 : 1;
+                    const push = (overlapY + 1) * dir;
+                    if (!aPinned) pa.y += push * (bPinned ? 1 : 0.5);
+                    if (!bPinned) pb.y -= push * (aPinned ? 1 : 0.5);
                 }
             }
         }
@@ -232,6 +290,7 @@ export function layoutZones(arena: Arena): Record<string, Point> {
     // Nudging can push a node past the frame; clamp it back with room for its
     // own caption underneath.
     const clampToFrame = () => zones.forEach(z => {
+        if (z.name === hornName) return;
         const p = positions[z.name];
         const halfW = Math.max(NODE_R, (z.name.length * LABEL_CHAR_W) / 2);
         p.x = Math.max(halfW, Math.min(VIEW_W - halfW, p.x));
@@ -255,10 +314,32 @@ export function layoutZones(arena: Arena): Record<string, Point> {
      * other on every arena this generator can produce; separation goes last so
      * the touch targets are the property that survives.
      */
-    for (let round = 0; round < 4; round++) {
+    /*
+     * Pinning the horn removes two degrees of freedom from the relaxation, so
+     * a fixed round count is no longer enough on the tightest procedural maps
+     * (`procedural-archipelago` at seed 104 settled with two captions still
+     * touching after four). The rounds now run until the two properties the
+     * guard measures — touch-target separation and caption clearance — are
+     * both actually satisfied, with a cap so the layout can never fail to
+     * terminate.
+     */
+    const violations = () => {
+        let count = 0;
+        for (let i = 0; i < zones.length; i++) {
+            for (let j = i + 1; j < zones.length; j++) {
+                const pa = positions[zones[i].name], pb = positions[zones[j].name];
+                if (Math.hypot(pb.x - pa.x, pb.y - pa.y) < MIN_SEPARATION) count++;
+                const a = labelBox(zones[i].name, pa), b = labelBox(zones[j].name, pb);
+                if (a.x1 < b.x2 && b.x1 < a.x2 && a.y1 < b.y2 && b.y1 < a.y2) count++;
+            }
+        }
+        return count;
+    };
+    for (let round = 0; round < 40; round++) {
         decollideCaptions();
         clampToFrame();
         separate();
+        if (round >= 3 && violations() === 0) break;
     }
     clampToFrame();
     separate();

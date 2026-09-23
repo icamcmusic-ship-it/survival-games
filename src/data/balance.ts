@@ -5092,9 +5092,34 @@ export const RELATIONSHIPS = {
     /** Contact within this many cycles counts as "recent" and blocks decay. */
     contactWindow: 1,
 
-    /** Backstory: district partners know each other before the reaping. */
-    districtPartnerBase: 22,
-    districtPartnerSpread: 14,
+    /**
+     * Backstory: district partners know each other before the reaping.
+     *
+     * §(requests): and they know each other *better than anybody else in the
+     * room*. At a base of 22 with a spread of 14 the pair opened anywhere from
+     * the top of the neutral band to the middle of the friendly one, so the
+     * first warm training acquaintance routinely overtook the one person a
+     * tribute had actually grown up alongside — the district bond was the
+     * weakest tie the backstory seeded that anyone would call a tie at all.
+     * The base now opens the pair inside the `close` band the rest of the code
+     * reads (>= 40; see `RelationshipGraph`'s bond labels), and
+     * `districtPartnerFloor` holds that after the other backstory modifiers —
+     * age gap, envy, archetype friction — have had their say.
+     *
+     * A floor, not a lock: this is only the *seed*. Every later write to the
+     * graph (betrayal, grief, a fight on the floor, the arena itself) moves it
+     * freely in both directions, and nothing re-applies the floor.
+     */
+    districtPartnerBase: 46,
+    districtPartnerSpread: 12,
+    /**
+     * The regard a district pair is never seeded below, applied after the
+     * other backstory modifiers. Sits just inside the `close` band and above
+     * `ALLIANCES.floorPactRegard` (32), the warmth three days of agreeing on
+     * the training floor is worth — so a training acquaintance can match the
+     * partner bond, but does not start ahead of it.
+     */
+    districtPartnerFloor: 40,
     /** Careers have trained alongside each other for years. */
     careerPackBase: 45,
     careerPackSpread: 15,
@@ -7121,6 +7146,50 @@ export const TRAINING = {
     lunchAloneTrust: 1,
     lunchCareerExcitement: 2,
     lunchCareerFear: 4,
+    /**
+     * §(requests): the lunch hall's beats, over and above who sat with whom.
+     *
+     * Seating says who chose whom and nothing else, so the hour had exactly
+     * one warm consequence and one cold one. These are the smaller things a
+     * canteen is actually made of — food shared, a portion lifted, an
+     * introduction, a bench closed, half an hour of nothing much — and each
+     * one moves the two people in it in the direction of what happened.
+     */
+    lunchBeatAttempts: 7,
+    lunchBeatChance: 0.55,
+    /** Relative weight of the warm, cold and flat registers when a beat fires. */
+    lunchBeatWarmWeight: 4,
+    lunchBeatColdWeight: 3,
+    lunchBeatFlatWeight: 3,
+    /**
+     * How many of the likeliest (or unlikeliest) partners a beat picks from.
+     * Straight to the top would make the same two people the whole hour.
+     */
+    lunchBeatShortlist: 4,
+    /** Warm: a share, a held seat, a kindness to somebody eating alone. */
+    lunchKindChance: 0.6,
+    lunchKindRegard: 5,
+    lunchKindTrust: 2,
+    /** Warm: an introduction, which is worth less per pair and reaches three. */
+    lunchIntroRegard: 3,
+    lunchIntroTrust: 1,
+    /** Cold: a snub, a lifted portion, an impression done for the bench. */
+    lunchColdChance: 0.6,
+    lunchColdRegard: -6,
+    lunchColdFear: 3,
+    lunchColdSanity: 2,
+    /** Cold: a bench closed in front of the room, which is the worse one. */
+    lunchShunRegard: -8,
+    lunchShunFear: 4,
+    lunchShunSanity: 3,
+    /** What the one who went along with it loses with the tribute left standing. */
+    lunchShunWitnessRegard: -3,
+    /** Flat: small talk. Contact, and almost nothing else. */
+    lunchSmallTalkChance: 0.6,
+    lunchSmallTalkRegard: 1,
+    /** Flat: two of the hall watching the pack eat. */
+    lunchWatchRegard: 1,
+    lunchWatchFear: 2,
     /** §(requests 13): how much likelier a district pair is to strike a pact than strangers. */
     pactPartnerMultiplier: 3.2,
     /**

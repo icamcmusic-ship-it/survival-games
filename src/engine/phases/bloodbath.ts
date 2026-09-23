@@ -119,8 +119,21 @@ export function startGames(ctx: SimContext) {
     initializePactAlliances(ctx);
 }
 
+/**
+ * §(requests): the pack the floor agreed to, made real at the gong.
+ *
+ * This used to take every living Career in the field, whatever had happened on
+ * the training floor. `declareCareerPact` writes a mutual `trainingPact` on day
+ * one and an altercation between two of them tears it up again — and the gong
+ * put them back together anyway, which is a new alliance formed in the
+ * bloodbath wearing a training pact's clothes. Membership is now exactly the
+ * agreement that survived training: a Career who never made one, or who broke
+ * theirs, walks off the plate alone and has to be recruited like anybody else.
+ */
 function initializeCareerAlliance(ctx: SimContext) {
-    const allCareers = getAlive(ctx.state).filter(t => t.isCareer);
+    const careersAlive = getAlive(ctx.state).filter(t => t.isCareer);
+    const allCareers = careersAlive.filter(t =>
+        (t.trainingPact ?? []).some(id => careersAlive.some(o => o.id === id && (o.trainingPact ?? []).includes(t.id))));
     // The pack is subject to the same ALLIANCES.maxSize cap as any other
     // alliance — a career field bigger than that splits into a pack and
     // stragglers rather than one oversized, permanently-outnumbering gang.

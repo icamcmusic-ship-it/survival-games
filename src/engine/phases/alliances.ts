@@ -12,7 +12,7 @@ import { adjustRel, getRel, trustOf } from '../relationships';
 import { cycleOf, cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, hasVengeanceAgainst, noteContact, raiseSuspicion, sharedHistoryOf, suspicionOf } from '../memory';
 import { fearOf } from '../fear';
 import { respectOf } from '../relationships';
-import { careerSocialFactor, sniffPerformances, isStarCrossed, cacheDivisionLine, distributeCache } from '../alliance';
+import { allianceFormationAllowed, careerSocialFactor, sniffPerformances, isStarCrossed, cacheDivisionLine, distributeCache } from '../alliance';
 import { allianceOf, areLovers, cacheValue, contributeToCache, isPerforming, maintainPerformance, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance, shownRegard } from '../alliance';
 import { resolveBetrayal, preemptiveBetrayer } from '../betrayal';
 import { resolveDuePacts } from '../alliancePact';
@@ -457,7 +457,13 @@ export function processAlliances(ctx: SimContext) {
     // wildcard and enforced by nothing. When it stands, no new alliance forms,
     // no group recruits and no groups merge — what existed before the
     // announcement is grandfathered in, and lovers keep theirs secret.
-    const alliancesForbidden = wildcardIs(ctx.state, 'rule-change-no-allies');
+    // §(requests): ...and the standing rule underneath it. A new alliance is
+    // something people agree to on the training floor; the gong is not a
+    // negotiating table. `allianceFormationAllowed` covers formation, mergers,
+    // recruitment and a declared romance alike, and leaves everything already
+    // standing — the Career pack, the floor pacts — completely alone.
+    const alliancesForbidden = wildcardIs(ctx.state, 'rule-change-no-allies')
+        || !allianceFormationAllowed(ctx.state);
     const stillAlive = getAlive(ctx.state);
     if (!alliancesForbidden && stillAlive.length > ALLIANCES.formationFieldSize) {
         for (let i = 0; i < stillAlive.length; i++) {
@@ -1250,6 +1256,11 @@ function tickBetrayalAftermath(ctx: SimContext) {
 }
 
 function declareLovers(ctx: SimContext, t1: Tribute, t2: Tribute, performer?: Tribute) {
+    // §(requests): a lovers' bond is an alliance record like any other, so it
+    // obeys the same rule about when one may be created. Everything above this
+    // (the growing regard, the sustained contact) keeps happening; only the
+    // declaration waits for a phase that is allowed to make a group.
+    if (!allianceFormationAllowed(ctx.state)) return;
     t1.traits.push('Star-Crossed');
     t2.traits.push('Star-Crossed');
     if (performer) {

@@ -237,6 +237,21 @@ export function seedBackstoryRelationships(tributes: Tribute[], rng: RNG) {
             // Being the crowd's darling costs you with the other tributes.
             if (a.fanFavourite && !b.fanFavourite) adjustRel(b, a.id, -RELATIONSHIPS.fanFavouriteEnvy);
             if (b.fanFavourite && !a.fanFavourite) adjustRel(a, b.id, -RELATIONSHIPS.fanFavouriteEnvy);
+
+            // §(requests): the one person from home outranks everybody the
+            // arena has not introduced them to yet. The modifiers above — an
+            // age gap, envy of a fan favourite, archetype friction — could
+            // drag a district pair back out of the band the base puts them in,
+            // which is how a training acquaintance ended up being the warmest
+            // name on a tribute's sheet on day one. The floor is applied after
+            // them and only here, at generation: nothing re-applies it, so
+            // grief, a fight and betrayal all still move the bond wherever
+            // they move it.
+            if (a.district === b.district) {
+                if (getRel(a, b.id) < RELATIONSHIPS.districtPartnerFloor) setRel(a, b.id, RELATIONSHIPS.districtPartnerFloor);
+                if (getRel(b, a.id) < RELATIONSHIPS.districtPartnerFloor) setRel(b, a.id, RELATIONSHIPS.districtPartnerFloor);
+            }
+
         }
     }
 }

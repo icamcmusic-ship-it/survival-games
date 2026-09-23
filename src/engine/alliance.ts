@@ -326,6 +326,24 @@ export function leaderStyleOf(leader: Tribute): 'democratic' | 'tyrant' | 'absen
     return 'democratic';
 }
 
+/**
+ * §(requests): when a new alliance is allowed to come into existence at all.
+ *
+ * Alliances and pacts are agreed on the training floor — over three days and a
+ * lunch hour, in front of everybody — and nowhere else. The bloodbath is the
+ * one phase that used to mint groups of its own at the moment the gong went,
+ * which read as twenty-four strangers spontaneously organising in the sixty
+ * seconds they had to run for a pack.
+ *
+ * Only *new* formation is gated. Everything agreed in training is carried into
+ * the arena untouched by `initializePactAlliances` and the Career pack, and a
+ * group that already exists keeps recruiting, merging, splitting and dissolving
+ * on its own schedule.
+ */
+export function allianceFormationAllowed(state: GameState): boolean {
+    return state.phase !== 'bloodbath';
+}
+
 export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]): Alliance {
     const records = allianceRecords(ctx.state);
     // Star-crossed lovers get the record — a camp, a leader for movement — but
