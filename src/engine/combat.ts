@@ -21,6 +21,7 @@ import { readOf, addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengea
 import { classifyCause } from './causes';
 import { incurDebt } from './debts';
 import { adjustRel, adjustTrust, getRel, propagateDeathFallout } from './relationships';
+import { noteMilestone } from './milestones';
 import { injure, injuryGrade, openWound } from './wounds';
 import { isUnfamiliar, noteWeaponUse, profOf, trainProficiency, weaponAffinity, weaponHandling, weaponProficiency } from './proficiency';
 import { addFear, fearFraction, reduceFear } from './fear';
@@ -1321,6 +1322,20 @@ export function resolveCombat(
             if (fleer.health <= COMBAT.mercyHealth && !isBloodbath) {
                 earnTrait(ctx, stayer, 'Merciful');
                 addExcitement(stayer, 20);
+                /*
+                 * §12: and the other end of it. The trait above says the
+                 * stayer is the kind of person who does this; it has never
+                 * said who they did it to, so the debt ran one way and could
+                 * not be repaid. `sparedBy` is the fleer's side of the same
+                 * moment — see "Receipt of Mercy".
+                 */
+                fleer.sparedBy = [...(fleer.sparedBy ?? []).filter(id => id !== stayer.id), stayer.id];
+                // ...and it is worth something to them. Regard and trust, not
+                // a drop in fear: the person who just beat you is exactly as
+                // dangerous as they were, and being grateful to somebody you
+                // are still frightened of is the honest shape of this.
+                adjustRel(fleer, stayer.id, COMBAT.mercyRegard);
+                adjustTrust(fleer, stayer.id, COMBAT.mercyTrust);
             }
             ended = true;
             break;
@@ -1822,6 +1837,30 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         });
     }
     delete victim.downed;
+
+    /*
+     * §12: mercy withdrawn.
+     *
+     * AUDIT-10 §12 proposes "Receipt of Mercy" — a tribute spared during an
+     * execution opportunity later supplies treatment to that same person.
+     * Measured over 150 runs it cannot happen: sparings are abundant (111 of
+     * them, in 50.7% of runs) and treatment is common (80% of runs), and the
+     * two never meet, because sparing happens between enemies and treatment
+     * between allies. Zero occurrences.
+     *
+     * What the simulation does produce is the opposite, 17 times in the same
+     * sample — about one sparing in seven. You let somebody walk away from a
+     * fight they had lost, met them again, and finished it. That is a better
+     * beat than the one the spec asked for, and it is the one that exists.
+     */
+    if (killer && (victim.sparedBy ?? []).includes(killer.id)) {
+        noteMilestone(ctx, 'mercy-withdrawn', [killer.id, victim.id]);
+        ctx.logEvent(
+            `${killer.name} let ${victim.name} walk away once. They do not do it twice.`,
+            [killer.id, victim.id],
+            { important: true, category: 'kill', zone: victim.zone }
+        );
+    }
 
     // Audit 5 §5.4 `salvage`: the dead are not collected. Their kit stays where
     // they fell, as a cache the abandoned-camp pass will hand to whoever

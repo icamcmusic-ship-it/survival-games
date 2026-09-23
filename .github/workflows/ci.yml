@@ -153,6 +153,9 @@ jobs:
       # B6: a run records which balance produced it. The schema version tracks
       # the payload's shape and says nothing about the rules inside it.
       - run: npm run test:fingerprint
+      # §12: mercy is felt by the person receiving it, and withdrawing it
+      # stays the exception. The proposed "Receipt of Mercy" was unreachable.
+      - run: npm run test:mercy
 
       # Content and structure.
       - run: npm run test:arenas

@@ -48,6 +48,7 @@
     "test:hearings": "tsx scripts/check-hearings.ts",
     "test:fingerprint": "tsx scripts/check-fingerprint.ts",
     "test:pacing": "tsx scripts/check-pacing.ts",
+    "test:mercy": "tsx scripts/check-mercy.ts",
     "test:coverage": "tsx scripts/check-coverage.ts",
     "test:accusations": "tsx scripts/check-accusations.ts",
     "test:noise": "tsx scripts/check-noise.ts",

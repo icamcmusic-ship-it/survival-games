@@ -1355,6 +1355,18 @@ export interface Tribute {
      * different claim from a low kill count.
      */
     fightsOpened?: number;
+    /**
+     * AUDIT-10 §12: who let this tribute walk away from a fight they had lost.
+     *
+     * Sparing already existed and left only half a record. When a beaten
+     * tribute flees and the winner declines to finish it, the *winner* earns
+     * `Merciful` — and nothing anywhere recorded who they spared, so the debt
+     * ran one way and could never be repaid. "Receipt of Mercy" needs the
+     * other end of it: the person who was let go, and by whom.
+     *
+     * Ids of everyone who has spared this tribute, most recent last.
+     */
+    sparedBy?: string[];
     /** §12: times they dropped below the near-death line and came back off it. */
     lowHealthRecoveries?: number;
     /** §12: weather fronts this tribute stood in and walked out of. */
