@@ -2505,8 +2505,14 @@ export const VOLUNTEER = {
     /** Attribute points a trained Career volunteer adds over the reaped tribute.
      *  §10.2: the agility half dropped — the academy volunteer stacking +1/+1
      *  on top of the district bonus was most of why D1/D2/D4 owned the win
-     *  column; strength alone keeps the volunteer visibly trained. */
-    careerStrengthBonus: 1,
+     *  column.
+     *  §(requests): the strength half dropped too, once academy weapon
+     *  training (below) became what marks a volunteer as trained. Measured at
+     *  1,600 runs: academy training on top of +1 strength put Career victors
+     *  at 65.3% against a 60% guard; without the strength, and with the skill
+     *  floor at 3, 59.1% — and the archetype spread narrowed (best 9.82%,
+     *  worst 3.49%, from 11.18% / 2.86%). */
+    careerStrengthBonus: 0,
     careerAgilityBonus: 0,
     /** The crowd notices someone who wanted this. */
     careerTrust: 6,
@@ -2514,6 +2520,22 @@ export const VOLUNTEER = {
     /** Stepping in for a sibling buys sympathy the Capitol cannot resist. */
     sacrificeTrust: 10,
     sacrificeExcitement: 14,
+    /*
+     * §(requests): an academy volunteer has handled most of the armoury.
+     *
+     * A trained Career walks in with full hands-on familiarity with a broad
+     * but deliberately incomplete spread of proper weapons — somewhere
+     * between `academyWeaponsMin` and `academyWeaponsMax` of the academy
+     * list, never all of it. Everything off that list (improvised kit, and
+     * the academy weapons they happened not to drill) is as cold in their
+     * hands as in anyone's, which is the gap a clever outlier can use.
+     */
+    academyWeaponsMin: 6,
+    academyWeaponsMax: 9,
+    /** The combat-skill floor (on PROFICIENCY.max 6) an academy volunteer arrives
+     *  at: half the scale, against 0.25 for the rest of the field. 3.5 measured
+     *  Career victors 61.7% even without the strength bonus; 3 holds 59.1%. */
+    academyCombatFloor: 3,
 } as const;
 
 /**
