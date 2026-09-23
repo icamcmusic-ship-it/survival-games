@@ -477,6 +477,19 @@ await step('debrief tabs work', async () => {
   await page.getByRole('button', { name: /debrief/i }).click();
 });
 
+await step('what-if debrief branches the finished Games', async () => {
+  // AUDIT-10 §11.8. The run above finished with "run to end", which is the
+  // path that used to leave no checkpoints to branch from.
+  const panel = page.locator('.panel', { has: page.getByRole('heading', { name: /what if\?/i }) });
+  await panel.waitFor();
+  if (await panel.getByText(/no arena checkpoints/i).count()) {
+    throw new Error('the what-if panel has nothing to branch from after run-to-end');
+  }
+  await panel.getByRole('button', { name: /^run$/i }).click();
+  await panel.getByText(/still wins in \d+ of \d+/i).waitFor({ timeout: 60000 });
+  await page.screenshot({ path: `${shots}/whatif.png` });
+});
+
 await step('hall of fame records the victor', async () => {
   // The run uses a random seed, and an arena that kills every last tribute is a
   // legitimate ending. Assert against the outcome this run actually produced.
