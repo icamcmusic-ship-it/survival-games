@@ -156,6 +156,7 @@ jobs:
       # §12: mercy is felt by the person receiving it, and withdrawing it
       # stays the exception. The proposed "Receipt of Mercy" was unreachable.
       - run: npm run test:mercy
+      - run: npm run test:whatif
 
       # Content and structure.
       - run: npm run test:arenas

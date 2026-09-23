@@ -881,6 +881,41 @@ export const gameActions = {
         };
     },
 
+    /**
+     * AUDIT-10 §11.8: the checkpoints a "what if" can branch from.
+     *
+     * The rewind ring is still standing when a Games ends — only a new run
+     * clears it — so the debrief branches off the same sixteen phases the
+     * step-back button offered. Arena phases only (see `engine/whatIf.ts`).
+     */
+    whatIfCheckpoints(): Array<{ index: number; day: number; phase: GameState['phase'] }> {
+        const arena = new Set<GameState['phase']>(['day', 'night', 'feast']);
+        return rewindStack
+            .map((snap, index) => ({ index, day: snap.day, phase: snap.phase }))
+            .filter(c => arena.has(c.phase));
+    },
+
+    /**
+     * Re-roll the phase after a checkpoint `WHAT_IF.branches` times, on demand.
+     *
+     * One branch per macrotask so the page keeps painting and the progress
+     * count moves; a debrief is several seconds of simulation and must not
+     * look like a hang.
+     */
+    async runWhatIf(index: number, onProgress?: (done: number, total: number) => void) {
+        const { gameState } = gameStore.getState();
+        const checkpoint = rewindStack[index];
+        if (!gameState || !checkpoint) return null;
+        const { playBranch, summariseBranches, WHAT_IF } = await loadEngine();
+        const ends: GameState[] = [];
+        for (let k = 0; k < WHAT_IF.branches; k++) {
+            await new Promise(resolve => setTimeout(resolve, 0));
+            ends.push(playBranch(checkpoint, String(k)));
+            onProgress?.(k + 1, WHAT_IF.branches);
+        }
+        return summariseBranches(checkpoint, gameState, ends);
+    },
+
     /** Whether a step back is currently possible. */
     canStepBack(): boolean {
         const { gameState, runProgress } = gameStore.getState();
@@ -1322,8 +1357,17 @@ export const gameActions = {
                 if (stale()) return;
                 if (state.phase === 'epilogue') {
                     state.phase = 'ended';
-                } else if (!simulator.advance()) {
-                    break;
+                } else {
+                    /*
+                     * AUDIT-10 §11.8: checkpoint the fast-forward too. It used
+                     * to advance the simulator directly, so a Games finished
+                     * with "Run to end" left the rewind ring holding only what
+                     * the player had stepped by hand — and the "what if?"
+                     * debrief, which branches off that ring, had nothing to
+                     * branch from on the commonest way to finish a Games.
+                     */
+                    pushRewind(state);
+                    if (!simulator.advance()) break;
                 }
                 state = simulator.getState();
                 turns++;

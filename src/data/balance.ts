@@ -9805,3 +9805,18 @@ export const ALLIANCE_DISPUTE = {
     /** A democratic leader still speaks first, and it carries a little. */
     democraticLeaderWeight: 2,
 } as const;
+
+/**
+ * AUDIT-10 §11.8: the counterfactual debrief. See `engine/whatIf.ts`.
+ */
+export const WHAT_IF = {
+    /*
+     * Re-rolls per debrief. Eight is the smallest count where "won in 7 of
+     * 8" and "won in 4 of 8" read as different verdicts, and it is the cost
+     * the debrief was approved at: eight re-simulations of the back half of
+     * a Games, run only when the player asks.
+     */
+    branches: 8,
+    /** Hard stop on one branch, in phase advances, so a debrief always ends. */
+    maxAdvances: 400,
+} as const;
