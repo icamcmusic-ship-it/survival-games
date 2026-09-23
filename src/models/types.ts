@@ -2644,8 +2644,18 @@ export interface Obligation {
     /** Supplies, a walk to somewhere, or being there when they go down. */
     kind: 'supply' | 'escort' | 'rescue';
     byCycle: number;
-    /** `broken` means they could have and did not; `lapsed` means they could not. */
-    status: 'open' | 'kept' | 'broken' | 'lapsed';
+    /**
+     * `broken` means they could have and did not; `lapsed` means they could
+     * not; `moot` means it never came due — the need passed on its own.
+     *
+     * §12: `moot` was split out of `lapsed`, which had been carrying both
+     * facts. Of 23 expired rescues measured over 150 runs, 8 never came due
+     * and 15 were real failures — the ally was down and the promiser could
+     * not get there. Recording the first kind as a broken-ish promise is
+     * untrue about the promiser, and it was hiding the second kind, which is
+     * the one worth reading.
+     */
+    status: 'open' | 'kept' | 'broken' | 'lapsed' | 'moot';
     /** For an escort, where to. */
     detail?: string;
 }
