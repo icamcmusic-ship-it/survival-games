@@ -308,11 +308,33 @@ export function tickObligations(ctx: SimContext) {
                     [from.id, to.id],
                     { type: 'obligation-broken', important: true, category: 'alliance' },
                 );
-            } else {
+            } else if (o.status === 'lapsed') {
+                /*
+                 * §12: say what actually stood between them. This line used
+                 * to claim "half a map" for every expiry that was not a
+                 * breach — including the promiser standing right beside a
+                 * downed ally, too hurt or too spent to do anything about it.
+                 */
                 ctx.logEvent(
-                    `Whatever ${from.name} promised ${to.name}, the arena has put a week and half a map between them. It simply stops being a thing either of them is counting on.`,
+                    together
+                        ? `${from.name} is right there when ${to.name} needs what was promised, and is in no state to give it. Nobody calls it a broken promise. Nobody calls it a kept one either.`
+                        : `Whatever ${from.name} promised ${to.name}, the arena has put too much ground between them. It simply stops being a thing either of them is counting on.`,
                     [from.id, to.id],
                     { type: 'obligation-lapsed', category: 'alliance' },
+                );
+            } else {
+                /*
+                 * Moot: the need never came. Measured, this is most expiring
+                 * rescue promises — the ally simply did not go down inside
+                 * the window — and it used to print the same "half a map
+                 * between them" line as a real failure to reach somebody,
+                 * about two people who had usually been together the whole
+                 * time. It is a quiet fact, not a beat.
+                 */
+                ctx.logEvent(
+                    `${from.name}'s promise to ${to.name} is never called in. It did not need to be.`,
+                    [from.id, to.id],
+                    { category: 'alliance' },
                 );
             }
         }
