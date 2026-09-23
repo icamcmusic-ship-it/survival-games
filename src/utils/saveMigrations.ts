@@ -549,7 +549,6 @@ export function normalizeTribute(raw: unknown, index = 0): Tribute | null {
         zoneLevel: r.zoneLevel === 'upper' || r.zoneLevel === 'lower' ? r.zoneLevel : undefined,
         favouring: oneOfOrUndefined<InjurySite>(
             r.favouring, ['head', 'torso', 'arms', 'legs', 'bleeding', 'infected', 'poisoned', 'burned', 'frostbitten']),
-        epithet: typeof r.epithet === 'string' ? r.epithet : undefined,
         token: typeof r.token === 'string' ? r.token : undefined,
     };
 }

@@ -55,9 +55,6 @@ export function TributeTile({
                     {/* §11.5: the name the country gave them. Awarded once and
                         permanent, and until now visible only in the line that
                         awarded it. */}
-                    {tribute.epithet && size !== 'sm' && (
-                        <span className="ml-1 font-bold normal-case text-micro text-[var(--gold)]">{tribute.epithet}</span>
-                    )}
                 </span>
                 <span className="block font-mono font-bold text-nano uppercase tracking-wider text-[var(--color-ink-500)] truncate">
                     D{tribute.district} · {tribute.gender === 'Male' ? 'M' : 'F'} · {tribute.age}
@@ -83,7 +80,6 @@ export function TributeTile({
      * things the visual tile says — including the two states added above.
      */
     const described = `${tribute.name} — District ${tribute.district}, ${tribute.gender}, age ${tribute.age}`
-        + (tribute.epithet ? `, known as ${tribute.epithet}` : '')
         + (dead ? ' (deceased)' : downed ? ` (down, ${tribute.downed!.cyclesLeft} cycles left)` : tribute.transit ? ' (in transit)' : '');
 
     if (!onSelect) {

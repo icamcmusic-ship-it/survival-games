@@ -43,7 +43,6 @@ import { hasEffect, restockCornucopia, rollAmbientZoneEffects, startZoneEffect, 
 import { tickStructuralFatigue } from '../loadBearing';
 import { tickAbandonedCamps } from '../abandonedCamps';
 import { enterVerticalZone, samePlace, tickVerticality } from '../verticality';
-import { tickEpithets } from '../epithets';
 import { noteEffectCaused, tickRunRecords } from '../runRecords';
 import { climateOf } from '../climate';
 import { tributeOdds } from '../odds';
@@ -448,7 +447,6 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // §5.5: who left a camp standing this cycle, and who walked into one.
     tickAbandonedCamps(ctx);
     // §11.5: and whether anybody has become known for something this cycle.
-    tickEpithets(ctx);
     // §12: the per-run shapes the achievement table asks about.
     tickRunRecords(ctx);
     decayTraffic(ctx.state);

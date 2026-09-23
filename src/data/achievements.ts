@@ -159,9 +159,8 @@ const atTheHorn = (state: GameState) => state.tributes.filter(t => t.diedInBlood
  * `betrayalsCommitted` is incremented by exactly two sites — walking out of an
  * alliance, and breaking a standing truce — and a *victor* tops out at one of
  * those across 500 runs however busy the field is (5.69 betrayals a run).
- * `faithBroken` is the rest of it. `engine/epithets.ts` already sums the two to
- * decide who the country calls a Turncoat; the achievement table asks the same
- * question and should count the same way.
+ * `faithBroken` is the rest of it: summing the two is every way of breaking
+ * your word, rather than the one the alliance layer happens to log.
  */
 /**
  * AUDIT-9: did `killer` kill `t`, as a fact rather than as a string match.
@@ -182,8 +181,8 @@ function faithlessness(t: Tribute): number {
 
 export const ACHIEVEMENTS: Achievement[] = [
     // §11 (audit): the systems the achievement layer had the same blind spot
-    // about as the interface did. Rumours, epithets, sponsor blocs, charters,
-    // named weapons and the ex-ally layer were all fully simulated and
+    // about as the interface did. Rumours, sponsor blocs, charters and the
+    // ex-ally layer were all fully simulated and
     // entirely unrewarded; four write-only fields (`finishedDowned`,
     // `feastPrizeTaken`, `diedWithinReach`, `intelTrades`, `blocTreatiesSworn`)
     // were recorded every run and read by nothing at all. Each entry below
@@ -230,38 +229,6 @@ export const ACHIEVEMENTS: Achievement[] = [
             : undefined),
     },
     {
-        id: 'named-by-the-country',
-        name: 'Named by the Country',
-        hint: 'Crown a victor who earned an epithet in the arena.',
-        category: 'capitol',
-        rarity: 'common',
-        test: (_s, v) => !!v && !!v.epithet,
-    },
-    {
-        id: 'named-early',
-        name: 'Named Early',
-        // Audit 2 §1.10: four cycles fired on 63.5% of runs, because the
-        // bloodbath alone hands out enough kills to earn a name. Two is the
-        // window in which the country naming somebody is genuinely early.
-        hint: 'Have a tribute earn an epithet within the first two cycles of the Games.',
-        category: 'capitol',
-        rarity: 'legendary',
-        test: state => state.tributes.some(t => t.epithet !== undefined && (t.epithetCycle ?? 99) <= 2),
-        nearMiss: state => { const e = state.tributes.filter(t => !!t.epithet).map(t => t.epithetCycle ?? 99).sort((a, b) => a - b)[0]; return e !== undefined && e > 2 && e <= 5 ? `The first epithet of these Games was awarded on cycle ${e} — ${e - 2} cycles late` : undefined; },
-    },
-    {
-        id: 'three-names',
-        name: 'Three Names',
-        hint: 'Have three tributes carrying earned epithets alive at the same time.',
-        category: 'capitol',
-        rarity: 'common',
-        test: state => state.tributes.filter(t => !!t.epithet).length >= 3,
-        nearMiss: state => {
-            const n = state.tributes.filter(t => !!t.epithet).length;
-            return n === 2 ? 'Two tributes were named by the country — one short' : undefined;
-        },
-    },
-    {
         id: 'the-purse-runs-dry',
         name: 'The Purse Runs Dry',
         hint: 'Empty a sponsor bloc\'s budget completely in a single Games.',
@@ -289,39 +256,6 @@ export const ACHIEVEMENTS: Achievement[] = [
                 .filter(([bloc, left]) => left > (opening[bloc] ?? left) * 0.25).length;
             return held > 0 ? `${held} sponsor bloc${held === 1 ? ' still had' : 's still had'} money to spend` : undefined;
         },
-    },
-    {
-        id: 'a-weapon-with-a-name',
-        name: 'A Weapon With a Name',
-        hint: 'Crown a victor holding a weapon that earned a name of its own in the arena.',
-        category: 'combat',
-        rarity: 'common',
-        test: (_s, v) => !!v && v.inventory.some(i => !!i.legendName),
-    },
-    {
-        id: 'it-changed-hands',
-        name: 'It Changed Hands',
-        hint: 'End a Games with a named weapon held by somebody other than the tribute who named it.',
-        category: 'combat',
-        rarity: 'rare',
-        /*
-         * AUDIT-9 batch 4: ask the question the hint promises.
-         *
-         * This used to test "somebody alive is holding a named weapon, and
-         * somewhere in the cast a dead tribute had at least one kill" — the
-         * second clause being nearly always true, so in practice it asked
-         * only the first, which is `a-weapon-with-a-name`. The two unlocked on
-         * exactly the same runs across a 500-run sample. `legendNamedById`
-         * lets it ask what it always said it was asking.
-         */
-        test: state => state.tributes.some(t => t.status === 'alive'
-            && t.inventory.some(i => !!i.legendName
-                && i.legendNamedById !== undefined
-                && i.legendNamedById !== t.id)),
-        nearMiss: state => state.tributes.some(t => t.status === 'alive'
-            && t.inventory.some(i => !!i.legendName && i.legendNamedById === t.id))
-            ? 'the named weapon came out in the hand that named it'
-            : undefined,
     },
     {
         id: 'the-terms-were-the-terms',
@@ -555,10 +489,9 @@ export const ACHIEVEMENTS: Achievement[] = [
         // Audit 3 §11: and the axis moved, because the rung could not.
         // `betrayalsCommitted` counts one specific act — walking out of an
         // alliance on somebody — and a victor tops out at one of those across
-        // 500 runs, whatever the field does (5.69 betrayals a run). `epithets.ts`
-        // already knew the answer: the Turncoat epithet is awarded off
-        // `betrayalsCommitted + faithBroken`, which is every way of breaking
-        // your word rather than the one the alliance layer happens to log.
+        // 500 runs, whatever the field does (5.69 betrayals a run). It counts
+        // `betrayalsCommitted + faithBroken` instead, which is every way of
+        // breaking your word rather than the one the alliance layer happens to log.
         /*
          * AUDIT-9: the clause that separated this from `turncoat-twice` stopped
          * separating anything.
@@ -623,7 +556,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         hint: 'Crown a victor who was still keeping up a performed bond when the field came down to the last two.',
         category: 'social',
         // AUDIT-7: observed at 0.4% of 500 runs, so no longer 'possible?'.
-        rarity: 'possible',
+        rarity: 'legendary',
         /*
          * AUDIT-6 §11.2: the victor scope is the whole point of this one — it
          * is about the act still running at the end — so it keeps it. What it
@@ -796,7 +729,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // AUDIT-7: observed across 500 runs, so no longer 'possible?' — the label
         // means the simulation is believed able to do this and no measured run
         // ever has, and a measured run now has.
-        rarity: 'possible',
+        rarity: 'legendary',
         // Audit 3 §1.6: `arena.zones[0]` is the Cornucopia in the hand-authored
         // arenas and is not guaranteed to be in a generated one, so on every
         // procedural map this asked for a sector that was not the horn. Matched
@@ -2166,7 +2099,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Borrowed Time',
         hint: 'Crown a victor whose will to keep going dropped under twenty and came back up.',
         category: 'survival',
-        rarity: 'possible',
+        rarity: 'legendary',
         // §1.3 (audit): resolve is sampled in every phase now; the trough that
         // counts is twenty, which is where breakdowns start being rolled.
         test: (_s, v) => !!v && (v.minResolve ?? 100) < 20 && (v.resolve ?? 0) >= 20,
@@ -2391,17 +2324,18 @@ export const ACHIEVEMENTS: Achievement[] = [
     },
     {
         id: 'named-blade',
-        name: 'A Blade With a Name',
-        hint: 'Crown a victor carrying a named weapon that has taken five lives.',
+        name: 'Five Times Blooded',
+        hint: 'Crown a victor carrying a weapon that has taken five lives.',
         category: 'combat',
         rarity: 'legendary',
-        // AUDIT-8 §1.4: unlocked on exactly the same runs as 'a-weapon-with-a-name' and 'the-named-blade' across a
-        // 500-run sample. Re-gated to a harder rung of the same ladder rather than
-        // deleted, so an id already in a player's record keeps resolving.
-        test: (_s, v) => !!v && v.inventory.some(i => i.legendName !== undefined && (i.bloodDrawn ?? 0) >= 5),
+        // AUDIT-8 §1.4: re-gated to a harder rung of the same ladder rather
+        // than deleted, so an id already in a player's record keeps resolving.
+        // The weapon-naming layer it used to also require is gone; the blood
+        // the object carries was always the half that meant anything.
+        test: (_s, v) => !!v && v.inventory.some(i => (i.bloodDrawn ?? 0) >= 5),
         nearMiss: (_s, v) => {
-            const best = Math.max(0, ...(v?.inventory ?? []).filter(i => i.legendName).map(i => i.bloodDrawn ?? 0));
-            return best >= 3 && best < 5 ? `the named weapon had taken ${best} of the five` : undefined;
+            const best = Math.max(0, ...(v?.inventory ?? []).map(i => i.bloodDrawn ?? 0));
+            return best >= 3 && best < 5 ? `the weapon had taken ${best} of the five` : undefined;
         },
     },
     {
@@ -2433,19 +2367,6 @@ export const ACHIEVEMENTS: Achievement[] = [
         },
     },
     {
-        id: 'epithet-victor',
-        name: 'Known As',
-        hint: 'Crown a victor the country had already named for them inside the first six days.',
-        category: 'oddity',
-        rarity: 'rare',
-        // AUDIT-8 §1.4: unlocked on exactly the same runs as 'named-by-the-country' across a
-        // 500-run sample. Re-gated to a harder rung of the same ladder rather than
-        // deleted, so an id already in a player's record keeps resolving.
-        test: (_s, v) => !!v && v.epithet !== undefined && (v.epithetCycle ?? 99) <= 12,
-        nearMiss: (_s, v) => (v?.epithet !== undefined && (v.epithetCycle ?? 99) > 12
-            ? `the country named them, but not until cycle ${v.epithetCycle}` : undefined),
-    },
-    {
         id: 'long-truce',
         name: 'The Long Truce',
         hint: 'Crown a victor whose truce was renewed twice with the same tribute.',
@@ -2473,7 +2394,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Somebody Remembers Now',
         hint: 'Crown a victor from a forgotten-tier district who never took a life.',
         category: 'reaping',
-        rarity: 'possible',
+        rarity: 'legendary',
         // AUDIT-8 §1.4: this shared a byte-identical predicate with 'homecoming'.
         // Two cards for one boolean, always flipping together. Re-gated to the
         // harder half of the same idea rather than deleted, so no id already in
@@ -2920,7 +2841,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'An Honest Word',
         hint: 'Crown a victor who never broke a promise they made in the arena.',
         category: 'social',
-        rarity: 'possible',
+        rarity: 'legendary',
         /*
          * AUDIT-9 stage D: a victor who kept a promise and broke none. Rare by
          * construction — most victors never make one — so it carries a
@@ -3069,16 +2990,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     },
     // ---- oddity: runs that were strange rather than good ------------------
     {
-        id: 'named-twice',
-        name: 'Named Twice',
-        hint: 'Crown a victor the country named, carrying a weapon it also named.',
-        category: 'oddity',
-        rarity: 'rare',
-        // Epithets land on 8.5% of tributes; a named weapon exists in 43% of
-        // runs. Both, on the one who wins, is the conjunction.
-        test: (_s, v) => !!v?.epithet && v.inventory.some(i => !!i.legendName),
-    },
-    {
         id: 'alone-the-whole-way',
         name: 'Alone The Whole Way',
         hint: 'Crown a victor who never once shared a camp.',
@@ -3150,7 +3061,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // different claim — the map-reader usually dies of the reading.
         hint: 'Crown a victor who personally stood in every zone the arena has.',
         category: 'arena',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (state, v) => {
             if (!v) return false;
             const all = state.arena.zones.map(z => z.name);
@@ -3224,22 +3135,6 @@ export const ACHIEVEMENTS: Achievement[] = [
             && state.gamesProfile?.temperament.id === 'standard'
             && state.gamesProfile?.castShape?.id === 'ordinary'
             && Object.keys(state.gamemakerUse ?? {}).length === 0,
-    },
-    {
-        id: 'the-named-blade',
-        name: 'The Named Blade',
-        hint: 'Crown a victor still holding a named weapon that has taken three lives or more.',
-        category: 'combat',
-        rarity: 'rare',
-        // AUDIT-8 §1.4: this shared a byte-identical predicate with 'a-weapon-with-a-name'.
-        // Two cards for one boolean, always flipping together. Re-gated to the
-        // harder half of the same idea rather than deleted, so no id already in
-        // a player's `unlocked` record stops resolving.
-        test: (_s, v) => !!v && v.inventory.some(i => !!i.legendName && (i.bloodDrawn ?? 0) >= 3),
-        nearMiss: (_s, v) => {
-            const best = Math.max(0, ...(v?.inventory ?? []).filter(i => i.legendName).map(i => i.bloodDrawn ?? 0));
-            return best > 0 && best < 3 ? `the named weapon had taken ${best}` : undefined;
-        },
     },
     {
         id: 'the-whole-menagerie',
@@ -3689,7 +3584,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Twice Nearly',
         hint: 'Crown a victor who came back from the edge of death twice.',
         category: 'survival',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (_s, v) => !!v && (v.lowHealthRecoveries ?? 0) >= 2,
         nearMiss: (_s, v) => {
             const n = v?.lowHealthRecoveries ?? 0;
@@ -3800,7 +3695,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Walked It All',
         hint: 'Crown a victor who set foot in every sector of the arena.',
         category: 'arena',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (state, v) => !!v && state.arena.zones.every(z => (v.visitedZones ?? []).includes(z.name)),
         nearMiss: (state, v) => {
             if (!v) return undefined;
@@ -4198,14 +4093,6 @@ export const ACHIEVEMENTS: Achievement[] = [
             : undefined),
     },
     {
-        id: 'the-unnamed',
-        name: 'No Name For It',
-        hint: 'Crown a victor the country never settled on an epithet for.',
-        category: 'oddity',
-        rarity: 'common',
-        test: (_s, v) => !!v && !v.epithet,
-    },
-    {
         id: 'took-nothing-off-anybody',
         name: 'Took Nothing Off Anybody',
         hint: 'Crown a victor who never looted a single body in a Games with twelve dead or more.',
@@ -4518,29 +4405,17 @@ export const ACHIEVEMENTS: Achievement[] = [
 
     // ---- oddity (12) ---------------------------------------------------------
     {
-        id: 'a7-early-epithet',
-        name: 'Named, Then Crowned',
-        hint: 'Crown a victor who had earned an epithet before the third day.',
-        category: 'oddity',
-        rarity: 'legendary',
-        test: (_s, v) => !!v && v.epithet !== undefined && (v.epithetCycle ?? 99) <= 6,
-        nearMiss: (_s, v) => (v?.epithet && (v.epithetCycle ?? 99) <= 10
-            ? `${v.name} was named on cycle ${v.epithetCycle}` : undefined),
-    },
-    {
         id: 'a7-inherited-the-blade',
         name: 'Somebody Else\'s Answer',
         hint: 'Crown a victor holding a named weapon that earned its name in another hand.',
         category: 'oddity',
         rarity: 'rare',
         // AUDIT-8 §1.4: the "another hand" clause was "somebody else died having
-        // killed somebody", which is true in almost every Games, so this
-        // unlocked on exactly the same runs as 'a-weapon-with-a-name'. The
+        // killed somebody", which is true in almost every Games. The
         // inheritance is provable off the object itself: a blade carrying more
         // blood than its holder has kills was drawing it for somebody else.
-        test: (_s, v) => !!v && v.inventory.some(i =>
-            i.legendName !== undefined && (i.bloodDrawn ?? 0) > v.kills),
-        nearMiss: (_s, v) => (!!v && v.inventory.some(i => i.legendName !== undefined)
+        test: (_s, v) => !!v && v.inventory.some(i => (i.bloodDrawn ?? 0) > v.kills),
+        nearMiss: (_s, v) => (!!v && v.inventory.some(i => (i.bloodDrawn ?? 0) > 0)
             && !v.inventory.some(i => (i.bloodDrawn ?? 0) > v.kills)
             ? 'the victor drew every drop on that blade themselves'
             : undefined),
@@ -5564,7 +5439,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'a8-the-gamemakers-attention',
         name: "The Gamemaker's Attention",
         hint: 'Crown a bloodless victor in a year the Gamemakers reached into the arena more than once.',
-        category: 'capitol', rarity: 'possible',
+        category: 'capitol', rarity: 'legendary',
         // AUDIT-8: the duplicate guard from §1.4 caught this as identical to
         // 'made-them-blink' on its first run — which is the guard doing its job on the
         // very next batch written. Re-aimed at a question nothing else asks.
@@ -5764,24 +5639,6 @@ export const ACHIEVEMENTS: Achievement[] = [
     },
 
     // ---- oddity (6) --------------------------------------------------------
-    {
-        id: 'a8-named-for-nothing',
-        name: 'Named for Nothing They Did',
-        hint: 'Crown a victor the country named who never took a life.',
-        category: 'oddity', rarity: 'possible',
-        test: (_s, v) => !!v && v.epithet !== undefined && v.kills === 0,
-    },
-    {
-        id: 'a8-it-outlived-its-owner',
-        name: 'It Outlived Its Owner',
-        hint: 'Crown a victor holding a named weapon in a year somebody else died having killed twice.',
-        category: 'oddity', rarity: 'common',
-        test: (state, v) => !!v && v.inventory.some(i => i.legendName !== undefined)
-            && state.tributes.some(o => o.id !== v.id && o.status === 'dead' && o.kills >= 2),
-        nearMiss: (state, v) => (!!v && v.inventory.some(i => i.legendName !== undefined)
-            && !state.tributes.some(o => o.id !== v.id && o.status === 'dead' && o.kills >= 2)
-            ? 'the name on that blade was earned by its current owner' : undefined),
-    },
     {
         id: 'a8-nobody-lied',
         name: 'Nobody Lied',

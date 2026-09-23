@@ -4027,43 +4027,6 @@ export const LOAD_BEARING = {
 } as const;
 
 /**
- * §11.5: when the country decides it has a name for somebody. Deliberately
- * demanding — an epithet everybody gets is not an epithet.
- */
-export const EPITHET_RULES = {
-    /*
-     * AUDIT-6 §10.1: raised from 3. With the ladder replaced by a scoring
-     * pass, `bloody` no longer excludes the other six by firing first — but at
-     * three kills it was still a catch-all rather than a high bar. Five is a
-     * tribute the arena is genuinely afraid of.
-     */
-    killsForBloody: 5,
-    unseenCyclesForGhost: 12,
-    daysForEnduring: 6,
-    /** §6: four more triggers, each off a counter the run already keeps. */
-    sparesForMerciful: 2,
-    breaksForTurncoat: 2,
-    /*
-     * AUDIT-6 §10.1: `builder` was awarded **zero** times in 300 runs, which
-     * follows from 176 traps triggering per 400 runs — two trap kills on one
-     * tribute is most of a run's entire trap output. One is the honest bar for
-     * the only epithet that requires somebody to die in something you made.
-     */
-    trapKillsForBuilder: 1,
-    cyclesForWarden: 6,
-    /** §10.1: what being given a name costs you in the arena's attention. */
-    notorietyOnAward: 12,
-} as const;
-
-/**
- * §11.6: how much blood a weapon has to draw before the country gives it a
- * name. Two: once is a weapon doing its job, twice is a pattern.
- */
-export const LEGENDARY_ITEMS = {
-    killsToEarnAName: 2,
-} as const;
-
-/**
  * §12: thresholds the per-run achievement bookkeeping reads. See
  * `engine/runRecords.ts`.
  */
@@ -4151,7 +4114,6 @@ export const VETERANS = {
     reputationBonus: 18,
     minTrainingScore: 7,
     resolveBonus: 12,
-    keepsEpithetChance: 0.75,
 } as const;
 
 /**
@@ -8216,7 +8178,7 @@ export const DOWNED = {
      * the Confessor's problem was never surviving, it was closing. At
      * 0.10/0.04 a charisma-10 tribute with three witnesses removes 0.22 from
      * the roll, which is a real hesitation and not a wall, and it keeps
-     * producing the spared-on-the-ground beats the `merciful` epithet needs.
+     * producing the spared-on-the-ground beats the mercy layer reads.
      */
     pleaBase: 0.10,
     pleaPerWitness: 0.04,
@@ -9238,18 +9200,16 @@ export const SHOCK = {
     lineChance: 0.7,
 } as const;
 
-/** §9: whom to avoid and whom to hunt is partly what the country calls them. */
+/** §9: whom to avoid and whom to hunt is partly what the country has heard. */
 export const REPUTATION_TARGETING = {
     /** Hunt-score penalty at full notoriety, scaled down by risk tolerance. */
     notorietyDeterrent: 30,
-    /** An epithet is a prize to somebody who wants one and a warning to everyone else. */
-    epithetPrize: 12,
-    epithetDeterrent: 10,
-    /** Risk tolerance at which a named rival reads as a prize rather than a threat. */
+    /** A reputation is a prize to somebody who wants one and a warning to everyone else. */
+    reputationPrize: 12,
+    /** Risk tolerance at which a notorious rival reads as a prize rather than a threat. */
     prizeRiskAbove: 0.25,
     /** What a heard-of name adds to how dangerous somebody looks across a zone. */
     notorietyVisibleWeight: 2.5,
-    epithetVisibleBonus: 1,
 } as const;
 
 /** §10: what is worth keeping depends on where you are keeping it. */

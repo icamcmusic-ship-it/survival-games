@@ -1,5 +1,4 @@
 import { HallOfFameEntry, Tribute } from '../models/types';
-import { RNG } from '../utils/rng';
 import { traitFits } from '../data/constants';
 import { VETERANS } from '../data/balance';
 
@@ -42,8 +41,7 @@ function slotFor(field: Tribute[], entry: HallOfFameEntry, taken: Set<string>): 
  * is copied in from an archive. Every read site now goes through
  * `isVeteran()`, which still accepts a legacy save's names.
  */
-export function seatVeterans(seed: string, field: Tribute[], entries: HallOfFameEntry[]): string[] {
-    const rng = new RNG(`${seed}-grudge`);
+export function seatVeterans(_seed: string, field: Tribute[], entries: HallOfFameEntry[]): string[] {
     const taken = new Set<string>();
     const seated: string[] = [];
 
@@ -69,10 +67,6 @@ export function seatVeterans(seed: string, field: Tribute[], entries: HallOfFame
         slot.sponsorTrust = Math.min(100, slot.sponsorTrust + VETERANS.reputationBonus);
         slot.trainingScore = Math.max(slot.trainingScore, VETERANS.minTrainingScore);
         slot.resolve = Math.min(100, (slot.resolve ?? 50) + VETERANS.resolveBonus);
-        // And the mark of it, which is the point of the whole feature.
-        slot.epithet = rng.chance(VETERANS.keepsEpithetChance)
-            ? `Victor of the ${entry.arenaName} Games`
-            : slot.epithet;
         seated.push(slot.id);
     });
 

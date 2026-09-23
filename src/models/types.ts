@@ -440,21 +440,6 @@ export interface Item {
      */
     bloodDrawn?: number;
     /**
-     * §11.6: the name this weapon earned by drawing blood more than once.
-     * Never rolled at the Cornucopia or by a sponsor; only ever earned in
-     * somebody's hand, which is what makes it a different kind of noun from
-     * everything in `ITEMS`.
-     */
-    legendName?: string;
-    /**
-     * AUDIT-9 batch 4: whose hand it earned that name in.
-     *
-     * So that "this weapon has outlived the person who named it" is a question
-     * the game can actually answer, rather than one a card claimed to be
-     * asking while testing something else entirely.
-     */
-    legendNamedById?: string;
-    /**
      * Stackable consumables. `undefined` means a single indivisible thing; a
      * number is how many are left in the stack. Food, water and medical
      * supplies stack; a sword does not.
@@ -1332,14 +1317,6 @@ export interface Tribute {
      * won, for the reaping copy and the chronicle. Set only by a Grudge Match.
      */
     veteranOf?: string;
-    /**
-     * §11.5: an epithet earned in the arena, distinct from the birth name
-     * rolled at the reaping. Awarded once and never replaced — the first thing
-     * a tribute becomes known for is the thing they stay known for.
-     */
-    epithet?: string;
-    /** Cycle the epithet was awarded, for the chronicle and the epilogue. */
-    epithetCycle?: number;
     /** §10.1: the longest performing streak this tribute ever held, for 'The Long Con'. */
     maxPerformingStreak?: number;
     /** §10.1: tribute ids this one has extorted at a parley (item or information). */

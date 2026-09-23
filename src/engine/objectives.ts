@@ -559,22 +559,18 @@ function chooseObjective(
                 // them until there is no choice, because the person they are
                 // most afraid of losing to is the person they rate. This is
                 // the read `respects` was written for and never got.
-                // A §9: a name is a deterrent and a prize at the same time.
-                // Notoriety and an earned epithet both say "this one has done
-                // something" — which puts most of the field off and draws
-                // exactly the tributes willing to take the risk.
+                // A §9: a reputation is a deterrent and a prize at the same
+                // time. Notoriety says "this one has done something" — which
+                // puts most of the field off and draws exactly the tributes
+                // willing to take the risk.
                 const notorious = notorietyFraction(t, o.id);
-                const named = o.epithet !== undefined;
                 const boldEnough = riskTolerance(ctx, t) > REPUTATION_TARGETING.prizeRiskAbove;
-                // How visible that name is: notoriety is what travelled without
-                // anybody witnessing anything, an epithet is what the Capitol
-                // decided to call them out loud.
-                const visibility = notorious * REPUTATION_TARGETING.notorietyVisibleWeight
-                    + (named ? REPUTATION_TARGETING.epithetVisibleBonus : 0);
+                // How far that reputation travelled without anybody having to
+                // witness anything first-hand.
+                const visibility = notorious * REPUTATION_TARGETING.notorietyVisibleWeight;
                 const reputation = boldEnough
-                    ? visibility * REPUTATION_TARGETING.epithetPrize
-                    : -(visibility * REPUTATION_TARGETING.notorietyDeterrent
-                        + (named ? REPUTATION_TARGETING.epithetDeterrent : 0));
+                    ? visibility * REPUTATION_TARGETING.reputationPrize
+                    : -(visibility * REPUTATION_TARGETING.notorietyDeterrent);
                 // §4: whose word you would be stepping on. Attacking B when B
                 // has an agreement with my ally A is not a private matter
                 // between me and B — A gave their word, and it is A's word I

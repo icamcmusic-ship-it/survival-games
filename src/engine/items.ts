@@ -238,8 +238,8 @@ function mergeable(existing: Item, incoming: Item): boolean {
     if ((existing.quality ?? undefined) !== (incoming.quality ?? undefined)) return false;
     if ((existing.poison ?? false) !== (incoming.poison ?? false)) return false;
     if ((existing.durability ?? undefined) !== (incoming.durability ?? undefined)) return false;
-    // A weapon that has earned a name is a specific object and never a unit.
-    if (existing.legendName !== undefined || incoming.legendName !== undefined) return false;
+    // A weapon that has drawn blood is a specific object and never a unit.
+    if ((existing.bloodDrawn ?? 0) !== 0 || (incoming.bloodDrawn ?? 0) !== 0) return false;
     return true;
 }
 
