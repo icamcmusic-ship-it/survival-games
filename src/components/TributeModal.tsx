@@ -392,11 +392,6 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                     <div className="min-w-0">
                         <h3 className="display-title text-2xl">
                             {tribute.name}
-                            {tribute.epithet && (
-                                <span className="block text-sm font-bold text-[var(--gold)] tracking-normal" role="group" aria-label={tribute.epithetCycle !== undefined ? `Named on cycle ${tribute.epithetCycle}` : undefined} title={tribute.epithetCycle !== undefined ? `Named on cycle ${tribute.epithetCycle}` : undefined}>
-                                    {tribute.epithet}
-                                </span>
-                            )}
                         </h3>
                         {/* A5: at most five chips. Everything else moves to the
                             dossier line below, as plain text with its Explainer
@@ -1024,9 +1019,6 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                                           * earned one across 300 runs and the sheet rendered them
                                           * identically to an unused knife.
                                           */}
-                                        {item.legendName && (
-                                            <span className="font-semibold text-[var(--gold)]">{item.legendName} — </span>
-                                        )}
                                         {displayName(item)}
                                         {item.stack !== undefined && item.stack > 1 && (
                                             <span className="text-[var(--color-ink-500)]"> ×{item.stack}</span>

@@ -8,13 +8,15 @@ import {
     FLOOR_TOPICS, TRAINING_SNUB, TRAINING_THREAT, TRAINING_MOCK, TRAINING_THEFT,
     TRAINING_EXCLUSION, TRAINING_PACT_BROKEN, TRAINING_LUNCH_SIT, TRAINING_LUNCH_ALONE, TRAINING_LUNCH_CAREER,
     TRAINING_GROUP_TALK, TRAINING_GROUP_TENSION, TRAINING_LUNCH_TABLE, TRAINING_LUNCH_CLASH,
+    TRAINING_LUNCH_KIND, TRAINING_LUNCH_INTRO, TRAINING_LUNCH_COLD, TRAINING_LUNCH_SHUNNED,
+    TRAINING_LUNCH_SMALLTALK, TRAINING_LUNCH_WATCH,
     SCORE_REACTIONS,
 } from '../../data/flavorText';
 import { FEAR, PREGAMES, PRE_ARENA, RESPECT, TRAINING, TRAINING_FLOOR, TRAINING_SCORE } from '../../data/balance';
 import { addFear, reduceFear } from '../fear';
 import { strengthCapForAge } from '../generator';
 import { LEGACY_EFFECTS, craftOf, legacyOf } from '../../data/districts';
-import { adjustMutual, adjustRel, adjustRespect, getRel, respectOf } from '../relationships';
+import { adjustMutual, adjustRel, adjustRespect, adjustTrust, getRel, respectOf } from '../relationships';
 import { noteContact, noteFight } from '../memory';
 import { ARCHETYPES, archetypeAntipathy } from '../../data/archetypes';
 import { clampTribute } from '../vitals';
@@ -650,6 +652,139 @@ function runLunchClashes(ctx: SimContext, day: number, cast: Tribute[]) {
 }
 
 /**
+ * §(requests): what happens at lunch that is not the seating plan.
+ *
+ * Who sat with whom was the whole hour, and it had exactly two consequences:
+ * warmth for a seated pair, and a clash between the coldest pair in the hall.
+ * A canteen is mostly smaller than that — a plate pushed across, a portion
+ * lifted on the way past, an introduction, a bench closed against somebody,
+ * half an hour of nothing much — and each of those is a different thing to
+ * have happened to two people, so each moves them differently.
+ *
+ * Three registers, weighted: warm raises regard and trust, cold lowers regard
+ * and leaves fear behind, flat barely moves the numbers but still counts as
+ * contact, because two people who ate at the same bench know each other a
+ * little better than two who did not. Partners are drawn from a shortlist of
+ * the warmest (or coldest) people to hand rather than straight off the top,
+ * so the hour is not the same two tributes over and over.
+ */
+function runLunchBeats(ctx: SimContext, cast: Tribute[]) {
+    const careers = cast.filter(isCareerish);
+    const pack = careers.length >= 2 ? careers : [];
+    const room = cast.filter(t => !pack.includes(t));
+
+    /** Somebody, and one of the people they have most (or least) time for. */
+    const pair = (pool: Tribute[], tone: 'warm' | 'cold' | 'flat'): [Tribute, Tribute] | undefined => {
+        if (pool.length < 2) return undefined;
+        const a = ctx.rng.pick(pool);
+        const others = pool.filter(t => t.id !== a.id);
+        if (others.length === 0) return undefined;
+        if (tone === 'flat') return [a, ctx.rng.pick(others)];
+        const sorted = [...others].sort((x, y) => tone === 'warm'
+            ? getRel(a, y.id) - getRel(a, x.id)
+            : getRel(a, x.id) - getRel(a, y.id));
+        const pick = ctx.rng.pickOrUndefined(sorted.slice(0, TRAINING.lunchBeatShortlist));
+        return pick ? [a, pick] : undefined;
+    };
+
+    const log = (line: string, who: Tribute[], important: boolean, category: 'training' | 'sanity') =>
+        ctx.logEvent(line, who.map(t => t.id), { important, category });
+
+    for (let attempt = 0; attempt < TRAINING.lunchBeatAttempts; attempt++) {
+        if (!ctx.rng.chance(TRAINING.lunchBeatChance)) continue;
+        const total = TRAINING.lunchBeatWarmWeight + TRAINING.lunchBeatColdWeight + TRAINING.lunchBeatFlatWeight;
+        const roll = ctx.rng.nextFloat() * total;
+        const tone = roll < TRAINING.lunchBeatWarmWeight
+            ? 'warm'
+            : roll < TRAINING.lunchBeatWarmWeight + TRAINING.lunchBeatColdWeight ? 'cold' : 'flat';
+
+        if (tone === 'warm') {
+            const two = pair(room.length >= 2 ? room : cast, 'warm');
+            if (!two) continue;
+            const [a, b] = two;
+            // A share or a held seat is between two people; an introduction is
+            // the one warm thing that needs a third, and is worth less to each
+            // pair because none of them chose it.
+            if (ctx.rng.chance(TRAINING.lunchKindChance)) {
+                log(fillLine(ctx.pickText(TRAINING_LUNCH_KIND), { tribute: a.name, other: b.name }), [a, b], false, 'training');
+                adjustMutual(ctx.state, a, b, TRAINING.lunchKindRegard);
+                adjustTrust(b, a.id, TRAINING.lunchKindTrust);
+                noteContact(ctx.state, a, b);
+                continue;
+            }
+            const third = ctx.rng.pickOrUndefined(cast.filter(t => t.id !== a.id && t.id !== b.id));
+            if (!third) continue;
+            log(fillLine(ctx.pickText(TRAINING_LUNCH_INTRO), {
+                tribute: a.name, other: b.name, third: third.name, topic: ctx.pickText(FLOOR_TOPICS),
+            }), [a, b, third], true, 'training');
+            [[a, b], [a, third], [b, third]].forEach(([x, y]) => {
+                adjustMutual(ctx.state, x, y, TRAINING.lunchIntroRegard);
+                noteContact(ctx.state, x, y);
+            });
+            adjustTrust(b, third.id, TRAINING.lunchIntroTrust);
+            adjustTrust(third, b.id, TRAINING.lunchIntroTrust);
+            continue;
+        }
+
+        if (tone === 'cold') {
+            const two = pair(cast, 'cold');
+            if (!two) continue;
+            // The aggressor is the one who thinks less of the other, the same
+            // rule the floor and the clashes use.
+            const [x, y] = two;
+            const aggressor = getRel(x, y.id) <= getRel(y, x.id) ? x : y;
+            const target = aggressor === x ? y : x;
+            if (ctx.rng.chance(TRAINING.lunchColdChance)) {
+                log(fillLine(ctx.pickText(TRAINING_LUNCH_COLD), { tribute: aggressor.name, other: target.name }), [aggressor, target], false, 'training');
+                adjustMutual(ctx.state, aggressor, target, TRAINING.lunchColdRegard);
+                addFear(target, aggressor.id, TRAINING.lunchColdFear, aggressor);
+                loseSanity(target, TRAINING.lunchColdSanity);
+                clampTribute(target);
+                noteContact(ctx.state, aggressor, target);
+                continue;
+            }
+            // Shutting somebody out takes two, and the one who went along with
+            // it is not neutral afterwards either.
+            const third = ctx.rng.pickOrUndefined(cast.filter(t => t.id !== aggressor.id && t.id !== target.id));
+            if (!third) continue;
+            log(fillLine(ctx.pickText(TRAINING_LUNCH_SHUNNED), {
+                tribute: aggressor.name, other: target.name, third: third.name,
+            }), [aggressor, target, third], true, 'sanity');
+            adjustMutual(ctx.state, aggressor, target, TRAINING.lunchShunRegard);
+            adjustRel(target, third.id, TRAINING.lunchShunWitnessRegard);
+            addFear(target, aggressor.id, TRAINING.lunchShunFear, aggressor);
+            loseSanity(target, TRAINING.lunchShunSanity);
+            clampTribute(target);
+            noteContact(ctx.state, aggressor, target);
+            noteContact(ctx.state, target, third);
+            continue;
+        }
+
+        // Flat. Nothing is decided; the two of them simply ate near each other.
+        const two = pair(room.length >= 2 ? room : cast, 'flat');
+        if (!two) continue;
+        const [a, b] = two;
+        if (pack.length === 0 || ctx.rng.chance(TRAINING.lunchSmallTalkChance)) {
+            log(fillLine(ctx.pickText(TRAINING_LUNCH_SMALLTALK), {
+                tribute: a.name, other: b.name, topic: ctx.pickText(FLOOR_TOPICS),
+            }), [a, b], false, 'training');
+            adjustMutual(ctx.state, a, b, TRAINING.lunchSmallTalkRegard);
+            noteContact(ctx.state, a, b);
+            continue;
+        }
+        // Watching the pack eat: flat between the two watching, and the reason
+        // the rest of the hall is afraid of the table they are watching.
+        const head = [...pack].sort((p, q) => q.trainingScore - p.trainingScore || q.attributes.strength - p.attributes.strength)[0];
+        log(fillLine(ctx.pickText(TRAINING_LUNCH_WATCH), {
+            tribute: a.name, other: b.name, third: head.name, topic: ctx.pickText(FLOOR_TOPICS),
+        }), [a, b, head], false, 'training');
+        adjustMutual(ctx.state, a, b, TRAINING.lunchWatchRegard);
+        noteContact(ctx.state, a, b);
+        [a, b].forEach(w => addFear(w, head.id, TRAINING.lunchWatchFear, head));
+    }
+}
+
+/**
  * §(requests, sociability pass): the lunch hall's cold register.
  *
  * A room with no weapons in it and no trainers between people is where a week
@@ -700,18 +835,26 @@ function lunchPeriod(ctx: SimContext, day: number, cast: Tribute[]) {
     // partners first, then whoever they have most reason to sit with.
     const room = ctx.rng.shuffle(cast.filter(t => !(careers.length >= 2 && isCareerish(t))));
     /*
-     * §(requests, sociability pass): lunch is an hour, not one sitting.
+     * §(requests): one lunch, one table.
      *
-     * Seating tables rather than strict pairs consolidated three people into
-     * one line and cut measured lunch lines from 32.7 to 25.7 per run, which
-     * is the wrong direction — the hall is supposed to be the busiest part of
-     * the day. Each round re-seats the room from scratch, so somebody who ate
-     * with their district partner can still end up at a second bench with
-     * strangers before the bell, which is what actually happens in a canteen.
+     * The rounds below used to re-seat the room from scratch each time — the
+     * comment above defended that as somebody moving to a second bench before
+     * the bell. In practice it put the same tribute at two and three different
+     * tables in the same sitting, which is not a canteen, it is a continuity
+     * error: measured over 180 lunches, every one of them had somebody
+     * double-seated — 3,122 instances, a mean of 17 per sitting.
+     *
+     * `seated` is now the whole hour rather than one round. The rounds still
+     * earn their place — a tribute nobody sat with on the first pass can be
+     * drawn in on the second — but once somebody has a bench they keep it.
+     * Re-measured the same way: 0 double-seatings in 180 lunches.
+     *
+     * That costs lunch lines, which were what the rounds were for: 1,827 down
+     * to 927 per 60 runs. The volume comes back as more *kinds* of lunch beat
+     * (below) rather than as the same people seated twice.
      */
-    const everSeated = new Set<string>();
+    const seated = new Set<string>();
     for (let round = 0; round < TRAINING.lunchRounds; round++) {
-        const seated = new Set<string>();
         room.forEach(t => {
             if (seated.has(t.id)) return;
             const candidates = room.filter(o => o.id !== t.id && !seated.has(o.id));
@@ -779,13 +922,13 @@ function lunchPeriod(ctx: SimContext, day: number, cast: Tribute[]) {
                 { category: 'training' }
             );
         });
-    seated.forEach(id => everSeated.add(id));
     }
 
     runLunchClashes(ctx, day, cast);
+    runLunchBeats(ctx, cast);
 
     // And the ones nobody sat with, which is its own fact about the week.
-    cast.filter(t => !everSeated.has(t.id) && !(careers.length >= 2 && isCareerish(t))).forEach(t => {
+    cast.filter(t => !seated.has(t.id) && !(careers.length >= 2 && isCareerish(t))).forEach(t => {
         ctx.logEvent(
             fillLine(ctx.pickText(TRAINING_LUNCH_ALONE), { tribute: t.name }),
             [t.id],

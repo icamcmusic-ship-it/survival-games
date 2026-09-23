@@ -28,7 +28,7 @@
  *     fails on the known backlog is a guard somebody disables on day one.
  *
  *   npm run test:coverage
- *   COVERAGE_RUNS=400 npm run test:coverage
+ *   COVERAGE_RUNS=600 npm run test:coverage
  */
 import { generateTributes } from '../src/engine/generator';
 import { resolveArenaForRun } from '../src/engine/arenaSetup';
@@ -38,7 +38,18 @@ import { GameState } from '../src/models/types';
 import { configForProfile, gamesProfileFor } from '../src/engine/gamesProfile';
 import { readFileSync } from 'node:fs';
 
-const RUNS = Number(process.env.COVERAGE_RUNS ?? 120);
+/*
+ * 300 rather than 120: a power problem, not a softened assertion.
+ *
+ * The hard half of this guard asserts that every declared beat happens at
+ * least once. `parachute-lost` runs at about 1% of runs — measured 6 in 600 —
+ * so at 120 runs the expected count is a bit over one and drawing zero is an
+ * ordinary outcome rather than evidence the beat is dead. It duly failed the
+ * build having not broken, exactly as `expulsion` (also ~1%) was one unlucky
+ * sample away from doing. 300 runs costs 52 seconds and puts both of them
+ * reliably above zero.
+ */
+const RUNS = Number(process.env.COVERAGE_RUNS ?? 300);
 const arenaIds = [...ARENAS.map(a => a.id), 'procedural'];
 
 /**

@@ -350,7 +350,7 @@ scenario(
 );
 
 scenario(
-    'a promise the week made irrelevant lapses rather than counting as betrayal',
+    'a promise the week made irrelevant is moot rather than counting as betrayal',
     'broken means they could have and did not, not that the need passed',
     () => {
         const w = world('SCEN-ob-3');
@@ -367,7 +367,29 @@ scenario(
         w.state.cycle = o!.byCycle;
         w.state.day = o!.byCycle;
         tickObligations(ctx);
-        eq(o!.status, 'lapsed', 'a need that went away is not a betrayal');
+        eq(o!.status, 'moot', 'a need that went away is not a betrayal, and not a failure either');
+    },
+);
+
+scenario(
+    'a promise they still wanted but could not be kept lapses',
+    'lapsed is the middle case: the need is real, the chance to meet it was not',
+    () => {
+        const w = world('SCEN-ob-3b');
+        const a = w.tribute(0), b = w.tribute(1);
+        w.only(a, b);
+        const ctx = createContext(w.state, new RNG('SCEN-ob-3b'));
+        a.inventory = [food(), food()];
+        b.vitals.hunger = 90;
+        const o = promise(ctx, a, b, 'supply');
+        check(o !== undefined, 'promise made');
+        // The hunger is still there at the deadline; the two of them are not
+        // in the same place, so there was never a moment to hand anything over.
+        w.place(b, w.state.arena.zones.find(z => z.name !== a.zone)!.name);
+        w.state.cycle = o!.byCycle;
+        w.state.day = o!.byCycle;
+        tickObligations(ctx);
+        eq(o!.status, 'lapsed', 'a need still owed, with no chance to meet it, is not a betrayal');
     },
 );
 

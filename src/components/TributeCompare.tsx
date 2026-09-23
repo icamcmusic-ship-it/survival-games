@@ -11,7 +11,6 @@ import { resolveOf } from '../engine/resolve';
 import { profOf } from '../engine/proficiency';
 import { Proficiency } from '../models/types';
 import { useDialogFocus } from '../ui/useDialogFocus';
-import { displayName } from '../engine/epithets';
 
 /**
  * §2.3: two tributes side by side, mid-run.
@@ -130,7 +129,7 @@ export function TributeCompare({ a, b, gameState, onClose, onSwap }: {
             <div ref={panelRef} tabIndex={-1} className="panel p-5 max-w-3xl w-full space-y-5 my-8" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-start gap-4">
                     <h2 className="display-title text-2xl flex items-center gap-2">
-                        <ArrowLeftRight className="w-5 h-5" /> {displayName(a).replace(/,$/, '')} vs {displayName(b).replace(/,$/, '')}
+                        <ArrowLeftRight className="w-5 h-5" /> {a.name} vs {b.name}
                     </h2>
                     <div className="flex gap-2">
                         {onSwap && (

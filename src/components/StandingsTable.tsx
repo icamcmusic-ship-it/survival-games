@@ -207,7 +207,6 @@ export function StandingsTable({
                                             style={accent ? { borderLeft: `3px solid ${accent}`, paddingLeft: 4 } : undefined}
                                         >
                                             {t.name}
-                                            {t.epithet && <span className="ml-1 text-micro font-normal text-[var(--gold)]">{t.epithet}</span>}
                                         </button>
                                     </td>
                                     <td className="p-1 text-right font-mono">{t.district}</td>

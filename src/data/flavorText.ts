@@ -4810,6 +4810,125 @@ export const TRAINING_LUNCH_CLASH: string[] = [
     '{tribute} leaves the table when {other} joins it. {third} stays, and that is noted by both of them.',
 ];
 
+/**
+ * §(requests): the lunch hall's warm register, away from who sat with whom.
+ *
+ * Seating says who chose whom; these are the smaller things that happen once
+ * everybody has a tray — food shared, a seat held, somebody eating alone being
+ * fetched over. Two people, and both of them are named.
+ */
+export const TRAINING_LUNCH_KIND: string[] = [
+    '{tribute} halves what is on their tray and pushes the plate across to {other} without saying anything about it.',
+    '{other} is eating alone when {tribute} sits down opposite with two cups and hands one over.',
+    '{tribute} holds a place on the bench for {other} through the whole queue, and takes an elbow for it.',
+    '{other} cannot get the lid off a ration tin. {tribute} takes it, opens it, and hands it back without comment.',
+    '{tribute} carries {other}\'s tray over for them when {other}\'s hands are still shaking from the morning.',
+    '{other} drops a roll on the floor of the lunch hall and {tribute} puts one of theirs on {other}\'s plate instead.',
+    '{tribute} notices {other} has taken nothing but water and quietly builds them a plate.',
+    '{other} asks {tribute} at lunch whether it gets easier. {tribute} lies, kindly, and {other} lets them.',
+    '{tribute} sees {other} looking for somewhere to sit and moves up the bench before anybody else has to.',
+    '{other} spills a whole tray in front of the room. {tribute} is on the floor picking it up before the laughing starts.',
+    '{tribute} gives {other} the last of the fruit, which in {tribute}\'s district is not a small thing.',
+    '{other} eats nothing until {tribute} sits with them, and then eats everything.',
+];
+
+/**
+ * §(requests): an introduction, which is how a hall of strangers stops being
+ * one. Three people, all three named and all three on the cast list.
+ */
+export const TRAINING_LUNCH_INTRO: string[] = [
+    '{tribute} brings {third} over to {other}\'s table and introduces them by name and district.',
+    '{other} says {third}\'s name to {tribute} at lunch, and that is how the two of them meet.',
+    '{tribute} makes the introduction over lunch: {other}, who can climb, and {third}, who cannot.',
+    'It is {tribute} who gets {other} and {third} talking about {topic}, and then stops talking themselves.',
+    '{tribute} moves down the bench so {other} and {third} are sitting next to each other, and lets that do the work.',
+    '{third} arrives with a tray and no table. {tribute} says a name, {other} says another, and that is that.',
+    '{tribute} tells {other} across lunch what {third} did at the ropes, loudly enough for {third} to hear it.',
+    'By the end of lunch {tribute} has told {other} everything worth knowing about {third}, most of it true.',
+    '{other} would not have spoken to {third} all week. {tribute} sits the two of them down over {topic}.',
+    '{tribute} vouches for {third} to {other} at lunch, which is the only currency any of them has.',
+    '{third} is introduced to {other} over a lunch tray by {tribute}, and shakes hands like it is a contract.',
+    '{tribute} gets {other} and {third} onto the same bench, and the three of them are the last out of the hall.',
+];
+
+/**
+ * §(requests): the cold register that is not a full clash — a snub, a lifted
+ * portion, an impression done for laughs. Two people, both named.
+ */
+export const TRAINING_LUNCH_COLD: string[] = [
+    '{tribute} lifts half of {other}\'s lunch off the tray while walking past, and does not look back.',
+    '{other} says something to {tribute} at lunch and {tribute} answers somebody else.',
+    '{tribute} does an impression of {other} at the lunch table. It is good, which is the worst part of it.',
+    '{other} asks whether the seat is free. {tribute} says it is not, and nobody sits in it all hour.',
+    '{tribute} takes the last of the bread out from under {other}\'s hand.',
+    '{other} sets a tray down beside {tribute}, and {tribute} picks theirs up and goes.',
+    '{tribute} repeats something {other} said this morning in {other}\'s voice, and the table laughs.',
+    '{other} says {tribute}\'s name twice across the lunch hall. {tribute} hears it both times.',
+    '{tribute} counts {other}\'s ribs out loud at lunch and calls it arithmetic.',
+    '{other} reaches for the water and {tribute} takes the jug to the other end of the table.',
+    '{tribute} tells the bench what {other}\'s score is going to be, to the point, and holds up fingers.',
+    '{other} tries to sit down opposite {tribute} at lunch and finds a tray already in the space.',
+];
+
+/**
+ * §(requests): being shut out in front of a room, which is quieter than a
+ * clash and lands harder. Three people: two who close the bench, one who is
+ * left standing with a tray.
+ */
+export const TRAINING_LUNCH_SHUNNED: string[] = [
+    '{tribute} and {third} spread their trays across the bench until there is no room for {other}.',
+    '{other} comes over with a tray and {tribute} turns to {third} mid-sentence and keeps talking.',
+    '{tribute} tells {third}, loudly, to keep the seat for somebody else. {other} is still standing there.',
+    'There is one place left at lunch. {tribute} puts a bag on it and {third} does not move it, and {other} walks on.',
+    '{tribute} and {third} stop talking when {other} sits down, and start again when {other} leaves.',
+    '{other} asks {tribute} and {third} what the joke was. Neither of them tells them.',
+    '{tribute} moves the whole conversation to the far end of the table, and {third} goes with them. {other} stays.',
+    '{other} is not asked to the bench {tribute} and {third} are holding, and everybody in the hall sees it.',
+    '{tribute} says a name-shaped thing about {other} to {third} at lunch, and the hall works out who it was.',
+    '{third} makes room for {other} and {tribute} closes it again before {other} has the tray down.',
+    '{other} eats standing at the wall because {tribute} and {third} would not move along.',
+    '{tribute} and {third} leave the table together the moment {other} joins it.',
+];
+
+/**
+ * §(requests): the flat register — most of a lunch hour is nobody deciding
+ * anything. These cost almost nothing either way, but they are contact, and
+ * contact is what the rest of the week is built on.
+ */
+export const TRAINING_LUNCH_SMALLTALK: string[] = [
+    '{tribute} and {other} compare what they did at the stations this morning and agree neither of them is ready.',
+    '{tribute} and {other} talk about {topic} over lunch for half an hour and then stop.',
+    '{tribute} and {other} eat at the same bench without saying a word, and neither of them minds.',
+    '{tribute} asks {other} which station is worth the afternoon. {other} says the ropes. It is not.',
+    '{tribute} and {other} work out between them what the food actually is, and neither is sure.',
+    '{other} tells {tribute} what the Capitol food does to you if you eat it too fast. {tribute} slows down.',
+    '{tribute} and {other} count the stations they have not been to yet and come up with the same number.',
+    '{tribute} and {other} argue mildly about {topic} and neither of them is persuaded.',
+    '{other} says something about the weather in the Capitol and {tribute} agrees, and that is the whole exchange.',
+    '{tribute} and {other} sit at the same table facing opposite ways and eat.',
+    '{tribute} asks {other} how many days are left. They both already knew.',
+    '{tribute} and {other} swap which district trains for what, and get most of it wrong.',
+];
+
+/**
+ * §(requests): the hall watching the pack, which is neutral between the two
+ * watching and anything but neutral about the table they are watching.
+ */
+export const TRAINING_LUNCH_WATCH: string[] = [
+    '{tribute} and {other} eat with their eyes on the Career table, where {third} is doing most of the talking.',
+    '{tribute} nods at {third}\'s table and says a number to {other}. {other} says a lower one.',
+    '{tribute} and {other} spend lunch working out which of the Careers is actually in charge, and settle on {third}.',
+    '{other} watches {third} across the hall until {tribute} tells them to stop.',
+    '{tribute} and {other} time how long the Career table takes over lunch. {third} is the last to stand up.',
+    'From two tables away {tribute} and {other} watch {third} be served first, again.',
+    '{tribute} tells {other} at lunch exactly how {third} holds a knife, and {other} wishes they had not.',
+    '{tribute} and {other} do not talk about {topic}. They talk about {third}.',
+    '{other} asks {tribute} whether {third} has looked over yet. {third} has.',
+    '{tribute} and {other} keep their backs to the wall at lunch so they can see {third}\'s table.',
+    '{tribute} counts the Career table out to {other} under their breath and stops at {third}.',
+    '{tribute} and {other} watch {third}\'s table laugh at something, and neither of them eats for a minute.',
+];
+
 export const TRAINING_TEAMUP: string[] = [
     '{tribute} and {other} agree at the {station} to find each other at the gong. {reason}',
     '{tribute} and {other} agree where to meet in the first minute. Nothing is written down. {reason}',
@@ -5006,193 +5125,3 @@ export const ZONE_RUMOUR_CLAIMS: Record<string, string[]> = {
     ],
 };
 
-/**
- * §11.5: earned epithets — a new category of proper noun.
- *
- * A tribute's name is fixed at the reaping, and the birth-name pools in
- * `names.ts` are the only name content the game has. An epithet is the other
- * kind: something a tribute is called *because of what they did here*, awarded
- * in-run off fame and notoriety and picked up by the commentary and the
- * interview couch. Takes {district} and {zone} where the epithet references
- * one; see `engine/epithets.ts` for which trigger awards which pool.
- */
-export const EPITHETS = {
-    /** §6: spared somebody who did not have to be spared, more than once. */
-    merciful: [
-        'the One Who Stopped',
-        'the Mercy of District {district}',
-        'the One Who Let Them Up',
-        'the Tribute Who Would Not Finish It',
-        'the Hand That Opened',
-        'the Kindness in {zone}',
-        'the One They Owe',
-        'the Reason Somebody Went Home',
-        'the One Who Walked Away',
-        'the Stayed Hand',
-        'the Mercy of {zone}',
-        'the One Who Could Have',
-        'the Tribute Who Counted To Ten',
-        'District {district}\'s Better Angel',
-        'the One Who Said Enough',
-        'the Debt Nobody Can Pay',
-    ],
-    /** §6: broke faith with people who were counting on them, repeatedly. */
-    turncoat: [
-        'the Turncoat',
-        'the One Whose Word Was Weather',
-        'District {district}\'s Broken Promise',
-        'the Handshake in {zone}',
-        'the One Nobody Camps With Twice',
-        'the Second Knife',
-        'the One Who Was Always Leaving',
-        'the Friend Until',
-        'the Word Not Worth Having',
-        'the One Who Was Never Really There',
-        'District {district}\'s Short Memory',
-        'the Cold Side of {zone}',
-        'the One You Check Behind You For',
-        'the Agreement That Wasn\'t',
-        'the Third Knife',
-        'the One Who Leaves First',
-    ],
-    /** §6: killed more people with things they built than with things they held. */
-    builder: [
-        'the Builder',
-        'the One Who Waited in {zone}',
-        'the Wire of District {district}',
-        'the Patient One',
-        'the One Who Never Swung',
-        'the Quiet Engineer',
-        'the Trap-Setter',
-        'the One the Ground Worked For',
-        'the One Who Dug In',
-        'the Hands of {zone}',
-        'District {district}\'s Maker',
-        'the One Who Made It Hold',
-        'the One Who Works Before Light',
-        'the One Who Built Before Dawn',
-        'the Frame of {zone}',
-        'the One Who Always Had Rope',
-    ],
-    /** §6: held one sector against everybody for long enough to own it. */
-    warden: [
-        'the Warden of {zone}',
-        'the One Who Would Not Move',
-        'the Wall of District {district}',
-        'the Keeper of {zone}',
-        'the One Who Held',
-        'the Last Address in {zone}',
-        'the Immovable',
-        'the One Who Made {zone} Theirs',
-        'the One the Arena Went Around',
-        'the Wall of {zone}',
-        'District {district}\'s Anchor',
-        'the One Who Held the Door',
-        'the Weight in the Doorway',
-        'the Set Jaw',
-        'the Line in {zone}',
-        'the One Who Stayed Put',
-    ],
-    /** A run of kills, close together. */
-    bloody: [
-        'the One the Careers Left Alone',
-        'District {district}\'s Last Word',
-        'the Quiet Blade of District {district}',
-        'the Reason for the Short Week',
-        'the One Who Kept Count',
-        'the Butcher of {zone}',
-        'the Second Gong',
-        'the One They Stopped Naming',
-        'the Red Hour of {zone}',
-        'District {district}\'s Reckoning',
-        'the One Who Did Not Slow Down',
-        'the Count of {zone}',
-        'the One the Cannons Follow',
-        'the Short Way Through',
-        'the Arithmetic',
-        'the One Nobody Approaches',
-    ],
-    /** A long stretch nobody laid eyes on them. */
-    unseen: [
-        'the Ghost of {zone}',
-        'the Long Walker',
-        'the One Nobody Found',
-        'the Absence in District {district}\'s Column',
-        'the Tribute the Cameras Lost',
-        'the Quiet One from {district}',
-        'the One Who Was Never There',
-        'the Missing Name',
-        'the One Off Camera',
-        'the Missing Face',
-        'District {district}\'s Rumour',
-        'the One in the Margins',
-        'the Empty Frame',
-        'the One the Feed Lost',
-        'the Gap in {zone}',
-        'the One Nobody Can Place',
-    ],
-    /** Survived something they had no business surviving. */
-    enduring: [
-        'the One Who Would Not Fall',
-        'the Standing Stone of District {district}',
-        'the One the Arena Gave Up On',
-        'the One Who Came Back Up',
-        'the Last Argument from {district}',
-        'the One Who Outlasted {zone}',
-        'the Unfinished',
-        'the One They Wrote Off',
-        'the One Still Standing',
-        'the Long Arithmetic',
-        'District {district}\'s Last Argument',
-        'the One Who Outlasted It',
-        'the Weight That Would Not Set Down',
-        'the One the Odds Forgot',
-        'the Slow Answer',
-        'the One Who Was Still There',
-    ],
-} as const;
-
-/**
- * §11.6: legendary items — the other new proper noun.
- *
- * Every weapon in the game generates as a category instance: a sword is a
- * sword, and the only thing distinguishing two of them is `ItemQuality`. A
- * weapon that has drawn blood more than once in a run earns a name of its own
- * and a line in the epilogue, which is a kind of noun the game does not
- * otherwise have. Distinct from the mundane generation path in `items.ts`:
- * these are never rolled at the Cornucopia, only earned in somebody's hand.
- */
-export const LEGENDARY_ITEM_NAMES: string[] = [
-    'Second Chance',
-    'The Debt',
-    'Widow\'s Reach',
-    'The Understudy',
-    'Ninth Hour',
-    'The Long Answer',
-    'Nobody\'s',
-    'The Inheritance',
-    'Quiet Sunday',
-    'The Argument',
-    'Last Tuesday',
-    'The Favour',
-    'Threadbare',
-    'The Short Way',
-    'Anthem',
-    'The Standing Debt',
-];
-
-/** How the epilogue introduces a weapon that earned a name. */
-export const LEGENDARY_ITEM_TEXTS: string[] = [
-    '{item} went into the arena as an ordinary {base} and came out of it with a name. It killed for {owner}, and before {owner} it killed for somebody else.',
-    'Somewhere in the Capitol somebody is already calling it {item}. It is a {base}. It has been a {base} the whole time. It has also been the last thing three people saw.',
-    'The {base} {owner} finished with had drawn blood often enough by the end that the commentators stopped calling it a {base} and started calling it {item}.',
-    '{item}: a {base}, taken off a body, carried by {owner}, and by the end of the week better known than most of the tributes in the field.',
-    'They will put {item} in a case in the Capitol and the card under it will say {base}, which is true and is not the whole of it.',
-    'By the fourth day nobody was describing {owner}\'s weapon by what it was. They were describing it by what it had done, and it had a name for that: {item}.',
-    '{item} outlived the person who brought it into the arena, and the person who took it off them, and finished the week in {owner}\'s hand.',
-    'The {base} is unremarkable. {item} is not. They are the same object, and the difference is entirely what happened in between.',
-    '{owner} never named it. Everybody else did. {item} is what the country settled on, and it stuck.',
-    'A {base} that has killed once is a weapon. {item} had killed more than once by the third day, which is how a thing gets a name in here.',
-    '{item} came out of the horn as anonymous as everything else in it. It is not anonymous now, and neither is {owner}.',
-    'There is a {base} in the Capitol tonight with a name on it. It is called {item}, and it belonged, at the end, to {owner}.',
-];

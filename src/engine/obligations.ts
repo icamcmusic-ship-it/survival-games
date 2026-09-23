@@ -80,8 +80,25 @@ export function canPromise(state: GameState, t: Tribute, kind: Obligation['kind'
              * its entrants against a 29% floor every other archetype clears.
              */
             const needed = t.archetype === 'courier' ? 0 : OBLIGATIONS.supplySpareNeeded;
-            const carried = t.inventory.filter(i => i.type === 'food' || i.type === 'water'
-                || (t.archetype === 'courier' && i.type === 'medical')).length;
+            /*
+             * §12: count the rations, not the entries.
+             *
+             * This was `.length`, so a tribute carrying one food item with a
+             * stack of three read as carrying one and could never clear "a
+             * spare beyond the one you are living on". Stacks are real
+             * everywhere else — `consumeOne` decrements one and leaves the
+             * entry in place — so the check was asking a question about
+             * inventory slots while the comment above it describes portions.
+             *
+             * Measured before the fix: of 2,286 tribute-cycles with a hungry
+             * ally standing there, the tribute could promise supply 29 times.
+             * That is 1.3%, and it is why no `supply` obligation has ever been
+             * created in any measured run.
+             */
+            const carried = t.inventory
+                .filter(i => i.type === 'food' || i.type === 'water'
+                    || (t.archetype === 'courier' && i.type === 'medical'))
+                .reduce((sum, i) => sum + (i.stack ?? 1), 0);
             return carried > needed;
         }
         case 'escort':
@@ -263,7 +280,26 @@ export function tickObligations(ctx: SimContext) {
                     ? from.zone !== o.detail
                     : isDowned(to);
             const couldHave = together && stillWanted && canPromise(state, from, o.kind);
-            o.status = couldHave ? 'broken' : 'lapsed';
+            /*
+             * §12: three outcomes, not two.
+             *
+             * `lapsed` was carrying two different facts. "They could not" is
+             * one of them; "it never came due" is the other, and they are not
+             * the same thing about the person who promised. Measured over 150
+             * runs, the 23 expired rescues split 8 and 15: eight never came
+             * due, because the ally did not go down inside the window, and
+             * fifteen were real failures, where the ally *was* down and the
+             * promiser was not there or was in no state to reach them. The
+             * ledger recorded all 23 identically, which hid the fifteen that
+             * are actually worth reading.
+             *
+             * Neither costs the promiser anything, so this is a record-honesty
+             * fix rather than a behavioural one. But the record is what the
+             * chronicle and any future reader of this ledger see, and a
+             * rescue that was never needed should not read the same as one
+             * somebody could not reach.
+             */
+            o.status = couldHave ? 'broken' : stillWanted ? 'lapsed' : 'moot';
             if (couldHave) {
                 adjustRel(to, from.id, -OBLIGATIONS.brokenRegard);
                 from.faithBroken = (from.faithBroken ?? 0) + 1;
