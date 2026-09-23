@@ -2912,6 +2912,24 @@ export const COMBAT = {
     killSanityBreakdown: 25,
     /** A fleeing opponent this far gone was spared, not merely escaped. */
     mercyHealth: 25,
+    /*
+     * §12: what being spared is worth to the person spared.
+     *
+     * Sparing was half a beat. The winner earned `Merciful` and twenty points
+     * of audience excitement; the tribute who was allowed to live felt
+     * nothing at all — no gratitude, no trust, no record of who had done it.
+     * The site's own comment says "the arena remembers people who make it",
+     * and the one person with the most reason to remember did not.
+     *
+     * Deliberately regard and trust rather than a drop in fear. Somebody who
+     * just beat you and chose not to finish it is exactly as dangerous as
+     * they were a moment ago, and knowing they will not kill you when they
+     * have the chance is a different fact from not being afraid of them.
+     * Being grateful to someone you are still frightened of is the honest
+     * shape of it.
+     */
+    mercyRegard: 18,
+    mercyTrust: 12,
     /** Below this, a landed hit reads as finishing the fight rather than opening it. */
     finishingHealthThreshold: 30,
     /** Power a Vengeful tribute brings against the specific person they hate. */

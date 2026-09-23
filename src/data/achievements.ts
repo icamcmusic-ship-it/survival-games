@@ -3333,6 +3333,29 @@ export const ACHIEVEMENTS: Achievement[] = [
          * The evidence is typed rather than parsed, so no rewording can move
          * it and log trimming cannot lose it.
          */
+        id: 'mercy-withdrawn',
+        name: 'Twice Was Too Many',
+        hint: 'See a tribute kill somebody they had already let walk away once.',
+        category: 'combat',
+        rarity: 'rare',
+        test: state => happened(state, 'mercy-withdrawn'),
+    },
+    {
+        /*
+         * AUDIT-10 §12 proposes "Receipt of Mercy": a tribute spared during an
+         * execution opportunity later supplies treatment to that same person.
+         * It cannot happen. Over 150 runs, sparings are abundant — 111 of
+         * them, in 50.7% of runs — and treatment is common at 80% of runs, and
+         * the conjunction occurred zero times, because sparing happens between
+         * enemies and treatment between allies. The two systems never touch.
+         *
+         * The same measurement found the inverse happening 17 times: the
+         * sparer meeting the spared again and finishing it, about one sparing
+         * in seven. So this ships in place of the proposal, which is what the
+         * audit means by "strengthen or replace a weak existing entry where
+         * appropriate" — the spec was the weak entry, and the simulation had
+         * the better beat in it all along.
+         */
         id: 'who-really-cut-it',
         name: 'Who Really Cut It',
         hint: 'See a tribute overturn something they were told about a killing, because they saw it themselves.',

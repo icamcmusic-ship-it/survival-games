@@ -41,7 +41,7 @@ const MIGRATED = ['wildfire', 'lone-wolf', 'three-fingers', 'the-tended', 'the-p
     // AUDIT-10 §12 requires save/resume coverage for every new achievement.
     // These three read typed milestones rather than the chronicle, so a
     // trimmed log must not move them.
-    'the-returned', 'the-high-ground', 'who-really-cut-it'];
+    'the-returned', 'the-high-ground', 'who-really-cut-it', 'mercy-withdrawn'];
 
 const arenaIds = [...ARENAS.map(a => a.id), 'procedural'];
 
