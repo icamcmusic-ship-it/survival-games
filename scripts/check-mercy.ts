@@ -28,7 +28,15 @@ import { GameState } from '../src/models/types';
 import { configForProfile, gamesProfileFor } from '../src/engine/gamesProfile';
 import { getRel } from '../src/engine/relationships';
 
-const RUNS = Number(process.env.MERCY_RUNS ?? 120);
+/*
+ * 480 rather than 120: the gratitude bound below sits ~5pp from each of the
+ * two states it separates, and 120 runs is only ~120 sparings — a standard
+ * error near 4.5pp. It failed a build at 37.1% with the feature intact.
+ * Re-measured at 480 runs: 42.8% as shipped, 32.6% with `mercyRegard` and
+ * `mercyTrust` zeroed, so the bar still fails the broken state and now has
+ * about two standard errors of room on either side.
+ */
+const RUNS = Number(process.env.MERCY_RUNS ?? 480);
 const arenaIds = [...ARENAS.map(a => a.id), 'procedural'];
 
 function start(seed: string, arenaId: string, gm: boolean): GameState {
@@ -103,7 +111,7 @@ if (sparingRuns > 0 && withdrawn / Math.max(1, sparingRuns) > 0.6) {
  *
  * What gratitude actually does, measured by switching `mercyRegard` and
  * `mercyTrust` to zero and re-running: 35.2% of spared tributes end on
- * positive terms without it, 42.7% with it. So the bar sits between those two
+ * positive terms without it, 42.7% with it (120 runs; at 480, 32.6% / 42.8%). So the bar sits between those two
  * — it fails if the gratitude is removed and passes as shipped, which is the
  * only thing a bound here can honestly assert.
  */

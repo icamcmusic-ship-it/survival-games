@@ -1076,7 +1076,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // AUDIT-7: observed across 500 runs, so no longer 'possible?' — the label
         // means the simulation is believed able to do this and no measured run
         // ever has, and a measured run now has.
-        rarity: 'possible',
+        rarity: 'legendary',
         test: state => alive(state).length === 0,
         /*
          * REQUEST (run length): this became genuinely rare and needed to start
@@ -1962,7 +1962,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'social',
         // AUDIT-7: the §4.1 trust wiring and the §4.2 keeper role between them
         // made the arena economy busy enough for this to land. 0.4% of 500 runs.
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (_s, v) => !!v
             && [(v.extortedIds?.length ?? 0) > 0,
                 (v.extortedByIds?.length ?? 0) > 0,
@@ -2283,7 +2283,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Walking Wounded',
         hint: 'Crown a victor carrying five or more separate injuries.',
         category: 'survival',
-        rarity: 'possible',
+        rarity: 'legendary',
         // AUDIT-8 §1.4: this shared a byte-identical predicate with 'crown-limping'.
         // Two cards for one boolean, always flipping together. Re-gated to the
         // harder half of the same idea rather than deleted, so no id already in
@@ -4317,7 +4317,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Scored a One',
         hint: 'Crown a victor who scored 1 on the training floor.',
         category: 'reaping',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (_s, v) => !!v && v.trainingScore <= 1,
         nearMiss: (_s, v) => (v && v.trainingScore === 2 ? `${v.name} scored a 2` : undefined),
     },
@@ -4898,7 +4898,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Nobody Kept Anything',
         hint: 'See ten or more betrayals in one Games.',
         category: 'games',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: state => state.tributes.reduce((n, t) => n + (t.betrayalsCommitted ?? 0), 0) >= 10,
         nearMiss: state => {
             const n = state.tributes.reduce((s, t) => s + (t.betrayalsCommitted ?? 0), 0);
@@ -5233,7 +5233,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'a8-every-site',
         name: 'Every Site',
         hint: 'Crown a victor who was hurt at three or more separate body sites over the run.',
-        category: 'survival', rarity: 'possible',
+        category: 'survival', rarity: 'legendary',
         // AUDIT-8: all four sites never happened in 500 runs. Three does.
         test: (_s, v) => !!v && (['head', 'torso', 'arms', 'legs'] as const).filter(site =>
             v.injuries[site] || (v.injurySeverity?.[site] ?? 0) > 0 || !!v.scars?.[site]).length >= 3,
@@ -5507,7 +5507,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'a8-twelve-years-old',
         name: 'Twelve Years Old',
         hint: 'Crown a victor at the youngest age the bowl can draw.',
-        category: 'reaping', rarity: 'possible',
+        category: 'reaping', rarity: 'legendary',
         test: (_s, v) => !!v && v.age <= 12,
         nearMiss: (_s, v) => (v?.age === 13 ? 'thirteen; twelve is the bar' : undefined),
     },
@@ -5515,7 +5515,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'a8-put-their-hand-up',
         name: 'Put Their Hand Up',
         hint: 'Crown a volunteer in a year when almost nobody volunteered.',
-        category: 'reaping', rarity: 'possible',
+        category: 'reaping', rarity: 'legendary',
         test: (state, v) => !!v && v.volunteered === true
             && state.tributes.filter(t => t.volunteered).length <= 3,
         nearMiss: (state, v) => (v?.volunteered === true

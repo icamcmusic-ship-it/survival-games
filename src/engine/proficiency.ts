@@ -1,5 +1,6 @@
 import { ArchetypeId, Item, Proficiency, Tribute } from '../models/types';
-import { DRIFT, PROFICIENCY } from '../data/balance';
+import { DRIFT, PROFICIENCY, VOLUNTEER } from '../data/balance';
+import { ITEMS } from '../data/constants';
 import { craftOf } from '../data/districts';
 import { strengthCapForAge } from './physique';
 import { isAggressiveStance } from '../data/stances';
@@ -127,6 +128,39 @@ export function blankProficiencies(
     const held = start[signature] ?? 0;
     start[signature] = Math.round(Math.min(PROFICIENCY.max, Math.max(held, floor)) * 100) / 100;
     return start;
+}
+
+/**
+ * §(requests): the weapons a Career academy actually drills. Proper arms only —
+ * nobody trains on rebar — and more than any one volunteer ever covers.
+ */
+export const ACADEMY_WEAPONS: readonly string[] = [
+    'sword', 'bow', 'axe', 'knife', 'spear', 'mace', 'trident', 'machete',
+    'dagger', 'kukri', 'falchion', 'rapier', 'halberd', 'warhammer',
+    'boarspear', 'javelin', 'throwing-axes', 'harpoon', 'crossbow',
+];
+
+/**
+ * §(requests): a volunteer Career's academy years.
+ *
+ * Full familiarity with several academy weapons (never all of them), and the
+ * combat skills those weapons use floored high. Floored, not added, so a
+ * tribute who already arrived better keeps it.
+ */
+export function academyTraining(rng: RNG, t: Tribute) {
+    const count = rng.nextInt(VOLUNTEER.academyWeaponsMin, VOLUNTEER.academyWeaponsMax);
+    const drilled = rng.shuffle([...ACADEMY_WEAPONS]).slice(0, Math.min(count, ACADEMY_WEAPONS.length - 1));
+    t.weaponFamiliarity = t.weaponFamiliarity ?? {};
+    drilled.forEach(id => { t.weaponFamiliarity![id] = PROFICIENCY.familiarCap; });
+
+    const classes = new Set(drilled.map(id => ITEMS.find(i => i.id === id)?.weaponClass));
+    const skills: Proficiency[] = ['melee'];
+    if (classes.has('ranged')) skills.push('ranged');
+    if (classes.has('thrown')) skills.push('ranged', 'throwing');
+    t.proficiencies = t.proficiencies ?? {};
+    skills.forEach(skill => {
+        t.proficiencies![skill] = Math.max(t.proficiencies![skill] ?? 0, VOLUNTEER.academyCombatFloor);
+    });
 }
 
 /**

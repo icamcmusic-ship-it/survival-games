@@ -9,7 +9,7 @@ import { REAPING_NOTE_TEXTS } from '../data/pregames';
 import { LEGACY_EFFECTS, craftOf, legacyOf } from '../data/districts';
 import { blankMemory } from './memory';
 import { strengthCapForAge } from './physique';
-import { blankProficiencies } from './proficiency';
+import { academyTraining, blankProficiencies } from './proficiency';
 import { seedBackstoryRelationships } from './relationships';
 import { addExcitement } from './audience';
 import { CastShape, Quell } from '../data/gamesProfile';
@@ -226,6 +226,7 @@ function applyVolunteer(rng: RNG, t: Tribute, shape?: CastShape) {
         t.attributes.agility = Math.min(10, t.attributes.agility + VOLUNTEER.careerAgilityBonus);
         t.reputation = Math.min(95, t.reputation + VOLUNTEER.careerTrust);
         addExcitement(t, VOLUNTEER.careerExcitement);
+        academyTraining(rng, t);
         t.reapingNote = composeNote(rng.pick(REAPING_NOTE_TEXTS.careerVolunteer)
             .split('{blurb}').join(craftOf(t.district).blurb)
             .split('{district}').join(String(t.district)));
