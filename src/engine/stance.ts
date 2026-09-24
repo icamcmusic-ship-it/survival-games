@@ -910,7 +910,7 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
     };
 
     const ranked = (Object.entries(scores) as Array<[Stance, number]>).sort((a, b) => b[1] - a[1]);
-    const [bestStance, bestScore] = ranked[0] ?? ['Defensive', 0];
+    let [bestStance, bestScore] = ranked[0] ?? ['Defensive', 0];
 
     // A §1: what the scorer actually saw, kept for one cycle so the tribute
     // sheet can answer "why did they do that?" and the soak can audit it.
@@ -943,6 +943,15 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
     // A conditional stance whose situation has passed is vacated at once — the
     // hold is a stability device, not a trap.
     const stillValid = available.includes(t.stance);
+    // AUDIT-11: ...but vacating one situation is not the same as walking into
+    // the next. A tribute whose conditional stance lapsed was chaining straight
+    // into another (Baiting -> Scavenging -> Tending, one a cycle), each entry
+    // skipping the hold because the incumbent had become invalid. They fall
+    // back to a base stance for a cycle first.
+    if (!stillValid && STANCE_PROFILES[t.stance]?.conditional && STANCE_PROFILES[bestStance]?.conditional) {
+        const base = ranked.find(([stance]) => !STANCE_PROFILES[stance]?.conditional);
+        if (base) [bestStance, bestScore] = base;
+    }
 
     if (bestStance === t.stance) {
         t.stanceHeld += 1;

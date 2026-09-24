@@ -5278,7 +5278,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Nobody Kept Anything',
         hint: 'See ten or more betrayals in one Games.',
         category: 'games',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: state => state.tributes.reduce((n, t) => n + (t.betrayalsCommitted ?? 0), 0) >= 10,
         nearMiss: state => {
             const n = state.tributes.reduce((s, t) => s + (t.betrayalsCommitted ?? 0), 0);
