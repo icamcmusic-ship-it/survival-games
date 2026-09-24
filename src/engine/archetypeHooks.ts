@@ -753,6 +753,8 @@ export const SIGNATURES: Record<string, Signature> = {
         witnesses.forEach(w => {
             adjustRel(w, t.id, ARCHETYPE_HOOKS.penitentRegard);
             witnessKindness(ctx, t, w);
+            // AUDIT-11 §11: a personal payoff, not only regard.
+            grantTruce(ctx, t, w, ARCHETYPE_HOOKS.penitentTruceCycles, 'brokered');
         });
         // What it costs: everybody now knows the one thing they will not do.
         loseSanity(t, ARCHETYPE_HOOKS.penitentSanity);
@@ -1110,6 +1112,9 @@ export const SIGNATURES: Record<string, Signature> = {
         say(ctx, t, 'understudyReason', [t.id], { days: String(t.daysSurvived) });
         t.resolve = Math.min(100, (t.resolve ?? 50) + ARCHETYPE_HOOKS.understudyResolve);
         t.vitals.sanity = Math.min(100, t.vitals.sanity + ARCHETYPE_HOOKS.understudySanity);
+        // AUDIT-11 §11: the reason is a second wind, not only a mood.
+        t.health = Math.min(100, t.health + ARCHETYPE_HOOKS.understudyHeal);
+        t.vitals.fatigue = Math.max(0, t.vitals.fatigue - ARCHETYPE_HOOKS.understudyFatigueRelief);
         clampTribute(t);
         addExcitement(t, ARCHETYPE_HOOKS.signatureExcitement);
         return true;

@@ -6,7 +6,7 @@ import { ReplayFallenStrip } from '../components/ReplayFallenStrip';
 import { TributeModal } from '../components/TributeModal';
 import { TributeCompare } from '../components/TributeCompare';
 import { ChronicleFilters } from '../components/ChronicleFilters';
-import { ChronicleState, chronicleStore, filtersActive, setChronicle } from '../store/chronicleStore';
+import { ChronicleState, chronicleStore, filtersActive, passesFollowCam, setChronicle } from '../store/chronicleStore';
 import { isDialogOpen } from '../ui/useDialogFocus';
 import { useStore } from '../store/createStore';
 import { prefsStore } from '../store/prefsStore';
@@ -290,6 +290,7 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
             } else if ((filters.filterTributeId || filters.filterTributeId2)
                 && !(filters.filterTributeId && log.tributesInvolved.includes(filters.filterTributeId))
                 && !(filters.filterTributeId2 && log.tributesInvolved.includes(filters.filterTributeId2))) return false;
+            if (!passesFollowCam(filters, log.tributesInvolved)) return false;
             if (filters.filterDay !== null && log.day !== filters.filterDay) return false;
             if (needle && !log.text.toLowerCase().includes(needle)) return false;
             const tier = tierOf(log);

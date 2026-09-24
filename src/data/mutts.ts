@@ -1,4 +1,5 @@
 import { Mutt } from '../models/types';
+import { HIPPODROME_SET_MUTTS } from './arenaExtrasSetHippodrome';
 
 /**
  * Mutt data model: per-arena rosters.
@@ -2017,6 +2018,182 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             fearAura: 5,
         },
     ],
+    // ---- the five building arenas ----
+    gallery: [
+        {
+            id: 'chorus-rats', name: 'Chorus Rats',
+            packSize: [8, 16], damage: 5, speed: 7,
+            inflicts: { bleeding: true, infected: true },
+            terrainPreference: ['ruins', 'cave', 'urban'],
+            role: 'swarm',
+            fearAura: 4,
+        },
+        {
+            // They learn a voice from the house and use it back at you.
+            id: 'understudies', name: 'The Understudies',
+            packSize: [1, 3], damage: 20, speed: 8,
+            inflicts: { bleeding: true },
+            terrainPreference: ['urban', 'open', 'ruins'],
+            role: 'mimic',
+            fearAura: 12,
+        },
+        {
+            id: 'loft-bats', name: 'Loft Bats',
+            packSize: [6, 14], damage: 7, speed: 11,
+            inflicts: { bleeding: true, head: true },
+            terrainPreference: ['urban', 'cave', 'open'],
+            role: 'swarm',
+            nocturnal: true,
+            fearAura: 6,
+        },
+        {
+            id: 'the-prompter', name: 'The Prompter',
+            packSize: [1, 1], damage: 30, speed: 8,
+            inflicts: { bleeding: true, torso: true },
+            terrainPreference: ['cave', 'ruins'],
+            role: 'ambusher',
+            persistent: true,
+            fearAura: 14,
+        },
+    ],
+    malthouse: [
+        {
+            id: 'mash-rats', name: 'Mash Rats',
+            packSize: [8, 15], damage: 5, speed: 7,
+            inflicts: { bleeding: true, infected: true },
+            terrainPreference: ['open', 'urban', 'cave', 'ruins'],
+            role: 'swarm',
+            fearAura: 4,
+        },
+        {
+            id: 'still-wasps', name: 'Still Wasps',
+            packSize: [10, 20], damage: 4, speed: 11,
+            inflicts: { poisoned: true },
+            terrainPreference: ['urban', 'forest', 'open'],
+            role: 'swarm',
+            fearAura: 6,
+        },
+        {
+            id: 'cooper-hounds', name: 'Cooper Hounds',
+            packSize: [3, 6], damage: 19, speed: 9,
+            inflicts: { bleeding: true, legs: true },
+            terrainPreference: ['open', 'urban', 'wetland', 'forest'],
+            role: 'herder',
+            persistent: true,
+            fearAura: 8,
+        },
+        {
+            id: 'silo-weevils', name: 'Silo Weevils',
+            packSize: [10, 20], damage: 3, speed: 5,
+            inflicts: { infected: true },
+            terrainPreference: ['urban', 'ruins', 'cave'],
+            role: 'parasite',
+            fearAura: 5,
+        },
+    ],
+    circuit: [
+        {
+            id: 'tyre-hounds', name: 'Tyre Hounds',
+            packSize: [3, 6], damage: 20, speed: 10,
+            inflicts: { bleeding: true, legs: true },
+            terrainPreference: ['open', 'urban'],
+            persistent: true,
+            fearAura: 8,
+        },
+        {
+            id: 'grid-crows', name: 'Grid Crows',
+            packSize: [6, 14], damage: 7, speed: 11,
+            inflicts: { bleeding: true, head: true },
+            terrainPreference: ['open', 'highland', 'urban'],
+            role: 'swarm',
+            fearAura: 5,
+        },
+        {
+            id: 'oil-rats', name: 'Oil Rats',
+            packSize: [6, 12], damage: 6, speed: 7,
+            inflicts: { bleeding: true, infected: true },
+            terrainPreference: ['urban', 'ruins', 'cave'],
+            role: 'scavenger',
+            fearAura: 4,
+        },
+        {
+            id: 'the-marshal', name: 'The Marshal',
+            packSize: [1, 1], damage: 28, speed: 8,
+            inflicts: { bleeding: true, torso: true },
+            terrainPreference: ['cave', 'open'],
+            role: 'ambusher',
+            persistent: true,
+            fearAura: 13,
+        },
+    ],
+    wardblock: [
+        {
+            id: 'block-hounds', name: 'Block Hounds',
+            packSize: [3, 6], damage: 20, speed: 9,
+            inflicts: { bleeding: true, legs: true },
+            terrainPreference: ['open', 'ruins', 'urban'],
+            role: 'herder',
+            persistent: true,
+            fearAura: 9,
+        },
+        {
+            id: 'trusties', name: 'The Trusties',
+            packSize: [1, 3], damage: 22, speed: 8,
+            inflicts: { bleeding: true, arms: true },
+            terrainPreference: ['ruins', 'urban'],
+            role: 'mimic',
+            fearAura: 12,
+        },
+        {
+            id: 'drain-roaches', name: 'Drain Roaches',
+            packSize: [10, 20], damage: 3, speed: 6,
+            inflicts: { infected: true },
+            terrainPreference: ['cave', 'urban', 'ruins'],
+            role: 'swarm',
+            fearAura: 5,
+        },
+        {
+            id: 'tower-kites', name: 'Tower Kites',
+            packSize: [2, 5], damage: 12, speed: 12,
+            inflicts: { bleeding: true, head: true },
+            terrainPreference: ['highland', 'open'],
+            fearAura: 6,
+        },
+    ],
+    glasshouse: [
+        {
+            id: 'pitcher-vines', name: 'Pitcher Vines',
+            packSize: [1, 3], damage: 18, speed: 5,
+            inflicts: { poisoned: true },
+            terrainPreference: ['forest', 'cave', 'ruins'],
+            role: 'ambusher',
+            fearAura: 9,
+        },
+        {
+            id: 'pane-wasps', name: 'Pane Wasps',
+            packSize: [10, 20], damage: 4, speed: 11,
+            inflicts: { poisoned: true },
+            terrainPreference: ['open', 'highland', 'desert', 'urban'],
+            role: 'swarm',
+            fearAura: 6,
+        },
+        {
+            id: 'koi-mutts', name: 'Koi Mutts',
+            packSize: [2, 5], damage: 16, speed: 8,
+            inflicts: { bleeding: true, legs: true },
+            terrainPreference: ['water'],
+            role: 'ambusher',
+            fearAura: 8,
+        },
+        {
+            id: 'cactus-wrens', name: 'Cactus Wrens',
+            packSize: [5, 12], damage: 7, speed: 11,
+            inflicts: { bleeding: true, head: true },
+            terrainPreference: ['desert', 'open', 'ruins', 'urban'],
+            role: 'swarm',
+            fearAura: 5,
+        },
+    ],
     /*
      * AUDIT-11 §7: the five procedural biomes that shipped with no bestiary
      * entry of their own. Generated arenas still roll their own roster; these
@@ -2136,3 +2313,6 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
         },
     ],
 };
+
+// The Hippodrome set (arenasSetHippodrome.ts): rosters kept with the set.
+Object.assign(ARENA_MUTTS, HIPPODROME_SET_MUTTS);

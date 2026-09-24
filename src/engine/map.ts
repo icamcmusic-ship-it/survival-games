@@ -9,6 +9,7 @@ import { SimContext, getAlive } from './context';
 import { profOf, trainProficiency } from './proficiency';
 import { resolveCombat } from './combat';
 import { allied } from './alliance';
+import { isPermanentCut, latentEdgeClosed, regrowthScale, ruleTransitCycles } from './arenaRules';
 
 export function zoneNames(arena: Arena): string[] {
     return arena.zones.map(z => z.name);
@@ -179,9 +180,11 @@ function runGarrison(ctx: SimContext, t: Tribute, from: string, to: string) {
 
 /** §11.6: extra transit cycles a tolled edge adds on top of terrain cost. */
 export function edgeTimeCost(state: GameState, from: string, to: string): number {
+    // Generic arena rules: a whiteout or a hall of mirrors slows every crossing.
+    const extra = ruleTransitCycles(state, from);
     const rule = state.arena.edgeRules?.[edgeKey(from, to)];
-    if (!rule || rule.kind !== 'tolled') return 0;
-    return rule.toll?.timeCost ?? 0;
+    if (!rule || rule.kind !== 'tolled') return extra;
+    return (rule.toll?.timeCost ?? 0) + extra;
 }
 
 /** Deterministic per-name hash in [0, 1), so derived features are stable per zone. */
@@ -380,6 +383,8 @@ export interface EdgeContext {
  */
 function edgeAllowed(arena: Arena, a: string, b: string, time?: 'day' | 'night', who?: EdgeContext): boolean {
     const key = edgeKey(a, b);
+    // Generic arena rule: a latent route stays shut until something opens it.
+    if (latentEdgeClosed(who?.state, arena.rules, a, b)) return false;
     const rule = arena.edgeRules?.[key];
     // §5 `oneWayBorders`: an arena where the whole map is a current. Every
     // unruled edge runs one way, decided by the zone order so it is stable
@@ -636,7 +641,8 @@ export function regenerateZones(ctx: SimContext): string[] {
             delete state.zoneDepletion![name];
             return;
         }
-        const next = Math.max(0, current - ZONES.regenPerCycle);
+        // Generic arena rule: some ground grows back slower (arenaRules.ts).
+        const next = Math.max(0, current - ZONES.regenPerCycle * regrowthScale(state, name));
         if (next <= 0.001) delete state.zoneDepletion![name];
         else state.zoneDepletion![name] = Math.round(next * 1000) / 1000;
 
@@ -696,7 +702,8 @@ export function regenerateZones(ctx: SimContext): string[] {
  */
 export function tickOpeningEdges(ctx: SimContext) {
     const state = ctx.state;
-    const severed = state.severedEdges ?? [];
+    // Generic arena rule: a permanent cut is never put back.
+    const severed = (state.severedEdges ?? []).filter(k => !isPermanentCut(state, k));
     if (severed.length === 0) return;
     // Not while the arena is closing: the border's cuts are permanent by
     // design, and reopening them would undo the finale.
@@ -706,7 +713,7 @@ export function tickOpeningEdges(ctx: SimContext) {
     const key = ctx.rng.pick(severed);
     const [a, b] = key.split('|');
     if (!getZone(state.arena, a) || !getZone(state.arena, b)) return;
-    state.severedEdges = severed.filter(k => k !== key);
+    state.severedEdges = (state.severedEdges ?? []).filter(k => k !== key);
     ctx.logEvent(
         `The way between ${a} and ${b} is passable again — the water has dropped, or the burn has cooled, `
         + 'or whatever came down has settled enough to climb. Nobody who wrote it off is going to find out quickly.',

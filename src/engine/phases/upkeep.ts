@@ -11,7 +11,7 @@ import { tickExposure } from '../survival';
 import { tickZoneEffects } from '../zoneEffects';
 import { tickAbandonedWork } from '../abandonedWork';
 import { exchangeWarnings } from '../warnings';
-import { tickReunions } from '../reunion';
+import { tickReunions, tickVeteranMoments } from '../reunion';
 
 /**
  * AUDIT-9 B01: the upkeep every elapsed phase owes, in one place.
@@ -121,6 +121,7 @@ export function worldClockUpkeep(ctx: SimContext) {
     // B5-01: and allies who have not seen each other for days, walking back
     // into each other.
     tickReunions(ctx);
+    tickVeteranMoments(ctx);
     // B3-03: a tribute may be recruited into an existing alliance, which never
     // passes through `registerAlliance`. Sweeping the live field each cycle
     // catches every such join; between the two, missing one would take a pack

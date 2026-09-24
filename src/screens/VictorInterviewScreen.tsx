@@ -2,6 +2,13 @@ import React from 'react';
 import { GameState } from '../models/types';
 import { FastForward, Radio } from 'lucide-react';
 
+const RECEPTION: Record<number, string> = {
+    [-1]: 'a cool silence — the answers did not play',
+    0: 'polite applause',
+    1: 'warm applause, and a few people crying',
+    2: 'on its feet — they adored it',
+};
+
 export function VictorInterviewScreen({ gameState, onProceed }: { gameState: GameState, onProceed: () => void }) {
     const interview = gameState.epilogueInterview || [];
     const winner = gameState.tributes.find(t => t.status === 'alive');
@@ -39,12 +46,18 @@ export function VictorInterviewScreen({ gameState, onProceed }: { gameState: Gam
                                 <p className="text-[var(--ink)] font-medium">
                                     <span className="sr-only">{winner ? `${winner.name} answers: ` : 'The victor answers: '}</span>
                                     {strip(qa.answer)}
+                                    {qa.tone && <span className="chip text-micro ml-2 align-middle">{qa.tone}</span>}
                                 </p>
                             </div>
                         </li>
                     ))}
                     {interview.length === 0 && <li className="empty-state">The stage remains quiet.</li>}
                 </ol>
+                {gameState.interviewReception !== undefined && (
+                    <p className="text-sm text-[var(--color-ink-400)]" data-testid="interview-reception">
+                        The Capitol's verdict: {RECEPTION[gameState.interviewReception] ?? 'polite applause'}.
+                    </p>
+                )}
 
                 <div className="pt-5 border-t border-[var(--color-ink-800)] flex justify-end">
                     <button onClick={onProceed} className="btn btn-gold">

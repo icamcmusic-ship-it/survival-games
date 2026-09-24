@@ -927,6 +927,178 @@ export const ARENA_EVENT_PACKS: Record<string, ArenaEventPack> = {
             announce: 'The ground in {zones} is fired to glass. Those sectors are out of bounds.',
         },
     ]),
+    // ---- the five building arenas ----
+    gallery: pack('gallery', 'The Performance',
+        'A house built to carry a voice to the back row, and a Gamemaker at the sound desk.', [
+        {
+            id: 'gallery-house-lights',
+            name: 'House Lights',
+            summary: 'Every light in the house comes up at once. Every tribute\'s position is shown to every other.',
+            kind: 'revealAll', minDay: 2,
+            announce: 'The house lights come up to full. There is no dark seat left in the Gallery.',
+        },
+        {
+            id: 'gallery-the-curtain',
+            name: 'The Curtain',
+            summary: 'The fire curtain drops and the smoke machines run. Three rooms fill with smoke.',
+            kind: 'effectSweep', effect: 'fogbound', zones: 3, minDay: 3,
+            announce: 'The fire curtain comes down and the smoke machines start in {zones}.',
+        },
+    ]),
+    malthouse: pack('malthouse', 'The Distillation',
+        'Stills, boilers and a cellar full of vapour, and a Gamemaker with a match.', [
+        {
+            id: 'malthouse-the-flash',
+            name: 'The Flash',
+            summary: 'The vapour in three rooms is lit at once. They burn, and whoever is in them burns too.',
+            kind: 'effectSweep', effect: 'burning', zones: 3, minDay: 3,
+            announce: 'The vapour in {zones} is lit. Those rooms are on fire.',
+        },
+        {
+            id: 'malthouse-the-tapping',
+            name: 'The Tapping',
+            summary: 'A cask store is opened at the Cornucopia and the tapping is announced. Everybody short of water hears it.',
+            kind: 'supplyDrop', minDay: 2,
+            announce: 'Casks are broached on the fermentation floor. The tapping is announced arena-wide.',
+        },
+    ]),
+    circuit: pack('circuit', 'The Race Day',
+        'A speedway run to a timetable, one direction, with the pits as the only drop zone.', [
+        {
+            id: 'circuit-red-flag',
+            name: 'Red Flag',
+            summary: 'The track is closed. Four routes are cut and the field is stuck where the flag caught it.',
+            kind: 'severRoutes', amount: 4, minDay: 2,
+            announce: 'Red flag. These sections of the circuit are closed: {zones}.',
+        },
+        {
+            id: 'circuit-refuelling',
+            name: 'Refuelling',
+            summary: 'The fuel depot is lit off and the fire spreads. Three sectors burn.',
+            kind: 'effectSweep', effect: 'burning', zones: 3, minDay: 3,
+            announce: 'Fuel is spilled and lit across {zones}. It is not being put out.',
+        },
+    ]),
+    wardblock: pack('wardblock', 'The Regime',
+        'A prison that still runs its day: counts, bells and doors, on a timer nobody posted.', [
+        {
+            id: 'wardblock-the-count',
+            name: 'The Count',
+            summary: 'A roll call. Every tribute\'s cell and position is read out to the whole block.',
+            kind: 'revealAll', minDay: 2,
+            announce: 'Count. Every tribute\'s location is read out over the speakers.',
+        },
+        {
+            id: 'wardblock-riot-bell',
+            name: 'The Riot Bell',
+            summary: 'The riot bell rings and the handlers let the dogs in. Every tribute in the open is engaged.',
+            kind: 'muttRelease', minDay: 3,
+            announce: 'The riot bell rings. The block\'s dogs are loose in the yard and the corridors.',
+        },
+    ]),
+    glasshouse: pack('glasshouse', 'The Season',
+        'A conservatory under failing glass, and a Gamemaker with a hand on the heating.', [
+        {
+            id: 'glasshouse-heat-up',
+            name: 'Heat Up',
+            summary: 'The boilers are opened full. Every tribute takes heat damage and their water goes.',
+            kind: 'exposureSurge', amount: 12, minDay: 2,
+            announce: 'The heating is opened to full across the Glasshouse. Nothing under the glass is out of it.',
+        },
+        {
+            id: 'glasshouse-the-misting',
+            name: 'The Misting',
+            summary: 'The misting system runs for a day. Three wings fill with fog and nobody can see across them.',
+            kind: 'effectSweep', effect: 'fogbound', zones: 3, minDay: 3,
+            announce: 'The misting heads open over {zones}. Those wings are under fog.',
+        },
+    ]),
+    // ---- The Hippodrome set (arenasSetHippodrome.ts) ----
+    hippodrome: pack('hippodrome', 'The Showtime',
+        'A park switched back on for one last season, run by somebody with a hand on every lever.', [
+        {
+            id: 'hippodrome-smoke',
+            name: 'The Smoke Machines',
+            summary: 'Four sectors fill with stage smoke. Nobody in them can see more than a few metres.',
+            kind: 'effectSweep', effect: 'fogbound', zones: 4, minDay: 2,
+            announce: 'The smoke machines in {zones} are switched on and left on.',
+        },
+        {
+            id: 'hippodrome-parade',
+            name: 'The Parade',
+            summary: 'The animatronics come down off their booths and walk the park. Everyone on open ground meets them.',
+            kind: 'muttRelease', minDay: 3,
+            announce: 'The calliope changes tune. Every animatronic in the park steps down off its booth.',
+        },
+    ]),
+    undercroft: pack('undercroft', 'The Timetable',
+        'A railway that still runs to schedule, under a city with nobody left in it.', [
+        {
+            id: 'undercroft-pumps',
+            name: 'Pump Failure',
+            summary: 'The sump pumps stop. Four sectors flood and everyone in them takes drowning damage.',
+            kind: 'effectSweep', effect: 'flooded', zones: 4, minDay: 2,
+            announce: 'The pumps under {zones} stop. The water is coming up.',
+        },
+        {
+            id: 'undercroft-closures',
+            name: 'Line Closures',
+            summary: 'Service gates come down across the network. Four routes are cut.',
+            kind: 'severRoutes', amount: 4, minDay: 3,
+            announce: 'Service gates come down. These routes are closed: {zones}.',
+        },
+    ]),
+    vintage: pack('vintage', 'The Crush',
+        'The last harvest of a vineyard that will not see another, and a Gamemaker who wants it brought in.', [
+        {
+            id: 'vintage-hard-frost',
+            name: 'The Hard Frost',
+            summary: 'A killing frost across the whole slope. Every tribute not under a roof takes cold damage.',
+            kind: 'exposureSurge', amount: 12, minDay: 3,
+            announce: 'The frost comes down the whole slope at once tonight. There is no row it misses.',
+        },
+        {
+            id: 'vintage-crush-feast',
+            name: 'The Crush',
+            summary: 'The press is loaded with the last of the harvest and left at the Cornucopia for anyone who comes.',
+            kind: 'supplyDrop', minDay: 2,
+            announce: 'The last of the harvest is brought in to the crush pad. It is there for whoever comes down for it.',
+        },
+    ]),
+    cinderpeak: pack('cinderpeak', 'The Summit',
+        'A mountain with an observatory on top of it, and weather that is under somebody\'s control.', [
+        {
+            id: 'cinderpeak-rime',
+            name: 'The Rime',
+            summary: 'Four sectors ice over. Everything in them is frozen and every step is a risk.',
+            kind: 'effectSweep', effect: 'frozen', zones: 4, minDay: 2,
+            announce: 'Rime comes down over {zones}. The ground there is glass.',
+        },
+        {
+            id: 'cinderpeak-dome-opens',
+            name: 'The Dome Opens',
+            summary: 'The great telescope is turned on the arena. Every tribute\'s position is broadcast.',
+            kind: 'revealAll', minDay: 3,
+            announce: 'The dome opens and the telescope comes round to face the arena. Every tribute is found.',
+        },
+    ]),
+    opencut: pack('opencut', 'The Blast Plan',
+        'A mine still being worked, on a blast schedule the tributes are not given.', [
+        {
+            id: 'opencut-blast-horn',
+            name: 'The Blast Horn',
+            summary: 'The horn sounds and the benches are shot. Every tribute not in shelter takes blast damage.',
+            kind: 'exposureSurge', amount: 12, minDay: 2,
+            announce: 'The blast horn sounds three times. The charges on the benches go.',
+        },
+        {
+            id: 'opencut-slurry',
+            name: 'Slurry Surge',
+            summary: 'The tailings dam lets go. Three sectors flood with slurry.',
+            kind: 'effectSweep', effect: 'flooded', zones: 3, minDay: 3,
+            announce: 'The tailings wall gives way and slurry comes down over {zones}.',
+        },
+    ]),
 };
 
 /**

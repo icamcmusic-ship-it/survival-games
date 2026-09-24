@@ -525,7 +525,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'saboteur',
         name: 'Saboteur',
         description: 'Does not fight. Poisons caches, springs other people\'s traps, and takes the bridge out behind them.',
-        statBias: { intelligence: 2, stealth: 2 },
+        // AUDIT-11 §11: +1 endurance; the saboteur outlasts rather than outfights.
+        statBias: { intelligence: 2, stealth: 2, endurance: 1 },
         preferredTraits: ['Pyromaniac', 'Paranoid', 'Trapper', 'Chameleon'],
         aggression: -0.1,
         allianceAffinity: -0.05,
@@ -559,7 +560,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
          * whole point of hunt-scoring pressure, and the measured win rate
          * (bottom of the table in three consecutive audits) is the evidence.
          */
-        targetDraw: 0.5,
+        // AUDIT-11 §11: 0.5 -> -1.5. Nobody has proved it was them yet.
+        targetDraw: -1.5,
         tagline: 'Breaks the board, not the pieces.',
         // Audit 4 §8.3: They are rarely the one in the room when it happens.
         fearScale: 0.9,
@@ -989,7 +991,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'penitent',
         name: 'Penitent',
         description: 'Came here having already decided what they will not do. Tends the hurt, takes the hit, and does not open the fight.',
-        statBias: { endurance: 2, charisma: 1, willpower: 1 },
+        // AUDIT-11 §11: endurance 2 -> 3.
+        statBias: { endurance: 3, charisma: 1, willpower: 1 },
         preferredTraits: ['Pacifist', 'Merciful', 'Devout', 'Softhearted'],
         aggression: -0.3,
         allianceAffinity: 0.25,
@@ -1004,7 +1007,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         // Nothing is dulled for them. That is rather the point.
         fearScale: 1.3,
         tagline: 'Not by my hand.',
-        targetDraw: -2,
+        // AUDIT-11 §11: -2 -> -4.5, with the vow's truce as the payoff.
+        targetDraw: -4.5,
     },
 
     /**
@@ -1088,7 +1092,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
          * the field to notice. The endurance is what lets them survive being
          * owed money by somebody dangerous, and nobody hunts the banker first.
          */
-        statBias: { charisma: 2, intelligence: 1, endurance: 1 },
+        // AUDIT-11 §11: endurance 1 -> 2 (bottom third at n=1,600).
+        statBias: { charisma: 2, intelligence: 1, endurance: 2 },
         preferredTraits: ['Barterer', 'Hard Bargain', 'Bookkeeper', 'Broker'],
         aggression: -0.05,
         allianceAffinity: 0.2,
@@ -1102,7 +1107,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         signature: 'brokerTerms',
         hatesArchetypes: ['zealot'],
         tagline: 'Everything is worth something to somebody.',
-        targetDraw: -0.5,
+        // AUDIT-11 §11: -0.5 -> -3. Nobody hunts the banker first.
+        targetDraw: -3,
         fearScale: 1.1,
     },
 
@@ -1167,7 +1173,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'forecaster',
         name: 'Forecaster',
         description: 'Reads sky and ground the way other tributes read faces. Is somewhere sheltered before the front arrives, and has usually said so out loud first, which nobody believes until the second time.',
-        statBias: { intelligence: 2, willpower: 1, endurance: 1 },
+        // AUDIT-11 §11 (second pass): endurance 1 -> 2; it fell to the worst-archetype guard.
+        statBias: { intelligence: 2, willpower: 1, endurance: 2 },
         preferredTraits: ['Reads Ground', 'Gut-Wise', 'Frost-Born', 'Deep-Rooted'],
         aggression: -0.2,
         allianceAffinity: 0.15,

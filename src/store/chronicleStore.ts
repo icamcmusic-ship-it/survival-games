@@ -44,6 +44,14 @@ export interface ChronicleState {
     /** §2.12: the one pinned tribute the feed, dossier and brakes foreground. */
     followedId: string | null;
     /**
+     * AUDIT-11 §4 follow-cam: up to three pinned tributes, first one being
+     * `followedId` (kept in step so everything reading the single id still
+     * works). Transient, like `followedId`; nothing about it is in a save.
+     */
+    pinnedIds: string[];
+    /** Narrow the feed to beats involving a pinned tribute. */
+    followOnly: boolean;
+    /**
      * §2.5: the log line the chronicle should be showing.
      *
      * Written by the "jump to the next death" shortcut (D / Shift+D) and by
@@ -71,6 +79,8 @@ function initialState(): ChronicleState {
         filterDay: null,
         selectedZone: null,
         followedId: null,
+        pinnedIds: [],
+        followOnly: false,
         focusLogId: null,
     };
 }
@@ -80,7 +90,17 @@ export const chronicleStore = createStore<ChronicleState>(initialState());
 /** Which keys are written back to storage. Everything else is per-session. */
 const DURABLE = ['density', 'mutedGroups', 'pauseOnDeath', 'openSections', 'textScale', 'narrowMeasure', 'densityHintSeen'] as const;
 
+export const MAX_PINNED = 3;
+
 export function setChronicle(patch: Partial<ChronicleState>): void {
+    // Keep `followedId` and `pinnedIds` in step whichever one a caller sets.
+    if ('pinnedIds' in patch && patch.pinnedIds) {
+        patch = { ...patch, pinnedIds: patch.pinnedIds.slice(0, MAX_PINNED), followedId: patch.pinnedIds[0] ?? null };
+    } else if ('followedId' in patch) {
+        const cur = chronicleStore.getState().pinnedIds;
+        const id = patch.followedId ?? null;
+        patch = { ...patch, pinnedIds: id === null ? [] : [id, ...cur.filter(x => x !== id)].slice(0, MAX_PINNED) };
+    }
     chronicleStore.setState(patch);
     if (!DURABLE.some(k => k in patch)) return;
     const s = chronicleStore.getState();
@@ -110,6 +130,27 @@ export function toggleSection(id: string): void {
     });
 }
 
+/**
+ * Pin or unpin a tribute for the follow-cam. Pinning a fourth drops the
+ * oldest non-primary pin, so the first pick stays the one the brakes follow.
+ */
+export function togglePin(id: string): void {
+    const cur = chronicleStore.getState().pinnedIds;
+    if (cur.includes(id)) {
+        const next = cur.filter(x => x !== id);
+        setChronicle({ pinnedIds: next, ...(next.length === 0 ? { followOnly: false } : {}) });
+        return;
+    }
+    const next = cur.length >= MAX_PINNED ? [cur[0], ...cur.slice(2), id] : [...cur, id];
+    setChronicle({ pinnedIds: next });
+}
+
+/** The follow-cam filter: true when the line should stay in a follow-only feed. */
+export function passesFollowCam(s: Pick<ChronicleState, 'followOnly' | 'pinnedIds'>, involved: string[]): boolean {
+    if (!s.followOnly || s.pinnedIds.length === 0) return true;
+    return involved.some(id => s.pinnedIds.includes(id));
+}
+
 /** True when anything is narrowing the chronicle right now. */
 export function filtersActive(s: ChronicleState): boolean {
     return s.mutedGroups.length > 0
@@ -122,7 +163,8 @@ export function filtersActive(s: ChronicleState): boolean {
         || s.filterTributeId !== null
         || s.filterTributeId2 !== null
         || s.filterDay !== null
-        || s.selectedZone !== null;
+        || s.selectedZone !== null
+        || (s.followOnly && s.pinnedIds.length > 0);
 }
 
 export function resetChronicleFilters(): void {
@@ -135,5 +177,6 @@ export function resetChronicleFilters(): void {
         filterPairMode: 'either',
         filterDay: null,
         selectedZone: null,
+        followOnly: false,
     });
 }

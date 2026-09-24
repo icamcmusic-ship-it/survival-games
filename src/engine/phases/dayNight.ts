@@ -71,6 +71,7 @@ import { mintItem } from '../items';
 import { QUALITY_BIAS } from '../../data/balance';
 import { isAggressiveStance, isEvasiveStance } from '../../data/stances';
 import { loseSanity } from '../sanityBands';
+import { withFallen } from '../arenaRules';
 
 /**
  * The day/night cycle: the orchestrator, not the implementation.
@@ -1327,6 +1328,8 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
         const stage = ctx.state.finaleZone!;
         collapsedList = allZoneNames.filter(z => z !== stage);
     }
+    // Generic arena rule: ground lost for good stays lost when the border recomputes.
+    collapsedList = withFallen(ctx.state, collapsedList);
     ctx.state.collapsedZones = collapsedList;
 
     getAlive(ctx.state).forEach(t => {

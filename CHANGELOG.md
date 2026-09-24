@@ -118,6 +118,89 @@ to 55%. Nine achievement rarity labels were relabelled to what
 `test:achievements` measured after the stance changes: `the-scavenger`
 legendary -> rare (20.6%), and eight `possible` -> `legendary` (0.4-0.6%).
 
+### Second pass: the remaining items
+
+**Balance (§11/§5), `METRICS_RUNS=1600`.** Before = the first pass's final
+sweep above; after = two sweeps on this branch (b, c) because a single sweep
+moves a ~700-entrant row by about ±1.3 points, and the two disagree by that
+much. Other arenas were being added on the branch between sweeps, which also
+reshuffles every seed.
+
+| indicator (n=1,600) | before | after (b / c) |
+|---|---|---|
+| understudy (n=462) | 3.46% | 5.84 / 6.06% (rank 13 / 12 of 40) |
+| saboteur (n=683) | 3.81% | 4.69 / 4.98% (rank 22 / 21) |
+| broker (n=961) | 3.75% | 4.68 / 3.75% (rank 24 / 31) |
+| penitent (n=760) | 3.95% | 4.34 / 4.21% (rank 29 / 27) |
+| Baiting stance share | 2.6% | 4.5 / 4.5% |
+| largest stance share (guard <= 40%) | 35.8% Evasive | 36.7 / 36.6% Evasive |
+| Career victors (guard <= 55%) | 45.9% | 47.5 / 47.0% |
+| largest single-district share (guard <= 20%) | 16.8% | 17.0 / 16.8% |
+| worst archetype, n >= 500 (guard >= 2.6%) | 3.75% | 3.45 / 2.80% (forecaster) |
+| archetype spread (guard <= 3.4x) | 2.14x | 2.39 / 3.03x |
+| run length / zero-kill / wipeouts | 11.85 d / 3.4% / 0.1% | 11.52 / 11.48 d, 4.0 / 3.7%, 0.3% |
+
+Every guard passes in both sweeps. Understudy and saboteur are clear of the
+bottom third in both; penitent and broker are at its edge and inside noise of
+it. Honest reading: they are no longer the bottom four, but a single further
+data edit will not reliably hold them in the top two thirds.
+
+Changes: Understudy's signature (`understudyReason`) is a second wind — heals
+`understudyHeal` 10 and relieves `understudyFatigueRelief` 15 fatigue. The
+Penitent's vow grants every witness a truce for `penitentTruceCycles` 8, and
+`targetDraw` -2 -> -4.5, endurance 2 -> 3. Broker endurance 1 -> 2 and
+`targetDraw` -0.5 -> -3. Saboteur +1 endurance, `targetDraw` 0.5 -> -1.5.
+Forecaster endurance 1 -> 2 (it had dropped to 2.62% against the 2.6% guard in
+an intermediate sweep). **Baiting** gets real triggers and a payoff: one live
+trap is enough (`liveTrapsTrigger` 2 -> 1), armed on high ground with somebody
+there is a new trigger and a pull (`elevationBonus` 1.2), `base` 4.6 -> 5.2,
+`perLiveTrap` 0.3 -> 0.6, and a baiter fights on ground they chose
+(`STANCE_MODES.baiting.powerBonus` 1.5 in `combat.ts`).
+
+**Follow-cam (§4).** Up to three pinned tributes (`chronicleStore.pinnedIds`,
+`togglePin`; `followedId` stays in step as the first pin so every existing
+reader works; transient, nothing in a save). "Only their beats" narrows the
+game feed and the chronicle page, and a "their day" card summarises the latest
+phase for each pin (`components/FollowCam.tsx`).
+
+**Reasoning chip (§4).** `EventLog.why` (optional, <= 90 chars) is stamped on
+headline beats whose actor has a decision trace for the current cycle
+(`compactWhy` in `engine/context.ts`): stance, top two reasons or the hold
+reason, and the top objective. About 8.5 KB per ~950 KB save. The feed shows
+a one-tap "why?" chip on those lines.
+
+**What-if (§8/E6/E12).** The panel now states `whatIfLimit()` (16-phase cap,
+earliest reachable day, whether earlier days fell off) and how many of the
+player's interventions were replayed into each branch.
+
+**Side features (§8).**
+- *Audience segments* (`engine/audienceSegments.ts`, `AUDIENCE_SEGMENTS`):
+  bloodthirsty / romantic / underdog heat, decayed x0.85 per turn and fed from
+  the turn's log; the player's sponsor quote rises by up to 30% for a tribute
+  the loud segments love. Shown on the sponsor booth. `GameState.audience` is
+  optional; older saves start neutral.
+- *Victor interview:* a first-blood question quoted from the victor's own
+  log, every victor answer tagged with a trait-set tone (defiant / tender /
+  cold / humble / showman), and `GameState.interviewReception` shown as the
+  Capitol's verdict.
+- *Personas:* the 18 interview personas map to seven families
+  (`PERSONA_FAMILY`) with sponsor-bloc affinities that add to each bloc's pull
+  (`blocWeight`) in both the AI blocs and the player's demand pricing. The
+  tribute sheet names the family and its blocs.
+- *Apprenticeship* is now a headline with a plain fact; *veterans* get a
+  one-time arena moment the first time they share ground with a rookie
+  (`tickVeteranMoments`, `REUNION.veteranRegard`); *reunions* already had
+  their headline.
+
+**Replayability (§12).** A mutators deck (`data/mutators.ts`): no Cornucopia,
+double feasts, blind night, all-volunteer, sponsor drought, hazard storm. Pick
+two or draw two in setup (randomised setups draw two half the time); stored
+on `GameConfig.mutators`, so saves, the Hall of Fame, share links and replays
+carry them (all normalisers updated; `test:storage` round-trips it), and shown
+on the run profile card. Rare-beat badges read `data/beatRarity.ts`, generated
+by `npm run fix:beat-rarity` (300 default runs; 14 structured beat types seen
+in under 10% of Games, e.g. expulsion 0.3%).
+
 ## AUDIT-8 fix pass (this branch)
 
 `AUDIT-8.md` is the eighth full audit. This is the answer to its §1 — every

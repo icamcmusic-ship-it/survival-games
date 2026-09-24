@@ -53,6 +53,7 @@ export interface Bet {
  * catalogue rather than a hardcoded list.
  */
 import { SIDE_BET_KINDS, SideBetKind } from '../engine/sideMarkets';
+import { MUTATORS, MUTATORS_PER_GAMES } from '../data/mutators';
 export type { SideBetKind };
 export interface SideBet {
     kind: SideBetKind;
@@ -637,6 +638,11 @@ const CONFIG_RULES: ConfigRules = {
     enableBreakdowns: r => asBool(r.enableBreakdowns, DEFAULT_GAME_CONFIG.enableBreakdowns ?? true),
     sanityStart: r => clamp(asNum(r.sanityStart, DEFAULT_GAME_CONFIG.sanityStart ?? 100), 40, 100),
     plainNames: r => asBool(r.plainNames, DEFAULT_GAME_CONFIG.plainNames ?? false),
+    // AUDIT-11 §12: the mutator cards. Absent on older saves (no mutators);
+    // unknown ids are dropped rather than trusted.
+    mutators: r => Array.isArray(r.mutators)
+        ? r.mutators.filter((m): m is string => typeof m === 'string' && MUTATORS.some(x => x.id === m)).slice(0, MUTATORS_PER_GAMES)
+        : undefined,
     // AUDIT-7 §1.2: the four that were being dropped.
     vanillaRules: r => asBool(r.vanillaRules, DEFAULT_GAME_CONFIG.vanillaRules ?? false),
     singleVictor: r => asBool(r.singleVictor, DEFAULT_GAME_CONFIG.singleVictor ?? false),

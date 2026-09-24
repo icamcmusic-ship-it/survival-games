@@ -17,6 +17,8 @@ import { fireScheduledWildcard } from './wildcards';
 import { FEAST_TEXTS } from '../data/flavorText';
 import { FEAST } from '../data/balance';
 import { wildcardIs } from './gamesProfile';
+import { updateAudience } from './audienceSegments';
+import { MUTATOR_TUNING, hasMutator } from '../data/mutators';
 
 export class Simulator {
     private state: GameState;
@@ -211,6 +213,8 @@ export class Simulator {
         }
 
         pruneDeadAlliances(this.ctx);
+        // AUDIT-11 §8: the crowd's segments warm and cool on what just happened.
+        updateAudience(this.state);
         this.maybeEndGames();
         this.notifyObservers();
         return true;
@@ -260,7 +264,9 @@ export class Simulator {
             return;
         }
 
-        if ((this.state.feastsHeld ?? 0) >= FEAST.maxFeasts) return;
+        // AUDIT-11 §12 `double-feasts`: twice the cap, and more readily called.
+        const feastMult = hasMutator(this.state.config, 'double-feasts') ? MUTATOR_TUNING.feastMultiplier : 1;
+        if ((this.state.feastsHeld ?? 0) >= FEAST.maxFeasts * feastMult) return;
         // One already announced and not yet convened — re-announcing would push
         // the date back a day every night and the table would never be laid.
         if (this.state.feastDay !== undefined) return;
@@ -274,7 +280,7 @@ export class Simulator {
         if (alive <= 2) return;
 
         const rng = new RNG(`${this.state.seed}-feast-call-${this.state.day}`);
-        if (!rng.chance(FEAST.callChance)) return;
+        if (!rng.chance(Math.min(1, FEAST.callChance * feastMult))) return;
 
         // Announced a full day ahead: canon gives tributes the journey, and the
         // journey — driven by the 'feast' objective in the movement layer — is

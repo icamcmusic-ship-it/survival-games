@@ -19,6 +19,7 @@ import { isAggressiveStance, isEvasiveStance } from '../data/stances';
 import { sanityBandOf } from './sanityBands';
 import { offerApprenticeship } from './apprenticeship';
 import { noteMilestone } from './milestones';
+import { fireBeacon, igniteFromFlame } from './arenaRules';
 
 /**
  * Fieldcraft: traps, fire, shelter, camouflage and poison.
@@ -660,6 +661,10 @@ export function lightFire(ctx: SimContext, t: Tribute): boolean {
         [t.id],
         { type: 'fire-lit', important: true, category: 'survival' }
     );
+    // Generic arena rule: on exposed ground the fire is a flare (arenaRules.ts).
+    fireBeacon(ctx, t);
+    // Generic arena rule: indoors, in the wrong room, the air takes it too (arenaRules.ts).
+    igniteFromFlame(ctx, t);
     return true;
 }
 

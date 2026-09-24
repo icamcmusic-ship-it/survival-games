@@ -2909,6 +2909,74 @@ export const ACHIEVEMENTS: Achievement[] = [
      * can produce.
      */
     // ---- arena: the ground itself, which the category under-used ----------
+    // ---- the five building arenas: one earned through each signature -------
+    {
+        id: 'played-to-the-house',
+        name: 'Played to the House',
+        hint: 'Win the Gallery after Open Mic has played the room you were standing in to the whole arena.',
+        category: 'arena',
+        rarity: 'legendary',
+        test: (state, v) => !!v && state.arena.id === 'gallery'
+            && state.log.some(e => e.text.startsWith('OPEN MIC') && e.tributesInvolved.includes(v.id)),
+        nearMiss: (state, v) => (v && state.arena.id === 'gallery' && state.log.some(e => e.text.startsWith('OPEN MIC'))
+            ? 'The house played a room — just never the one you were in'
+            : undefined),
+        availableIn: state => state.arena.id === 'gallery',
+    },
+    {
+        id: 'no-naked-flame',
+        name: 'No Naked Flame',
+        hint: 'Win the Malt House after the vapour has gone up at least once.',
+        category: 'arena',
+        rarity: 'legendary',
+        test: (state, v) => !!v && state.arena.id === 'malthouse'
+            && state.log.some(e => e.text.startsWith('VAPOUR IGNITES')),
+        nearMiss: (state, v) => (v && state.arena.id === 'malthouse' && state.log.some(e => e.text.startsWith('VAPOUR RISES'))
+            ? 'The vapour rose, and the Malt House never lit it'
+            : undefined),
+        availableIn: state => state.arena.id === 'malthouse',
+    },
+    {
+        id: 'took-the-pace-car',
+        name: 'Under Yellow',
+        hint: 'Win Circuit Row after the pace car has come through a sector with you standing on it.',
+        category: 'arena',
+        rarity: 'legendary',
+        test: (state, v) => !!v && state.arena.id === 'circuit'
+            && state.log.some(e => e.text.startsWith('THE PACE CAR') && e.tributesInvolved.includes(v.id)),
+        nearMiss: (state, v) => (v && state.arena.id === 'circuit'
+            ? 'You won Circuit Row without ever meeting the pace car'
+            : undefined),
+        availableIn: state => state.arena.id === 'circuit',
+    },
+    {
+        id: 'did-the-time',
+        name: 'Did the Time',
+        hint: 'Win the Ward Block after being sealed inside a block by a lockdown.',
+        category: 'arena',
+        rarity: 'legendary',
+        test: (state, v) => !!v && state.arena.id === 'wardblock'
+            && state.log.some(e => e.text.startsWith('LOCKDOWN') && e.tributesInvolved.includes(v.id)),
+        nearMiss: (state, v) => (v && state.arena.id === 'wardblock' && state.log.some(e => e.text.startsWith('LOCKDOWN'))
+            ? 'The doors sealed, but never with you inside'
+            : undefined),
+        availableIn: state => state.arena.id === 'wardblock',
+    },
+    {
+        id: 'last-roof-standing',
+        name: 'Last Roof Standing',
+        hint: 'Win the Glasshouse after at least two of its wings have given.',
+        category: 'arena',
+        rarity: 'legendary',
+        test: (state, v) => !!v && state.arena.id === 'glasshouse'
+            && state.log.filter(e => e.text.startsWith('THE GLASS GIVES')).length >= 2,
+        nearMiss: (state, v) => {
+            if (!v || state.arena.id !== 'glasshouse') return undefined;
+            const given = state.log.filter(e => e.text.startsWith('THE GLASS GIVES')).length;
+            return given === 1 ? 'One wing gave — the crown came before the second' : undefined;
+        },
+        availableIn: state => state.arena.id === 'glasshouse',
+    },
     {
         id: 'held-the-pass',
         name: 'The Toll',
@@ -5827,7 +5895,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'a8-put-their-hand-up',
         name: 'Put Their Hand Up',
         hint: 'Crown a volunteer in a year when almost nobody volunteered.',
-        category: 'reaping', rarity: 'possible',
+        category: 'reaping', rarity: 'legendary',
         test: (state, v) => !!v && v.volunteered === true
             && state.tributes.filter(t => t.volunteered).length <= 3,
         nearMiss: (state, v) => (v?.volunteered === true
@@ -5982,6 +6050,104 @@ export const ACHIEVEMENTS: Achievement[] = [
         test: (_s, v) => !!v && (v.visitedZones?.length ?? 0) <= 3 && v.daysSurvived >= 7,
         nearMiss: (_s, v) => ((v?.visitedZones?.length ?? 0) === 4 && (v?.daysSurvived ?? 0) >= 7
             ? 'they used four sectors in the whole Games' : undefined),
+    },
+    // ---- The Hippodrome set (arenasSetHippodrome.ts): one or two per arena. ----
+    {
+        id: 'top-of-the-wheel',
+        name: 'Top of the Wheel',
+        hint: 'Win the Hippodrome after the lights have come up and failed, having been both up the Ferris wheel and through the Hall of Mirrors.',
+        category: 'arena',
+        rarity: 'legendary',
+        test: (state, v) => !!v && state.arena.id === 'hippodrome'
+            && state.log.some(e => e.text.startsWith('LIGHTS FAIL:'))
+            && (v.visitedZones ?? []).includes('The Ferris Wheel')
+            && (v.visitedZones ?? []).includes('Hall of Mirrors'),
+        nearMiss: (state, v) => (v && state.arena.id === 'hippodrome' && state.log.some(e => e.text.startsWith('LIGHTS FAIL:'))
+            && ['The Ferris Wheel', 'Hall of Mirrors'].filter(z => (v.visitedZones ?? []).includes(z)).length === 1
+            ? 'The victor saw the wheel or the mirrors, but not both' : undefined),
+        availableIn: state => state.arena.id === 'hippodrome',
+    },
+    {
+        id: 'mind-the-gap',
+        name: 'Mind the Gap',
+        hint: 'Win the Undercroft after being hit by the ghost train and living through it.',
+        category: 'arena',
+        rarity: 'rare',
+        test: (state, v) => !!v && state.arena.id === 'undercroft'
+            && (v.wounds ?? []).some(w => w.cause.startsWith('Hit by the train')),
+        nearMiss: (state, v) => (v && state.arena.id === 'undercroft'
+            && state.log.some(e => e.tributesInvolved.includes(v.id) && e.text.includes('as the train goes by'))
+            ? 'The victor was on the line when the train came, and got out of its way' : undefined),
+        availableIn: state => state.arena.id === 'undercroft',
+    },
+    {
+        id: 'out-of-the-frost',
+        name: 'Out of the Frost',
+        hint: 'Win the Long Vintage after at least three frosts without the frost ever touching the victor.',
+        category: 'arena',
+        rarity: 'legendary',
+        test: (state, v) => !!v && state.arena.id === 'vintage'
+            && state.log.filter(e => e.text.startsWith('THE FROST:')).length >= 3
+            && !(v.wounds ?? []).some(w => w.cause.startsWith('Froze on ')),
+        nearMiss: (state, v) => {
+            if (!v || state.arena.id !== 'vintage') return undefined;
+            if ((v.wounds ?? []).some(w => w.cause.startsWith('Froze on '))) return 'The frost found the victor on the terraces';
+            const frosts = state.log.filter(e => e.text.startsWith('THE FROST:')).length;
+            return frosts > 0 && frosts < 3 ? `Only ${frosts} frost${frosts === 1 ? '' : 's'} came down before the crown` : undefined;
+        },
+        availableIn: state => state.arena.id === 'vintage',
+    },
+    {
+        id: 'whiteout-walker',
+        name: 'Whiteout Walker',
+        hint: 'Win Cinder Peak after a whiteout, having walked the Ridge Line.',
+        category: 'arena',
+        rarity: 'rare',
+        test: (state, v) => !!v && state.arena.id === 'cinderpeak'
+            && state.log.some(e => e.text.startsWith('WHITEOUT:'))
+            && (v.visitedZones ?? []).includes('The Ridge Line'),
+        nearMiss: (state, v) => (v && state.arena.id === 'cinderpeak' && state.log.some(e => e.text.startsWith('WHITEOUT:'))
+            && !(v.visitedZones ?? []).includes('The Ridge Line')
+            ? 'The whiteout came, and the victor never set foot on the Ridge Line' : undefined),
+        availableIn: state => state.arena.id === 'cinderpeak',
+    },
+    {
+        id: 'signal-fire',
+        name: 'Signal Fire',
+        hint: 'See a fire lit on exposed ground above the treeline give its maker away to the whole mountain.',
+        category: 'arena',
+        rarity: 'legendary',
+        test: state => state.arena.rules?.fireBeacon !== undefined
+            && state.log.some(e => e.text.includes('is above anything that could hide it')),
+        nearMiss: state => (state.arena.rules?.fireBeacon !== undefined && state.log.some(e => e.type === 'fire-lit')
+            ? 'Fires were lit on the mountain, but only where nobody could see them' : undefined),
+        availableIn: state => state.arena.rules?.fireBeacon !== undefined,
+    },
+    {
+        id: 'last-bench-standing',
+        name: 'Last Bench Standing',
+        hint: 'Win the Open Cut after two terraces have given way for good, one of them ground the victor had stood on.',
+        category: 'arena',
+        rarity: 'legendary',
+        test: (state, v) => !!v && state.arena.id === 'opencut'
+            && (state.arenaRuleState?.fallen ?? []).length >= 2
+            && (state.arenaRuleState?.fallen ?? []).some(z => (v.visitedZones ?? []).includes(z)),
+        nearMiss: (state, v) => (v && state.arena.id === 'opencut' && (state.arenaRuleState?.fallen ?? []).length === 1
+            ? 'Only one terrace gave way before the crown' : undefined),
+        availableIn: state => state.arena.id === 'opencut',
+    },
+    {
+        id: 'rode-it-down',
+        name: 'Off the Edge in Time',
+        hint: 'Win the Open Cut after getting off a terrace alive as it went into the pit.',
+        category: 'arena',
+        rarity: 'rare',
+        test: (state, v) => !!v && state.arena.id === 'opencut'
+            && state.log.some(e => e.tributesInvolved.includes(v.id) && e.text.includes('with the edge going behind their heels')),
+        nearMiss: (state, v) => (v && state.arena.id === 'opencut'
+            && state.log.some(e => e.text.includes('with the edge going behind their heels'))
+            ? 'Somebody got off a falling terrace in time, and it was not the victor' : undefined),
+        availableIn: state => state.arena.id === 'opencut',
     },
 ];
 

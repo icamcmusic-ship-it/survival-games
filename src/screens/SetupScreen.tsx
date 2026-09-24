@@ -24,6 +24,7 @@ import { ARENA_MUTTS } from '../data/mutts';
 import { ARENA_DEATH_BUDGET, BLOODBATH, COIN_ECONOMY } from '../data/balance';
 import { RNG } from '../utils/rng';
 import { QUELLS } from '../data/gamesProfile';
+import { MUTATORS as MUTATOR_DECK, MUTATORS_PER_GAMES, drawMutators } from '../data/mutators';
 
 /** §9 (audit): how many standing patronages the Capitol will sell one player. */
 const PATRON_MAX_DISTRICTS = COIN_ECONOMY.patronMaxDistricts;
@@ -199,6 +200,8 @@ function randomConfig(current: GameConfig): GameConfig {
         singleVictor: Math.random() < 0.3,
         ageMean: withAges ? pick(12, 18, 0.5) : undefined,
         ageSpread: withAges ? pick(0.5, 4, 0.1) : undefined,
+        // AUDIT-11 §12: half of randomised years draw two mutator cards.
+        mutators: Math.random() < 0.5 ? drawMutators(`${Date.now()}-${Math.random()}`) : undefined,
     };
 }
 
@@ -1333,6 +1336,51 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                 ) : (
                                     <p className="text-micro text-[var(--color-ink-500)] -mt-1">
                                         The bowl decides: one slip per year of age, plus a slip for every tessera taken. The field skews older, and oldest in the poorest districts.
+                                    </p>
+                                )}
+                            </div>
+                            {/* AUDIT-11 §12: the mutators deck. Two cards at most, picked or drawn. */}
+                            <div className="space-y-2 pt-1" data-testid="mutators-deck">
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="text-xs font-semibold text-[var(--color-ink-300)]">
+                                        Mutator deck <span className="font-normal text-[var(--color-ink-500)]">({(config.mutators ?? []).length}/{MUTATORS_PER_GAMES})</span>
+                                    </span>
+                                    <span className="flex gap-2">
+                                        <button type="button" className="btn btn-sm btn-ghost"
+                                            onClick={() => setConfig(c => ({ ...c, mutators: drawMutators(`${Date.now()}-${Math.random()}`) }))}>
+                                            Draw {MUTATORS_PER_GAMES}
+                                        </button>
+                                        <button type="button" className="btn btn-sm btn-ghost" disabled={!(config.mutators?.length)}
+                                            onClick={() => setConfig(c => ({ ...c, mutators: undefined }))}>
+                                            Clear
+                                        </button>
+                                    </span>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {MUTATOR_DECK.map(m => {
+                                        const on = config.mutators?.includes(m.id) ?? false;
+                                        const full = (config.mutators?.length ?? 0) >= MUTATORS_PER_GAMES;
+                                        return (
+                                            <button
+                                                key={m.id}
+                                                type="button"
+                                                className="seg-item text-left"
+                                                aria-pressed={on}
+                                                disabled={!on && full}
+                                                onClick={() => setConfig(c => {
+                                                    const cur = c.mutators ?? [];
+                                                    const next = on ? cur.filter(x => x !== m.id) : [...cur, m.id];
+                                                    return { ...c, mutators: next.length > 0 ? next : undefined };
+                                                })}
+                                            >
+                                                {m.name}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                {(config.mutators?.length ?? 0) > 0 && (
+                                    <p className="text-micro text-[var(--color-ink-500)]">
+                                        {config.mutators!.map(id => MUTATOR_DECK.find(m => m.id === id)?.blurb).join(' ')}
                                     </p>
                                 )}
                             </div>

@@ -56,7 +56,12 @@ export function offerApprenticeship(ctx: SimContext, learner: Tribute, skill: Pr
         `${teacher.name} watches ${learner.name} make a mess of it for a while, then takes the work off them `
         + `and does it slowly, once, so ${learner.name} can see how. Then hands it back.`,
         [teacher.id, learner.id],
-        { category: 'survival', zone: learner.zone },
+        // AUDIT-11 §8: a visible moment — a headline, with the plain fact, so
+        // the lesson is not lost in the ambient tier of the feed.
+        {
+            category: 'survival', zone: learner.zone, important: true, actorId: teacher.id,
+            fact: `${teacher.name} taught ${learner.name} ${skill}.`,
+        },
     );
     return true;
 }

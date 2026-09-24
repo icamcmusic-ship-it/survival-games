@@ -92,6 +92,7 @@ function drawReapingAge(rng: RNG, district: number, config?: GameConfig): number
 
 export { strengthCapForAge } from './physique';
 import { rollBody } from './physique';
+import { hasMutator } from '../data/mutators';
 
 /**
  * §3.1: build is a second axis, not a strength alias. An independent frame
@@ -203,11 +204,12 @@ function applyPersonalVariance(rng: RNG, attributes: Attributes, archetype: Arch
  * almost always the same thing: an older sibling stepping in front of a younger
  * one, which the Capitol adores and which rarely ends well.
  */
-function applyVolunteer(rng: RNG, t: Tribute, shape?: CastShape) {
+function applyVolunteer(rng: RNG, t: Tribute, shape?: CastShape, allVolunteer = false) {
     // An all-volunteer year is exactly that; otherwise the cast shape only
     // nudges the odds a district's tribute steps forward.
     const base = t.isCareer ? VOLUNTEER.careerChance : VOLUNTEER.outlyingChance;
-    const chance = Math.min(1, base + (shape?.volunteerChance ?? 0));
+    // AUDIT-11 §12 `all-volunteer`: every name is answered.
+    const chance = allVolunteer ? 1 : Math.min(1, base + (shape?.volunteerChance ?? 0));
     if (!rng.chance(chance)) return;
 
     t.volunteered = true;
@@ -611,7 +613,7 @@ export function generateTributes(
     }
 
     // The reaping is not just a name out of a bowl.
-    tributes.forEach(t => applyVolunteer(rng, t, shape));
+    tributes.forEach(t => applyVolunteer(rng, t, shape, hasMutator(config, 'all-volunteer')));
 
     // §5 (requests): the square's other stories are gone.
     //

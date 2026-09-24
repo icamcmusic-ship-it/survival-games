@@ -4872,7 +4872,7 @@ export const STANCE_MODES = {
      * already done the work, and it trades concealment for traffic.
      */
     baiting: {
-        base: 4.6,
+        base: 5.2,
         /** Per trap of the tribute's own in this sector. */
         perOwnTrap: 1.5,
         /**
@@ -4897,10 +4897,17 @@ export const STANCE_MODES = {
         /** Added to the chance somebody else walks into this sector. */
         trafficDraw: 0.2,
         /** AUDIT-11 §5: live traps anywhere in the arena that make Baiting available. */
-        liveTrapsTrigger: 2,
+        liveTrapsTrigger: 1,
         /** AUDIT-11 §5: pull per live trap owned anywhere, up to the cap. */
-        perLiveTrap: 0.3,
+        perLiveTrap: 0.6,
         liveTrapsCap: 4,
+        /**
+         * AUDIT-11 §5 (second pass): the payoff. A tribute who has drawn the
+         * fight onto ground they prepared fights it on their terms.
+         */
+        powerBonus: 1.5,
+        /** AUDIT-11 §5: armed on high ground is prepared ground (trigger and pull). */
+        elevationBonus: 1.2,
     },
     /** How much of the archetype's temperament a conditional stance inherits. */
     conditionalArchetypeWeight: 0.5,
@@ -6352,6 +6359,22 @@ export const RIVALRY = {
  * meaningful slice of a wager's winnings, and every subsequent one to the same
  * tribute costs half again as much.
  */
+/** AUDIT-11 §8: audience segments. See `engine/audienceSegments.ts`. */
+export const AUDIENCE_SEGMENTS = {
+    /** Share of each segment's heat kept from one phase to the next. */
+    decay: 0.85,
+    perKill: 6,
+    perFight: 1,
+    perRomance: 5,
+    perAlliance: 1.5,
+    /** A kill by a tribute trained at or under this is an upset. */
+    underdogTrainingMax: 5,
+    perUpset: 8,
+    /** Quote pressure per unit of (segment heat x appeal), and its cap. */
+    pricePressure: 0.25,
+    priceCap: 0.3,
+};
+
 export const SPONSOR_MARKET = {
     /** Coins per point of an item's arena value. */
     valueMultiplier: 4,
@@ -8972,6 +8995,11 @@ export const ARCHETYPE_HOOKS = {
     penitentRegard: 10,
     /** And it costs something to have said it where it can be held against you. */
     penitentSanity: 6,
+    /**
+     * AUDIT-11 §11: the vow's personal payoff. Everybody who heard it stands
+     * down for a few cycles — "not by my hand" is answered in kind.
+     */
+    penitentTruceCycles: 8,
     /** Forager: no table without something to put on it. */
     foragerMinHunger: 20,
     foragerFeed: 25,
@@ -9000,6 +9028,9 @@ export const ARCHETYPE_HOOKS = {
     forecasterRelief: 8,
     understudyResolve: 12,
     understudySanity: 6,
+    /** AUDIT-11 §11: saying the reason out loud is a second wind. */
+    understudyHeal: 10,
+    understudyFatigueRelief: 15,
     /** Names to read before a roll-call is a roll-call rather than a remark. */
     archivistMinFallen: 3,
     archivistSanityCost: 4,
@@ -9057,6 +9088,26 @@ export const ARENA_SIGNATURES = {
     panCracks: { earlyEveryNth: 5, emptiestChance: 0.65, holdBase: 0.45, holdPerAgility: 0.04, damage: 12, muttChance: 0.5 },
     /** Audit 5 §5.7: the Kiln's second sun, telegraphed a day ahead. */
     secondSun: { safestChance: 0.7, thirst: 14, fatigue: 8, burnChance: 0.45, burnDamage: 9 },
+    /** The Hippodrome: the power comes on at a random hour, then fails. */
+    hippodromeLights: { firstMinCycle: 3, firstMaxCycle: 7, litCycles: 2, blackoutCycles: 2, restCycles: 4, stumbleChance: 0.12, stumbleDamage: 8, animatronicChance: 0.35, animatronicDamage: 14, blackoutSanity: 4 },
+    /** The Undercroft: the ghost train on the main line. */
+    trainDue: { everyNth: 3, dodgeBase: 0.3, dodgePerAgility: 0.05, damage: 20, railDamage: 10, fatigue: 10 },
+    /** The Long Vintage: the harvest bell, then the frost. */
+    vintageFrost: { terraces: 2, shelteredAt: 0.6, damage: 10, fatigue: 12, frostbiteChance: 0.3, bloomChance: 0.5 },
+    /** Cinder Peak: clear sky, then whiteout. */
+    cinderSky: { clearCycles: 2, whiteoutCycles: 2, calmCycles: 2, exposedDamage: 8, exposedFatigue: 10, frostbiteChance: 0.2 },
+    /** The Open Cut: the ground gives. */
+    groundGive: { firstCycle: 5, everyNth: 5, maxFalls: 2, holdBase: 0.35, holdPerAgility: 0.05, damage: 22, muttChance: 0.3 },
+    /** The Gallery: the house picks one room and plays it to everybody. */
+    openMic: { pickChance: 0.6, sanity: 5, rigChance: 0.35, dodgeBase: 0.4, dodgePerAgility: 0.05, rigDamage: 18, rigBleedChance: 0.5 },
+    /** The Malt House: vapour builds in the enclosed rooms, then goes. */
+    vapour: { risePerDay: 0.2, risePerNight: 0.35, fumeFatigue: 6, fumeSanity: 3, igniteChance: 0.7 },
+    /** Circuit Row: the pace car laps the oval, one sector per cycle. */
+    paceCar: { dodgeBase: 0.35, dodgePerAgility: 0.05, damage: 20, fatigue: 8, bleedChance: 0.4 },
+    /** The Ward Block: the cell doors seal on a timer. */
+    lockdown: { firstCycle: 3, everyNth: 4, lockCycles: 2, busiestChance: 0.65, doorChance: 0.2, doorDamage: 16, trappedSanity: 6, trappedFatigue: 5, muttChance: 0.3 },
+    /** The Glasshouse: one wing at a time, the glass gives. */
+    glassGives: { firstCycle: 3, everyNth: 3, dodgeBase: 0.3, dodgePerAgility: 0.05, damage: 18, coverKept: 0.6, rooflessShelter: 0.05, acousticsGain: 0.3, exposureFatigue: 6, exposureThirst: 4, safeRelief: 5 },
 
     /** The Clockwork Island: the hour turns and one sector pays for it. */
     clock: {
@@ -9517,6 +9568,8 @@ export const REUNION = {
     trust: 5,
     /** A relief, not a heal. The arena has not got any safer. */
     sanityRelief: 8,
+    /** AUDIT-11 §8: what a rookie's first sight of a working veteran is worth in regard. */
+    veteranRegard: 4,
 };
 
 export const APPRENTICESHIP = {
@@ -9926,4 +9979,52 @@ export const WHAT_IF = {
     branches: 8,
     /** Hard stop on one branch, in phase advances, so a debrief always ends. */
     maxAdvances: 400,
+} as const;
+
+
+/**
+ * The generic arena rules (engine/arenaRules.ts): numbers for the mechanics
+ * any arena can opt into through `Arena.rules` or drive from its signature.
+ */
+export const ARENA_RULES = {
+    /** Cover below which a lit zone counts as open ground (Hippodrome lights). */
+    litOpenCoverBelow: 0.35,
+    /** Cover below which high ground counts as exposed (Cinder Peak clear sky). */
+    exposedRidgeCoverBelow: 0.3,
+    /** Per-cycle chance the Undercroft third rail catches somebody standing on it. */
+    thirdRailTouchChance: 0.2,
+    /**
+     * An arena-wide sightline. `acoustics` multiplies every zone's carry,
+     * `concealment` multiplies the chance to stay unseen, `ambush` shifts the
+     * ambush chance, `ranged` is combat power for bows and thrown weapons,
+     * `transit` is extra cycles on every crossing, and `dark` overrides the
+     * clock's notion of night (null leaves it alone).
+     */
+    sightline: {
+        lit: { acoustics: 1.45, concealment: 0.6, ambush: -0.12, ranged: 2, transit: 0, dark: false },
+        blackout: { acoustics: 1.2, concealment: 1.3, ambush: 0.12, ranged: -2, transit: 0, dark: true },
+        clear: { acoustics: 1.1, concealment: 0.7, ambush: -0.1, ranged: 3, transit: 0, dark: null },
+        whiteout: { acoustics: 0.6, concealment: 1.35, ambush: 0.1, ranged: -3, transit: 1, dark: true },
+    },
+    /** Combat power lost fighting inside a disorienting zone. */
+    disorientCombatPenalty: 2,
+    /** Extra cycles to find the way out of a disorienting zone. */
+    disorientTransit: 1,
+    /** Hard ceiling on a zone's effective acoustics after every modifier. */
+    acousticsCeiling: 2.2,
+} as const;
+
+/**
+ * The structural arena rules (engine/arenaRules.ts, second half): lockdown,
+ * enclosed ignition, remap and the rotating shelter.
+ */
+export const ARENA_RULE_MECHANICS = {
+    /** Added to an enclosed-ignition roll per unit (0-1) of recorded vapour. */
+    vapourIgnitionBonus: 0.5,
+    /** The floor a designated safe shelter is lifted to. */
+    safeShelterQuality: 0.9,
+    /** Damage a lit flame does to everybody in each zone of the chain it sets off. */
+    ignitionDamage: 18,
+    /** The lighter's own share, on top: they were holding it. */
+    ignitionLighterDamage: 10,
 } as const;

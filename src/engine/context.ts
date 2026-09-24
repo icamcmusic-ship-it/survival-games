@@ -268,8 +268,39 @@ export function createContext(state: GameState, rng: RNG): SimContext {
                 // AUDIT-9: the structured kind, where the beat is one
                 // something measures. See `EventType`.
                 type: opts.type,
+                // The actor, where the caller named one; otherwise only where
+                // the first-listed tribute is unambiguously acting (a solo
+                // beat, or a kill, which lists the killer first).
+                why: important
+                    ? compactWhy(ctx.state, opts.actorId
+                        ?? (tributesInvolved.length === 1 || category === 'kill' ? tributesInvolved[0] : undefined))
+                    : undefined,
             });
         }
     };
     return ctx;
+}
+
+/**
+ * AUDIT-11 §4: the reasoning chip's text, read from a decision trace the
+ * stance scorer already wrote this cycle. Headline beats only, capped at 90
+ * characters, so a save grows by a few KB at most.
+ */
+export function compactWhy(state: GameState, actorId: string | undefined): string | undefined {
+    if (!actorId) return undefined;
+    const t = state.tributes.find(x => x.id === actorId);
+    const trace = t?.decisionTrace;
+    if (!t || !trace || trace.cycle !== (state.cycle ?? 0)) return undefined;
+    let out: string;
+    if (trace.forced) out = `Not choosing: ${trace.forced}`;
+    else if (trace.held) out = `${trace.held.stance}, held: ${trace.held.because}`;
+    else {
+        const top = trace.stances[0];
+        if (!top) return undefined;
+        const reasons = top.reasons.slice(0, 2).map(r => r.label).join(', ');
+        out = reasons ? `${top.stance}: ${reasons}` : top.stance;
+    }
+    const goal = trace.objectives?.[0]?.label;
+    if (goal) out += ` · ${goal.toLowerCase()}`;
+    return out.length > 90 ? `${out.slice(0, 89)}…` : out;
 }

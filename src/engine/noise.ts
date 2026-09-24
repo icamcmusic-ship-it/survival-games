@@ -6,6 +6,7 @@ import { noteHeard } from './memory';
 import { encumbranceOf } from './items';
 import { injuryGrade } from './wounds';
 import { profOf } from './proficiency';
+import { effectiveAcoustics } from './arenaRules';
 
 /**
  * §16: a crossing makes a sound, and the sound reaches people.
@@ -71,7 +72,8 @@ export function announceCrossing(
     const loudest = movers.reduce((worst, m) =>
         crossingNoise(m, movers.length) > crossingNoise(worst, movers.length) ? m : worst);
     const raw = crossingNoise(loudest, movers.length);
-    const acoustics = zoneFeatures(dest).acoustics ?? 1;
+    // Generic arena rules: soundscape floor/flux and sightline (arenaRules.ts).
+    const acoustics = effectiveAcoustics(state, dest);
     const moverIds = new Set(movers.map(m => m.id));
 
     state.tributes.forEach(listener => {

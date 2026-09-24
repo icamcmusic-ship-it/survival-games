@@ -1,3 +1,4 @@
+import { PERSONA_BLOC_AFFINITY, PERSONA_FAMILY, PERSONA_FAMILY_LABEL } from '../data/personas';
 import React, { useId, useMemo, useState } from 'react';
 import { Hint } from './Hint';
 import { useDialogFocus } from '../ui/useDialogFocus';
@@ -22,6 +23,7 @@ import { MapPin, Users, X, Heart } from 'lucide-react';
 import { craftOf, legacyOf } from '../data/districts';
 import { conditionOf, displayName } from '../engine/items';
 import { sponsorCost, sponsorableItems } from '../engine/playerSponsor';
+import { audienceOf, audiencePriceFactor, loudestSegment } from '../engine/audienceSegments';
 import { gameActions, gameStore } from '../store/gameStore';
 import { useStore } from '../store/createStore';
 import { canSeeArena, disclosureFor } from '../ui/disclosure';
@@ -121,6 +123,17 @@ function SponsorPanel({ tribute, gameState }: { tribute: Tribute; gameState: Gam
                 <h4 className="panel-title">Send a parachute</h4>
                 <span className="text-mini font-mono text-[var(--color-ink-500)]">{coins} coins</span>
             </div>
+            {inArena && (() => {
+                const mood = audienceOf(gameState);
+                const loud = loudestSegment(gameState);
+                const factor = audiencePriceFactor(gameState, tribute);
+                return (
+                    <p className="text-mini text-[var(--color-ink-500)] mb-2" data-testid="audience-segments">
+                        Crowd: bloodthirsty {Math.round(mood.bloodthirsty)} · romantic {Math.round(mood.romantic)} · underdog {Math.round(mood.underdog)}
+                        {' '}— loudest: {loud}.{factor > 1.01 ? ` They love ${tribute.name}; quotes +${Math.round((factor - 1) * 100)}%.` : ''}
+                    </p>
+                );
+            })()}
             {!inArena ? (
                 <p className="text-sm text-[var(--color-ink-500)]">
                     Nothing can be sent until the tributes are in the arena.
@@ -666,6 +679,8 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                                 >
                                     The persona they held on Caesar's couch — which may not be the one they
                                     walked out with, and which the rest of the cast remembers.
+                                    {' '}The Capitol reads it as a {PERSONA_FAMILY_LABEL[PERSONA_FAMILY[tribute.interviewStrategy]]} story, and
+                                    that is the sponsor money it draws ({Object.keys(PERSONA_BLOC_AFFINITY[PERSONA_FAMILY[tribute.interviewStrategy]]).join(', ')}).
                                 </Explainer>
                             </>
                         )}

@@ -2482,6 +2482,45 @@ export type ArenaLawId =
     | 'theBell';           // every morning the Gamemakers name a zone; whoever stands in it at nightfall is resupplied
 
 /** A traversal rule layered on top of plain adjacency for one edge. Keyed by `edgeKey(a,b)` on `Arena.edgeRules`. */
+/**
+ * Generic arena-wide rule flags, read by engine/arenaRules.ts. Every field is
+ * optional and inert when absent, so any arena (authored or generated) can
+ * opt into any of them without a bespoke code path.
+ */
+export interface ArenaRules {
+    /** No zone is ever quieter than this: carries sound even out of cover. */
+    acousticsFloor?: number;
+    /** Each zone, each cycle, either masks (x(1-flux)) or betrays (x(1+flux)) sound. */
+    acousticsFlux?: number;
+    /** Zones that disorient: fighting in them is blunted and leaving them takes longer. */
+    disorientZones?: string[];
+    /** Forage regrowth multiplier per terrain (1 = normal, 0.4 = grows back at 40%). */
+    regrowthByTerrain?: Partial<Record<Terrain, number>>;
+    /** A fire lit on exposed ground (elevated and cover <= maxCover, or a listed zone) is seen by the whole field. */
+    fireBeacon?: { maxCover: number; zones?: string[] };
+    /** Edges present in the graph but closed until `openLatentEdge` opens them mid-run. */
+    latentEdges?: Array<[string, string]>;
+    /** Enclosed rooms whose air takes a flame: a fire lit in one may ignite it and every listed zone touching it. */
+    enclosedIgnition?: { zones: string[]; chance: number };
+    /** The first `lockZone` of the run also starts a communications blackout (no cannons, no sky). */
+    lockdownBlackout?: boolean;
+}
+
+/** An arena-wide sightline state: `lit`/`clear` expose, `blackout`/`whiteout` hide. */
+export type ArenaSightline = 'lit' | 'blackout' | 'clear' | 'whiteout';
+
+/** Run-local state for `ArenaRules` and the signatures that drive them. */
+export interface ArenaRuleState {
+    /** The arena-wide sightline currently in force, and the last cycle it holds for. */
+    sightline?: { mode: ArenaSightline; untilCycle: number };
+    /** Zones permanently lost (never restored by the border or the reopening tick). */
+    fallen?: string[];
+    /** Latent edges (`ArenaRules.latentEdges`) that have been opened, as edge keys. */
+    openedEdges?: string[];
+    /** Free-form per-signature timers and marks, keyed by the signature. */
+    marks?: Record<string, number | string>;
+}
+
 export interface EdgeRule {
     /**
      * §5.5: three kinds were not enough to express what a route can be. A
@@ -2615,6 +2654,8 @@ export interface Arena {
     terrainVariant?: Partial<Record<Terrain, { danger: [number, number]; resources: [number, number] }>>;
     /** Procedural arenas only: the real mutt kit generated for this specific arena. Takes priority over `ARENA_MUTTS` in `rosterFor`. */
     muttRoster?: Mutt[];
+    /** Generic, reusable arena-wide rule flags — see `ArenaRules` and engine/arenaRules.ts. */
+    rules?: ArenaRules;
 }
 
 /**
@@ -2815,6 +2856,12 @@ export interface GameConfig {
      * for the run, so the Games cannot end with two people standing.
      */
     singleVictor?: boolean;
+    /**
+     * AUDIT-11 §12: the mutator cards for this Games (ids from
+     * `data/mutators.ts`). Part of the config so saves, share links and
+     * replays carry them; absent on older configs, which is no mutators.
+     */
+    mutators?: string[];
 }
 
 import type { GamesProfile } from '../engine/gamesProfile';
@@ -2847,6 +2894,8 @@ export interface GameState {
      */
     eventChains?: Record<string, string>;
     epilogueInterview?: EpilogueQA[];
+    /** AUDIT-11 §8: how the Capitol received the victor's interview, -1..+2. */
+    interviewReception?: number;
     /** Day the next Gamemaker feast is scheduled for (undefined = none scheduled). Cleared once the feast resolves. */
     feastDay?: number;
     /**
@@ -2958,6 +3007,8 @@ export interface GameState {
     victorIds?: string[];
     /** §9.4: remaining purse per sponsor bloc, seeded lazily from generosity. */
     sponsorBlocBudgets?: Record<string, number>;
+    /** AUDIT-11 §8: audience segments (see engine/audienceSegments.ts). Absent on older saves. */
+    audience?: { bloodthirsty: number; romantic: number; underdog: number; logMark: number };
     /** Day the most recent feast actually convened — guards against two feasts landing on the same day. */
     lastFeastDay?: number;
     /** Feasts already held this run, used to space them out. */
@@ -3051,6 +3102,8 @@ export interface GameState {
      * this is the run-local exception list layered on top of it.
      */
     severedEdges?: string[];
+    /** Run-local bookkeeping for the generic arena rules (engine/arenaRules.ts). */
+    arenaRuleState?: ArenaRuleState;
     /**
      * AUDIT-9 B06: the record book this run was played under, snapshotted at
      * creation.
@@ -3373,6 +3426,8 @@ export interface GameState {
      * creation by a Grudge Match; read by the reaping copy.
      */
     veteransSeated?: string[];
+    /** AUDIT-11 §8: veterans whose arena moment has played. */
+    veteranMoments?: string[];
     /** §13.3: the Undermere — cycle the bioluminescence comes back on. */
     mossDimUntilCycle?: number;
     /** §10.1: the longest single fire chain this run produced, in zones. */
@@ -3738,6 +3793,12 @@ export interface EventLog {
      * counts and which therefore do not need one.
      */
     type?: EventType;
+    /**
+     * AUDIT-11 §4: "why did they do that?" — a compact (<= 90 chars) reading of
+     * the actor's decision trace for the cycle, stamped only on headline beats
+     * whose actor had one. Optional; older saves simply have none.
+     */
+    why?: string;
 }
 
 export interface LogOptions {
@@ -3953,6 +4014,8 @@ export type EventType =
 export interface EpilogueQA {
     question: string;
     answer: string;
+    /** AUDIT-11 §8: the register the victor answered in, when set by their traits. */
+    tone?: 'defiant' | 'tender' | 'cold' | 'humble' | 'showman';
 }
 
 export interface TributeHoFSummary {

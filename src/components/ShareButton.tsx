@@ -138,6 +138,8 @@ export function shareParams(
         sanityStart: String(config.sanityStart ?? 100),
         enableHallucinations: String(config.enableHallucinations !== false),
         enableBreakdowns: String(config.enableBreakdowns !== false),
+        // AUDIT-11 §12: the mutator cards change the run; empty is none.
+        mutators: (config.mutators ?? []).join(','),
     });
     // AUDIT-9 B06: opaque and optional, so a seed link stays as short as it
     // has always been and a run link is complete.

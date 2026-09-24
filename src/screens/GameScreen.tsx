@@ -13,16 +13,17 @@ import { FeedLine, VISIBLE_CAP, passesDensity, tierOf } from '../components/Even
 import { ChronicleFilters } from '../components/ChronicleFilters';
 import { BroadcastBar } from '../components/BroadcastBar';
 import { DossierPanel } from '../components/DossierPanel';
+import { FollowCam } from '../components/FollowCam';
 import { StandingsTable } from '../components/StandingsTable';
 import { PlayUntil, Speed } from '../components/PlaybackPopover';
 import { CATEGORY_GROUPS } from '../ui/eventStyles';
 import { tributeOdds } from '../engine/odds';
-import { Filter, Star } from 'lucide-react';
+import { Filter } from 'lucide-react';
 import { GAMEMAKER_COSTS } from '../data/balance';
 import { GamemakerEventType, gamemakerCooldownRemaining, gamemakerEventCost } from '../engine/gamemaker';
 import { gameActions, gameStore } from '../store/gameStore';
 import { pathForView } from '../store/router';
-import { chronicleStore, filtersActive, setChronicle, toggleMutedGroup } from '../store/chronicleStore';
+import { chronicleStore, filtersActive, passesFollowCam, setChronicle, toggleMutedGroup, togglePin } from '../store/chronicleStore';
 import { prefsStore, setPrefs } from '../store/prefsStore';
 import { playAnthem, playCannon, playParachute, unlockAudio } from '../utils/sound';
 import { canSeeArena, disclosureFor } from '../ui/disclosure';
@@ -567,6 +568,7 @@ export function GameScreen({
             } else if ((filters.filterTributeId || filters.filterTributeId2)
                 && !(filters.filterTributeId && log.tributesInvolved.includes(filters.filterTributeId))
                 && !(filters.filterTributeId2 && log.tributesInvolved.includes(filters.filterTributeId2))) return false;
+            if (!passesFollowCam(filters, log.tributesInvolved)) return false;
             if (filters.filterDay !== null && log.day !== filters.filterDay) return false;
             if (needle && !log.text.toLowerCase().includes(needle)) return false;
             return true;
@@ -715,9 +717,6 @@ export function GameScreen({
         if (pane !== 'tributes') setStageTab(pane);
     };
 
-    const followed = filters.followedId
-        ? gameState.tributes.find(t => t.id === filters.followedId)
-        : undefined;
 
     return (
         <div className="pb-24 lg:pb-0">
@@ -838,30 +837,8 @@ export function GameScreen({
                             </div>
                         </div>
 
-                        {followed && (
-                            <span className="chip chip-accent inline-flex items-center gap-1">
-                                <Star className="w-3 h-3" aria-hidden="true" />
-                                Following {followed.name}{followed.status === 'dead' ? ' †' : ''}
-                                <Hint text="Open the chronicle filtered to their story">
-                                <button
-                                    className="underline ml-1"
-                                    onClick={() => {
-                                        setChronicle({ filterTributeId: filters.followedId, filterTributeId2: null });
-                                        gameActions.setView('chronicle');
-                                    }}
-                                >
-                                    story
-                                </button>
-                                </Hint>
-                                <button
-                                    className="underline ml-1"
-                                    onClick={() => setChronicle({ followedId: null })}
-                                    aria-label={`Stop following ${followed.name}`}
-                                >
-                                    ×
-                                </button>
-                            </span>
-                        )}
+                        {/* AUDIT-11 follow-cam: pinned tributes, follow-only feed, their day. */}
+                        <FollowCam gameState={gameState} filters={filters} />
 
                         {showFilters && (
                             <ChronicleFilters
@@ -879,8 +856,8 @@ export function GameScreen({
                                 onSelectTribute={setSelectedTributeId}
                                 allianceAccent={allianceAccent}
                                 arenaSealed={arenaSealed}
-                                followedId={filters.followedId}
-                                onFollow={id => setChronicle({ followedId: id })}
+                                pinnedIds={filters.pinnedIds}
+                                onFollow={togglePin}
                             />
                         </div>
                     ) : stageTab === 'map' ? (

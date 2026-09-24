@@ -224,6 +224,16 @@ const CLIMATES: Record<string, ClimateProfile> = {
     vigil: PERPETUAL_DUSK,
     saltworks: SOLAR,
     kiln: FURNACE_HEAT,
+    // The Hippodrome set (arenasSetHippodrome.ts).
+    hippodrome: PERPETUAL_DUSK,
+    undercroft: QUARRY_DAMP,
+    vintage: TEMPEST,
+    cinderpeak: FROZEN,
+    opencut: QUARRY_DAMP,
+    // The building set (arenasNew.ts): the Malt House runs its stills day and
+    // night; Circuit Row is a tarmac bowl with no shade on the track.
+    malthouse: FURNACE_HEAT,
+    circuit: SOLAR,
 };
 
 export function climateOf(arenaId: string): ClimateProfile | undefined {

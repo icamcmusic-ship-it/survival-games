@@ -2,6 +2,7 @@ import { Arena, Item, GameConfig, Build } from '../models/types';
 import { ROLLABLE_TRAITS } from './traits';
 import { withExtraEdgeRules } from './arenaEdges';
 import { NEW_ARENAS } from './arenasNew';
+import { HIPPODROME_SET_ARENAS } from './arenasSetHippodrome';
 
 export const DEFAULT_GAME_CONFIG: GameConfig = {
     districtCount: 12,
@@ -1410,6 +1411,7 @@ export const ARENAS: Arena[] = [
 // §1 (requests): the five new arenas, spread in before the edge-rule pass so
 // they are subject to exactly the same treatment as every arena above them.
 ARENAS.push(...NEW_ARENAS);
+ARENAS.push(...HIPPODROME_SET_ARENAS);
 
 ARENAS.forEach((arena, i) => { ARENAS[i] = withExtraEdgeRules(arena); });
 

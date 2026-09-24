@@ -1,4 +1,5 @@
 import { Arena, ArenaLawId, Terrain } from '../models/types';
+import { HIPPODROME_SET_CLIMATE_LABELS } from './arenaExtrasSetHippodrome';
 
 /**
  * §2.1: what a player is allowed to know before they commit.
@@ -396,6 +397,8 @@ export const CLIMATE_LABELS: Record<string, string> = {
     vigil: 'Perpetual dusk. It has been the last minute before dark for eleven days.',
     saltworks: 'Desert heat. Water is the whole game and there is not much of it.',
     kiln: 'Furnace heat, and two suns over it. There is no shade above ground.',
+    malthouse: 'Furnace heat, indoors. The stills and boilers never go cold.',
+    circuit: 'Desert heat off the tarmac. There is no shade on the track.',
 };
 
 const TERRAIN_LABELS: Record<Terrain, string> = {
@@ -444,3 +447,5 @@ export function lengthEstimate(districtCount: number, hazardRate: number, betray
     const high = Math.round(mid + 2.6);
     return `typically ${low}–${high} days`;
 }
+
+Object.assign(CLIMATE_LABELS, HIPPODROME_SET_CLIMATE_LABELS);

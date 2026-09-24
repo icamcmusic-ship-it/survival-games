@@ -1,6 +1,7 @@
 import React from 'react';
 import { GameState } from '../models/types';
 import { ordinal } from '../engine/gamesProfile';
+import { mutatorName } from '../data/mutators';
 
 /**
  * §2.10: this year's Games, on one card.
@@ -33,6 +34,8 @@ export function RunProfileCard({ gameState }: { gameState: GameState }) {
         ['Sponsors', multiplier(config.sponsorGenerosity), off(config.sponsorGenerosity)],
         ['Feast', config.enableFeast ? 'will be called' : 'none this year', !config.enableFeast],
         ['Sanity', config.enableSanity ? 'tracked' : 'not tracked', !config.enableSanity],
+        // AUDIT-11 §12: the mutator cards drawn for this Games.
+        ['Mutators', config.mutators?.length ? config.mutators.map(mutatorName).join(' + ') : 'none', !!config.mutators?.length],
     ];
 
     return (

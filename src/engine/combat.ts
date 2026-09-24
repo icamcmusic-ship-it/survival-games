@@ -38,6 +38,7 @@ import { isAggressiveStance, isEvasiveStance } from '../data/stances';
 import { loseSanity } from './sanityBands';
 import { composureOf } from './composure';
 import { recordWound, reattributeWound } from './woundLedger';
+import { disorientCombatPenalty, sightlineRanged } from './arenaRules';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -656,6 +657,8 @@ function packCohesion(ctx: SimContext, t: Tribute): number {
  */
 function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opponent?: Tribute): number {
     let power = effectiveStrength(t) + effectiveAgility(t);
+    // Generic arena rule: a disorienting zone blunts everybody's aim.
+    power -= disorientCombatPenalty(ctx.state, t);
 
     if (weapon) {
         power += weapon.damage !== undefined ? effectiveDamage(weapon) : weapon.value / 10;
@@ -664,6 +667,9 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
         // all, so Throwing Knives and the Spear — the one weapon a tribute can
         // craft mid-run — were the only weapons in the game with no stat
         // scaling behind them, which made crafting a downgrade.
+        // Generic arena rule: an arena-wide sightline favours or blinds the
+        // bow and the thrown blade (arenaRules.ts; 0 when none is in force).
+        if (weapon.weaponClass === 'ranged' || weapon.weaponClass === 'thrown') power += sightlineRanged(ctx.state);
         if (weapon.weaponClass === 'ranged') {
             power += Math.floor(effectiveAgility(t) / COMBAT.rangedAgilityDivisor) + traitMod(t, 'rangedPower');
         } else if (weapon.weaponClass === 'melee') {
@@ -772,6 +778,8 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
     // is somebody who did not want this fight and is not equipped for it.
     if (t.stance === 'Desperate') power += STANCE_MODES.desperate.powerBonus;
     if (t.stance === 'Scavenging') power -= STANCE_MODES.scavenging.combatPenalty;
+    // AUDIT-11 §5: the fight Baiting drew in is on ground the baiter chose.
+    if (t.stance === 'Baiting') power += STANCE_MODES.baiting.powerBonus;
 
     // What they have learned from losing to this person before.
     power += rematchEdge(t, opponent);

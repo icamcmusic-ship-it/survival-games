@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTransientFlag } from '../ui/useTransientFlag';
 import { EventCategory, EventLog, GameState, Tribute } from '../models/types';
 import { copyMoment } from '../utils/chronicle';
+import { beatRarityLabel } from '../data/beatRarity';
 import { categoryMeta } from '../ui/eventStyles';
 import { prefsStore } from '../store/prefsStore';
 import { useStore } from '../store/createStore';
@@ -410,8 +411,36 @@ export function FeedLine({ log, showTag = true, animate = true, cast, onSelectTr
             {/* §2.6: the single-moment share. Only on the lines worth sharing
                 on their own — the `important` flag already identifies exactly
                 those — so the feed does not grow a button per line. */}
+            {/* AUDIT-11 §12: rare-beat badge, from the measured rarity table. */}
+            {beatRarityLabel(log.type) && (
+                <span className="chip text-micro ml-1 align-middle" data-testid="rare-beat">rare · {beatRarityLabel(log.type)}</span>
+            )}
+            {log.why && <WhyChip why={log.why} />}
             {log.important && gameState && <MomentShare gameState={gameState} log={log} />}
         </div>
+    );
+}
+
+/**
+ * AUDIT-11 §4: the one-tap reasoning chip. The text was stamped on the line by
+ * the engine from the actor's decision trace at the time; tapping shows it.
+ */
+function WhyChip({ why }: { why: string }) {
+    const [open, setOpen] = useState(false);
+    return (
+        <>
+            <button
+                type="button"
+                className="feed-share in-prose"
+                aria-expanded={open}
+                aria-label={open ? 'Hide reasoning' : 'Why did they do that?'}
+                data-testid="why-chip"
+                onClick={e => { e.stopPropagation(); setOpen(v => !v); }}
+            >
+                why?
+            </button>
+            {open && <span className="chip text-micro ml-1 align-middle">{why}</span>}
+        </>
     );
 }
 

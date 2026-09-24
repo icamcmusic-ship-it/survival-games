@@ -14,6 +14,7 @@
     "test:storage": "tsx scripts/check-storage-migrations.ts",
     "test:undeclared-knobs": "tsx scripts/check-undeclared-knobs.ts",
     "test:metrics": "tsx scripts/metrics.ts",
+    "fix:beat-rarity": "tsx scripts/measure-beat-rarity.ts",
     "test:arenas": "tsx scripts/validate-arenas.ts",
     "test:arena-layout": "tsx scripts/check-arena-layout.ts",
     "test:names": "tsx scripts/check-names.ts",

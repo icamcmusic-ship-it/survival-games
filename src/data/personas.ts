@@ -65,3 +65,62 @@ export const PERSONA_THREAT: Record<InterviewPersona, number> = {
     'The District Loyalist': -0.05,
     'The Wildcard': 0.05,
 };
+
+/**
+ * AUDIT-11 §8: past warm/cold. Eighteen personas read, to the Capitol, as
+ * seven kinds of story — and each kind is money from a different bloc.
+ */
+export type PersonaFamily =
+    | 'heartthrob' | 'underdog' | 'killer' | 'enigma' | 'professional' | 'firebrand' | 'loyalist';
+
+export const PERSONA_FAMILY: Record<InterviewPersona, PersonaFamily> = {
+    'The Star-Crossed Lover': 'heartthrob',
+    'The Charming Flirt': 'heartthrob',
+    'The Humble Underdog': 'underdog',
+    'The Homesick': 'underdog',
+    'The Grieving Sibling': 'underdog',
+    'The Ruthless Warrior': 'killer',
+    'The Arrogant Brute': 'killer',
+    'The Mysterious Enigma': 'enigma',
+    'The Silent Threat': 'enigma',
+    'The Quirky Oddball': 'firebrand',
+    'The Provocateur': 'firebrand',
+    'The Wildcard': 'firebrand',
+    'The Cold Strategist': 'professional',
+    'The Professional': 'professional',
+    'The Volunteer': 'professional',
+    'The Survivor': 'loyalist',
+    'The Reluctant Hero': 'loyalist',
+    'The District Loyalist': 'loyalist',
+};
+
+export const PERSONA_FAMILY_LABEL: Record<PersonaFamily, string> = {
+    heartthrob: 'Heartthrob',
+    underdog: 'Underdog',
+    killer: 'Killer',
+    enigma: 'Enigma',
+    professional: 'Professional',
+    firebrand: 'Firebrand',
+    loyalist: 'Loyalist',
+};
+
+/**
+ * Extra weight a persona family adds to a sponsor bloc's pull toward the
+ * tribute (bloc ids from `engine/sponsorBlocs.ts`). Small next to the blocs'
+ * own preferences — a persona opens a door; the Games decide who walks in.
+ */
+export const PERSONA_BLOC_AFFINITY: Record<PersonaFamily, Partial<Record<string, number>>> = {
+    heartthrob: { romantics: 1.5 },
+    underdog: { romantics: 0.8, gamblers: 0.8 },
+    killer: { 'old-money': 0.8, gamblers: 0.8 },
+    enigma: { gamblers: 1.2 },
+    professional: { 'old-money': 1, industry: 0.6 },
+    firebrand: { gamblers: 1, romantics: 0.4 },
+    loyalist: { industry: 1.4 },
+};
+
+export function personaBlocAffinity(persona: InterviewPersona | undefined, blocId: string): number {
+    if (!persona) return 0;
+    const family = PERSONA_FAMILY[persona];
+    return family ? PERSONA_BLOC_AFFINITY[family][blocId] ?? 0 : 0;
+}

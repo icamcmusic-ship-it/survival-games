@@ -474,7 +474,10 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
         return sig.ownTrapsHere > 0 || sig.ownTrapsAdjacent > 0 || sig.chokepoint
             // AUDIT-11 §5: trap stock. A tribute with lines laid across the
             // arena has a reason to draw people toward them from anywhere.
-            || sig.ownTrapsLive >= STANCE_MODES.baiting.liveTrapsTrigger;
+            || sig.ownTrapsLive >= STANCE_MODES.baiting.liveTrapsTrigger
+            // AUDIT-11 §5 (second pass): high ground and a weapon is prepared
+            // ground too — somebody to draw up the slope, and a reason to.
+            || (sig.elevation && sig.hasWeapon && sig.hostile > 0);
     },
 };
 
@@ -704,6 +707,7 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
         // ...and a line with nobody walking toward it is a line, not a plan.
         if (sig.hostile > 0 || sig.cannonNearby) s += STANCE_MODES.baiting.quarryBonus;
         if (sig.chokepoint) s += STANCE_MODES.baiting.chokepointBonus;
+        if (sig.elevation && sig.hasWeapon) s += STANCE_MODES.baiting.elevationBonus;
         if (sig.wounded) s -= STANCE_MODES.baiting.woundedPenalty;
         s += sig.arch.aggression * STANCE.archetypeWeight * STANCE_MODES.conditionalArchetypeWeight;
         s += sig.arch.stanceBias?.Baiting ?? 0;
