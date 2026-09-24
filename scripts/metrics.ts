@@ -952,6 +952,39 @@ const indicators: Indicator[] = [
     },
     {
         /*
+         * AUDIT-11 §5: the other end of the stance table. The rarest-stance
+         * floor says no stance has become decoration; this says no stance has
+         * become the default. Evasive held 44.0% of all live tribute-cycles at
+         * n=1,600 before the trigger-condition pass (Scavenging on hunger,
+         * Tending past an unarmed stranger, Patrolling a camp of one's own,
+         * Baiting on trap stock) and 35.6% after. The audit's target is 30%;
+         * the goal here is the ~35% this pass was asked for, and the guard
+         * sits between the two measurements, so undoing the pass fails it.
+         *
+         * Stance samples number in the hundreds of thousands, so the
+         * maximum-of-twelve selection is as immaterial here as it is on the
+         * rarest row — but it is declared the same way for the same reason.
+         */
+        label: 'largest stance share',
+        value: (() => {
+            const total = STANCES.reduce((a: number, st: Stance) => a + stanceSamples[st], 0);
+            if (total === 0) return 0;
+            return Math.max(...STANCES.map((st: Stance) => stanceSamples[st] / total));
+        })(),
+        guard: v => v <= 0.40,
+        guardText: '<= 40%',
+        goal: '<= 35%',
+        goalMet: v => v <= 0.35,
+        baseline: '44.0% (Evasive)',
+        fmt: asPct,
+        extremeOf: () => {
+            const total = STANCES.reduce((a: number, st: Stance) => a + stanceSamples[st], 0);
+            const largest = Math.max(...STANCES.map((st: Stance) => stanceSamples[st]));
+            return { rows: STANCES.length, successes: largest, n: Math.max(1, total) };
+        },
+    },
+    {
+        /*
          * AUDIT-6 §4.1: the share of final-two standoffs between strangers.
          *
          * Two people with no regard for each other in either direction, deciding
@@ -1171,6 +1204,32 @@ const indicators: Indicator[] = [
         }),
     },
     {
+        /*
+         * AUDIT-11 §11.8: the district fairness guard the audit asked for.
+         *
+         * "Top three combined" can fall while one district still takes a
+         * fifth of the crowns on its own, which is what a player of District
+         * 1 or 2 actually notices. Measured at n=1,600: 21.2% (District 2)
+         * before this pass, 16-17% after it. The audit's goal is 15%; the
+         * guard is set so a return to the pre-pass Career dominance fails
+         * while an ordinary sweep does not. It is the maximum of twelve rows,
+         * so it gets the same selected-extreme interval as the top-three row.
+         */
+        label: 'largest single-district win share',
+        value: victors === 0 ? 0 : Math.max(0, ...Object.values(victorsByDistrict)) / victors,
+        guard: v => v <= 0.20,
+        guardText: '<= 20%',
+        goal: '<= 15%',
+        goalMet: v => v <= 0.15,
+        baseline: '21.2% (District 2)',
+        fmt: asPct,
+        extremeOf: () => ({
+            rows: Math.max(1, Object.keys(victorsByDistrict).length),
+            successes: Math.max(0, ...Object.values(victorsByDistrict)),
+            n: Math.max(1, victors),
+        }),
+    },
+    {
         // The same thing from the other side, and the one a player actually
         // feels: how many districts win often enough to be worth rooting for.
         label: 'districts winning >= 4% of runs',
@@ -1337,8 +1396,16 @@ const indicators: Indicator[] = [
          * cohorts, which is the instrument for asking *why* Careers convert
          * final-two slots, rather than another knob moved until a number fits.
          */
-        guard: v => v <= 0.60,
-        guardText: '<= 60%',
+        /*
+         * AUDIT-11 §11.1: ratcheted 60% -> 55%. The Career-district attribute
+         * roll (`GENERATION.careerStrengthRollMax` / `careerAgilityRollMax`),
+         * the academy weapon count and the academy combat floor moved this
+         * 59.9% -> ~46-47% at n=1,600. 55% keeps the ~3.4-point run-to-run
+         * spread measured below as headroom above a bad day, plus the same
+         * again, and fails a return to the pre-pass numbers.
+         */
+        guard: v => v <= 0.55,
+        guardText: '<= 55%',
         goal: '<= 45%',
         goalMet: v => v <= 0.45,
         baseline: '76.3% measured (audit reported 40.1%, did not reproduce); 52.7% on main at n=1600 before the death-mix settings, 57.5% after',

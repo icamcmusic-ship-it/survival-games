@@ -23,7 +23,7 @@ import { announceCrossing } from '../noise';
 import { correctAccusations, tradeAccusations } from '../accusations';
 import { onObjectiveArrival } from '../objectiveArrival';
 import { checkTraps, hasCamp, tickTraps } from '../fieldcraft';
-import { allianceRecords, areLovers, fractureBlocs, isHostileTo, leaderFor } from '../alliance';
+import { allianceRecords, areLovers, fractureBlocs, isHostileTo, leaderFor, allied } from '../alliance';
 
 import { decayNotoriety, reputationPriors, spreadNotoriety } from '../notoriety';
 import { updateStance } from '../stance';
@@ -251,7 +251,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
                 zoneSightlines(ctx.state.arena, vantage).forEach(watched => {
                     const rivalsThere = currentAlive.filter(o =>
                         o.status === 'alive' && o.zone === watched && o.id !== t.id
-                        && (o.allianceId === undefined || o.allianceId !== t.allianceId)).length;
+                        && !allied(o, t)).length;
                     noteSighting(ctx.state, t, watched, rivalsThere, depletionOf(ctx.state, watched));
                 });
             }
@@ -556,7 +556,7 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         // §8.9: cycles spent with no hostile in the zone. Enough of them in a
         // row and quiet has become who they are.
         const hostileHere = board.some(o => o.id !== t.id && o.zone === t.zone
-            && (o.allianceId === undefined || o.allianceId !== t.allianceId));
+            && !allied(o, t));
         t.unseenStreak = hostileHere ? 0 : (t.unseenStreak ?? 0) + 1;
         if (t.unseenStreak >= EARNED_TRAIT_RULES.silentStepCycles) earnTrait(ctx, t, 'Silent Step');
         // A1: consecutive cycles on the same ground. Fortified needs a tribute
@@ -1040,7 +1040,7 @@ function forceFinale(ctx: SimContext) {
     // here so the nightlock standoff stays reachable. Everyone else gets the
     // 74th's original terms: the revocation, announced from the sky.)
     if (alive.length === 2
-        && alive[0].allianceId !== undefined && alive[0].allianceId === alive[1].allianceId
+        && allied(alive[0], alive[1])
         // §18 (requests): the lovers' exemption exists so the nightlock
         // standoff stays reachable. With one victor guaranteed there is no
         // standoff to reach, so the alliance is revoked for them too.
@@ -1602,7 +1602,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
             // still get their own arrival.
             const party = t.allianceId === undefined ? [t] : currentAlive.filter(m =>
                 m.status === 'alive'
-                && m.allianceId === t.allianceId
+                && allied(m, t)
                 && m.zone === from
                 && m.transit?.to === dest
                 && m.transit.remaining === remaining);
@@ -1648,7 +1648,7 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
     }
 
     if (t.allianceId) {
-        const allianceMembers = currentAlive.filter(m => m.allianceId === t.allianceId && m.status === 'alive');
+        const allianceMembers = currentAlive.filter(m => allied(m, t) && m.status === 'alive');
         // The group's actual leader, chosen on merit and open to challenge —
         // not `members[0]`, which was whatever order the array happened to be in.
         const leader = leaderFor(ctx.state, t) ?? allianceMembers[0];
@@ -1875,7 +1875,7 @@ function resolveEncounters(
         // notice each other. A tribute who has gone to ground in heavy cover is
         // simply not found this cycle, which is what stealth buys them.
         const inZone = shuffled.filter(o => o.id !== t.id && !acted.has(o.id) && o.status === 'alive' && samePlace(ctx.state.arena, t, o));
-        const alliesOf = (o: Tribute) => inZone.filter(x => x.allianceId !== undefined && x.allianceId === o.allianceId).length;
+        const alliesOf = (o: Tribute) => inZone.filter(x => allied(x, o)).length;
         // In a forced finale the notice roll is skipped for the same reason
         // the hazard rolls above are: there is no cover left to be missed in.
         const others = finaleOpponent
@@ -1918,7 +1918,7 @@ function resolveEncounters(
 
         if (ctx.rng.chance(meetChance)) {
             // Three or more free bodies in one zone is a group problem.
-            const hostilePresent = others.filter(o => o.allianceId === undefined || o.allianceId !== t.allianceId);
+            const hostilePresent = others.filter(o => !allied(o, t));
             if (others.length >= 2 && hostilePresent.length >= 1 && ctx.rng.chance(ENCOUNTERS.groupFightChance)) {
                 const party = [t, ...others].slice(0, ENCOUNTERS.maxBrawlSize);
                 const anyAggressive = party.some(p => isAggressiveStance(p.stance));
@@ -1962,11 +1962,11 @@ function resolveEncounters(
  */
 function tickSharedGrief(ctx: SimContext) {
     if (ctx.state.sharedGriefAllies) return;
-    const allied = getAlive(ctx.state).filter(t => t.allianceId);
-    for (let i = 0; i < allied.length; i++) {
-        for (let j = i + 1; j < allied.length; j++) {
-            const a = allied[i], b = allied[j];
-            if (a.allianceId !== b.allianceId) continue;
+    const grouped = getAlive(ctx.state).filter(t => t.allianceId);
+    for (let i = 0; i < grouped.length; i++) {
+        for (let j = i + 1; j < grouped.length; j++) {
+            const a = grouped[i], b = grouped[j];
+            if (!allied(a, b)) continue;
             const mournedA = a.memory?.mourned ?? [];
             if (mournedA.length === 0) continue;
             if (!mournedA.some(id => (b.memory?.mourned ?? []).includes(id))) continue;

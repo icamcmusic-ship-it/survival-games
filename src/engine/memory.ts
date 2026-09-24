@@ -1,5 +1,5 @@
 import { GameState, RivalRecord, Tribute, TributeMemory, ZoneMemory } from '../models/types';
-import { FEAR, HUNTING, INTEL, MEMORY, NOISE, RELATIONSHIPS, RIVAL_READ, SANITY_BANDS, SUSPICION, ZONES } from '../data/balance';
+import { FEAR, HUNTING, INTEL, MEMORY, NOISE, PERCEPTION, RELATIONSHIPS, RIVAL_READ, SANITY_BANDS, SUSPICION, ZONES } from '../data/balance';
 import { arenaHasLaw } from './gamesProfile';
 import { profOf } from './proficiency';
 import { suspectKilling } from './accusations';
@@ -11,6 +11,7 @@ import { believes } from './rapport';
 import { SimContext } from './context';
 import { arenaIsSilent } from './gamesProfile';
 import { adjustBelief, credibilityWeight } from './relationships';
+import { allied } from './alliance';
 
 /**
  * Tribute memory: the difference between an AI that reacts to the current
@@ -131,7 +132,7 @@ export function shareScoutSighting(state: GameState, scout: Tribute, zone: strin
     const record = state.alliances?.[scout.allianceId];
     if (record?.roles?.scout !== scout.id) return;
     state.tributes.forEach(mate => {
-        if (mate.id === scout.id || mate.status !== 'alive' || mate.allianceId !== scout.allianceId) return;
+        if (mate.id === scout.id || mate.status !== 'alive' || !allied(mate, scout)) return;
         // §4.3: a report is only information if you rate the person giving it.
         // A scout the group has written off is a scout the group does not act
         // on, which is the whole reason professional esteem is a separate
@@ -320,7 +321,7 @@ export function broadcastDeath(ctx: SimContext, victim: Tribute, killer?: Tribut
         // their own group, which is one of the cracks a Career pack breaks
         // along.
         if (killer && killer.id !== other.id
-            && other.allianceId !== undefined && other.allianceId === killer.allianceId
+            && allied(other, killer)
             && killer.kills >= SUSPICION.allyKillCountWary) {
             raiseSuspicion(other, killer.id, SUSPICION.perAllyKill);
         }
@@ -398,6 +399,46 @@ export function noteRivalPlace(state: GameState, t: Tribute, other: Tribute) {
     const record = rivalRecord(t, other.id);
     record.lastSeenZone = other.zone;
     record.lastSeenCycle = cycleOf(state);
+    // AUDIT-11 §5: and what they looked like, for `impressionOf`.
+    record.lastSeenHealth = other.health;
+    record.lastSeenArmed = other.inventory.some(i => i.type === 'weapon');
+    record.lastSeenLoot = other.inventory.reduce((sum, i) => sum + i.value, 0);
+}
+
+/**
+ * AUDIT-11 §5 "Remove omniscience": what `t` believes about `other`'s state.
+ *
+ * The hunt score, the endgame edge and betrayal targeting all used to read the
+ * live health and inventory of somebody who might be three sectors away. This
+ * is the last sighting instead, blended toward an average stranger
+ * (`PERCEPTION.prior*`) as it ages. Standing in the same zone is looking at
+ * them, so that reads the live picture (and writes nothing — the
+ * runner-up pass in `chooseObjective` must not change the world). `armed` is a 0-1
+ * expectation rather than a boolean, because a stale sighting is a guess.
+ */
+export interface Impression { health: number; armed: number; loot: number; confidence: number }
+export function impressionOf(state: GameState, t: Tribute, other: Tribute): Impression {
+    if (t.zone === other.zone && other.status === 'alive') {
+        return {
+            health: other.health,
+            armed: other.inventory.some(i => i.type === 'weapon') ? 1 : 0,
+            loot: other.inventory.reduce((sum, i) => sum + i.value, 0),
+            confidence: 1,
+        };
+    }
+    const record = ensureMemory(t).rivals[other.id];
+    if (record?.lastSeenCycle === undefined || record.lastSeenHealth === undefined) {
+        return { health: PERCEPTION.priorHealth, armed: PERCEPTION.priorArmed, loot: PERCEPTION.priorLoot, confidence: 0 };
+    }
+    const age = Math.max(0, cycleOf(state) - record.lastSeenCycle);
+    const confidence = Math.max(0, 1 - age / (MEMORY.sightingLifetime + PERCEPTION.staleGrace));
+    const blend = (seen: number, prior: number) => prior + (seen - prior) * confidence;
+    return {
+        health: blend(record.lastSeenHealth, PERCEPTION.priorHealth),
+        armed: blend(record.lastSeenArmed ? 1 : 0, PERCEPTION.priorArmed),
+        loot: blend(record.lastSeenLoot ?? PERCEPTION.priorLoot, PERCEPTION.priorLoot),
+        confidence,
+    };
 }
 
 /**
@@ -932,7 +973,7 @@ export function tickIntelSharing(ctx: SimContext) {
     alive.forEach(teller => {
         if (teller.allianceId === undefined) return;
         const mates = alive.filter(o => o.id !== teller.id
-            && o.allianceId === teller.allianceId && o.zone === teller.zone);
+            && allied(o, teller) && o.zone === teller.zone);
         if (mates.length === 0) return;
         if (!ctx.rng.chance(INTEL.shareChance)) return;
         const listener = ctx.rng.pick(mates);

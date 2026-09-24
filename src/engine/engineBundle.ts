@@ -17,6 +17,6 @@ export { resolveArenaForRun } from './arenaSetup';
 export { configForProfile, gamesProfileFor } from './gamesProfile';
 export { sendPlayerParachute, sponsorCost, sponsorableItems } from './playerSponsor';
 export { tributeOdds } from './odds';
-export { BRANCHABLE, playBranch, summariseBranches } from './whatIf';
+export { BRANCHABLE, playBranch, playerInterventionsAfter, summariseBranches } from './whatIf';
 export type { WhatIfResult } from './whatIf';
 export { WHAT_IF } from '../data/balance';

@@ -11,7 +11,7 @@ import { cyclesSinceContact, ensureMemory, hasStoodBy, raiseSuspicion, rattle, s
 import { getZone } from './map';
 import { suspectKilling, witnessKilling } from './accusations';
 import { arenaIsSilent } from './gamesProfile';
-import { areLovers } from './alliance';
+import { areLovers, allied } from './alliance';
 import { GRIEF_TEXTS, VENGEANCE_TEXTS, RELIEF_TEXTS, BETRAYAL_WITNESS_TEXTS } from '../data/flavorText';
 import { resolveLoansOnDeath } from './debts';
 import { addExcitement } from './audience';
@@ -281,7 +281,7 @@ function inheritFrom(ctx: SimContext, victim: Tribute, killer?: Tribute) {
     const heir = ctx.state.tributes
         .filter(o => o.status === 'alive' && o.id !== victim.id && o.zone === victim.zone)
         .filter(o => getRel(o, victim.id) >= RELATIONSHIPS.inheritBond
-            || (o.allianceId !== undefined && o.allianceId === victim.allianceId))
+            || allied(o, victim))
         .sort((a, b) => getRel(b, victim.id) - getRel(a, victim.id))[0];
     if (!heir || heir.id === killer?.id) return;
 
@@ -330,7 +330,7 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
     state.tributes.forEach(other => {
         if (other.status !== 'alive' || other.id === victim.id) return;
         const bond = getRel(other, victim.id);
-        const wereAllied = other.allianceId !== undefined && other.allianceId === victim.allianceId;
+        const wereAllied = allied(other, victim);
         const isLover = areLovers(other, victim);
 
         // §11.3: the district partner is the person from home. Their death is
@@ -699,7 +699,7 @@ export function decayAllianceRegard(state: GameState) {
         if (!t.allianceId) return;
         const record = state.alliances?.[t.allianceId];
         alive.forEach(other => {
-            if (other.id === t.id || other.allianceId !== t.allianceId) return;
+            if (other.id === t.id || !allied(other, t)) return;
             // Star-crossed lovers are the one bond the endgame cannot erode.
             const bonded = areLovers(t, other);
             if (bonded) return;

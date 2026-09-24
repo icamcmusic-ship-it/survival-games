@@ -437,7 +437,7 @@ export const ARENAS: Arena[] = [
         effectVocab: { contaminated: { label: 'rock dust in the galleries', severityMult: 1.15, durationMult: 1.3 } },
         name: 'The Warren',
         description: 'A mine that was old before Panem was young: six chambers of tunnel and dust, no open sky, and no standing water anywhere. Everything a tribute drinks down here, somebody carried in. And something else lives in the dark.',
-        mutts: ['The Warden', 'Pit Rats'],
+        mutts: ['The Warden', 'Pit Rats', 'Tunnel Hounds', 'Blind Burrowers'],
         events: ['Tunnel Collapse', 'Bad Air', 'The Shifting'],
         // No `lawZone` is deliberate: there is no exception, nowhere down
         // here has water at all — see the description above.
@@ -1429,6 +1429,13 @@ export const TRAITS = ROLLABLE_TRAITS;
  * and a sanity penalty for the same kill.
  */
 export const INCOMPATIBLE_TRAITS: Array<[string, string]> = [
+    // AUDIT-11 §16: the new sixteen against their obvious opposites.
+    ['Heavy Sleeper', 'Light Sleeper'],
+    ['Heavy Sleeper', 'Insomniac'],
+    ['Firewalker', 'Fire-Shy'],
+    ['Firewalker', 'Frost-Born'],
+    ['Wanderlust', 'Homebody'],
+    ['Oathkeeper', 'Salt-Tongued'],
     ['Pacifist', 'Bloodthirsty'],
     ['Pacifist', 'Brute'],
     ['Pacifist', 'Pyromaniac'],

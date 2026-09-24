@@ -24,7 +24,7 @@ import { injure, injuryGrade, openWound } from './wounds';
 import { isUnfamiliar, noteWeaponUse, profOf, trainProficiency, weaponAffinity, weaponHandling, weaponProficiency } from './proficiency';
 import { addFear, fearFraction, reduceFear } from './fear';
 import { notorietyFraction, witnessReputation } from './notoriety';
-import { areLovers, emptyCache } from './alliance';
+import { areLovers, emptyCache, allied } from './alliance';
 import { hasTruce } from './parley';
 import { riskTolerance } from './risk';
 import { blocTreatyHolds, noteBlocKill } from './blocTreaty';
@@ -638,7 +638,7 @@ function rematchEdge(t: Tribute, opponent?: Tribute): number {
 function packCohesion(ctx: SimContext, t: Tribute): number {
     if (!t.allianceId) return 1;
     const mates = ctx.state.tributes.filter(o =>
-        o.status === 'alive' && o.id !== t.id && o.allianceId === t.allianceId && o.zone === t.zone);
+        o.status === 'alive' && o.id !== t.id && allied(o, t) && o.zone === t.zone);
     if (mates.length === 0) return 1;
     const regard = mates.reduce((sum, o) => sum + getRel(t, o.id), 0) / mates.length;
     const scaled = COMBAT.packCohesionFloor
@@ -1328,12 +1328,18 @@ export function resolveCombat(
                  * moment — see "Receipt of Mercy".
                  */
                 fleer.sparedBy = [...(fleer.sparedBy ?? []).filter(id => id !== stayer.id), stayer.id];
+                fleer.sparedAt = { ...(fleer.sparedAt ?? {}), [stayer.id]: cycleOf(ctx.state) };
                 // ...and it is worth something to them. Regard and trust, not
                 // a drop in fear: the person who just beat you is exactly as
                 // dangerous as they were, and being grateful to somebody you
                 // are still frightened of is the honest shape of this.
-                adjustRel(fleer, stayer.id, COMBAT.mercyRegard);
-                adjustTrust(fleer, stayer.id, COMBAT.mercyTrust);
+                // AUDIT-11 E16: unless they have sworn to kill them. Being let
+                // go by the person you are hunting is not a kindness you owe
+                // anything for.
+                if (!hasVengeanceAgainst(fleer, stayer.id)) {
+                    adjustRel(fleer, stayer.id, COMBAT.mercyRegard);
+                    adjustTrust(fleer, stayer.id, COMBAT.mercyTrust);
+                }
             }
             ended = true;
             break;
@@ -1495,7 +1501,7 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
         // to somebody the group likes turns blows aside.
         const drawOf = (d: Tribute) => {
             const allyPresent = defenders.some(o => o.id !== d.id
-                && o.allianceId !== undefined && o.allianceId === d.allianceId);
+                && allied(o, d));
             // §3.3 (audit): the roles the alliance layer assigns finally mean
             // something in a fight. The muscle stands in front; the medic is
             // the one the others step in front of — when there is anybody to
@@ -1851,7 +1857,18 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
      * fight they had lost, met them again, and finished it. That is a better
      * beat than the one the spec asked for, and it is the one that exists.
      */
-    if (killer && (victim.sparedBy ?? []).includes(killer.id)) {
+    // AUDIT-11 E16: mercy ages. `sparedBy` was never cleared, so "Mercy
+    // withdrawn" fired even after the pair had allied since and one betrayed
+    // the other — two contradictory headlines for one death. The sparing is
+    // the story only while it is recent and nothing has happened between
+    // them since.
+    const sparedCycle = victim.sparedAt?.[killer?.id ?? ''];
+    const mercyStillLive = !!killer && (victim.sparedBy ?? []).includes(killer.id)
+        && (sparedCycle === undefined || cycleOf(ctx.state) - sparedCycle <= COMBAT.mercyMemoryCycles)
+        && !allied(killer, victim)
+        && !(victim.formerAllies ?? []).includes(killer.id)
+        && !ensureMemory(victim).betrayedBy.includes(killer.id);
+    if (killer && mercyStillLive) {
         noteMilestone(ctx, 'mercy-withdrawn', [killer.id, victim.id]);
         ctx.logEvent(
             `${killer.name} let ${victim.name} walk away once. They do not do it twice.`,
@@ -1999,7 +2016,7 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
              */
             const onlookers = ctx.state.tributes.filter(o =>
                 o.status === 'alive' && o.id !== killer.id && o.id !== victim.id
-                && o.zone === victim.zone && o.allianceId !== killer.allianceId).length;
+                && o.zone === victim.zone && !allied(o, killer)).length;
             const desperate = killer.inventory.length === 0
                 || killer.vitals.hunger > LOOTING.desperateHunger
                 || killer.vitals.thirst > LOOTING.desperateThirst;

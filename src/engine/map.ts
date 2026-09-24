@@ -8,6 +8,7 @@ import { chokepointModifier, climbModifier, massOf } from './physique';
 import { SimContext, getAlive } from './context';
 import { profOf, trainProficiency } from './proficiency';
 import { resolveCombat } from './combat';
+import { allied } from './alliance';
 
 export function zoneNames(arena: Arena): string[] {
     return arena.zones.map(z => z.name);
@@ -765,7 +766,7 @@ export function tickHiddenEdges(ctx: SimContext) {
     for (const teller of alive) {
         if (!teller.knownEdges || teller.knownEdges.length === 0 || !teller.allianceId) continue;
         for (const listener of alive) {
-            if (listener.id === teller.id || listener.allianceId !== teller.allianceId || listener.zone !== teller.zone) continue;
+            if (listener.id === teller.id || !allied(listener, teller) || listener.zone !== teller.zone) continue;
             for (const key of teller.knownEdges) {
                 if (listener.knownEdges?.includes(key)) continue;
                 if (!ctx.rng.chance(EDGE_RULES.tellAllyChance)) continue;

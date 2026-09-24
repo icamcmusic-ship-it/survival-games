@@ -20,6 +20,7 @@ import { hasTruce } from './parley';
 import { debtTo } from './debts';
 import { trapsIn } from './fieldcraft';
 import { inventoryValue } from './items';
+import { allied } from './alliance';
 
 /**
  * What a tribute can actually see of someone without knowing their sheet.
@@ -137,10 +138,10 @@ export function assessZone(t: Tribute, occupants: Tribute[], state?: GameState) 
     let friendly = 0;
     occupants.forEach(o => {
         if (o.id === t.id) return;
-        const allied = t.allianceId !== undefined && t.allianceId === o.allianceId;
-        const friend = allied || getRel(t, o.id) > STANCE.friendRegardThreshold;
+        const sameGroup = allied(t, o);
+        const friend = sameGroup || getRel(t, o.id) > STANCE.friendRegardThreshold;
         // You know what your own allies can do; strangers you have to guess at.
-        if (friend) friendly += allied ? ownPower(o) : estimate(o);
+        if (friend) friendly += sameGroup ? ownPower(o) : estimate(o);
         else hostile += estimate(o);
     });
 
@@ -177,6 +178,8 @@ export interface StanceSignals {
      * work at all. A trapline is a shape around a position, not a tile.
      */
     ownTrapsAdjacent: number;
+    /** AUDIT-11 §5: every live trap this tribute owns, anywhere in the arena. */
+    ownTrapsLive: number;
     /** True when the ground itself rewards holding it. */
     chokepoint: boolean;
     elevation: boolean;
@@ -238,7 +241,7 @@ function buildSignals(ctx: SimContext, t: Tribute, occupants: Tribute[]): Stance
         const tracks = (o: Tribute) => readOf(t, o.id) > 0 || rivalRecord(t, o.id).fights > 0;
         const candidates = ctx.state.tributes.filter(o =>
             o.status === 'alive' && o.id !== t.id
-            && (o.allianceId === undefined || o.allianceId !== t.allianceId)
+            && !allied(o, t)
             && (t.attributes.stealth >= shadowFloor || tracks(o))
             // A §2: one zone over, or the same zone at a distance. Requiring
             // the quarry to be strictly next door meant a shadow lost the
@@ -259,6 +262,7 @@ function buildSignals(ctx: SimContext, t: Tribute, occupants: Tribute[]): Stance
         aliveCount: ctx.state.tributes.filter(o => o.status === 'alive').length,
         occupants,
         ownTrapsHere: trapsIn(ctx, t.zone).filter(tr => tr.ownerId === t.id).length,
+        ownTrapsLive: (ctx.state.traps ?? []).filter(tr => tr.ownerId === t.id).length,
         ownTrapsAdjacent: (getZone(ctx.state.arena, t.zone)?.adjacent ?? [])
             .reduce((n, name) => n + trapsIn(ctx, name).filter(tr => tr.ownerId === t.id).length, 0),
         chokepoint: !!features?.chokepoint,
@@ -352,7 +356,12 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
         // AUDIT-9 batch 3: ...or there is simply something here worth taking.
         return (!sig.hasWeapon && sig.kit < STANCE_MODES.scavenging.inventoryValue * band)
             || sig.cannonNearby
-            || sig.bodiesHere > 0;
+            || sig.bodiesHere > 0
+            // AUDIT-11 §5: hunger is the commonest reason anybody goes
+            // picking through the arena, and the stance already forages at a
+            // bonus (`pickingsBonus`). It was only reachable through kit and
+            // cannons, so an empty stomach was answered with Evasive instead.
+            || t.vitals.hunger > STANCE_MODES.scavenging.hungerTrigger / band;
     },
 
     // A trail already underway survives a cycle in which the quarry briefly
@@ -397,12 +406,16 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
      * because two people holding a chokepoint is a picket.
      */
     Patrolling: (ctx, t, sig) => {
+        // AUDIT-11 §5: a camp of one's own is ground worth walking the edge
+        // of, pack or no pack — once it has been held long enough to matter.
+        if (ctx.state.camps?.[t.id] !== undefined
+            && (t.zoneHeld ?? 0) >= STANCE_MODES.patrolling.soloCampHoldCycles) return true;
         if (!t.allianceId) return false;
-        const pack = sig.occupants.filter(o => o.allianceId === t.allianceId).length;
+        const pack = sig.occupants.filter(o => allied(o, t)).length;
         if (pack < STANCE_MODES.patrolling.packMin) return false;
         const camps = ctx.state.camps ?? {};
         if (camps[t.id] !== undefined) return true;
-        if (sig.occupants.some(o => o.allianceId === t.allianceId && camps[o.id] !== undefined)) return true;
+        if (sig.occupants.some(o => allied(o, t) && camps[o.id] !== undefined)) return true;
         // Ground this alliance is holding is ground worth walking the edge of.
         // The horn is the one zone the engine tracks a holder for, and it is
         // also the one most worth a picket.
@@ -428,8 +441,12 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
             || t.health < STANCE_MODES.tending.healthBelow
             || Object.values(t.woundInfection ?? {}).some(v => (v ?? 0) > 0);
         if (!hurt) return false;
+        // AUDIT-11 §5: an *armed* stranger stops it. Requiring an empty sector
+        // outright kept the stance at 1.3% of cycles, because a hurt tribute
+        // is rarely alone and the unarmed are no threat to a bandage.
         return !sig.occupants.some(o => o.id !== t.id
-            && (o.allianceId === undefined || o.allianceId !== t.allianceId));
+            && !allied(o, t)
+            && (!STANCE_MODES.tending.ignoreUnarmed || o.inventory.some(i => i.type === 'weapon')));
     },
 
     /*
@@ -454,7 +471,10 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
          * the old gate could not see the work; and baiting is only a plan if
          * there is somebody to bait, which nothing checked.
          */
-        return sig.ownTrapsHere > 0 || sig.ownTrapsAdjacent > 0 || sig.chokepoint;
+        return sig.ownTrapsHere > 0 || sig.ownTrapsAdjacent > 0 || sig.chokepoint
+            // AUDIT-11 §5: trap stock. A tribute with lines laid across the
+            // arena has a reason to draw people toward them from anywhere.
+            || sig.ownTrapsLive >= STANCE_MODES.baiting.liveTrapsTrigger;
     },
 };
 
@@ -468,11 +488,11 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
  * at bare `base`, lost to Defensive every time, and the widening bought
  * nothing. One function, two callers.
  */
-function nursingPatients(ctx: SimContext, t: Tribute, occupants: Tribute[]): Tribute[] {
+export function nursingPatients(ctx: SimContext, t: Tribute, occupants: Tribute[]): Tribute[] {
     return occupants.filter(o => {
         if (o.id === t.id) return false;
         if (!o.injuries.bleeding && o.health >= STANCE_MODES.nursing.allyHealthBelow) return false;
-        if (t.allianceId !== undefined && o.allianceId === t.allianceId) return true;
+        if (allied(t, o)) return true;
         // A truce is a working agreement, and letting the other party bleed
         // out is a strange way to honour one.
         if (hasTruce(ctx.state, t, o.id)) return true;
@@ -615,6 +635,11 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
         if (!sig.hasWeapon) s += STANCE_MODES.scavenging.unarmedBonus;
         if (sig.cannonNearby) s += STANCE_MODES.scavenging.cannonBonus;
         s += Math.max(0, STANCE_MODES.scavenging.inventoryValue - sig.kit) * STANCE_MODES.scavenging.perMissingValue;
+        // AUDIT-11 §5: the body term was printed as a reason by
+        // `stanceReasons` and never added to the score, so the trace
+        // explained a pull the scorer did not have.
+        s += sig.bodiesHere * STANCE_MODES.scavenging.perBodyHere;
+        s += Math.max(0, t.vitals.hunger - STANCE_MODES.scavenging.hungerTrigger) / 10 * STANCE_MODES.scavenging.perTenHunger;
         // Walking onto a fresh cannon site with people still standing on it is
         // a different decision entirely.
         if (sig.ratio > STANCE.outmatchedRatio) s -= STANCE_MODES.scavenging.contestedPenalty;
@@ -661,6 +686,8 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
         const wounds = Object.values(t.injuries).filter(Boolean).length
             + (t.injuries.bleeding ? 1 : 0);
         s += wounds * STANCE_MODES.tending.perWound;
+        // AUDIT-11 §5: the worse the wound, the stronger the case for stopping.
+        s += Math.max(0, STANCE_MODES.tending.healthBelow - t.health) / 10 * STANCE_MODES.tending.perTenHealthBelow;
         if (sig.ratio > STANCE.outmatchedRatio) s -= STANCE_MODES.tending.contestedPenalty;
         s += sig.arch.caution * STANCE.archetypeWeight * STANCE_MODES.conditionalArchetypeWeight;
         s += sig.arch.stanceBias?.Tending ?? 0;
@@ -673,6 +700,7 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
         // AUDIT-8 §3.4: a trap on the way in is worth most of one underfoot —
         // it is, after all, where the trapper meant to put it.
         s += sig.ownTrapsAdjacent * STANCE_MODES.baiting.perApproachTrap;
+        s += Math.min(STANCE_MODES.baiting.liveTrapsCap, sig.ownTrapsLive) * STANCE_MODES.baiting.perLiveTrap;
         // ...and a line with nobody walking toward it is a line, not a plan.
         if (sig.hostile > 0 || sig.cannonNearby) s += STANCE_MODES.baiting.quarryBonus;
         if (sig.chokepoint) s += STANCE_MODES.baiting.chokepointBonus;
@@ -684,8 +712,9 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
 
     Patrolling: (ctx, t, sig) => {
         let s = STANCE_MODES.patrolling.base;
-        const pack = sig.occupants.filter(o => o.allianceId === t.allianceId).length;
-        s += (pack - STANCE_MODES.patrolling.packMin) * STANCE_MODES.patrolling.perExtraMember;
+        const pack = sig.occupants.filter(o => allied(o, t)).length;
+        s += Math.max(0, pack - STANCE_MODES.patrolling.packMin) * STANCE_MODES.patrolling.perExtraMember;
+        if (ctx.state.camps?.[t.id] !== undefined) s += STANCE_MODES.patrolling.ownCampBonus;
         s += profOf(t, 'tracking') * STANCE_MODES.patrolling.perTrackingPoint;
         if (sig.cannonNearby) s += STANCE_MODES.patrolling.cannonBonus;
         if (sig.wounded) s -= STANCE_MODES.patrolling.woundedPenalty;
@@ -805,6 +834,7 @@ function stanceReasons(ctx: SimContext, t: Tribute, sig: StanceSignals, stance: 
             sig.bodiesHere * STANCE_MODES.scavenging.perBodyHere);
         }
         push('travelling light', Math.max(0, STANCE_MODES.scavenging.inventoryValue - sig.kit) * STANCE_MODES.scavenging.perMissingValue);
+        if (t.vitals.hunger > STANCE_MODES.scavenging.hungerTrigger) push('hungry', (t.vitals.hunger - STANCE_MODES.scavenging.hungerTrigger) / 10 * STANCE_MODES.scavenging.perTenHunger);
     }
 
     return out
@@ -960,7 +990,12 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
     // between two near-equal scorers — and the right answer there is to make
     // the third change genuinely expensive rather than to keep letting the
     // noise win. Decayed below, so a settled tribute pays nothing for it.
-    const margin = STANCE.switchMargin * (1 + (t.stanceChurn ?? 0) * STANCE.churnMarginPerSwitch);
+    // AUDIT-11 §5: a conditional challenger is a new situation (hunger, a
+    // wound to dress, a camp to walk, a line of traps), not the noise the
+    // churn widening exists to damp, and its precondition already carries
+    // entry latency and an exit cooldown. It pays a fraction of the churn.
+    const churnWeight = STANCE_PROFILES[bestStance]?.conditional ? STANCE.conditionalChurnWeight : 1;
+    const margin = STANCE.switchMargin * (1 + (t.stanceChurn ?? 0) * STANCE.churnMarginPerSwitch * churnWeight);
     if (stillValid && bestScore < (scores[t.stance] ?? -Infinity) + margin) {
         noteHeld(`${bestStance.toLowerCase()} scored better, but not by enough to be worth changing their mind over`);
         t.stanceHeld += 1;

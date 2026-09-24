@@ -31,7 +31,7 @@ import { bodyLabel, driftCondition, effectiveAgility, hungerDrainMultiplier, sta
 import { arenaHasLaw, wildcardIs } from './gamesProfile';
 import { isEvasiveStance } from '../data/stances';
 import { loseSanity } from './sanityBands';
-import { isStarCrossed } from './alliance';
+import { isStarCrossed, allied } from './alliance';
 
 /**
  * Staying alive between encounters: spoilage, hunger, thirst, exposure, wounds
@@ -917,7 +917,7 @@ function applySanityPressure(ctx: SimContext, t: Tribute, time: 'day' | 'night',
         // doing the work.
         const warmest = getAlive(ctx.state)
             .filter(o => o.id !== t.id && o.zone === t.zone
-                && o.allianceId !== undefined && o.allianceId === t.allianceId)
+                && allied(o, t))
             .reduce((best, o) => Math.max(best, warmthOf(o)), 0);
         recovery += Math.max(0, warmest - SOCIAL_AXES.attributeMidpoint) * SOCIAL_AXES.allyComfortPerWarmth;
     }
@@ -1166,7 +1166,7 @@ export function processVitals(ctx: SimContext, time: 'day' | 'night') {
         // same zone, not merely an alliance id on a tribute across the map.
         const alliesPresent = board.filter(o =>
             o.id !== t.id && o.status === 'alive' && o.zone === t.zone
-            && o.allianceId !== undefined && o.allianceId === t.allianceId).length;
+            && allied(o, t)).length;
 
         // The arena's standing weather, through the same path as a Gamemaker storm.
         const climate = climateOf(ctx.state.arena.id);

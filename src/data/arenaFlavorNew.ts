@@ -75,7 +75,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 id: 'tidewrack-the-bore', oncePerRun: true,
                 text: 'A tidal bore comes up the estuary into {zone}, a metre of water moving at running pace. {tribute} is in the channel when it arrives.',
                 escapeText: '{tribute} hears the bore coming up on {zone} and is on the bank before it reaches them.',
-                cause: 'Taken by the tidal bore',
+                cause: 'Taken by the tidal bore', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'intelligence', dodgeDifficulty: 7,
                 damage: 34, terrains: ['water', 'wetland', 'open'], zoneWide: true, witnesses: true,
             },
@@ -90,7 +90,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 id: 'tidewrack-the-village-bell', oncePerRun: true,
                 text: 'The bell in the Drowned Village starts ringing on the swell. Every tribute in the arena hears it. {tribute} is standing under it when the tower shifts.',
                 escapeText: '{tribute} hears the village bell start in {zone} and gets clear of the tower.',
-                cause: 'Killed under the village bell',
+                cause: 'Killed under the village bell', code: 'drowning',
                 dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 6,
                 damage: 26, bleeding: true, terrains: ['ruins'], witnesses: true,
             },
@@ -112,19 +112,19 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A wrack crab bed in {zone} comes up through the mud around {tribute}\'s boots.',
                 escapeText: '{tribute} feels the mud move in {zone} and steps off the bed before it opens.',
-                cause: 'Eaten alive on the flats',
+                cause: 'Eaten alive on the flats', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 5, damage: 16, bleeding: true, terrains: ['wetland', 'open'],
             },
             {
                 text: 'The mud in {zone} takes {tribute} to the knee and then to the thigh. Getting out costs them twenty minutes and a boot.',
                 escapeText: '{tribute} tests the mud in {zone} first and goes round it.',
-                cause: 'Lost to the mud',
+                cause: 'Lost to the mud', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower', dodgeDifficulty: 5, damage: 8, fatigue: 22, terrains: ['wetland'],
             },
             {
                 text: 'Something long goes past {tribute}\'s leg in the channel at {zone} and comes back.',
                 escapeText: '{tribute} feels it pass in {zone} and is out of the water before it turns.',
-                cause: 'Taken by an eel in the channel',
+                cause: 'Taken by an eel in the channel', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 6, damage: 22, bleeding: true, terrains: ['water'],
             },
             {
@@ -136,7 +136,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A wave off the Deep Cut puts {tribute} against the rocks at {zone}.',
                 escapeText: '{tribute} sees the set coming at {zone} and gets above it.',
-                cause: 'Put against the rocks',
+                cause: 'Put against the rocks', code: 'hazard',
                 dodgeStat: 'endurance', dodgeAlt: 'strength', dodgeDifficulty: 6, damage: 24, bleeding: true, terrains: ['water', 'highland'],
             },
             {
@@ -173,7 +173,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A spar comes loose in the wreck at {zone} and swings. {tribute} does not see it start.',
                 escapeText: '{tribute} hears the spar shift in {zone} and ducks under it.',
-                cause: 'Struck by a swinging spar',
+                cause: 'Struck by a swinging spar', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 6, damage: 26, terrains: ['ruins'],
             },
             {
@@ -193,13 +193,13 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} puts a hand into a crevice on {zone} and something in it closes on the hand.',
                 escapeText: '{tribute} looks into the crevice at {zone} before reaching in.',
-                cause: 'Lost a hand on Gull Rock',
+                cause: 'Lost a hand on Gull Rock', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower', dodgeDifficulty: 5, damage: 16, bleeding: true, terrains: ['highland', 'ruins'],
             },
             {
                 text: 'The marsh gas in {zone} is thick enough to taste. {tribute} is lightheaded for the rest of the cycle.',
                 escapeText: '{tribute} works upwind of the marsh gas in {zone}.',
-                cause: 'Overcome by marsh gas',
+                cause: 'Overcome by marsh gas', code: 'hazard',
                 dodgeStat: 'endurance', dodgeAlt: 'strength', dodgeDifficulty: 5, damage: 10, sanity: 12, terrains: ['wetland'],
             },
             {
@@ -231,14 +231,14 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 id: 'tidewrack-stranded-bar',
                 text: 'The water closes both ends of the bar {tribute} is on in {zone} inside a minute. The bar is a metre wide and getting narrower.',
                 escapeText: '{tribute} sees the two channels start to join in {zone} and runs for the near bank before they do.',
-                cause: 'Stranded by the tide',
+                cause: 'Stranded by the tide', code: 'hazard',
                 oncePerRun: true, dodgeStat: 'intelligence', dodgeAlt: 'agility', dodgeDifficulty: 7, damage: 30, terrains: ['open', 'wetland'], witnesses: true,
             },
             {
                 id: 'tidewrack-the-gull-fall',
                 text: 'Gull Rock sheds a slab the size of a door onto the ledge {tribute} is standing on in {zone}.',
                 escapeText: '{tribute} hears the rock start to go above them in {zone} and flattens against the wall.',
-                cause: 'Crushed under Gull Rock',
+                cause: 'Crushed under Gull Rock', code: 'hazard',
                 oncePerRun: true, dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 6, damage: 28, terrains: ['highland'], requires: { elevationOrChoke: true },
             },
             {
@@ -252,14 +252,14 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 text: 'A whole hull comes off the Wreck Line on the swell and grounds itself in {zone}. {tribute} is between it and the bank.',
                 escapeText: '{tribute} gets out of the way of the hull in {zone} before the swell puts it ashore.',
-                cause: 'Crushed by a drifting hull',
+                cause: 'Crushed by a drifting hull', code: 'hazard',
                 dodgeDifficulty: 6, damage: 26, terrains: ['ruins', 'wetland'], witnesses: true,
             },
             {
                 dodgeStat: 'strength',
                 text: 'The channel at {zone} is running hard enough to take {tribute}\'s feet. They go in.',
                 escapeText: '{tribute} finds the channel at {zone} running and crosses it upstream, on hands and knees.',
-                cause: 'Swept down the channel',
+                cause: 'Swept down the channel', code: 'hazard',
                 dodgeAlt: 'agility', dodgeDifficulty: 6, damage: 18, fatigue: 20, terrains: ['water'],
             },
             {
@@ -294,7 +294,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 text: '{tribute} cuts their foot open on a shell edge in the mud of {zone}. The salt gets into it before they have it wrapped.',
                 escapeText: '{tribute} keeps their boots on in the mud of {zone}, which is the whole trick.',
-                cause: 'Died of an infected cut on the flats',
+                cause: 'Died of an infected cut on the flats', code: 'hazard',
                 dodgeDifficulty: 5, damage: 8, bleeding: true, infected: true, terrains: ['wetland'],
             },
             {
@@ -329,7 +329,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 damage: 6,
                 text: 'The salt has got into every cut {tribute} has, and in {zone} it starts to tell.',
                 escapeText: '{tribute} rinses every cut in fresh water in {zone} before the salt can settle in them.',
-                cause: 'Died of the salt in their wounds',
+                cause: 'Died of the salt in their wounds', code: 'hazard',
                 sanity: 5, terrains: ['open', 'wetland', 'water'], requires: { trait: 'Bloodied' },
             },
             {
@@ -404,7 +404,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 id: 'thresher-line-restart', oncePerRun: true,
                 text: 'The line restarts. Every conveyor in {zone} comes up to speed at once and {tribute} is standing on one of them.',
                 escapeText: '{tribute} hears the line start under {zone} and is off the belt before it is up to speed.',
-                cause: 'Fed into the line',
+                cause: 'Fed into the line', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 7,
                 damage: 36, bleeding: true, terrains: ['open', 'ruins', 'urban'], zoneWide: true, witnesses: true,
             },
@@ -471,7 +471,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A hopper in {zone} empties itself while {tribute} is beside it. Two tonnes of milled bone, and the dust takes four minutes to settle.',
                 escapeText: '{tribute} hears the hopper gate in {zone} and steps clear.',
-                cause: 'Buried in a hopper',
+                cause: 'Buried in a hopper', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 6, damage: 26, terrains: ['ruins'], zoneWide: true,
             },
             {
@@ -569,7 +569,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 id: 'thresher-the-hopper',
                 text: 'The bone hoppers over {zone} let go a load without a warning bell. {tribute} is underneath.',
                 escapeText: '{tribute} hears the hopper chains take the strain over {zone} and is out from under before it drops.',
-                cause: 'Buried under the hoppers',
+                cause: 'Buried under the hoppers', code: 'hazard',
                 oncePerRun: true, dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 7, damage: 34, terrains: ['ruins'], zoneWide: true, witnesses: true,
             },
             {
@@ -583,7 +583,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 text: 'The coolant race at {zone} is running scalding. {tribute} finds out with their hand.',
                 escapeText: '{tribute} tests the coolant race in {zone} with a stick and leaves it alone.',
-                cause: 'Scalded in the coolant race',
+                cause: 'Scalded in the coolant race', code: 'burns',
                 dodgeDifficulty: 5, damage: 14, burned: true, terrains: ['water'],
             },
             {
@@ -632,7 +632,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 text: 'A steam line in the wall of {zone} lets go beside {tribute}.',
                 escapeText: '{tribute} hears the line in {zone} start to sing and is round the corner before it goes.',
-                cause: 'Scalded by a steam line',
+                cause: 'Scalded by a steam line', code: 'burns',
                 dodgeDifficulty: 5, damage: 16, burned: true, terrains: ['urban', 'ruins', 'cave'],
             },
             {
@@ -646,7 +646,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 damage: 6,
                 text: 'The floor of {zone} has been wet for a week, and the wet has got into {tribute}\'s boots and then into their feet.',
                 escapeText: '{tribute} gets their boots off in {zone} and their feet dry for an hour, which is the whole cure.',
-                cause: 'Died of an infected foot',
+                cause: 'Died of an infected foot', code: 'hazard',
                 infected: true, fatigue: 12, terrains: ['urban', 'cave', 'ruins'],
             },
             {
@@ -735,7 +735,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 id: 'vigil-the-long-bell', oncePerRun: true,
                 text: 'The bell in the tower does not stop at one. It rings for nine minutes. {tribute} is at the foot of the tower for all of it.',
                 escapeText: '{tribute} is two sectors from the tower when the long bell starts and gets further.',
-                cause: 'Killed under the long bell',
+                cause: 'Killed under the long bell', code: 'hazard',
                 dodgeStat: 'willpower', dodgeAlt: 'endurance', dodgeDifficulty: 6,
                 damage: 18, sanity: 26, fatigue: 20, terrains: ['highland', 'open'], zoneWide: true, witnesses: true,
             },
@@ -765,7 +765,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 id: 'vigil-lamp-fails', oncePerRun: true, weight: 0.2,
                 text: 'The lamps over {zone} go out entirely for the first time in eleven days. It is fully dark for ninety seconds and {tribute} is not alone.',
                 escapeText: '{tribute} has been expecting the lamps over {zone} to go and is against a wall when they do.',
-                cause: 'Killed in the ninety seconds of dark',
+                cause: 'Killed in the ninety seconds of dark', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'willpower', dodgeDifficulty: 7,
                 damage: 28, sanity: 22, terrains: ['open', 'ruins'], zoneWide: true, witnesses: true,
             },
@@ -784,7 +784,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} has now been awake for four days. In {zone} they put their pack down, walk twenty metres, and cannot remember where they put it.',
                 escapeText: '{tribute} is tired enough in {zone} to write down where they left things, and it works.',
-                cause: 'Died exhausted',
+                cause: 'Died exhausted', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower', dodgeDifficulty: 6, fatigue: 18, sanity: 14, damage: 6,
             },
             {
@@ -803,7 +803,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} walks to the horn for the dawn treatment across open ground, in full view, because the alternative was the wound.',
                 escapeText: '{tribute} decides against the walk to the horn from {zone} and keeps the wound.',
-                cause: 'Killed walking in for treatment',
+                cause: 'Killed walking in for treatment', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility', dodgeDifficulty: 6, damage: 10, sanity: 8,
                 terrains: ['open', 'forest'], witnesses: true,
             },
@@ -822,7 +822,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A barrack roof in {zone} comes down on the row {tribute} is standing in.',
                 escapeText: '{tribute} hears the roof timbers in {zone} and gets out of the row.',
-                cause: 'Crushed in the barracks',
+                cause: 'Crushed in the barracks', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 6, damage: 28, bleeding: true,
                 terrains: ['ruins'], requires: { loadBearing: true }, special: 'collapse',
             },
@@ -853,7 +853,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The picket line at {zone} is wired. {tribute} takes the wire across the shin.',
                 escapeText: '{tribute} finds the wire on the picket line at {zone} and steps over it.',
-                cause: 'Killed on the picket wire',
+                cause: 'Killed on the picket wire', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'agility', dodgeDifficulty: 6,
                 damage: 18, bleeding: true, terrains: ['forest', 'open'],
             },
@@ -885,7 +885,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Four days without sleep, and {tribute} holds a conversation in {zone} with somebody who is not there. They work out afterwards that nobody was.',
                 escapeText: '{tribute} recognises what is happening in {zone} and sits down until it passes.',
-                cause: 'Died out of their mind',
+                cause: 'Died out of their mind', code: 'hazard',
                 dodgeStat: 'willpower', dodgeAlt: 'endurance', dodgeDifficulty: 6, sanity: 24, damage: 4,
                 requires: { sanityBand: 'frayed' },
             },
@@ -900,7 +900,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 id: 'vigil-the-bell-falls',
                 text: 'The bell in the tower over {zone} comes off its beam, and {tribute} is under it.',
                 escapeText: '{tribute} hears the beam crack in {zone} and is out of the tower before the bell lands.',
-                cause: 'Crushed under the bell',
+                cause: 'Crushed under the bell', code: 'hazard',
                 oncePerRun: true, dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 7, damage: 36, terrains: ['highland'], witnesses: true, special: 'collapse',
             },
             {
@@ -928,7 +928,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 text: 'The picket line through {zone} is still strung. {tribute} walks into it at the throat in the dark.',
                 escapeText: '{tribute} finds the wire in {zone} with a stick before it finds them.',
-                cause: 'Garrotted on the picket wire',
+                cause: 'Garrotted on the picket wire', code: 'hazard',
                 dodgeDifficulty: 6, damage: 20, bleeding: true, terrains: ['forest'], requires: { time: 'night' },
             },
             {
@@ -1073,7 +1073,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 id: 'saltworks-the-crust-gives', oncePerRun: true,
                 text: 'The crust across {zone} gives over an area the size of a field. {tribute} goes in to the chest in brine that has been under it since the arena was built.',
                 escapeText: '{tribute} reads the crust in {zone} and works round the soft ground.',
-                cause: 'Went through the crust',
+                cause: 'Went through the crust', code: 'poison',
                 dodgeStat: 'intelligence', dodgeAlt: 'agility', dodgeDifficulty: 7,
                 damage: 30, poisoned: true, terrains: ['desert', 'open'], zoneWide: true, witnesses: true,
             },
@@ -1081,7 +1081,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 id: 'saltworks-the-harvest-bell', oncePerRun: true,
                 text: 'A harvest bell sounds over the works and the pumps start. Every pan in the arena begins to drain, including the one {tribute} is standing in.',
                 escapeText: '{tribute} hears the harvest bell and is off the pan at {zone} before the pumps take hold.',
-                cause: 'Taken by the pumps',
+                cause: 'Taken by the pumps', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 6,
                 damage: 22, terrains: ['desert', 'water', 'open'], zoneWide: true, witnesses: true,
             },
@@ -1103,7 +1103,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Salt gets into {tribute}\'s eyes in {zone} and they cannot see properly for two hours.',
                 escapeText: '{tribute} keeps their face covered crossing {zone} and the salt stays out.',
-                cause: 'Blinded by the salt',
+                cause: 'Blinded by the salt', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower', dodgeDifficulty: 5, damage: 8, sanity: 10, terrains: ['desert', 'open'],
             },
             {
@@ -1121,7 +1121,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A brine wraith comes up at the well while {tribute} is drinking from it.',
                 escapeText: '{tribute} sees the water move at the well and is back from it before the wraith clears.',
-                cause: 'Killed at the well',
+                cause: 'Killed at the well', code: 'poison',
                 dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 7, damage: 26, bleeding: true, poisoned: true, terrains: ['water'],
             },
             {
@@ -1222,14 +1222,14 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 id: 'saltworks-through-the-pan',
                 text: '{tribute} walks back across a pan in {zone} they crossed yesterday. Yesterday it held. Today the crust is eggshell over brine.',
                 escapeText: '{tribute} tests the pan in {zone} with a heel and goes the long way.',
-                cause: 'Went through the pan',
+                cause: 'Went through the pan', code: 'hazard',
                 oncePerRun: true, dodgeStat: 'intelligence', dodgeAlt: 'agility', dodgeDifficulty: 7, damage: 28, terrains: ['desert'], requires: { law: 'meltingGround' }, witnesses: true,
             },
             {
                 id: 'saltworks-the-stack',
                 text: 'The stack yard in {zone} has one stack too many leaning on the others. {tribute} is beside the wrong one.',
                 escapeText: '{tribute} sees the stack in {zone} lean and is clear before it goes.',
-                cause: 'Buried under a salt stack',
+                cause: 'Buried under a salt stack', code: 'hazard',
                 oncePerRun: true, dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 6, damage: 30, terrains: ['ruins'], special: 'collapse', witnesses: true,
             },
             {
@@ -1243,7 +1243,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 text: 'The salt glare off the pan in {zone} has {tribute} half blind by noon.',
                 escapeText: '{tribute} rigs a strip of cloth over their eyes in {zone} and keeps their sight.',
-                cause: 'Walked blind into the brine',
+                cause: 'Walked blind into the brine', code: 'hazard',
                 dodgeDifficulty: 5, damage: 6, fatigue: 12, sanity: 6, terrains: ['desert', 'open'], requires: { time: 'day' },
             },
             {
@@ -1278,14 +1278,14 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 text: 'A dust storm comes off the pans over {zone} with {tribute} in the open, and the dust is salt.',
                 escapeText: '{tribute} sees the wall of it coming across {zone} and is in the barrow track cut before it arrives.',
-                cause: 'Flayed by a salt storm',
+                cause: 'Flayed by a salt storm', code: 'hazard',
                 dodgeDifficulty: 6, damage: 14, thirst: 12, terrains: ['desert', 'open', 'highland'], requires: { storm: true }, zoneWide: true,
             },
             {
                 damage: 6,
                 text: 'Every cut on {tribute} has salt in it now, and in {zone} the small ones start to matter.',
                 escapeText: '{tribute} keeps the cuts covered in {zone} and the salt out of them, mostly.',
-                cause: 'Died of the salt in their wounds',
+                cause: 'Died of the salt in their wounds', code: 'hazard',
                 infected: true, terrains: ['desert', 'open', 'water'], requires: { trait: 'Bloodied' },
             },
             {
@@ -1327,7 +1327,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 text: 'Something with too many legs comes up out of the brine channel at {zone}, beside {tribute}.',
                 escapeText: '{tribute} hears the channel at {zone} and is not standing beside it when it opens.',
-                cause: 'Taken by what lives in the brine',
+                cause: 'Taken by what lives in the brine', code: 'poison',
                 dodgeDifficulty: 6, damage: 20, poisoned: true, terrains: ['water', 'desert'], startsZoneEffect: 'swarming', weight: 0.7,
             },
         ],
@@ -1395,7 +1395,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 id: 'kiln-draw-day', oncePerRun: true,
                 text: 'Every kiln in the row is drawn at once. The heat off {zone} rises by half again in under a minute and {tribute} is in the middle of it.',
                 escapeText: '{tribute} is out of {zone} and behind the sheds when the kilns are drawn.',
-                cause: 'Killed when the kilns were drawn',
+                cause: 'Killed when the kilns were drawn', code: 'burns',
                 dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 7,
                 damage: 34, burned: true, thirst: 20, terrains: ['open', 'desert', 'ruins'], zoneWide: true, witnesses: true,
             },
@@ -1410,7 +1410,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 id: 'kiln-the-second-sun', oncePerRun: true,
                 text: 'The second sun comes up to full for the first time. Ground temperature across the arena rises for four hours and {tribute} is caught in the open for all of it.',
                 escapeText: '{tribute} is underground at {zone} when the second sun comes up to full.',
-                cause: 'Killed under the second sun',
+                cause: 'Killed under the second sun', code: 'burns',
                 dodgeStat: 'endurance', dodgeAlt: 'strength', dodgeDifficulty: 7,
                 damage: 26, thirst: 30, burned: true, zoneWide: true, witnesses: true,
             },
@@ -1425,7 +1425,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 id: 'kiln-flue-fires', oncePerRun: true, weight: 0.2,
                 text: 'The flue under {zone} fires along its whole length. {tribute} is in the tunnel when it goes.',
                 escapeText: '{tribute} is out of the flue under {zone} before it fires.',
-                cause: 'Killed when the flue fired',
+                cause: 'Killed when the flue fired', code: 'burns',
                 dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 7,
                 damage: 42, burned: true, terrains: ['cave', 'ruins'], zoneWide: true, witnesses: true,
             },
@@ -1464,7 +1464,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} has been above ground for a full cycle. In {zone} they stop sweating, which is the part that matters.',
                 escapeText: '{tribute} gets below ground at {zone} before the heat gets that far into them.',
-                cause: 'Died of heat',
+                cause: 'Died of heat', code: 'hazard',
                 dodgeStat: 'endurance', dodgeAlt: 'strength', dodgeDifficulty: 6, damage: 18, thirst: 24, sanity: 10,
                 requires: { law: 'twinSuns' },
             },
@@ -1496,7 +1496,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The clay bank at {zone} comes down on {tribute} while they are digging into it.',
                 escapeText: '{tribute} cuts a bench into the clay bank at {zone} rather than undercut it.',
-                cause: 'Buried in the clay bank',
+                cause: 'Buried in the clay bank', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower', dodgeDifficulty: 5, damage: 22, terrains: ['open'],
             },
             {
@@ -1508,7 +1508,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A stack of ware in the drying sheds at {zone} goes over on {tribute}.',
                 escapeText: '{tribute} sees the stack in {zone} start to lean and is not under it.',
-                cause: 'Crushed under the ware',
+                cause: 'Crushed under the ware', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 5, damage: 20, bleeding: true,
                 terrains: ['ruins'], requires: { loadBearing: true },
             },
@@ -1527,7 +1527,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The flue tunnel under {zone} narrows to shoulder width and then narrows again. {tribute} has to go through backwards.',
                 escapeText: '{tribute} measures the flue under {zone} and does not go into it.',
-                cause: 'Stuck in the flue',
+                cause: 'Stuck in the flue', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 6, damage: 14, fatigue: 22, sanity: 14, terrains: ['cave'],
             },
             {
@@ -1553,14 +1553,14 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 id: 'kiln-no-shade',
                 text: 'There is no shade in {zone}. There is no shade anywhere. {tribute} has been walking in the sun since the gong and in {zone} the sun wins.',
                 escapeText: '{tribute} digs into the bank in {zone} and lies in their own shadow until the worst of it passes.',
-                cause: 'Found no shade',
+                cause: 'Found no shade', code: 'hazard',
                 oncePerRun: true, dodgeStat: 'endurance', dodgeAlt: 'intelligence', dodgeDifficulty: 7, damage: 24, thirst: 20, terrains: ['desert', 'open', 'highland'], requires: { law: 'twinSuns', time: 'day' },
             },
             {
                 id: 'kiln-the-flue',
                 text: 'The flue tunnels under {zone} are drawing. {tribute} is in one when the draught turns to heat.',
                 escapeText: '{tribute} feels the air in the flue at {zone} change and is out of the tunnel before it is a chimney.',
-                cause: 'Roasted in the flue',
+                cause: 'Roasted in the flue', code: 'burns',
                 oncePerRun: true, dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 7, damage: 32, burned: true, terrains: ['cave'], witnesses: true,
             },
             {
@@ -1574,14 +1574,14 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 text: 'The chimney ridge at {zone} radiates heat from the rock itself. {tribute} lies on it at night and is warm; by dawn it has cooked them.',
                 escapeText: '{tribute} moves off the chimney rock in {zone} when it starts to feel like a stove.',
-                cause: 'Cooked on the chimney rock',
+                cause: 'Cooked on the chimney rock', code: 'burns',
                 dodgeDifficulty: 6, damage: 14, burned: true, terrains: ['highland'], requires: { time: 'night' },
             },
             {
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 text: 'The glaze pits in {zone} have a skin on them, and {tribute} steps onto it. Under the skin is glaze, and glaze is glass that has not set.',
                 escapeText: '{tribute} throws a shard onto the pit in {zone} and watches it sink.',
-                cause: 'Sank into the glaze',
+                cause: 'Sank into the glaze', code: 'burns',
                 dodgeDifficulty: 6, damage: 22, burned: true, terrains: ['desert'],
             },
             {
@@ -1623,7 +1623,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 text: 'A dust storm comes over the bisque yard at {zone} with {tribute} in it, and the dust is fired clay: it cuts.',
                 escapeText: '{tribute} sees the storm cross the yard at {zone} and gets under a kiln arch.',
-                cause: 'Flayed by the bisque storm',
+                cause: 'Flayed by the bisque storm', code: 'hazard',
                 dodgeDifficulty: 6, damage: 14, thirst: 10, terrains: ['desert', 'open'], requires: { storm: true }, zoneWide: true,
             },
             {
@@ -1651,7 +1651,7 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 dodgeStat: 'willpower',
                 text: 'A firing goes through the tunnel under {zone} while {tribute} is lying on the floor above it. The floor is a kiln lid.',
                 escapeText: '{tribute} feels the floor in {zone} warm under their back and rolls off it.',
-                cause: 'Cooked through the floor',
+                cause: 'Cooked through the floor', code: 'burns',
                 dodgeAlt: 'agility', dodgeDifficulty: 6, damage: 18, burned: true, terrains: ['ruins', 'cave'], requires: { time: 'night' },
             },
             {

@@ -10,6 +10,7 @@ import { getZone } from './map';
 import { traitMod } from '../data/traits';
 import { getRel } from './relationships';
 import { isEvasiveStance } from '../data/stances';
+import { allied } from './alliance';
 
 /**
  * Resolve: the will to keep going, as distinct from sanity.
@@ -57,7 +58,7 @@ export function tickResolve(ctx: SimContext) {
         let delta = RESOLVE.driftPerCycle;
 
         // Somebody to keep going for, or somebody to avenge. Both work.
-        const allies = alive.filter(o => o.id !== t.id && o.allianceId !== undefined && o.allianceId === t.allianceId);
+        const allies = alive.filter(o => o.id !== t.id && allied(o, t));
         if (allies.length > 0) {
             delta += RESOLVE.allyBonus;
             // §3.2: and the other half of the split. Warmth is who you want
@@ -233,7 +234,7 @@ export function resolveBreakdowns(ctx: SimContext) {
         // abdication. Whether the other party takes the opening is up to the
         // encounter that follows.
         const hostile = getAlive(ctx.state).find(o =>
-            o.id !== t.id && o.zone === t.zone && (o.allianceId === undefined || o.allianceId !== t.allianceId));
+            o.id !== t.id && o.zone === t.zone && !allied(o, t));
         const armed = t.inventory.some(i => i.type === 'weapon');
         // The churn brake can refuse the posture change, and a surrender that
         // leaves the tribute standing there in a hunting stance is not one. It

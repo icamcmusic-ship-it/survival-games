@@ -24,6 +24,7 @@ import { addExcitement } from '../audience';
 import { profOf, trainProficiency } from '../proficiency';
 import { traitMod } from '../../data/traits';
 import { loseSanity } from '../sanityBands';
+import { allied } from '../alliance';
 
 /**
  * Three days on the training floor, and then a room with the Gamemakers in it.
@@ -1304,7 +1305,7 @@ function mingleWillingness(a: Tribute, b: Tribute): number {
     return pair.reduce((lowest, [self, other]) => {
         if (!isCareerish(self) || isCareerish(other)) return lowest;
         if (self.trainingPact?.includes(other.id)) return lowest;
-        if (self.allianceId !== undefined && self.allianceId === other.allianceId) return lowest;
+        if (allied(self, other)) return lowest;
         const dangerous = other.trainingScore >= TRAINING.careerRespectScore
             || other.attributes.strength >= TRAINING.careerRespectStrength;
         return Math.min(lowest, dangerous ? TRAINING.careerStrongOutlierMingle : TRAINING.careerOutlierMingle);

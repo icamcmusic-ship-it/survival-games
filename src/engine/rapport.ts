@@ -6,6 +6,7 @@ import { traitMod } from '../data/traits';
 import { cycleOf, ensureMemory } from './memory';
 import { fearOf, reduceFear } from './fear';
 import { loseSanity } from './sanityBands';
+import { allied } from './alliance';
 
 /**
  * §4.3: the three things the relationship layer could not do.
@@ -157,7 +158,7 @@ export function believes(t: Tribute, other: Tribute): boolean {
     // Inside a group the default is belief: you act on your own scout's report
     // unless you have actively written them off. Outside one, a stranger's
     // warning has to be earned — which is the read respect exists for.
-    if (t.allianceId !== undefined && t.allianceId === other.allianceId) {
+    if (allied(t, other)) {
         return rated > RESPECT.dismissedThreshold;
     }
     const scared = fearOf(t, other.id) > 0;

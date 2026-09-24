@@ -177,6 +177,7 @@ const UNION_IDS: ArchetypeId[] = [
     'cartographer', 'debtor', 'forecaster', 'understudy', 'archivist', 'quiet',
     // AUDIT-9 stage D.
     'courier',
+    'hermit', 'showrunner', 'healer-pacifist', 'engineer',
 ];
 UNION_IDS.forEach(id => {
     if (!archetypeIds.has(id)) problems.push(`ArchetypeId union: '${id}' has no row in ARCHETYPES`);

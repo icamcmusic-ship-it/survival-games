@@ -7,6 +7,7 @@ import { processParade, processPreGames, processSquare, processTrain } from './p
 import { processInterviews } from './phases/interviews';
 import { startGames, processBloodbath } from './phases/bloodbath';
 import { processAlliances } from './phases/alliances';
+import { pruneDeadAlliances } from './alliance';
 import { announceFeastTheme, processFeast } from './phases/feast';
 import { processDayNight } from './phases/dayNight';
 import { processEpilogue } from './phases/epilogue';
@@ -131,6 +132,7 @@ export class Simulator {
             default:
                 return this.processTurn();
         }
+        pruneDeadAlliances(this.ctx);
         this.notifyObservers();
         return true;
     }
@@ -208,6 +210,7 @@ export class Simulator {
             this.state.phase = 'night';
         }
 
+        pruneDeadAlliances(this.ctx);
         this.maybeEndGames();
         this.notifyObservers();
         return true;

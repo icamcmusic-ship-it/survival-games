@@ -30,6 +30,7 @@ import { adjustRel, getRel } from './relationships';
 import { raiseSuspicion } from './memory';
 import { depletionOf, getZone } from './map';
 import { ZONE_RUMOUR_CLAIMS } from '../data/flavorText';
+import { allied } from './alliance';
 
 export type RumourKind = 'restock' | 'holed-up' | 'cache' | 'empty';
 
@@ -269,7 +270,7 @@ export function shareRumoursInCamp(ctx: SimContext) {
         if (!a.allianceId) return;
         alive.forEach(b => {
             if (b.id <= a.id) return;
-            if (b.allianceId !== a.allianceId || b.zone !== a.zone) return;
+            if (!allied(b, a) || b.zone !== a.zone) return;
             if (!ctx.rng.chance(RUMOURS.campShareChance)) return;
             const swap = (from: Tribute, to: Tribute) => {
                 heard(from).forEach(id => {

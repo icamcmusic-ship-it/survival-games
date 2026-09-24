@@ -144,9 +144,37 @@ function initializeCareerAlliance(ctx: SimContext) {
     // then read as ordinary solo tributes. `grandCoalitionExtra` is the same
     // allowance the recruitment ceiling already grants a Career-heavy year.
     const packCap = ALLIANCES.maxSize + ALLIANCES.grandCoalitionExtra;
-    const capped = allCareers.length > packCap
-        ? ctx.rng.shuffle(allCareers).slice(0, packCap)
-        : allCareers;
+    // AUDIT-11 E8: the pack is one connected component of the Career pact
+    // graph, not every Career who has a pact with somebody. Pairs A–B and C–D
+    // who never agreed anything across used to be merged into one pack. The
+    // largest component wins (roster order breaks a tie), and a component
+    // over the cap is trimmed breadth-first from a random member, so the
+    // trimmed pack is still connected and never keeps one half of a pair
+    // whose other half was the only link.
+    const mutual = (a: Tribute, b: Tribute) =>
+        (a.trainingPact ?? []).includes(b.id) && (b.trainingPact ?? []).includes(a.id);
+    const walk = (from: Tribute, pool: Tribute[], cap: number) => {
+        const found: Tribute[] = [];
+        const queue = [from];
+        const seen = new Set<string>([from.id]);
+        while (queue.length > 0 && found.length < cap) {
+            const t = queue.shift()!;
+            found.push(t);
+            pool.forEach(o => {
+                if (!seen.has(o.id) && mutual(t, o)) { seen.add(o.id); queue.push(o); }
+            });
+        }
+        return found;
+    };
+    const components: Tribute[][] = [];
+    allCareers.forEach(t => {
+        if (components.some(c => c.includes(t))) return;
+        components.push(walk(t, allCareers, Infinity));
+    });
+    const largest = components.reduce<Tribute[]>((top, c) => (c.length > top.length ? c : top), []);
+    const capped = largest.length > packCap
+        ? walk(ctx.rng.pick(largest), largest, packCap)
+        : largest;
 
     // The pack is a marriage of convenience, and it should look like one. Some
     // years a Career decides their odds are better alone — usually the one who
@@ -205,12 +233,21 @@ function initializeCareerAlliance(ctx: SimContext) {
  * assembled here, capped at the same `maxSize` every other alliance obeys, and
  * seeded with the regard three days of agreeing is worth.
  *
- * Careers are excluded outright — their pack is built above, and a pact
- * between a Career and an outer-district tribute is a recruitment, which the
- * alliance layer already owns.
+ * Careers with a Career pact are excluded — their pack is built above. A
+ * Career whose only pact is with an outer-district tribute is grouped here
+ * (AUDIT-11 E9); otherwise the handshake bought nothing at all.
  */
 function initializePactAlliances(ctx: SimContext) {
-    const alive = getAlive(ctx.state).filter(t => !t.isCareer && t.allianceId === undefined);
+    // AUDIT-11 E9: a Career whose only mutual pact is with a non-Career has
+    // no pack to join (the pack is built from Career-to-Career pacts), so they
+    // are grouped here like anybody else. A Career with a Career pact is the
+    // pack's business, and one who opted out chose to walk off alone.
+    const careers = getAlive(ctx.state).filter(t => t.isCareer);
+    const hasCareerPact = (t: Tribute) => careers.some(o => o.id !== t.id
+        && (t.trainingPact ?? []).includes(o.id) && (o.trainingPact ?? []).includes(t.id));
+    const optedOut = new Set(ctx.state.careerOptOutIds ?? []);
+    const alive = getAlive(ctx.state).filter(t => t.allianceId === undefined
+        && (!t.isCareer || (!hasCareerPact(t) && !optedOut.has(t.id))));
     const byId = new Map(alive.map(t => [t.id, t]));
     const seen = new Set<string>();
 

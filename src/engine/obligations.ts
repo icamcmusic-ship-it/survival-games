@@ -9,6 +9,8 @@ import { isActive, isDowned } from './downed';
 import { giveItem } from './items';
 import { refusesCredit, volunteersToCarry } from '../data/traits';
 import { samePlace } from './verticality';
+import { allied } from './alliance';
+import { hopsTo, severedEdgeSet } from './map';
 
 /**
  * AUDIT-9 stage C §4: negotiated obligations.
@@ -168,6 +170,23 @@ export function keep(ctx: SimContext, o: Obligation, line: string) {
 }
 
 /**
+ * AUDIT-11 E5: the broken rescue. The ally went down a sector away from
+ * somebody who was able to come, and they did not.
+ */
+function breakRescue(ctx: SimContext, o: Obligation, from: Tribute, to: Tribute) {
+    o.status = 'broken';
+    from.faithBroken = (from.faithBroken ?? 0) + 1;
+    if (to.status === 'alive') adjustRel(to, from.id, -OBLIGATIONS.brokenRegard);
+    ctx.logEvent(
+        to.status === 'alive'
+            ? `${to.name} went down one sector from ${from.name}, who had promised to come, and ${from.name} did not come. ${to.name} does not bring it up, and does not forget it either.`
+            : `${from.name} promised ${to.name} they would not go down alone. They went down one sector away, and they went alone.`,
+        [from.id, to.id],
+        { type: 'obligation-broken', important: true, category: 'alliance' },
+    );
+}
+
+/**
  * One cycle of obligations being discharged or running out.
  *
  * Discharge is opportunistic and physical: a supply promise is kept by
@@ -185,8 +204,22 @@ export function tickObligations(ctx: SimContext) {
         const from = byId.get(o.owedById);
         const to = byId.get(o.owedToId);
 
-        // The person it was owed to is dead: nothing left to owe.
+        // AUDIT-11 E5: a rescue can be failed before it expires. Record the
+        // cycle the ally was down and the promiser was a sector away, on their
+        // feet, and did not come — the one version of this that is a choice.
+        if (o.kind === 'rescue' && from && to && from.status === 'alive' && to.status === 'alive'
+            && isDowned(to) && isActive(from) && !samePlace(state.arena, from, to)
+            && (hopsTo(state.arena, from.zone, to.zone, state.collapsedZones ?? [], severedEdgeSet(state)) ?? Infinity) <= 1) {
+            o.rescueMissed = true;
+        }
+
+        // The person it was owed to is dead: nothing left to owe — unless they
+        // died down, a sector from somebody who had promised to come.
         if (!from || !to || to.status !== 'alive') {
+            if (o.rescueMissed && from && to && from.status === 'alive') {
+                breakRescue(ctx, o, from, to);
+                return;
+            }
             o.status = 'lapsed';
             return;
         }
@@ -280,6 +313,11 @@ export function tickObligations(ctx: SimContext) {
                     ? from.zone !== o.detail
                     : isDowned(to);
             const couldHave = together && stillWanted && canPromise(state, from, o.kind);
+            // AUDIT-11 E5: the ally was down a sector away and they stayed put.
+            if (o.kind === 'rescue' && o.rescueMissed) {
+                breakRescue(ctx, o, from, to);
+                return;
+            }
             /*
              * §12: three outcomes, not two.
              *
@@ -358,7 +396,7 @@ export function negotiateObligations(ctx: SimContext) {
     const state = ctx.state;
     getAlive(state).forEach(t => {
         if (!isActive(t) || !t.allianceId) return;
-        const mates = getAlive(state).filter(o => o.allianceId === t.allianceId
+        const mates = getAlive(state).filter(o => allied(o, t)
             && o.id !== t.id && o.zone === t.zone && isActive(o));
         if (!mates.length) return;
         const mate = mates[0];
@@ -442,7 +480,7 @@ export function appealForAid(ctx: SimContext) {
             o.id !== asker.id
             && isActive(o)
             && samePlace(state.arena, asker, o)
-            && !(asker.allianceId !== undefined && o.allianceId === asker.allianceId)
+            && !allied(asker, o)
             && canPromise(state, o, 'supply'));
         if (candidates.length === 0) return;
 

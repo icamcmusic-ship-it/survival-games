@@ -165,7 +165,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
          * — the best-fed, best-drilled fighter in the arena — without making
          * them the most slippery one as well.
          */
-        statBias: { strength: 1, intelligence: -1 },
+        statBias: { intelligence: -1 },
         preferredTraits: ['Bloodthirsty', 'Brute'],
         aggression: 0.25,
         allianceAffinity: 0.2,
@@ -370,7 +370,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'underdog',
         name: 'Underdog',
         description: 'Overlooked and underestimated. Survives on grit, luck, and the crowd\'s sympathy.',
-        statBias: { charisma: 1, stealth: 1 },
+        statBias: { charisma: 1, stealth: 1, endurance: 1 },
         preferredTraits: ['Light Sleeper', 'Nimble', 'Scavenger', 'Skittish'],
         aggression: -0.15,
         allianceAffinity: 0.2,
@@ -485,7 +485,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'medic',
         name: 'Medic',
         description: 'The reason an alliance holds together. Doubles field-dressing for the people around them; terrible alone.',
-        statBias: { intelligence: 2, charisma: 1 },
+        statBias: { intelligence: 2, charisma: 1, endurance: 1 },
         preferredTraits: ['Herbalist', 'Charismatic', 'Softhearted', 'Steadfast'],
         aggression: -0.25,
         allianceAffinity: 0.4,
@@ -574,7 +574,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         // makes solitude playable, so the bias now buys endurance rather than
         // only reach.
         description: 'A tribute the arena made rather than a district. Unarmed and terrifying; no capacity for company at all.',
-        statBias: { strength: 3, endurance: 2, intelligence: -2 },
+        statBias: { strength: 2, endurance: 2, intelligence: -2 },
         preferredTraits: ['Brute', 'Bloodthirsty'],
         aggression: 0.35,
         allianceAffinity: -0.4,
@@ -603,7 +603,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'diplomat',
         name: 'Diplomat',
         description: 'Talks people out of it. Brokers truces between others as easily as for themselves — and their death dissolves every one of them.',
-        statBias: { charisma: 3, intelligence: 1 },
+        statBias: { charisma: 3, intelligence: 1, endurance: 1 },
         preferredTraits: ['Charismatic', 'Strategist'],
         aggression: -0.25,
         allianceAffinity: 0.35,
@@ -628,7 +628,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         description: 'Reads the arena rather than the tributes. Knows what a zone is about to do a cycle before it does it.',
         // §8: 3.65% at n=1600. Reading the arena a cycle early is only worth
         // something if you are not standing in the open while you do it.
-        statBias: { intelligence: 3, stealth: 1 },
+        statBias: { intelligence: 3, stealth: 1, endurance: 1 },
         // Audit 5 §8.2: four related traits reads as a character; two reads as a stat line.
         preferredTraits: ['Strategist', 'Eagle-Eyed', 'Herbalist', 'Cool-Headed', 'Tracker'],
         aggression: -0.2,
@@ -876,7 +876,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
          * otherwise have them put their weapons down. The archetype still
          * cannot fight. It can now still be standing.
          */
-        statBias: { charisma: 3, willpower: 2 },
+        statBias: { charisma: 3, willpower: 2, endurance: 1 },
         preferredTraits: ['Pacifist', 'Softhearted', 'Peacemaker', 'Charismatic'],
         aggression: -0.35,
         allianceAffinity: 0.45,
@@ -958,7 +958,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'herald',
         name: 'Herald',
         description: 'Keeps the count and says it out loud. Survives by being the person everyone would rather hear from than kill.',
-        statBias: { charisma: 2, intelligence: 1, strength: -1 },
+        statBias: { charisma: 2, intelligence: 1 },
         preferredTraits: ['Showman', 'Silver-Tongued', 'Crowd-Pleaser', 'Witness'],
         aggression: -0.1,
         allianceAffinity: 0.3,
@@ -989,7 +989,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'penitent',
         name: 'Penitent',
         description: 'Came here having already decided what they will not do. Tends the hurt, takes the hit, and does not open the fight.',
-        statBias: { endurance: 2, charisma: 1, strength: -1 },
+        statBias: { endurance: 2, charisma: 1, willpower: 1 },
         preferredTraits: ['Pacifist', 'Merciful', 'Devout', 'Softhearted'],
         aggression: -0.3,
         allianceAffinity: 0.25,
@@ -1053,7 +1053,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
          * attention goes up: calling somebody out in front of the cameras is
          * the loudest thing a tribute can do, and the arena hears it too.
          */
-        statBias: { agility: 1, strength: 1, charisma: 1, endurance: -1 },
+        statBias: { agility: 1, charisma: 1, endurance: -1 },
         preferredTraits: ['Left-Handed', 'Reach', 'Marksman', 'Dead-Eyed'],
         aggression: 0.3,
         allianceAffinity: -0.35,
@@ -1088,7 +1088,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
          * the field to notice. The endurance is what lets them survive being
          * owed money by somebody dangerous, and nobody hunts the banker first.
          */
-        statBias: { charisma: 2, intelligence: 1, endurance: 1, strength: -1 },
+        statBias: { charisma: 2, intelligence: 1, endurance: 1 },
         preferredTraits: ['Barterer', 'Hard Bargain', 'Bookkeeper', 'Broker'],
         aggression: -0.05,
         allianceAffinity: 0.2,
@@ -1167,7 +1167,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'forecaster',
         name: 'Forecaster',
         description: 'Reads sky and ground the way other tributes read faces. Is somewhere sheltered before the front arrives, and has usually said so out loud first, which nobody believes until the second time.',
-        statBias: { intelligence: 2, willpower: 1, endurance: 1, strength: -1 },
+        statBias: { intelligence: 2, willpower: 1, endurance: 1 },
         preferredTraits: ['Reads Ground', 'Gut-Wise', 'Frost-Born', 'Deep-Rooted'],
         aggression: -0.2,
         allianceAffinity: 0.15,
@@ -1189,7 +1189,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'understudy',
         name: 'Understudy',
         description: 'Standing here instead of somebody who would have died on the first morning. Says so, to anybody, constantly — and is the only tribute in the arena with a reason to be alive that is not their own.',
-        statBias: { willpower: 2, endurance: 1, charisma: 1, agility: -1 },
+        statBias: { willpower: 2, endurance: 1, charisma: 1 },
         preferredTraits: ['Spoken For', 'Steadfast', 'Devout', 'Second Wind'],
         aggression: -0.05,
         allianceAffinity: 0.2,
@@ -1211,7 +1211,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'archivist',
         name: 'Archivist',
         description: 'Keeps the count. Knows who fell, where, on which day, and in what order — and says the list out loud at intervals that unnerve everybody within earshot, including the Capitol.',
-        statBias: { intelligence: 2, willpower: 2, strength: -1, agility: -1 },
+        statBias: { intelligence: 2, willpower: 2, agility: -1 },
         /*
          * AUDIT-8 §8.1: two of these are new.
          *
@@ -1287,6 +1287,97 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         tagline: 'Nobody asked.',
         targetDraw: -2.5,
         fearScale: 0.9,
+    },
+    /*
+     * AUDIT-11 §16: the pilot four. Each reuses an existing signature rather
+     * than shipping a new set piece — `SIGNATURES` lives in the engine, and a
+     * signature the audit describes ("the arena forgets them", "an orchestrated
+     * duel", "saves an enemy", "a hazard triggered by their hand") is already
+     * what `quietWork`, `heraldCall`, `medicTriage` and `saboteurStrike` stage.
+     */
+    hermit: {
+        id: 'hermit',
+        name: 'Hermit',
+        description: 'Refuses every hand offered. Walks away from the Cornucopia, camps as deep as the map allows, and intends to win by being the last person anybody thought about.',
+        statBias: { endurance: 2, stealth: 1, charisma: -2 },
+        preferredTraits: ['Homebody', 'Unremarkable', 'Quiet Room', 'Forgets Faces'],
+        aggression: -0.2,
+        allianceAffinity: -0.4,
+        treachery: 0,
+        caution: 0.35,
+        stanceBias: { Fortified: 0.6, Evasive: 0.4, Aggressive: -0.5 },
+        objectiveBias: { wait: 0.5, survive: 0.3 },
+        hatesArchetypes: ['diplomat', 'showrunner'],
+        targetPreference: 'nearest',
+        riskCurve: 'late-blooming',
+        signature: 'quietWork',
+        tagline: 'The arena forgets them.',
+        targetDraw: -2,
+        fearScale: 0.9,
+    },
+    showrunner: {
+        id: 'showrunner',
+        name: 'Showrunner',
+        description: 'Plays to the cameras first and the field second. Stages fights between other people, takes credit for the ones that land, and is paid for it in parachutes.',
+        statBias: { charisma: 3, intelligence: 1 },
+        preferredTraits: ['Charismatic', "Sponsor's Pet", 'Mimic', 'Salt-Tongued'],
+        aggression: 0.1,
+        allianceAffinity: 0.1,
+        treachery: 0.25,
+        caution: 0.1,
+        stanceBias: { Shadowing: 0.5, Baiting: 0.4, Fortified: -0.3 },
+        objectiveBias: { stalk: 0.4, hold: 0.2 },
+        hatesArchetypes: ['hermit', 'quiet'],
+        targetPreference: 'mostFamous',
+        riskCurve: 'front-loaded',
+        signature: 'heraldCall',
+        tagline: 'Two of them, one camera, and a very good angle.',
+        targetDraw: 1,
+        fearScale: 1,
+    },
+    'healer-pacifist': {
+        id: 'healer-pacifist',
+        name: 'Healer-Pacifist',
+        description: 'Will not kill, and says so. Treats whoever is bleeding in front of them, enemy included, and collects allies the way other tributes collect weapons.',
+        statBias: { intelligence: 2, charisma: 2, endurance: 2 },
+        preferredTraits: ['Bone-Setter', 'Oathkeeper', 'Herbalist', 'Softhearted'],
+        aggression: -0.4,
+        allianceAffinity: 0.45,
+        treachery: -0.4,
+        caution: 0.25,
+        stanceBias: { Nursing: 0.8, Tending: 0.4, Aggressive: -0.8, Hunting: -0.6 },
+        objectiveBias: { protect: 0.6, survive: 0.2 },
+        hatesArchetypes: ['mercenary', 'captor'],
+        targetPreference: 'weakest',
+        riskCurve: 'flat',
+        signature: 'medicTriage',
+        tagline: 'Saves the enemy too.',
+        // AUDIT-11: the one tribute who treats everybody is the last one
+        // anybody goes looking for (-1 -> -4). Measured 1.5-4.7% across
+        // n=1,600 sweeps (338 entrants, so the swing is mostly noise) with the
+        // bottom of that range the worst in the table.
+        targetDraw: -4,
+        fearScale: 1.1,
+    },
+    engineer: {
+        id: 'engineer',
+        name: 'Saboteur-Engineer',
+        description: 'Reads the arena as a machine and the Cornucopia as its weakest part. Rigs what the Gamemakers built, and lets the hazard do the killing.',
+        statBias: { intelligence: 3, charisma: -1 },
+        preferredTraits: ['Trapper', 'Weather-Nose', 'Pack Rat', 'Cannon-Counter'],
+        aggression: 0.05,
+        allianceAffinity: -0.1,
+        treachery: 0.2,
+        caution: 0.2,
+        stanceBias: { Baiting: 0.7, Patrolling: 0.3, Aggressive: -0.3 },
+        objectiveBias: { hold: 0.4, wait: 0.2 },
+        hatesArchetypes: ['career', 'healer-pacifist'],
+        targetPreference: 'richest',
+        riskCurve: 'escalating',
+        signature: 'saboteurStrike',
+        tagline: 'The arena is a machine. Machines break.',
+        targetDraw: 0,
+        fearScale: 0.95,
     },
 };
 
@@ -1389,6 +1480,11 @@ const BASE_WEIGHTS: ArchetypeWeights = {
     understudy: 0.8,
     archivist: 0.8,
     quiet: 0.8,
+    // AUDIT-11 §16: the pilot four.
+    hermit: 0.6,
+    showrunner: 0.6,
+    'healer-pacifist': 0.6,
+    engineer: 0.6,
 };
 
 /** Career districts train for it; everyone else is shaped by their industry. */

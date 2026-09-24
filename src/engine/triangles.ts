@@ -28,7 +28,7 @@ import { SimContext, getAlive } from './context';
 import { reachableZones, severedEdgeSet } from './map';
 import { adjustRel, getRel } from './relationships';
 import { cycleOf, ensureMemory, hasStoodBy, swearVengeance } from './memory';
-import { areLovers } from './alliance';
+import { areLovers, allied } from './alliance';
 import { addExcitement } from './audience';
 import { clampTribute } from './vitals';
 import { loseSanity } from './sanityBands';
@@ -143,7 +143,7 @@ export function detectTriangles(ctx: SimContext) {
 function heatOf(ctx: SimContext, apex: Tribute, a: Tribute, b: Tribute): number {
     if (a.zone === b.zone) return TRIANGLES.heatSameZone;
 
-    const sameGroup = a.allianceId !== undefined && a.allianceId === b.allianceId;
+    const sameGroup = allied(a, b);
     const adjacent = () => reachableZones(
         ctx.state.arena, a.zone, ctx.state.collapsedZones ?? [], severedEdgeSet(ctx.state),
     ).some(z => z.name === b.zone);

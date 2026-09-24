@@ -522,9 +522,13 @@ export function tickTraps(ctx: SimContext) {
         const owner = ctx.state.tributes.find(o => o.id === trap.ownerId);
         if (!owner || owner.status !== 'alive') return;
 
-        if (trap.kind === 'snare' && ctx.rng.chance(TRAPS.gameCatchChance)) {
-            // Only useful to an owner who is actually there to collect it.
-            if (owner.zone === trap.zone) {
+        if (trap.kind === 'snare'
+            && ctx.rng.chance(TRAPS.gameCatchChance + traitMod(owner, 'trapSkill') * TRAPS.gameCatchPerTrapSkill)) {
+            // Only useful to an owner close enough to collect it — standing on
+            // it, or (AUDIT-11 §11.4) checking the line from the next sector.
+            const nextDoor = TRAPS.gameCollectAdjacent
+                && (getZone(ctx.state.arena, owner.zone)?.adjacent ?? []).includes(trap.zone);
+            if (owner.zone === trap.zone || nextDoor) {
                 const feed = TRAPS.gameFeed + profOf(owner, 'butchery') * TRAPS.gameFeedPerButchery;
                 owner.vitals.hunger = Math.max(0, owner.vitals.hunger - feed);
                 trainProficiency(owner, 'butchery');

@@ -1,7 +1,7 @@
 import { Arena, ArenaLawId, Attributes, Condition, DeathCauseCode, Item, Stance, Terrain, ZoneEffectKind } from '../models/types';
 import type { SanityBand } from '../engine/sanityBands';
 import { proceduralArenaFlavor } from './proceduralFlavor';
-import { EXTRA_ARENA_EVENTS } from './arenaEvents';
+import { EXTRA_ARENA_EVENTS, UNIVERSAL_EVENTS_GROUP6 } from './arenaEvents';
 import { NEW_ARENA_FLAVOR } from './arenaFlavorNew';
 
 /**
@@ -403,7 +403,7 @@ export const GENERIC_ARENA_FLAVOR: ArenaFlavor = {
         {
             text: '{tribute} wakes in {zone} with no memory of lying down and no idea how long they were out.',
             escapeText: '{tribute} catches themselves going under in {zone} and stands up rather than sitting down.',
-            cause: 'Died in their sleep',
+            cause: 'Died in their sleep', code: 'hazard',
             dodgeStat: 'endurance', dodgeAlt: 'strength',
             damage: 8,
             sanity: 14,
@@ -420,7 +420,7 @@ export const GENERIC_ARENA_FLAVOR: ArenaFlavor = {
         {
             text: 'A cannon goes off close enough to {zone} that {tribute} feels it in the ground, and there is nobody in sight.',
             escapeText: '{tribute} is already moving when the cannon goes off near {zone}, and does not stop to wonder.',
-            cause: 'Died of fright',
+            cause: 'Died of fright', code: 'hazard',
             dodgeStat: 'willpower', dodgeAlt: 'endurance',
             damage: 4,
             sanity: 18,
@@ -445,7 +445,7 @@ export const GENERIC_ARENA_FLAVOR: ArenaFlavor = {
         {
             text: '{tribute} is caught in a sudden rockfall in {zone} and is badly battered.',
             escapeText: '{tribute} hears the rock shift in {zone} and throws themselves clear.',
-            cause: 'Crushed by a rockfall',
+            cause: 'Crushed by a rockfall', code: 'hazard',
             dodgeStat: 'agility', dodgeAlt: 'endurance',
             damage: 28,
             bleeding: true,
@@ -461,7 +461,7 @@ export const GENERIC_ARENA_FLAVOR: ArenaFlavor = {
         {
             text: 'A dead limb comes down across {tribute} in {zone}, with no wind to explain it.',
             escapeText: '{tribute} hears the crack over {zone} and is a step clear when it lands.',
-            cause: 'Crushed by falling timber',
+            cause: 'Crushed by falling timber', code: 'hazard',
             dodgeStat: 'stealth', dodgeAlt: 'agility',
             damage: 24,
             bleeding: true,
@@ -522,7 +522,7 @@ export const GENERIC_ARENA_FLAVOR: ArenaFlavor = {
         {
             text: '{tribute} finds a camp in {zone} — a cold fire ring, a flattened sleeping spot, and tracks leading out that are not old.',
             escapeText: '{tribute} reads the abandoned camp in {zone} from a distance and does not walk into the middle of it.',
-            cause: 'Killed at a stranger\'s camp',
+            cause: 'Killed at a stranger\'s camp', code: 'hazard',
             dodgeStat: 'intelligence', dodgeAlt: 'willpower',
             damage: 5,
             sanity: 8,
@@ -530,7 +530,7 @@ export const GENERIC_ARENA_FLAVOR: ArenaFlavor = {
         {
             text: '{tribute} finds a body in {zone} the hovercraft has not collected yet, and has to decide what that means about who is nearby.',
             escapeText: '{tribute} sees the shape in {zone} for what it is and leaves before finding out how it happened.',
-            cause: 'Killed beside the fallen',
+            cause: 'Killed beside the fallen', code: 'hazard',
             dodgeStat: 'willpower', dodgeAlt: 'endurance',
             damage: 4,
             sanity: 16,
@@ -538,7 +538,7 @@ export const GENERIC_ARENA_FLAVOR: ArenaFlavor = {
         {
             text: 'Somebody has scratched a message into the surface of {zone}, and {tribute} stops to read it when they should not have.',
             escapeText: '{tribute} reads the scratched words in {zone} at a walk, without breaking stride.',
-            cause: 'Ambushed while reading',
+            cause: 'Ambushed while reading', code: 'hazard',
             dodgeStat: 'stealth', dodgeAlt: 'agility',
             damage: 10,
             sanity: 6,
@@ -562,7 +562,7 @@ export const GENERIC_ARENA_FLAVOR: ArenaFlavor = {
         {
             text: 'A strap on {tribute}\'s pack lets go in {zone}, and half of what they own hits the ground at a bad moment.',
             escapeText: '{tribute} feels the strap going in {zone} and re-ties it before it costs them anything.',
-            cause: 'Caught retrieving their gear',
+            cause: 'Caught retrieving their gear', code: 'hazard',
             dodgeStat: 'agility', dodgeAlt: 'endurance',
             damage: 6,
             fatigue: 10,
@@ -570,7 +570,7 @@ export const GENERIC_ARENA_FLAVOR: ArenaFlavor = {
         {
             text: '{tribute}\'s boot finally comes apart in {zone}, and every step after it is a decision.',
             escapeText: '{tribute} binds the failing boot in {zone} with wire and buys it another few days.',
-            cause: 'Ran down on a ruined foot',
+            cause: 'Ran down on a ruined foot', code: 'hazard',
             dodgeStat: 'intelligence', dodgeAlt: 'willpower',
             damage: 8,
             fatigue: 18,
@@ -579,7 +579,7 @@ export const GENERIC_ARENA_FLAVOR: ArenaFlavor = {
         {
             text: 'A cramp takes {tribute} mid-stride in {zone} and folds them up in the open for a full minute.',
             escapeText: '{tribute} feels the muscle start to seize in {zone} and works it out before it drops them.',
-            cause: 'Caught helpless in the open',
+            cause: 'Caught helpless in the open', code: 'hazard',
             dodgeStat: 'endurance', dodgeAlt: 'strength',
             damage: 8,
             fatigue: 12,
@@ -587,7 +587,7 @@ export const GENERIC_ARENA_FLAVOR: ArenaFlavor = {
         {
             text: 'An old injury {tribute} had stopped counting wakes up in {zone}, all at once, worse than it was.',
             escapeText: '{tribute} feels the old injury complain in {zone} and eases off before it goes properly.',
-            cause: 'Finished by an old wound',
+            cause: 'Finished by an old wound', code: 'hazard',
             dodgeStat: 'endurance', dodgeAlt: 'strength',
             damage: 12,
             fatigue: 10,
@@ -596,7 +596,7 @@ export const GENERIC_ARENA_FLAVOR: ArenaFlavor = {
         {
             text: 'A smell moves through {zone} — bread, or soap, or coal smoke — and for one bad moment {tribute} is home.',
             escapeText: '{tribute} lets the smell in {zone} pass through them and keeps their eyes where they belong.',
-            cause: 'Lost in a memory',
+            cause: 'Lost in a memory', code: 'asphyxiation',
             dodgeStat: 'willpower', dodgeAlt: 'endurance',
             damage: 3,
             sanity: 10,
@@ -604,7 +604,7 @@ export const GENERIC_ARENA_FLAVOR: ArenaFlavor = {
         {
             text: '{tribute} catches their own reflection in {zone} and takes a second too long to recognise it.',
             escapeText: '{tribute} looks at their reflection in {zone}, decides it will do, and moves on.',
-            cause: 'Ambushed at the water',
+            cause: 'Ambushed at the water', code: 'hazard',
             dodgeStat: 'stealth', dodgeAlt: 'agility',
             damage: 8,
             sanity: 12,
@@ -620,7 +620,7 @@ export const GENERIC_ARENA_FLAVOR: ArenaFlavor = {
         {
             text: 'A camera drone drops out of the canopy over {zone} and holds a metre from {tribute}\'s face, waiting for them to be interesting.',
             escapeText: '{tribute} gives the drone over {zone} nothing at all, and it loses interest first.',
-            cause: 'Performed for the wrong audience',
+            cause: 'Performed for the wrong audience', code: 'hazard',
             dodgeStat: 'willpower', dodgeAlt: 'endurance',
             damage: 2,
             sanity: 10,
@@ -636,7 +636,7 @@ export const GENERIC_ARENA_FLAVOR: ArenaFlavor = {
         {
             text: 'Something passes {tribute}\'s head in {zone} close enough to part hair, and is buried in the bark behind them before the sound arrives.',
             escapeText: '{tribute} is already dropping when the shot crosses {zone}, and it finds nothing.',
-            cause: 'Shot from cover',
+            cause: 'Shot from cover', code: 'hazard',
             dodgeStat: 'agility', dodgeAlt: 'endurance',
             damage: 14,
             bleeding: true,
@@ -760,7 +760,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The roof of {zone} has carried more snow than it was built for since the second day. It gives way with {tribute} underneath.',
                 escapeText: '{tribute} hears the rafters of {zone} start to work and is out of the room before the ceiling comes down.',
-                cause: 'Buried under a failed roof',
+                cause: 'Buried under a failed roof', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 30,
                 bleeding: true,
@@ -779,7 +779,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Something walks the porch boards outside {zone} for a long time, slowly. {tribute} is on the other side of the door.',
                 escapeText: '{tribute} waits out whatever is on the porch of {zone} without making a sound, and eventually it goes away.',
-                cause: 'Killed on the threshold',
+                cause: 'Killed on the threshold', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 damage: 22,
                 bleeding: true,
@@ -850,7 +850,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // a house, a hearth, and a killing cold outside the door.
                 text: 'The barn door has banged all week. Tonight it stops, and {tribute} is the only one in the house who notices.',
                 escapeText: '{tribute} goes out to the barn in {zone}, finds the door wedged shut against the wind, and comes back in.',
-                cause: 'Killed in the barn',
+                cause: 'Killed in the barn', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'willpower',
                 dodgeDifficulty: 7,
@@ -875,7 +875,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The loft in {zone} is the warmest room in the house and the first one anybody searches. {tribute} has slept there three nights.',
                 escapeText: '{tribute} counts one way out of the loft in {zone} and moves to the cold corner of the woodshed.',
-                cause: 'Cornered in the loft',
+                cause: 'Cornered in the loft', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 damage: 30,
@@ -923,7 +923,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // else is the cold on the other side of a door.
                 text: 'The front room in {zone} has one door and two windows. {tribute} has held it for three days.',
                 escapeText: '{tribute} counts one way out of the front room in {zone} and moves their bed to the woodshed.',
-                cause: 'Cornered in the front room',
+                cause: 'Cornered in the front room', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 damage: 32,
@@ -933,7 +933,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The woodshed in {zone} is down to two courses against the back wall. {tribute} counts it twice and works out it is four nights.',
                 escapeText: '{tribute} spends a day cutting standing deadwood at the treeline above {zone} and puts four more nights into the shed.',
-                cause: 'Ran out of firewood',
+                cause: 'Ran out of firewood', code: 'hypothermia',
                 dodgeStat: 'endurance',
                 dodgeAlt: 'strength',
                 damage: 16,
@@ -945,7 +945,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The gap under the back door of {zone} lets the cold in, and blocking it keeps the smoke in. {tribute} blocks it.',
                 escapeText: '{tribute} stuffs the gap under the back door of {zone} with rag and cracks a window an inch.',
-                cause: 'Taken by the draught',
+                cause: 'Taken by the draught', code: 'asphyxiation',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 22,
                 frostbitten: true,
@@ -955,7 +955,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The draft horses shut in the barn at {zone} since the snow started get out. Eight hundred kilos of panicking plough horse comes across the dooryard at {tribute}.',
                 escapeText: '{tribute} puts a wall between themselves and the horses coming out of the barn at {zone} and waits.',
-                cause: 'Trampled in the dooryard',
+                cause: 'Trampled in the dooryard', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'stealth',
                 damage: 36,
@@ -1082,7 +1082,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The lake rises. The light in {zone} goes from red to white and the floor under {tribute} starts to soften.',
                 escapeText: '{tribute} is already moving uphill out of {zone} when the light in it changes.',
-                cause: 'Taken by the rising lake',
+                cause: 'Taken by the rising lake', code: 'burns',
                 dodgeStat: 'agility',
                 dodgeAlt: 'endurance',
                 dodgeDifficulty: 8,
@@ -1110,7 +1110,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The obsidian shelf {tribute} is crossing in {zone} shears along a hidden line and takes a metre of the path with it.',
                 escapeText: '{tribute} feels the shelf in {zone} move and gets weight onto their back foot in time.',
-                cause: 'Fell',
+                cause: 'Fell', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 32,
                 bleeding: true,
@@ -1119,7 +1119,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} runs out of water in {zone}. The cistern is three zones behind them and uphill the whole way.',
                 escapeText: '{tribute} finds a seep in the wall of {zone} and gets one mouthful out of it.',
-                cause: 'Died of thirst in the throat',
+                cause: 'Died of thirst in the throat', code: 'hazard',
                 dodgeStat: 'endurance',
                 dodgeAlt: 'willpower',
                 damage: 22,
@@ -1164,7 +1164,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} sits down in {zone} without deciding to. Their vision has gone white at the edges.',
                 escapeText: '{tribute} gets into shade in {zone} and stays there until their vision comes back.',
-                cause: 'Cooked alive in the throat',
+                cause: 'Cooked alive in the throat', code: 'hazard',
                 dodgeStat: 'endurance',
                 dodgeAlt: 'willpower',
                 dodgeDifficulty: 8,
@@ -1187,7 +1187,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The steam vents in {zone} run on no schedule anybody has worked out. The one behind {tribute} fires at arm’s length.',
                 escapeText: '{tribute} reads the mineral crust around the vents in {zone} and keeps a body’s width clear of each.',
-                cause: 'Scalded at the steam vents',
+                cause: 'Scalded at the steam vents', code: 'burns',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 dodgeDifficulty: 7,
@@ -1211,7 +1211,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The whole colony in {zone} goes up at once. For ninety seconds the gallery is solid with them and {tribute} is standing in it.',
                 escapeText: '{tribute} gets low and still in {zone} as the colony goes up and lets the whole thing pass over the top of them.',
-                cause: 'Taken in the bat colony',
+                cause: 'Taken in the bat colony', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 damage: 22,
@@ -1247,7 +1247,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // one way, and the good loot is at the bottom of it.
                 text: 'The antechamber below {zone} is forty degrees warmer than the shelf above it and holds the best kit in the arena. {tribute} has been down there two hours.',
                 escapeText: '{tribute} works the antechamber below {zone} in ten-minute shifts, climbing out between each one.',
-                cause: 'Cooked in the antechamber',
+                cause: 'Cooked in the antechamber', code: 'burns',
                 dodgeStat: 'endurance',
                 dodgeAlt: 'intelligence',
                 damage: 30,
@@ -1258,7 +1258,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The long way out of {zone} is three times the distance and half the heat. {tribute} is most of the way along it when the tube narrows to a crawl.',
                 escapeText: '{tribute} marks the long way round out of {zone} at every junction on the way in and comes back out along their own marks.',
-                cause: 'Lost in the long way round',
+                cause: 'Lost in the long way round', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'willpower',
                 damage: 18,
@@ -1269,7 +1269,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A cinder wyrm comes up the lower throat past {zone} filling the tube. {tribute} has nine seconds and one side passage.',
                 escapeText: '{tribute} is in the side passage off {zone} before the cinder wyrm is anything more than a change in the draught.',
-                cause: 'Taken by a cinder wyrm',
+                cause: 'Taken by a cinder wyrm', code: 'burns',
                 dodgeStat: 'agility',
                 dodgeAlt: 'stealth',
                 dodgeDifficulty: 8,
@@ -1280,7 +1280,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The thermal kestrels nesting above {zone} hunt anything moving on the stair. {tribute} is on the stair.',
                 escapeText: '{tribute} goes up the stair at {zone} in the shadow of the wall, slowly, and nothing on the rim registers the movement.',
-                cause: 'Knocked off the stair by the kestrels',
+                cause: 'Knocked off the stair by the kestrels', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'stealth',
                 damage: 34,
@@ -1395,7 +1395,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Every glowing thing in {zone} goes out at once. {tribute} loses their footing and goes down.',
                 escapeText: '{tribute} is already crouched with a hand on the floor of {zone} when the moss goes out.',
-                cause: 'Lost in the dark',
+                cause: 'Lost in the dark', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'willpower',
                 damage: 14,
@@ -1416,7 +1416,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} steps off an unlit lip in {zone} into a drop of unknown depth.',
                 escapeText: '{tribute} finds the edge in {zone} with a boot toe rather than their whole weight, and stops.',
-                cause: 'Fell',
+                cause: 'Fell', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 damage: 34,
@@ -1468,7 +1468,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The squeeze out of {zone} is narrower than {tribute} is. They are in it to the hips before they find that out.',
                 escapeText: '{tribute} backs out of the squeeze in {zone} before their shoulders are through it.',
-                cause: 'Died wedged in a squeeze',
+                cause: 'Died wedged in a squeeze', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'willpower',
                 dodgeDifficulty: 9,
@@ -1487,7 +1487,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The flowstone {tribute} is climbing out of {zone} is running wet. Their hands go first, then a boot.',
                 escapeText: '{tribute} finds a dry line up the flowstone out of {zone} and takes it slowly.',
-                cause: 'Fell',
+                cause: 'Fell', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'strength',
                 damage: 28,
@@ -1509,7 +1509,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The Undermere in {zone} is black and colder than the air over it. The ledge {tribute} is working along runs out under the water.',
                 escapeText: '{tribute} works the ledge above the Undermere in {zone} with a hand on the wall and finds the end of it before their feet do.',
-                cause: 'Went into the Undermere',
+                cause: 'Went into the Undermere', code: 'hypothermia',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 damage: 34,
@@ -1519,7 +1519,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The bone passage through {zone} is knee-deep in a few thousand years of wash. {tribute} crawls the length of it.',
                 escapeText: '{tribute} goes through the bone passage in {zone} fast, on their elbows.',
-                cause: 'Broke in the bone passage',
+                cause: 'Broke in the bone passage', code: 'hazard',
                 dodgeStat: 'willpower',
                 dodgeAlt: 'endurance',
                 damage: 14,
@@ -1539,7 +1539,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Something in the Black Gallery beyond {zone} stays still while {tribute} goes past, and moves once they are by.',
                 escapeText: '{tribute} crosses the Black Gallery at {zone} with their boots off. Nothing follows them out.',
-                cause: 'Taken by the Deep Listener',
+                cause: 'Taken by the Deep Listener', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'willpower',
                 dodgeDifficulty: 8,
@@ -1564,7 +1564,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // cannon — you only know somebody is dead if you find them.
                 text: 'The bat roost above {zone} goes out at dusk. The noise tells everybody in the cave system what hour it is and which chamber {tribute} is in.',
                 escapeText: '{tribute} is out of the roost chamber at {zone} before the bats go.',
-                cause: 'Found under the bat roost',
+                cause: 'Found under the bat roost', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'intelligence',
                 damage: 28,
@@ -1575,7 +1575,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} puts a hand on a column in the drip gallery above {zone} to steady themselves. It comes away from the roof.',
                 escapeText: '{tribute} goes through the drip gallery at {zone} with their hands in, touching nothing.',
-                cause: 'Killed in the drip gallery',
+                cause: 'Killed in the drip gallery', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 damage: 34,
@@ -1586,7 +1586,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Hundreds of chorus newts in the glowmoss hollow at {zone} take up a call and hold it. {tribute} cannot hear anything else over it.',
                 escapeText: '{tribute} sits against a wall in the glowmoss hollow at {zone} until the chorus stops, and listens to what is left.',
-                cause: 'Killed under the chorus',
+                cause: 'Killed under the chorus', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'willpower',
                 damage: 30,
@@ -1597,7 +1597,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The unseen has been in the same chamber as {tribute} in {zone} for some minutes before they work out that it is there.',
                 escapeText: '{tribute} goes still in {zone} and puts their light out. Whatever is in the chamber goes past them.',
-                cause: 'Taken by the Unseen',
+                cause: 'Taken by the Unseen', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'willpower',
                 dodgeDifficulty: 8,
@@ -1609,7 +1609,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The sinkhole floor of {zone} is the only place in the Undermere with daylight in it. {tribute} has slept there three nights and so has everybody else who found it.',
                 escapeText: '{tribute} sleeps in the dark off the sinkhole floor at {zone} rather than in the light of it.',
-                cause: 'Killed on the sinkhole floor',
+                cause: 'Killed on the sinkhole floor', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'stealth',
                 damage: 34,
@@ -1713,7 +1713,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The sector under {tribute} in {zone} begins to rotate. Every route they had memorised out of it is now somewhere else.',
                 escapeText: '{tribute} feels the gears take up in {zone} and steps across the seam before it moves.',
-                cause: 'Crushed in the turning of a sector',
+                cause: 'Crushed in the turning of a sector', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 30,
                 bleeding: true,
@@ -1757,7 +1757,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Acid fog rolls through {zone}. {tribute} inhales before they can cover their face and their skin begins to blister.',
                 escapeText: '{tribute} smells the acid fog coming and clamps a wet cloth over their face in {zone}.',
-                cause: 'Dissolved by the acid fog',
+                cause: 'Dissolved by the acid fog', code: 'poison',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 damage: 18,
                 burned: true,
@@ -1776,7 +1776,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A jabberjay flock descends on {zone}, screaming in the voices of {tribute}\'s family until they claw at their own ears.',
                 escapeText: '{tribute} recognises the jabberjay trick in {zone} and refuses to listen.',
-                cause: 'Lost to the jabberjays',
+                cause: 'Lost to the jabberjays', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 5,
                 sanity: 40,
@@ -1791,7 +1791,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The sector bell rings over {zone} and the ground rotates a full quarter turn. {tribute} is thrown off their feet into a bulkhead.',
                 escapeText: '{tribute} counts the bell in {zone} and rides the sector shift standing up.',
-                cause: 'Crushed in a sector rotation',
+                cause: 'Crushed in a sector rotation', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 26,
                 bleeding: true,
@@ -1800,7 +1800,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Jabberjays in {zone} start screaming in the voices of {tribute}\'s family. It goes on for an hour.',
                 escapeText: '{tribute} recognises the jabberjays in {zone} for what they are and stops listening.',
-                cause: 'Driven mad by the jabberjays',
+                cause: 'Driven mad by the jabberjays', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 6,
                 sanity: 35,
@@ -1809,7 +1809,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The clock face over {zone} strikes and a wall of insects pours out of the treeline into {tribute}.',
                 escapeText: '{tribute} is out of {zone} before the hour strikes.',
-                cause: 'Stung to death by tracker jackers',
+                cause: 'Stung to death by tracker jackers', code: 'poison',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 dodgeDifficulty: 7,
                 damage: 30,
@@ -1820,7 +1820,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // that are about the clock rather than about the weather.
                 text: 'The hour turns while {tribute} is still in {zone}. Whatever Sector 6 was holding comes out of the hollow at once.',
                 escapeText: '{tribute} counts down the last of the hour in {zone} and is across the sector line before it strikes.',
-                cause: 'Caught by the hour in Sector 6',
+                cause: 'Caught by the hour in Sector 6', code: 'poison',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 dodgeDifficulty: 7,
@@ -1858,7 +1858,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The lightning tree takes a strike with {tribute} inside the ring of scorched ground. Everything wet on them carries it.',
                 escapeText: '{tribute} feels the hair on their arms lift in {zone} and is out of the scorch ring before the sky closes the circuit.',
-                cause: 'Struck at the Lightning Tree',
+                cause: 'Struck at the Lightning Tree', code: 'burns',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 dodgeDifficulty: 8,
                 damage: 40,
@@ -1869,7 +1869,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Low tide on the salt reef leaves a channel walkable for exactly one hour, and {tribute} is halfway across it when the hour ends.',
                 escapeText: '{tribute} crosses the reef channel out of {zone} inside the hour and is on dry coral when the water comes back over it.',
-                cause: 'Taken by the reef tide',
+                cause: 'Taken by the reef tide', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'endurance',
                 damage: 24,
@@ -1905,7 +1905,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The acid fog rolls the length of {zone} waist-high at its hour. {tribute} is at the low end of the sector with the high ground behind them.',
                 escapeText: '{tribute} is uphill and upwind of the acid fog crossing {zone} before it has cleared the treeline.',
-                cause: 'Dissolved in the acid fog',
+                cause: 'Dissolved in the acid fog', code: 'poison',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 dodgeDifficulty: 7,
@@ -1938,7 +1938,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} has kept the hours on the inside of their forearm since the first morning. On the fourth day the sectors stop matching what is written there.',
                 escapeText: '{tribute} checks their arm against the sky over {zone} twice a day and the two of them agree, which is the only comfort on offer.',
-                cause: 'Lost track of the hour',
+                cause: 'Lost track of the hour', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'willpower',
                 damage: 14,
@@ -2044,7 +2044,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The wind across {zone} rises until {tribute} cannot hear anything over it, including what is behind them.',
                 escapeText: '{tribute} gets into the lee of something in {zone} before the wind takes the world away.',
-                cause: 'Lost in a whiteout',
+                cause: 'Lost in a whiteout', code: 'hypothermia',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 10,
                 frostbitten: true,
@@ -2062,7 +2062,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A pressure ridge comes up out of the ice in {zone} to head height. {tribute} is on the far side of it.',
                 escapeText: '{tribute} hears the ridge start to build in {zone} and is clear of the line.',
-                cause: 'Crushed by a pressure ridge',
+                cause: 'Crushed by a pressure ridge', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 34,
                 bleeding: true,
@@ -2077,7 +2077,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A blizzard swallows {zone} whole. {tribute} loses hours to the whiteout and their fingers go dead grey.',
                 escapeText: '{tribute} digs in ahead of the blizzard in {zone} and rides it out.',
-                cause: 'Lost to the blizzard',
+                cause: 'Lost to the blizzard', code: 'hypothermia',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 20,
                 frostbitten: true,
@@ -2097,7 +2097,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'An avalanche tears down the slope above {zone}. {tribute} is buried to the chest and claws their way out with broken ribs.',
                 escapeText: '{tribute} hears the crack above {zone} and sprints out of the avalanche path.',
-                cause: 'Buried by an avalanche',
+                cause: 'Buried by an avalanche', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 dodgeDifficulty: 7,
                 damage: 38,
@@ -2129,7 +2129,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A whiteout closes over {zone}. {tribute} walks in circles until they cannot feel their hands.',
                 escapeText: '{tribute} ties off to a fixed point in {zone} and waits the whiteout out.',
-                cause: 'Lost in a whiteout',
+                cause: 'Lost in a whiteout', code: 'hypothermia',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 10,
                 frostbitten: true,
@@ -2148,7 +2148,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // adversary with a method, not as a number that ticks down.
                 text: 'The wind comes off Glacier Peak carrying ground snow. For ten minutes {tribute} cannot see their own hands in {zone}.',
                 escapeText: '{tribute} drops flat behind a drift in {zone} and lets the ground blizzard go over the top of them.',
-                cause: 'Lost in a whiteout',
+                cause: 'Lost in a whiteout', code: 'hypothermia',
                 dodgeStat: 'endurance',
                 dodgeAlt: 'intelligence',
                 damage: 14,
@@ -2174,7 +2174,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Something has walked a circle around {tribute} in the pines of {zone} since the light went. The circle has been tightening for an hour.',
                 escapeText: '{tribute} breaks the circle in {zone} by walking straight at it, and whatever it was decides tonight is not the night.',
-                cause: 'Run down in the pines',
+                cause: 'Run down in the pines', code: 'hazard',
                 dodgeStat: 'willpower',
                 dodgeAlt: 'stealth',
                 damage: 20,
@@ -2198,7 +2198,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The trapper who built the cabin in {zone} left a line of snares out and never came back for them. {tribute} walks into one.',
                 escapeText: '{tribute} reads the notches on the cabin doorframe in {zone}, counts the line out, and steps over every one of the old snares.',
-                cause: "Caught in a dead man's snare",
+                cause: "Caught in a dead man's snare", code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 damage: 18,
@@ -2220,7 +2220,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // dark is what kills; both of this arena's laws, in prose.
                 text: 'The ice caves at {zone} are fifteen degrees warmer than the surface. The roof of the one {tribute} chooses has been melting from beneath all week.',
                 escapeText: '{tribute} reads the fresh ice on the floor of the cave at {zone}, works out where it fell from, and sleeps outside.',
-                cause: 'Crushed in the ice caves',
+                cause: 'Crushed in the ice caves', code: 'hypothermia',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 damage: 34,
@@ -2243,7 +2243,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The snowblind owls over {zone} hunt at dusk and make no sound in flight. {tribute} is crossing open snow in a dark coat.',
                 escapeText: '{tribute} crosses the open ground of {zone} under the treeline rather than across the middle of it, and nothing comes down out of the dark.',
-                cause: 'Taken by the snowblind owls',
+                cause: 'Taken by the snowblind owls', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 damage: 30,
@@ -2267,7 +2267,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The ice wolves hold station around the windbreak at {zone} for a day and a night without closing. On the second night {tribute} has to sleep.',
                 escapeText: '{tribute} keeps a fire between themselves and the wolves at {zone} for the whole second night and sleeps in the morning instead.',
-                cause: 'Run down by the ice wolves',
+                cause: 'Run down by the ice wolves', code: 'hazard',
                 dodgeStat: 'willpower',
                 dodgeAlt: 'endurance',
                 dodgeDifficulty: 8,
@@ -2366,7 +2366,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A floor slab in {zone} has been holding on rebar alone for years. It lets go with {tribute} on it.',
                 escapeText: '{tribute} tests the slab in {zone} and takes the stairs on the outside wall instead.',
-                cause: 'Crushed in a collapse',
+                cause: 'Crushed in a collapse', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 32,
                 bleeding: true,
@@ -2400,7 +2400,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The floor of {zone} gives out under {tribute}. They fall two storeys into rubble and glass.',
                 escapeText: '{tribute} feels the concrete flex in {zone} and jumps clear before the floor drops.',
-                cause: 'Killed in a building collapse',
+                cause: 'Killed in a building collapse', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 34,
                 bleeding: true,
@@ -2409,7 +2409,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A live wire drops across the wet floor of {zone}. {tribute} is thrown ten feet and comes to with burned hands.',
                 escapeText: '{tribute} spots the sparking wire in {zone} and steps wide around the puddle.',
-                cause: 'Electrocuted by a live wire',
+                cause: 'Electrocuted by a live wire', code: 'burns',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 26,
                 burned: true,
@@ -2444,7 +2444,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A stairwell in {zone} pancakes under {tribute}. They ride three floors of rubble down and walk away limping.',
                 escapeText: '{tribute} tests the stairwell in {zone} and takes the fire escape instead.',
-                cause: 'Crushed in a stairwell collapse',
+                cause: 'Crushed in a stairwell collapse', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 32,
                 bleeding: true,
@@ -2452,7 +2452,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A gas main under {zone} lets go. The blast throws {tribute} across the street.',
                 escapeText: '{tribute} smells the gas in {zone} and is two blocks away when it goes.',
-                cause: 'Killed in a gas explosion',
+                cause: 'Killed in a gas explosion', code: 'burns',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 dodgeDifficulty: 7,
                 damage: 34,
@@ -2482,7 +2482,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'One rail in the subway under {zone} still carries current, and the standing water on the platform reaches it. {tribute} steps down into the water.',
                 escapeText: '{tribute} sees the water in the subway under {zone} boiling very slightly around one rail and goes back up the stairs.',
-                cause: 'Electrocuted on a live rail',
+                cause: 'Electrocuted on a live rail', code: 'burns',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 dodgeDifficulty: 7,
                 damage: 42,
@@ -2548,7 +2548,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The reservoir at {zone} has held a city’s rain for a decade. Something large lives in it. {tribute} is filling a bottle at the edge.',
                 escapeText: '{tribute} fills at the reservoir in {zone} with a bottle on a length of wire from four metres back and never puts a hand in the water.',
-                cause: 'Taken at the reservoir',
+                cause: 'Taken at the reservoir', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 damage: 36,
@@ -2559,7 +2559,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The rail yard at {zone} is four hundred metres of open ballast overlooked by every window on the industrial side. {tribute} is halfway across it.',
                 escapeText: '{tribute} crosses the rail yard at {zone} under the wagons rather than between them, one coupling at a time.',
-                cause: 'Shot crossing the rail yard',
+                cause: 'Shot crossing the rail yard', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 damage: 32,
@@ -2687,7 +2687,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Something enormous moves under the water beside {tribute} in {zone} and does not surface.',
                 escapeText: '{tribute} is out of the water in {zone} before whatever it is decides.',
-                cause: 'Taken under in the swamp',
+                cause: 'Taken under in the swamp', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 dodgeDifficulty: 7,
                 damage: 36,
@@ -2712,7 +2712,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Hallucinogenic spores burst across {zone}. {tribute} spends the hour fighting things that are not there.',
                 escapeText: '{tribute} covers their face as the spore cloud rolls over {zone} and comes through it clear-headed.',
-                cause: 'Lost their mind to the spores',
+                cause: 'Lost their mind to the spores', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 8,
                 sanity: 45,
@@ -2730,7 +2730,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The ground turns to quicksand under {tribute} in {zone}. They drag themselves out exhausted, having lost an hour and most of their strength.',
                 escapeText: '{tribute} probes ahead with a branch in {zone} and skirts the sinkhole entirely.',
-                cause: 'Swallowed by a quicksand sinkhole',
+                cause: 'Swallowed by a quicksand sinkhole', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 15,
                 fatigue: 35,
@@ -2738,7 +2738,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A leech swarm finds {tribute} in the water of {zone}. They pull them off for an hour and still miss some.',
                 escapeText: '{tribute} crosses {zone} on fallen logs and never touches the water.',
-                cause: 'Bled dry by leeches',
+                cause: 'Bled dry by leeches', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 damage: 20,
                 bleeding: true,
@@ -2754,7 +2754,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A leech mat in {zone} finds {tribute} in the water. They spend twenty minutes burning them off and lose blood the whole time.',
                 escapeText: '{tribute} crosses {zone} on the fallen logs and keeps out of the water entirely.',
-                cause: 'Bled dry by leeches',
+                cause: 'Bled dry by leeches', code: 'burns',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 22,
                 bleeding: true,
@@ -2763,7 +2763,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Gas comes off the bog in {zone}. {tribute} breathes it and the trees start talking.',
                 escapeText: '{tribute} covers their face as the bog vents in {zone} and keeps walking.',
-                cause: 'Lost to the swamp gas',
+                cause: 'Lost to the swamp gas', code: 'poison',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 damage: 8,
                 sanity: 32,
@@ -2781,7 +2781,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // you can eat, what you can drink, what you actually saw.
                 text: 'The gas coming off the bog in {zone} works on {tribute} for an hour before they notice. The reeds have started saying their name.',
                 escapeText: '{tribute} gets a wet rag over their mouth in {zone} and walks out of the gas pocket counting their own steps aloud.',
-                cause: 'Lost to the swamp gas',
+                cause: 'Lost to the swamp gas', code: 'hazard',
                 dodgeStat: 'willpower',
                 dodgeAlt: 'intelligence',
                 dodgeDifficulty: 7,
@@ -2795,7 +2795,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Something has been lying in the murk of {zone} at the depth of a floating log since before {tribute} arrived.',
                 escapeText: '{tribute} counts the logs in the murk of {zone} twice, gets a different answer, and does not go in.',
-                cause: 'Taken in the shallows',
+                cause: 'Taken in the shallows', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 dodgeDifficulty: 8,
@@ -2895,7 +2895,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A sump wader stands up out of the water two metres from {tribute} at {zone}, slowly, to twice their height.',
                 escapeText: '{tribute} stays absolutely still in the water at {zone} until the sump wader has gone back down into it, which takes eleven minutes.',
-                cause: 'Taken by a sump wader',
+                cause: 'Taken by a sump wader', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'willpower',
                 dodgeDifficulty: 8,
@@ -3010,7 +3010,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} walks two hours across {zone} toward a city on the horizon before it goes out.',
                 escapeText: '{tribute} takes a bearing off the sun in {zone} and does not trust the horizon.',
-                cause: 'Died of thirst',
+                cause: 'Died of thirst', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 8,
                 thirst: 30,
@@ -3039,7 +3039,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A sandstorm buries {zone}. {tribute} rides it out face-down with grit in every wound.',
                 escapeText: '{tribute} reads the wind in {zone} and finds cover before the sandstorm lands.',
-                cause: 'Buried by the sandstorm',
+                cause: 'Buried by the sandstorm', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 18,
                 infected: true,
@@ -3049,7 +3049,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A mirage draws {tribute} four kilometres off course in {zone}. They arrive at bare sand and walk back.',
                 escapeText: '{tribute} recognises the mirage over {zone} for what it is and does not chase it.',
-                cause: 'Died chasing a mirage',
+                cause: 'Died chasing a mirage', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 10,
                 thirst: 40,
@@ -3075,7 +3075,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A dust devil crosses {zone} and scours {tribute} down to raw skin before it moves on.',
                 escapeText: '{tribute} gets flat behind a rock in {zone} and lets the dust devil pass over.',
-                cause: 'Flayed by a dust devil',
+                cause: 'Flayed by a dust devil', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 22,
                 bleeding: true,
@@ -3084,7 +3084,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The sand under {zone} gives way and {tribute} goes into a sinkhole to the chest. Getting out takes everything they have.',
                 escapeText: '{tribute} reads the sand in {zone} and walks the firm ground around the sinkhole.',
-                cause: 'Swallowed by a sinkhole',
+                cause: 'Swallowed by a sinkhole', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 18,
                 fatigue: 35,
@@ -3116,7 +3116,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The glare off the glass sea in {zone} works on {tribute} all day. By the afternoon they cannot find the horizon.',
                 escapeText: '{tribute} cuts a slit mask out of a strip of cloth in {zone} and takes the glare down to something a person can live behind.',
-                cause: 'Blinded on the glass sea',
+                cause: 'Blinded on the glass sea', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'endurance',
                 damage: 12,
@@ -3149,7 +3149,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The dune {tribute} is crossing in {zone} is loose under the crust. The whole slip face goes out from under them.',
                 escapeText: '{tribute} tests the crust of the dune in {zone} with a boot before their weight and traverses along the hard line instead.',
-                cause: 'Buried in a dune slip',
+                cause: 'Buried in a dune slip', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'strength',
                 damage: 24,
@@ -3174,7 +3174,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // twenty-four. Heat, distance, and the arithmetic of water.
                 text: 'The outcrop {tribute} has used for shade in {zone} gives none after noon. The next cover is four hours\u2019 walk.',
                 escapeText: '{tribute} works out by mid-morning which way the shade on the outcrop in {zone} is going, and moves round the rock ahead of it.',
-                cause: 'Died of heat on the outcrop',
+                cause: 'Died of heat on the outcrop', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'endurance',
                 damage: 20,
@@ -3199,7 +3199,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The sandstorm comes down {zone} as a brown wall five hundred metres high. {tribute} has two minutes and no cover.',
                 escapeText: '{tribute} sees the wall coming down {zone}, gets downwind of the largest rock they can reach and wraps their head in a shirt.',
-                cause: 'Buried in the sandstorm',
+                cause: 'Buried in the sandstorm', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'endurance',
                 dodgeDifficulty: 7,
@@ -3221,7 +3221,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The dried oasis at {zone} is a ring of green around cracked mud. {tribute} digs the centre for most of a day and it stays dry all the way down.',
                 escapeText: '{tribute} digs at the *edge* of the green ring in the dried oasis of {zone} rather than the middle, which is where the water actually is.',
-                cause: 'Died digging at the dried oasis',
+                cause: 'Died digging at the dried oasis', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'endurance',
                 damage: 14,
@@ -3336,7 +3336,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Everything in {zone} that has stood still is grey now. So is the thing that has been watching {tribute}.',
                 escapeText: '{tribute} keeps moving through {zone} and does not let the ash settle on them.',
-                cause: 'Killed from ambush in the ash',
+                cause: 'Killed from ambush in the ash', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 damage: 18,
                 sanity: 14,
@@ -3344,7 +3344,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The sun comes up brown over {zone} and the light stays wrong all day. {tribute} misreads a shape twice.',
                 escapeText: '{tribute} works by touch in the brown light of {zone} and trusts nothing else.',
-                cause: 'Lost in the ashfall',
+                cause: 'Lost in the ashfall', code: 'hazard',
                 dodgeStat: 'willpower', dodgeAlt: 'endurance',
                 damage: 6,
                 sanity: 18,
@@ -3359,7 +3359,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A pyroclastic gust rolls across {zone}. {tribute} is knocked flat and scorched through their clothes.',
                 escapeText: '{tribute} drops behind a lava ridge in {zone} as the gust passes overhead.',
-                cause: 'Caught in a pyroclastic gust',
+                cause: 'Caught in a pyroclastic gust', code: 'burns',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 dodgeDifficulty: 7,
                 damage: 34,
@@ -3369,7 +3369,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The ground of {zone} splits without warning. {tribute} goes into the fissure to the shoulder before they stop themselves.',
                 escapeText: '{tribute} feels {zone} shift underfoot and is already moving when it opens.',
-                cause: 'Swallowed by a ground fissure',
+                cause: 'Swallowed by a ground fissure', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 28,
                 bleeding: true,
@@ -3388,7 +3388,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A vent in {zone} exhales superheated steam directly into {tribute}.',
                 escapeText: '{tribute} hears the vent building under {zone} and steps off the fissure line.',
-                cause: 'Scalded by a steam vent',
+                cause: 'Scalded by a steam vent', code: 'burns',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 dodgeDifficulty: 7,
                 damage: 30,
@@ -3412,7 +3412,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Cinder hounds work {zone} in a loose line, driving {tribute} out of cover and into open ground.',
                 escapeText: '{tribute} goes upwind of the cinder hounds in {zone} and loses them in the ash.',
-                cause: 'Run down by cinder hounds',
+                cause: 'Run down by cinder hounds', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 dodgeDifficulty: 7,
                 damage: 32,
@@ -3422,7 +3422,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // §7.3: grey snow, warm ground, no sponsors. Six in that key.
                 text: 'The ash over {zone} has fallen long enough to have weight. The drift {tribute} is sheltering under comes off the rock in one piece.',
                 escapeText: '{tribute} reads the overhang of ash above {zone} and moves camp twenty metres before it lets go.',
-                cause: 'Buried in an ash slide',
+                cause: 'Buried in an ash slide', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 damage: 28,
@@ -3444,7 +3444,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The crust over the vents in {zone} is a hand thick and looks like the ground either side. {tribute} puts a foot through it.',
                 escapeText: '{tribute} watches where the ash is bare of new grey in {zone} and walks the cold line around the vents.',
-                cause: 'Went through the vent crust',
+                cause: 'Went through the vent crust', code: 'burns',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 dodgeDifficulty: 7,
@@ -3491,7 +3491,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // ashfall, so everything here has to be found on the ground.
                 text: 'The ash on the cinder fields of {zone} holds a footprint like wet cement. {tribute} has left four days of them leading back to where they sleep.',
                 escapeText: '{tribute} starts walking the scoured rock across {zone} rather than the drift, and their whole trail simply stops in the middle of the basin.',
-                cause: 'Tracked across the cinder fields',
+                cause: 'Tracked across the cinder fields', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'intelligence',
                 damage: 26,
@@ -3523,7 +3523,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The ash wraiths over {zone} are columns of hot air carrying a decade of grey. One stands off {tribute} for a while and then comes down the slope at them.',
                 escapeText: '{tribute} watches the wraith work across the slope of {zone}, reads its line, and is a hundred metres off it when it passes.',
-                cause: 'Taken by an ash wraith',
+                cause: 'Taken by an ash wraith', code: 'burns',
                 dodgeStat: 'agility',
                 dodgeAlt: 'willpower',
                 damage: 26,
@@ -3637,7 +3637,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Lightning finds the highest thing in {zone}. {tribute} is standing against it.',
                 escapeText: '{tribute} gets off the exposed ground of {zone} before the barrage walks in.',
-                cause: 'Struck by lightning',
+                cause: 'Struck by lightning', code: 'burns',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 dodgeDifficulty: 7,
                 damage: 38,
@@ -3646,7 +3646,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The king tide floods {zone} to the chest in under a minute. {tribute} loses everything they were not holding.',
                 escapeText: '{tribute} reads the tide line in {zone} and is above it when the water arrives.',
-                cause: 'Taken by the king tide',
+                cause: 'Taken by the king tide', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 14,
                 fatigue: 30,
@@ -3678,7 +3678,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The storm puts a wave clean over the breakwater at {zone} and up the street behind it. {tribute} is in the street.',
                 escapeText: '{tribute} is behind the second wall at {zone} when the wave comes over the first.',
-                cause: 'Taken by the storm surge',
+                cause: 'Taken by the storm surge', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 28,
                 terrains: ['open', 'ruins'],
@@ -3686,7 +3686,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Lightning finds the highest thing standing on {zone}. {tribute} has hold of it.',
                 escapeText: '{tribute} lets go of the ironwork at {zone} and gets low a few seconds before the strike.',
-                cause: 'Struck by lightning',
+                cause: 'Struck by lightning', code: 'burns',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 36,
                 burned: true,
@@ -3703,7 +3703,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A hull in the wreck graveyard at {zone} shifts in the swell and comes down where {tribute} is standing.',
                 escapeText: '{tribute} hears the hull at {zone} start to move and is off the deck plate before it settles.',
-                cause: 'Crushed in the wreck graveyard',
+                cause: 'Crushed in the wreck graveyard', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 30,
                 bleeding: true,
@@ -3732,7 +3732,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // weather. Six that are about the storm as a standing condition.
                 text: 'The tide comes over the breakwater at {zone} an hour earlier than yesterday. {tribute} has their kit laid out below that line.',
                 escapeText: '{tribute} reads the wrack line at {zone} against yesterday’s and moves everything they own uphill before the water arrives.',
-                cause: 'Taken by the tide',
+                cause: 'Taken by the tide', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 damage: 22,
@@ -3744,7 +3744,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The lighthouse at {zone} still turns. The wind gets under the gallery rail while {tribute} is out on it and takes them off their feet.',
                 escapeText: '{tribute} gets off the lighthouse gallery at {zone} on all fours the moment the gust takes the rail.',
-                cause: 'Blown off the lighthouse',
+                cause: 'Blown off the lighthouse', code: 'hazard',
                 dodgeStat: 'strength',
                 dodgeAlt: 'agility',
                 dodgeDifficulty: 8,
@@ -3756,7 +3756,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The wrecks in {zone} shift on every big set. The one {tribute} is sheltering in rolls a quarter-turn with them inside.',
                 escapeText: '{tribute} feels the hull under them in {zone} start to work and is out through the deck plate before it goes over.',
-                cause: 'Crushed in the wreck graveyard',
+                cause: 'Crushed in the wreck graveyard', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 30,
                 bleeding: true,
@@ -3777,7 +3777,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The mangroves in {zone} are the only windbreak on the coast. {tribute} beds down in them, and so has every snake on the reach.',
                 escapeText: '{tribute} beats the mangrove roots in {zone} ahead of themselves with a stick and clears a berth nothing is sharing.',
-                cause: 'Killed in the mangroves',
+                cause: 'Killed in the mangroves', code: 'poison',
                 dodgeStat: 'agility',
                 dodgeAlt: 'stealth',
                 damage: 20,
@@ -3809,7 +3809,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The gull roost above {zone} holds ten thousand birds. {tribute} puts all of them up at once and the whole coast hears it.',
                 escapeText: '{tribute} works below the gull roost at {zone} at low water, quietly, and not one bird comes off the rock.',
-                cause: 'Given away by the gulls',
+                cause: 'Given away by the gulls', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 damage: 24,
@@ -3941,7 +3941,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 id: 'heat-shimmer-blindness',
                 text: 'The air over {zone} comes off the crust in sheets and every fixed thing in it starts moving. {tribute} walks an hour toward water that is not there.',
                 escapeText: '{tribute} sits down in the shimmer over {zone}, closes their eyes for a hundred count, and only opens them once the horizon has agreed to stay still.',
-                cause: 'Walked into the shimmer and did not walk back out',
+                cause: 'Walked into the shimmer and did not walk back out', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'willpower',
                 dodgeDifficulty: 8,
@@ -3956,7 +3956,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The whiteout glare over {zone} takes {tribute}\'s sight for the better part of an hour. They walk into everything.',
                 escapeText: '{tribute} smears ash under their eyes and works through the glare over {zone}.',
-                cause: 'Died blind and lost on the flats',
+                cause: 'Died blind and lost on the flats', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 12,
                 sanity: 20,
@@ -3975,7 +3975,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A brine squall crosses {zone} and scours {tribute} raw with airborne salt.',
                 escapeText: '{tribute} gets downwind of a spire in {zone} before the squall arrives.',
-                cause: 'Flayed by a brine squall',
+                cause: 'Flayed by a brine squall', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 damage: 20,
                 bleeding: true,
@@ -3984,7 +3984,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A mirage draws {tribute} two miles across {zone} to bare crust. They walk the two miles back.',
                 escapeText: '{tribute} recognises the mirage over {zone} for what it is and stays put.',
-                cause: 'Died chasing water that was not there',
+                cause: 'Died chasing water that was not there', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 dodgeDifficulty: 7,
                 damage: 10,
@@ -3995,7 +3995,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Salt locusts come across {zone} in a sheet. {tribute} covers their face and takes the rest of it on bare skin.',
                 escapeText: '{tribute} gets under a crust slab in {zone} as the locusts pass over.',
-                cause: 'Stripped by salt locusts',
+                cause: 'Stripped by salt locusts', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 damage: 24,
                 bleeding: true,
@@ -4012,7 +4012,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The crust at {zone} is a finger thick over brine. It gives under {tribute} in the middle of the pan.',
                 escapeText: '{tribute} reads the colour change in the crust at {zone} and walks the long way round it.',
-                cause: 'Went through the salt crust',
+                cause: 'Went through the salt crust', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 22,
                 thirst: 26,
@@ -4021,7 +4021,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The glare comes off {zone} from below as well as above. By afternoon {tribute} cannot find the horizon.',
                 escapeText: '{tribute} rigs something over their eyes on {zone} before the glare has finished with them.',
-                cause: 'Blinded on the flats',
+                cause: 'Blinded on the flats', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 8,
                 sanity: 20,
@@ -4059,7 +4059,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The boneyard at {zone} is not all animal. {tribute} works out which parts are not.',
                 escapeText: '{tribute} crosses the boneyard at {zone} without looking down at any of it.',
-                cause: 'Broke on the flats',
+                cause: 'Broke on the flats', code: 'hazard',
                 dodgeStat: 'willpower', dodgeAlt: 'endurance',
                 damage: 6,
                 sanity: 24,
@@ -4071,7 +4071,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // and the fact that there is nowhere at all to be.
                 text: 'The crust over the pan in {zone} is two inches of salt over brine mud. {tribute} goes through it to the thigh.',
                 escapeText: '{tribute} reads the colour change in the crust across {zone} and works round the soft ground the long way.',
-                cause: 'Went through the salt crust',
+                cause: 'Went through the salt crust', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'strength',
                 damage: 20,
@@ -4082,7 +4082,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The glare comes up off the pan as hard as it comes down. By afternoon {tribute} is burned under the chin and cannot see the far side of {zone}.',
                 escapeText: '{tribute} blacks the skin under their own eyes with ash in {zone} and takes the worst of the reflected glare out of the day.',
-                cause: 'Blinded on the salt',
+                cause: 'Blinded on the salt', code: 'burns',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'endurance',
                 damage: 14,
@@ -4093,7 +4093,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Every cut {tribute} has picks up salt crossing the flats of {zone}. None of them close.',
                 escapeText: '{tribute} works the salt out of every cut they have with their last clean water in {zone}, which costs them the water and buys them the week.',
-                cause: 'Died of a wound the salt kept open',
+                cause: 'Died of a wound the salt kept open', code: 'hazard',
                 dodgeStat: 'endurance', dodgeAlt: 'strength',
                 damage: 12,
                 bleeding: true,
@@ -4137,7 +4137,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // to hide, which is a mechanic as much as a description.
                 text: 'The boneyard at {zone} is what the last drought left, salt-preserved. {tribute} is a day’s walk into it with the light going.',
                 escapeText: '{tribute} crosses the boneyard at {zone} in the morning, deliberately, so as not to be in it at dusk.',
-                cause: 'Broke in the boneyard',
+                cause: 'Broke in the boneyard', code: 'hazard',
                 dodgeStat: 'willpower',
                 dodgeAlt: 'intelligence',
                 damage: 10,
@@ -4148,7 +4148,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The crust of the hexagon flats at {zone} carries a footfall a kilometre and a half. {tribute} can hear somebody else walking and they can hear {tribute}.',
                 escapeText: '{tribute} crosses the hexagon flats at {zone} in the dark on the softer ground between the plates, and the flats say nothing about it.',
-                cause: 'Run down on the flats',
+                cause: 'Run down on the flats', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'intelligence',
                 damage: 28,
@@ -4159,7 +4159,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The salt locusts come across {zone} in a sheet and go through {tribute}’s pack and the pack itself.',
                 escapeText: '{tribute} gets everything they own under a rock in {zone} and lies on it while the locusts go over.',
-                cause: 'Stripped by the salt locusts',
+                cause: 'Stripped by the salt locusts', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 damage: 18,
@@ -4170,7 +4170,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The crystal spires above {zone} split along their growth lines as the day heats them. A piece the size of a door comes off over {tribute}.',
                 escapeText: '{tribute} listens to the spires above {zone} ticking as the sun gets onto them and moves well out from under the tall ones.',
-                cause: 'Killed under the crystal spires',
+                cause: 'Killed under the crystal spires', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 damage: 34,
@@ -4181,7 +4181,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The evaporation pans at {zone} are shallow brine in low stone walls. {tribute} follows the wall lines for an hour before working out they are a spiral.',
                 escapeText: '{tribute} climbs a pan wall at {zone}, takes one look at the layout from up there, and walks straight out across it.',
-                cause: 'Lost in the evaporation pans',
+                cause: 'Lost in the evaporation pans', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'willpower',
                 damage: 12,
@@ -4286,7 +4286,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The cap {tribute} is standing on in {zone} gives way. They fall through rot to the ground beneath.',
                 escapeText: '{tribute} tests the cap in {zone}, hears it creak, and steps back off it.',
-                cause: 'Crushed under a collapsing cap',
+                cause: 'Crushed under a collapsing cap', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 30,
                 bleeding: true,
@@ -4294,7 +4294,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A rot sink opens under {tribute} in {zone} and they go in to the chest. It has been digesting for years.',
                 escapeText: '{tribute} spots the sag in the mat of {zone} and works around it.',
-                cause: 'Swallowed by a rot sink',
+                cause: 'Swallowed by a rot sink', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 22,
                 infected: true,
@@ -4318,7 +4318,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The mycelium under {zone} contracts all at once and {tribute} is pulled off their feet into something with a mouth.',
                 escapeText: '{tribute} feels the mat under {zone} start to move and is off it before it closes.',
-                cause: 'Taken by the mycelium',
+                cause: 'Taken by the mycelium', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 dodgeDifficulty: 7,
                 damage: 34,
@@ -4335,7 +4335,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The caps around {zone} release together when {tribute} brushes the first one, and the air goes gold.',
                 escapeText: '{tribute} sees the first cap at {zone} go and is upwind of the rest of them before they follow.',
-                cause: 'Died in a spore bloom',
+                cause: 'Died in a spore bloom', code: 'poison',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 16,
                 poisoned: true,
@@ -4345,7 +4345,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The rot at {zone} is warm to the touch, which means it is working on something. {tribute} is standing in it.',
                 escapeText: '{tribute} notices the heat coming up through the rot at {zone} and gets onto solid ground.',
-                cause: 'Taken by the rot',
+                cause: 'Taken by the rot', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 20,
                 infected: true,
@@ -4354,7 +4354,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The glowcaps at {zone} put out enough light to read by. {tribute} sits under them for three hours.',
                 escapeText: '{tribute} sleeps upwind of the glowcaps at {zone} and wakes up still themselves.',
-                cause: 'Lost in the glowcap wood',
+                cause: 'Lost in the glowcap wood', code: 'hazard',
                 dodgeStat: 'willpower', dodgeAlt: 'endurance',
                 damage: 10,
                 sanity: 28,
@@ -4408,7 +4408,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The mycelium under {zone} is one organism and has been reading {tribute}\u2019s footfalls for three days. Tonight the ticks come up out of the mat at once.',
                 escapeText: '{tribute} moves camp off the mat in {zone} a second night running and whatever is counting their footsteps loses the count.',
-                cause: 'Taken by the cordyceps ticks',
+                cause: 'Taken by the cordyceps ticks', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 damage: 22,
@@ -4421,7 +4421,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The rot hollow in {zone} holds blood heat. {tribute} has slept in it three nights because it is the warmest place in the fields.',
                 escapeText: '{tribute} works out why the hollow in {zone} is warm and sleeps cold on the ridge instead.',
-                cause: 'Rotted with the hollow',
+                cause: 'Rotted with the hollow', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 16,
                 infected: true,
@@ -4431,7 +4431,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Every glowcap in the wood at {zone} goes out at once. {tribute} is a long way in with nothing to see by.',
                 escapeText: '{tribute} takes a live glowcap off the trunk before the wood in {zone} goes dark and carries the light out in their fist.',
-                cause: 'Lost in the dark of the glowcap wood',
+                cause: 'Lost in the dark of the glowcap wood', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'willpower',
                 damage: 12,
@@ -4467,7 +4467,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The blight scar across {zone} is the one place in the fields where nothing grows. {tribute} walks out into the middle of it.',
                 escapeText: '{tribute} looks at the bare ground of the blight scar in {zone}, decides that bare ground in a fungal forest is a warning, and skirts it.',
-                cause: 'Killed on the blight scar',
+                cause: 'Killed on the blight scar', code: 'poison',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 30,
                 poisoned: true,
@@ -4488,7 +4488,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The spores {tribute} has breathed in {zone} since the second day are not poisonous. They make the arena look softer, warmer and safer than it is.',
                 escapeText: '{tribute} works out that everything in {zone} has been slightly too pleasant for two days and ties a rag over their face.',
-                cause: 'Lost to the spores',
+                cause: 'Lost to the spores', code: 'poison',
                 dodgeStat: 'willpower',
                 dodgeAlt: 'intelligence',
                 dodgeDifficulty: 7,
@@ -4499,7 +4499,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The mycelial hounds track by what the mat tells them rather than by scent or sound. {tribute} has walked on the mat all week.',
                 escapeText: '{tribute} works the rock and the streambed out of {zone} and puts a foot on the mycelial mat exactly twice.',
-                cause: 'Run down by the mycelial hounds',
+                cause: 'Run down by the mycelial hounds', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 dodgeDifficulty: 7,
@@ -4615,7 +4615,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A thornvine takes {tribute} around the ankle in {zone} and hauls. They cut free leaving a good deal of skin behind.',
                 escapeText: '{tribute} sees the thornvine coiled in {zone} and steps wide of it.',
-                cause: 'Taken by a thornvine',
+                cause: 'Taken by a thornvine', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 damage: 26,
                 bleeding: true,
@@ -4624,7 +4624,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A storm hits the canopy over {zone}. {tribute} spends the hour clinging to a bough with both arms while the world swings.',
                 escapeText: '{tribute} gets into a trunk hollow in {zone} before the canopy storm arrives.',
-                cause: 'Blown out of the canopy',
+                cause: 'Blown out of the canopy', code: 'hazard',
                 dodgeStat: 'strength', dodgeAlt: 'agility',
                 damage: 18,
                 fatigue: 35,
@@ -4648,7 +4648,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Screech primates mob {tribute} in {zone}, shrieking, and drive them to the very edge of the platform.',
                 escapeText: '{tribute} backs out of the primates\' territory in {zone} without turning around.',
-                cause: 'Driven off the canopy edge',
+                cause: 'Driven off the canopy edge', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 24,
                 bleeding: true,
@@ -4682,7 +4682,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Wind comes through the gap at {zone} as it has all week. {tribute} is out on the open bough for this one.',
                 escapeText: '{tribute} waits out the gust at {zone} against the trunk, where the bough is thick enough to argue with it.',
-                cause: 'Blown from the wind gap',
+                cause: 'Blown from the wind gap', code: 'hazard',
                 dodgeStat: 'strength', dodgeAlt: 'agility',
                 damage: 32,
                 terrains: ['open', 'highland'],
@@ -4690,7 +4690,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Something has nested in the epiphytes at {zone}, and {tribute} puts a hand into it before seeing it.',
                 escapeText: '{tribute} looks into the epiphytes at {zone} before reaching, and takes the long way past.',
-                cause: 'Killed in the epiphyte shelf',
+                cause: 'Killed in the epiphyte shelf', code: 'poison',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 damage: 20,
                 poisoned: true,
@@ -4734,7 +4734,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The strangler fig in {zone} has grown around an old platform. {tribute} climbs into the cage of it and cannot get back out.',
                 escapeText: '{tribute} finds the one gap in the fig cage of {zone} and is through it before the growth settles.',
-                cause: 'Caught in the strangler fig',
+                cause: 'Caught in the strangler fig', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'strength',
                 damage: 26,
@@ -4745,7 +4745,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The wind gap at {zone} funnels the canopy’s weather through one span. {tribute} is on the span when the gust arrives.',
                 escapeText: '{tribute} times the gusts through the wind gap at {zone} and crosses in the lull between two of them.',
-                cause: 'Blown off the canopy',
+                cause: 'Blown off the canopy', code: 'hazard',
                 dodgeStat: 'strength',
                 dodgeAlt: 'agility',
                 dodgeDifficulty: 8,
@@ -4755,7 +4755,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The hornets in {zone} nest in the epiphytes. {tribute} puts a hand into one climbing without looking.',
                 escapeText: '{tribute} spots the traffic going in and out of the epiphyte in {zone} and puts their hand somewhere else.',
-                cause: 'Stung off the branch',
+                cause: 'Stung off the branch', code: 'poison',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 damage: 20,
@@ -4778,7 +4778,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // not survivable, and every route out of a zone runs downward.
                 text: 'Everything the canopy drops ends up in the root cage under {zone}. {tribute} climbs down into it easily and cannot find a way back up.',
                 escapeText: '{tribute} fixes a line before going down into the root cage at {zone} and comes back up it hand over hand.',
-                cause: 'Trapped in the root cage',
+                cause: 'Trapped in the root cage', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'strength',
                 damage: 26,
@@ -4789,7 +4789,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The undercanopy below {zone} is wet, dark and at the bottom of everything. {tribute} has been down there two days because every level above is held.',
                 escapeText: '{tribute} gets out of the undercanopy at {zone} and back up into the light within a day, which is the difference between this arena and the ground.',
-                cause: 'Rotted in the undercanopy',
+                cause: 'Rotted in the undercanopy', code: 'hazard',
                 dodgeStat: 'endurance',
                 dodgeAlt: 'willpower',
                 damage: 20,
@@ -4821,7 +4821,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Every route out of {zone} runs downward. {tribute} works out that there has been no upward route since the second morning.',
                 escapeText: '{tribute} finds a fig root running up the outside of {zone} that nobody has used, climbs it, and buys back a level.',
-                cause: 'Ran out of canopy',
+                cause: 'Ran out of canopy', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'willpower',
                 damage: 14,
@@ -4955,7 +4955,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The ceiling of {zone} lets go behind {tribute} with a roar. The tunnel they came in by does not exist any more.',
                 escapeText: '{tribute} sprints clear as the roof of {zone} comes down, coughing dust and still counting their own limbs.',
-                cause: 'Buried in a tunnel collapse',
+                cause: 'Buried in a tunnel collapse', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 26,
                 fatigue: 15,
@@ -4974,7 +4974,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'An old charge nobody ever fired takes {tribute}\'s footstep in {zone} as an instruction.',
                 escapeText: '{tribute} sees the wire in the dust of {zone} a bootlength before it matters.',
-                cause: 'Set off a hundred-year-old charge',
+                cause: 'Set off a hundred-year-old charge', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 30,
                 bleeding: true,
@@ -5006,7 +5006,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A support in {zone} gives one loud crack and nothing falls. {tribute} does not sleep.',
                 escapeText: '{tribute} reads the cracked timber in {zone} and calmly relocates their whole life elsewhere.',
-                cause: 'Crushed by a failing support',
+                cause: 'Crushed by a failing support', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 8,
                 sanity: 18,
@@ -5023,7 +5023,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Every lamp in {zone} gutters and fails at once around {tribute}.',
                 escapeText: '{tribute} has flint out and a flame up before the dark of {zone} finishes arriving.',
-                cause: 'Lost in the dark',
+                cause: 'Lost in the dark', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 8,
                 sanity: 20,
@@ -5032,7 +5032,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Thousands of rats move through {zone} in one direction. {tribute} is standing in the line of them.',
                 escapeText: '{tribute} climbs the machinery of {zone} and lets the river of rats pass underneath.',
-                cause: 'Overrun by the swarm',
+                cause: 'Overrun by the swarm', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 12,
                 bleeding: true,
@@ -5041,7 +5041,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Heat comes up through the floor of {zone} at {tribute} from something far below that has been burning for decades.',
                 escapeText: '{tribute} feels {zone}\'s floor warm through their boots and keeps moving.',
-                cause: 'Cooked by the deep fire',
+                cause: 'Cooked by the deep fire', code: 'burns',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 15,
                 burned: true,
@@ -5050,7 +5050,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A scream reaches {tribute} through the tunnels of {zone} from no direction they can place. It does not come again.',
                 escapeText: '{tribute} refuses to follow the scream through {zone}, and is right not to.',
-                cause: 'Followed a scream into the dark',
+                cause: 'Followed a scream into the dark', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 6,
                 sanity: 16,
@@ -5071,7 +5071,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Every lamp {tribute} has is spent, and the last of the light goes while they are still four chambers from the hub of {zone}.',
                 escapeText: '{tribute} rations the last of their light through {zone} in ten-second looks and gets to the hub on what they remembered between them.',
-                cause: 'Lost in the dark of the Warren',
+                cause: 'Lost in the dark of the Warren', code: 'hazard',
                 dodgeStat: 'willpower',
                 dodgeAlt: 'intelligence',
                 dodgeDifficulty: 7,
@@ -5082,7 +5082,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The old workings above {zone} have dripped for a century. The prop {tribute} leans on comes away in their hand, soft through.',
                 escapeText: '{tribute} tests every prop on the way through {zone} with the flat of a hand and finds the rotten one before it finds them.',
-                cause: 'Buried in the old workings',
+                cause: 'Buried in the old workings', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 damage: 32,
@@ -5093,7 +5093,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Something large moves slowly through the chamber beyond {zone}. {tribute} listens to it go past for a full minute in the dark.',
                 escapeText: '{tribute} puts their back to the rib in {zone} and stops breathing until whatever it is has gone on somewhere else.',
-                cause: 'Taken by the Warden',
+                cause: 'Taken by the Warden', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'willpower',
                 dodgeDifficulty: 8,
@@ -5104,7 +5104,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The choke between {zone} and the next chamber is a body wide and the only way through. {tribute} is halfway in before the pack jams.',
                 escapeText: '{tribute} pushes the pack through the choke of {zone} ahead of themselves and follows it on one shoulder.',
-                cause: 'Died in the choke',
+                cause: 'Died in the choke', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'strength',
                 damage: 18,
@@ -5128,7 +5128,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // rock too thick to carry a cannon.
                 text: 'The dust flats in {zone} are ankle-deep in a century of rock flour. Every step {tribute} takes hangs behind them for a quarter of an hour.',
                 escapeText: '{tribute} works the edge of the dust flats in {zone} where the floor is swept to stone and leaves nothing hanging at all.',
-                cause: 'Tracked across the dust flats',
+                cause: 'Tracked across the dust flats', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'intelligence',
                 damage: 28,
@@ -5139,7 +5139,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The collapsed galleries beyond {zone} are a hundred metres of crawl that narrows the whole way. {tribute} is forty metres in.',
                 escapeText: '{tribute} pushes a light ahead of them through the collapsed galleries at {zone} and turns back at the point it stops fitting.',
-                cause: 'Died in the collapsed galleries',
+                cause: 'Died in the collapsed galleries', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'willpower',
                 dodgeDifficulty: 8,
@@ -5162,7 +5162,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The pit rats in {zone} travel in hundreds. They went through the food in {tribute}’s pack while {tribute} slept next to it.',
                 escapeText: '{tribute} hangs their pack from a roof bolt in {zone} on a wire and the rats work the floor underneath it all night for nothing.',
-                cause: 'Starved in the Warren',
+                cause: 'Starved in the Warren', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 14,
                 hunger: 34,
@@ -5172,7 +5172,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Somebody died in the old workings above {zone} days ago and no cannon carried down here. {tribute} has slept two chambers from them since.',
                 escapeText: '{tribute} follows the change in the air through {zone} to its source, finds what it is, and moves their camp a long way off.',
-                cause: 'Found them in the dark',
+                cause: 'Found them in the dark', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 sanity: 28,
                 infected: true,
@@ -5275,7 +5275,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The lights die across {zone}. {tribute} navigates by touch for an hour and walks into a machine housing.',
                 escapeText: '{tribute} has a hand on the wall of {zone} before the blackout finishes falling.',
-                cause: 'Died in the dark',
+                cause: 'Died in the dark', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 18,
                 bleeding: true,
@@ -5294,7 +5294,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The ceiling of {zone} comes down in one slab. {tribute} is at the edge of it and takes the rubble across the back.',
                 escapeText: '{tribute} hears the ceiling of {zone} start to go and clears the span.',
-                cause: 'Crushed by a ceiling collapse',
+                cause: 'Crushed by a ceiling collapse', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 dodgeDifficulty: 7,
                 damage: 34,
@@ -5329,7 +5329,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The lights on {zone} go out on the schedule. {tribute} waits forty minutes for them to come back.',
                 escapeText: '{tribute} is already sitting down with a hand on the wall of {zone} when the lights go.',
-                cause: 'Lost in the dark',
+                cause: 'Lost in the dark', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 12,
                 sanity: 26,
@@ -5338,7 +5338,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The turbine at {zone} spins up without warning with {tribute} standing inside the housing.',
                 escapeText: '{tribute} hears the turbine at {zone} begin to turn over and is out of the housing before it has speed.',
-                cause: 'Killed in the turbine hall',
+                cause: 'Killed in the turbine hall', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 36,
                 bleeding: true,
@@ -5347,7 +5347,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The ventilation shaft out of {zone} narrows past the point where {tribute} can back out of it.',
                 escapeText: '{tribute} measures the shaft at {zone} with an arm first and decides against the rest of themselves.',
-                cause: 'Died in the ventilation shafts',
+                cause: 'Died in the ventilation shafts', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 22,
                 sanity: 20,
@@ -5357,7 +5357,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Reactor level runs hot at {zone}. {tribute} spends four hours on it before working out why it is warm.',
                 escapeText: '{tribute} does not linger at {zone}, which is the entire technique for surviving the reactor level.',
-                cause: 'Cooked on the reactor level',
+                cause: 'Cooked on the reactor level', code: 'burns',
                 dodgeStat: 'endurance', dodgeAlt: 'strength',
                 damage: 24,
                 burned: true,
@@ -5367,7 +5367,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The faces on the ceiling of {zone} cycle round to somebody {tribute} knew, and stay there.',
                 escapeText: '{tribute} keeps their eyes down in {zone} when the ceiling starts cycling, and does not look up once.',
-                cause: 'Broke under the ceiling',
+                cause: 'Broke under the ceiling', code: 'hazard',
                 dodgeStat: 'willpower', dodgeAlt: 'endurance',
                 damage: 6,
                 sanity: 30,
@@ -5386,7 +5386,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // the dead on the ceiling. Six that could only happen here.
                 text: 'The lights in {zone} go out on the schedule and come back forty minutes later. The corridor {tribute} had been counting doors along has been rearranged.',
                 escapeText: '{tribute} counts the corridor out of {zone} by hand along the wall in the dark and comes out where they meant to.',
-                cause: 'Lost in the blackout',
+                cause: 'Lost in the blackout', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'willpower',
                 damage: 14,
@@ -5407,7 +5407,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The reactor level in {zone} has not been cold since the complex was sealed. {tribute} has been on it for an hour without a dosimeter.',
                 escapeText: '{tribute} notices the burn-marks scoured off the signage in {zone}, understands exactly what they mean, and leaves the way they came.',
-                cause: 'Died of what the reactor gave them',
+                cause: 'Died of what the reactor gave them', code: 'poison',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 26,
                 poisoned: true,
@@ -5418,7 +5418,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The ventilation shaft {tribute} takes out of {zone} runs wide for nine metres and then narrows past turning round in.',
                 escapeText: '{tribute} measures the shaft out of {zone} against their own shoulders before committing to it, and takes the stairs.',
-                cause: 'Died in the ventilation',
+                cause: 'Died in the ventilation', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'willpower',
                 dodgeDifficulty: 7,
@@ -5453,7 +5453,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // and a schedule nobody explains.
                 text: 'The turbine hall at {zone} is a hundred metres of open floor and every footstep in it arrives four times. {tribute} is in the middle of it.',
                 escapeText: '{tribute} crosses the turbine hall at {zone} along the wall with their boots in their hand.',
-                cause: 'Ambushed in the turbine hall',
+                cause: 'Ambushed in the turbine hall', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 damage: 32,
@@ -5484,7 +5484,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The dormitory block at {zone} is four hundred identical bunks, each with somebody’s things still folded on it. {tribute} sleeps in one.',
                 escapeText: '{tribute} sleeps in the corridor outside the dormitory block at {zone} rather than in any of the bunks in it.',
-                cause: 'Broke in the dormitories',
+                cause: 'Broke in the dormitories', code: 'hazard',
                 dodgeStat: 'willpower', dodgeAlt: 'endurance',
                 sanity: 28,
                 damage: 10,
@@ -5493,7 +5493,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The pallid stalkers in the service tunnels under {zone} hunt without eyes. The blackout runs forty minutes and {tribute} is in it with them.',
                 escapeText: '{tribute} sits down with their back to a wall in the service tunnels of {zone} the second the lights go and makes no sound for forty minutes.',
-                cause: 'Taken by the pallid stalkers',
+                cause: 'Taken by the pallid stalkers', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'willpower',
                 dodgeDifficulty: 8,
@@ -5601,7 +5601,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The fog under the bridge out of {zone} moves against the wind, and {tribute} is halfway across.',
                 escapeText: '{tribute} waits out the moving fog at the head of the bridge in {zone}.',
-                cause: 'Lost below the islands',
+                cause: 'Lost below the islands', code: 'hazard',
                 dodgeStat: 'willpower', dodgeAlt: 'endurance',
                 damage: 10,
                 sanity: 20,
@@ -5618,7 +5618,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The wind between the stacks of {zone} arrives as one blow. It takes {tribute} off their feet.',
                 escapeText: '{tribute} crosses the gap in {zone} low and does not stand up in the wind.',
-                cause: 'Blown from the stacks',
+                cause: 'Blown from the stacks', code: 'hazard',
                 dodgeStat: 'strength', dodgeAlt: 'agility',
                 damage: 30,
                 bleeding: true,
@@ -5635,7 +5635,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A magnetic squall crosses {zone} and every piece of metal on {tribute} hauls sideways at once, dragging them toward the edge.',
                 escapeText: '{tribute} dumps their gear in a heap in {zone} and lets the squall fight the pile instead.',
-                cause: 'Dragged over the edge by the squall',
+                cause: 'Dragged over the edge by the squall', code: 'hazard',
                 dodgeStat: 'strength', dodgeAlt: 'agility',
                 damage: 18,
                 fatigue: 15,
@@ -5643,7 +5643,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The fog rises over {zone} in minutes, and {tribute} spends an hour on their hands and knees, feeling for the edge of the world.',
                 escapeText: '{tribute} sits down exactly where they are in {zone} and refuses to move until the fog does.',
-                cause: 'Walked off an island in the fog',
+                cause: 'Walked off an island in the fog', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 12,
                 sanity: 15,
@@ -5662,7 +5662,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The whole of {zone} tilts on whatever holds it up. Everything loose on it goes over the side, {tribute} included.',
                 escapeText: '{tribute} reads the shudder under {zone} and gets a grip on the anchor chains before the tilt comes.',
-                cause: 'Thrown from a tilting island',
+                cause: 'Thrown from a tilting island', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'strength',
                 damage: 16,
@@ -5672,7 +5672,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Something in the fog below {zone} takes hold of the rope {tribute} is climbing and pulls on it twice.',
                 escapeText: '{tribute} cuts the trailing rope off {zone} the instant it goes taut, and does not stay to see what has it.',
-                cause: 'Taken by something in the fog',
+                cause: 'Taken by something in the fog', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 14,
                 sanity: 18,
@@ -5717,7 +5717,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The fog comes up over {zone} and hides the next island. When it lifts an hour later the island is two hundred metres from where it was and {tribute} has walked the wrong bearing.',
                 escapeText: '{tribute} takes a bearing off the wreck before the fog closes on {zone} and holds it in their head until it lifts.',
-                cause: 'Lost in the magnetic fog',
+                cause: 'Lost in the magnetic fog', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'willpower',
                 damage: 10,
@@ -5729,7 +5729,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The tilting isle goes over while {tribute} is on the high side. Everything on the deck of {zone} slides into the water, including the section {tribute} is standing on.',
                 escapeText: '{tribute} feels the isle under {zone} begin to take the list and is across to the anchored side before it commits.',
-                cause: 'Went into the water with the island',
+                cause: 'Went into the water with the island', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'endurance',
                 damage: 30,
@@ -5739,7 +5739,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The lodestone in the crag at {zone} pulls every blade {tribute} carries a few degrees off true. They have navigated by those blades for two days.',
                 escapeText: '{tribute} works out that the crag at {zone} is the thing lying to them and navigates by the sun and their own footprints instead.',
-                cause: 'Walked the wrong way off the crag',
+                cause: 'Walked the wrong way off the crag', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 16,
                 sanity: 20,
@@ -5773,7 +5773,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // redrawn, and every current runs one way.
                 text: 'The compass rose at {zone} is a stone disc cut with bearings that were true a century ago. {tribute} has navigated off it for two days.',
                 escapeText: '{tribute} checks the compass rose at {zone} against the sun and finds it nineteen degrees out, and stops trusting it.',
-                cause: 'Walked the wrong bearing',
+                cause: 'Walked the wrong bearing', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 14,
                 thirst: 26,
@@ -5784,7 +5784,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The reed islet at {zone} floats rather than anchors. It has moved two hundred metres in the night with {tribute} asleep on it.',
                 escapeText: '{tribute} drives a stake through the reed mat at {zone} into whatever is under it before sleeping on it.',
-                cause: 'Adrift on the reed islet',
+                cause: 'Adrift on the reed islet', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'endurance',
                 damage: 18,
@@ -5796,7 +5796,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The ferryman comes out of the fog off {zone} standing in something that is not quite a boat. It says nothing and it is between {tribute} and the only span off the rock.',
                 escapeText: '{tribute} is off the landing at {zone} and up into the rocks before the thing in the fog has finished arriving.',
-                cause: 'Taken by the Ferryman',
+                cause: 'Taken by the Ferryman', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'willpower',
                 dodgeDifficulty: 8,
@@ -5818,7 +5818,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Every span out of {zone} runs downhill and none of them runs back. {tribute} has gone downhill since the first morning.',
                 escapeText: '{tribute} works out on the second day that the spans out of {zone} only go one way and starts choosing them on purpose.',
-                cause: 'Ran out of islands',
+                cause: 'Ran out of islands', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'willpower',
                 damage: 12,
@@ -5925,7 +5925,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The light over {zone} has not changed in eleven days. {tribute} can no longer say whether they have slept.',
                 escapeText: '{tribute} keeps a tally of the anthems in {zone} and holds on to what day it is.',
-                cause: 'Lost to the endless dusk',
+                cause: 'Lost to the endless dusk', code: 'hazard',
                 dodgeStat: 'willpower', dodgeAlt: 'endurance',
                 damage: 6,
                 sanity: 20,
@@ -5943,7 +5943,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The false stars over {zone} go out one at a time. {tribute} counts them down to none.',
                 escapeText: '{tribute} does not look up in {zone}, which is the only defence anybody has found.',
-                cause: 'Died of fright under the false stars',
+                cause: 'Died of fright under the false stars', code: 'hazard',
                 dodgeStat: 'willpower', dodgeAlt: 'endurance',
                 damage: 4,
                 sanity: 22,
@@ -5951,7 +5951,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A pitch-vent under {zone} flares full height with {tribute} standing in its throat-warmth.',
                 escapeText: '{tribute} feels the ground breathe in under {zone} and is out of the flare radius when it lights.',
-                cause: 'Caught in a pitch-vent flare',
+                cause: 'Caught in a pitch-vent flare', code: 'burns',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 24,
                 burned: true,
@@ -5960,7 +5960,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A widow-maker limb the size of a rowboat drops out of the dusk canopy of {zone} onto {tribute}.',
                 escapeText: '{tribute} hears the crack a hundred feet over {zone} and reads its landing spot right.',
-                cause: 'Crushed by a falling limb',
+                cause: 'Crushed by a falling limb', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 damage: 26,
                 bleeding: true,
@@ -5969,7 +5969,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} navigates {zone} by a star that changes station mid-march and walks an hour onto bad ground.',
                 escapeText: '{tribute} catches the star over {zone} drifting and drops their eyes to the ground they can trust.',
-                cause: 'Led astray by the false stars',
+                cause: 'Led astray by the false stars', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 8,
                 fatigue: 22,
@@ -5987,7 +5987,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Every glowing thing in {zone} goes dark at once. {tribute} stands in it and listens to something come closer.',
                 escapeText: '{tribute} has a pitch-knot lit before the dark of {zone} finishes closing.',
-                cause: 'Taken in the dark',
+                cause: 'Taken in the dark', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 10,
                 sanity: 20,
@@ -6031,7 +6031,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // events about a night that never quite arrives or leaves.
                 text: 'The star gantries over {zone} reposition. For ninety seconds the constellation above {tribute} is one bright light aimed down at them.',
                 escapeText: '{tribute} reads the gantry track over {zone} and is in the root-shadow of a redwood before the light comes round.',
-                cause: 'Hunted down under the false stars',
+                cause: 'Hunted down under the false stars', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'intelligence',
                 damage: 24,
@@ -6055,7 +6055,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The understory around {zone} has moved at the edge of {tribute}’s vision for two days. Tonight it moves while they are looking at it.',
                 escapeText: '{tribute} turns and looks directly at the understory of {zone} for a long time, and it is bark, and it stays bark.',
-                cause: 'Taken by the understory',
+                cause: 'Taken by the understory', code: 'hazard',
                 dodgeStat: 'willpower',
                 dodgeAlt: 'stealth',
                 dodgeDifficulty: 8,
@@ -6067,7 +6067,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The foxfire creek through {zone} is the only water bright enough to read the ground by. Everything that hunts in this forest works it. {tribute} is kneeling at the edge.',
                 escapeText: '{tribute} works along the foxfire creek in {zone} a good ten metres back from the light it throws.',
-                cause: 'Killed at the foxfire creek',
+                cause: 'Killed at the foxfire creek', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 damage: 26,
                 bleeding: true,
@@ -6077,7 +6077,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The fallen giant across {zone} is four metres through and hollow. {tribute} takes the shortcut through the inside of it. Something is already in there.',
                 escapeText: '{tribute} puts a hand to the hollow of the fallen giant in {zone}, feels the warmth coming out of it, and walks round the long way.',
-                cause: 'Killed inside the fallen giant',
+                cause: 'Killed inside the fallen giant', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 damage: 30,
@@ -6101,7 +6101,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // nightfall, because nightfall never quite comes.
                 text: 'The duskmoss flats at {zone} glow enough to walk by. {tribute} has been lit from below for two hours.',
                 escapeText: '{tribute} works out that the duskmoss under them in {zone} is throwing their own shadow up onto the trunks, and gets off it.',
-                cause: 'Hunted across the duskmoss',
+                cause: 'Hunted across the duskmoss', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'intelligence',
                 damage: 28,
@@ -6112,7 +6112,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The charcoal grove at {zone} is standing timber burned to carbon and it marks everything it touches. {tribute} has left black handprints across three zones today.',
                 escapeText: '{tribute} notices what the charcoal grove at {zone} is doing to their hands and stops touching anything they do not have to.',
-                cause: 'Tracked by the charcoal',
+                cause: 'Tracked by the charcoal', code: 'burns',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'stealth',
                 damage: 26,
@@ -6122,7 +6122,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The dark meander through {zone} carries no reflection at all. {tribute} is looking at it when the far bank moves.',
                 escapeText: '{tribute} declines to ford the dark meander at {zone} on the grounds that water which does not reflect anything is not doing what water does.',
-                cause: 'Taken in the dark meander',
+                cause: 'Taken in the dark meander', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'willpower',
                 dodgeDifficulty: 8,
@@ -6134,7 +6134,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The lantern beetles in {zone} gather on any light and stay. {tribute} has carried a live glowcap for two days and the cloud on it shows from three zones off.',
                 escapeText: '{tribute} caps their light in {zone} inside a fold of cloth and the beetles disperse into the trees within the hour.',
-                cause: 'Given away by the lantern beetles',
+                cause: 'Given away by the lantern beetles', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'stealth',
                 damage: 26,
@@ -6145,7 +6145,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'It has been the same hour of the evening for six days. {tribute} cannot say whether they have slept twice since the horn or five times.',
                 escapeText: '{tribute} starts cutting a notch in their belt every time they sleep in {zone}, and the notches hold the days together well enough.',
-                cause: 'Lost count in the Eclipse Forest',
+                cause: 'Lost count in the Eclipse Forest', code: 'hazard',
                 dodgeStat: 'willpower',
                 dodgeAlt: 'intelligence',
                 damage: 10,
@@ -6269,7 +6269,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The trench through {zone} holds the only shade in the arena. Something has been living in the stretch {tribute} climbs down into.',
                 escapeText: '{tribute} looks into the trench in {zone} for a long moment and stays up on the flat.',
-                cause: 'Killed in the trenches',
+                cause: 'Killed in the trenches', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 dodgeDifficulty: 7,
                 damage: 30,
@@ -6278,7 +6278,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A coral head the size of a house comes apart under {tribute} in {zone} and drops them onto broken fossil.',
                 escapeText: '{tribute} hears the fossil crack through {zone} and rides the collapse down its blunt side.',
-                cause: 'Shredded by collapsing coral',
+                cause: 'Shredded by collapsing coral', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 24,
                 bleeding: true,
@@ -6286,7 +6286,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} puts a knee into an anemone bed in {zone}. By nightfall the whole leg has gone.',
                 escapeText: '{tribute} spots the colour under the salt crust of {zone} and goes around, all the long way.',
-                cause: 'Stung dead by anemones',
+                cause: 'Stung dead by anemones', code: 'poison',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 16,
                 poisoned: true,
@@ -6349,7 +6349,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Glare off the white flats of {zone} closes {tribute}\'s eyes to slits. The headache does not lift.',
                 escapeText: '{tribute} cuts eye-slits in a strip of cloth and crosses {zone} like an old sailor.',
-                cause: 'Blinded on the flats',
+                cause: 'Blinded on the flats', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 8,
                 sanity: 10,
@@ -6371,7 +6371,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The anemones in {zone} did not die when the water left. The field closes on the ankle {tribute} puts into it.',
                 escapeText: '{tribute} reads the wet patches across the anemone field of {zone} and finds the dry line through them.',
-                cause: 'Killed in the anemone fields',
+                cause: 'Killed in the anemone fields', code: 'poison',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 dodgeDifficulty: 7,
@@ -6382,7 +6382,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The trench through {zone} is forty metres deep and dry to the bottom. {tribute} climbs down one wall and cannot climb the other.',
                 escapeText: '{tribute} works the trench wall in {zone} for a chimney and goes up it with their back against one face and their boots on the other.',
-                cause: 'Died at the bottom of the trench',
+                cause: 'Died at the bottom of the trench', code: 'hazard',
                 dodgeStat: 'strength',
                 dodgeAlt: 'agility',
                 damage: 24,
@@ -6393,7 +6393,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The whale fall in {zone} has been rotting for years and what lives in it is not small. {tribute} walks in under the ribs.',
                 escapeText: '{tribute} works around the whale fall in {zone} upwind, at distance, and does not look into any of the openings.',
-                cause: 'Killed at the whale fall',
+                cause: 'Killed at the whale fall', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'endurance',
                 damage: 28,
@@ -6404,7 +6404,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The dry kelp in {zone} is head-high and brittle. {tribute} goes through it and the noise carries the length of the reef.',
                 escapeText: '{tribute} goes through the dry kelp of {zone} on their belly, a foot at a time, and the forest does not say a word about it.',
-                cause: 'Run down in the dry kelp',
+                cause: 'Run down in the dry kelp', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 damage: 26,
                 bleeding: true,
@@ -6427,7 +6427,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // only water anywhere in the arena is brine.
                 text: 'The urchin barrens at {zone} are a hundred metres of fossilised spines at ankle height with no way round. {tribute} goes through.',
                 escapeText: '{tribute} binds their boots with kelp before crossing the urchin barrens at {zone} and comes out the far side with feet.',
-                cause: 'Crippled on the urchin barrens',
+                cause: 'Crippled on the urchin barrens', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 damage: 24,
@@ -6448,7 +6448,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The dry shark works the trench floor beneath {zone} slowly, on legs. It has been on {tribute}’s track since the second morning.',
                 escapeText: '{tribute} breaks their own track across bare rock out of {zone} and whatever has been following it arrives at nothing.',
-                cause: 'Taken by the dry shark',
+                cause: 'Taken by the dry shark', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'endurance',
                 dodgeDifficulty: 8,
@@ -6459,7 +6459,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} has carried a coral cut on the shin since the bloodbath. It has been getting wider every day and there is nothing in this arena to close it.',
                 escapeText: '{tribute} flushes the coral cut with brine every single day, which hurts enormously and is the only thing in this arena that works.',
-                cause: 'Died of an untreated wound',
+                cause: 'Died of an untreated wound', code: 'hazard',
                 dodgeStat: 'endurance',
                 dodgeAlt: 'willpower',
                 damage: 20,
@@ -6470,7 +6470,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The brine sumps at {zone} are the only standing water in the arena and four times the salt of the sea. {tribute} has sat looking at them for an hour.',
                 escapeText: '{tribute} walks away from the brine sumps at {zone} for the third day running, which is entirely an act of will.',
-                cause: 'Drank the brine',
+                cause: 'Drank the brine', code: 'poison',
                 dodgeStat: 'willpower',
                 dodgeAlt: 'intelligence',
                 damage: 26,
@@ -6577,7 +6577,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A conveyor in {zone} starts without being started, and {tribute} is standing on the belt.',
                 escapeText: '{tribute} is off the belt in {zone} before the line takes up.',
-                cause: 'Killed on the line',
+                cause: 'Killed on the line', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 32,
                 bleeding: true,
@@ -6601,7 +6601,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A piston {tribute} took for dead cycles once in {zone} and catches them across the hip.',
                 escapeText: '{tribute} hears the valve open in {zone} and rolls off the piston bed as it fires.',
-                cause: 'Crushed by a piston',
+                cause: 'Crushed by a piston', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 28,
                 bleeding: true,
@@ -6626,7 +6626,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A steam line over {zone} lets go. The air around {tribute} goes white and superheated.',
                 escapeText: '{tribute} hears the line in {zone} start to whistle and drops below the blast line.',
-                cause: 'Scalded by a burst steam line',
+                cause: 'Scalded by a burst steam line', code: 'burns',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 18,
                 burned: true,
@@ -6645,7 +6645,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A hook on the moving line snags {tribute}\'s pack in {zone} and takes them off their feet toward the rendering pits.',
                 escapeText: '{tribute} slips the pack straps in {zone} and lets the line have their supplies instead.',
-                cause: 'Carried off by the hook line',
+                cause: 'Carried off by the hook line', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'strength',
                 damage: 16,
@@ -6654,7 +6654,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Rust dust hangs thick where {tribute} shelters in {zone}. By morning every cut they have is hot to the touch.',
                 escapeText: '{tribute} keeps their wounds bound and their sleeve over their mouth through {zone}.',
-                cause: 'Died of rust-fever',
+                cause: 'Died of rust-fever', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 10,
                 infected: true,
@@ -6662,7 +6662,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The lights of {zone} die mid-stride. {tribute} stands in the dark with the machinery still running around them.',
                 escapeText: '{tribute} stops dead when {zone} goes dark, hand on a rail, and waits for the emergency circuit.',
-                cause: 'Walked into the works in the dark',
+                cause: 'Walked into the works in the dark', code: 'machinery',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 12,
                 sanity: 14,
@@ -6680,7 +6680,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // schedule and none of the schedules are for people.
                 text: 'The piston hall in {zone} cycles on its own clock. {tribute} has been counting the interval two seconds short all morning.',
                 escapeText: '{tribute} counts the piston hall of {zone} through a full cycle twice before they trust a single step of it.',
-                cause: 'Crushed in the piston hall',
+                cause: 'Crushed in the piston hall', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 dodgeDifficulty: 8,
@@ -6691,7 +6691,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The hook line through {zone} is still driven and still moving. The hook that comes round the corner is at {tribute}’s shoulder height.',
                 escapeText: '{tribute} hears the hook line in {zone} take up its slack and is flat against the tiles before it comes round.',
-                cause: 'Taken by the hook line',
+                cause: 'Taken by the hook line', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 34,
                 bleeding: true,
@@ -6749,7 +6749,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // still running, and none of it is running for people.
                 text: 'The conveyor deck through {zone} starts under {tribute} with no warning, running toward the rendering pits. There is no step off it for thirty metres.',
                 escapeText: '{tribute} is off the conveyor deck of {zone} at the first lurch and onto the walkway beside it.',
-                cause: 'Carried into the rendering pits',
+                cause: 'Carried into the rendering pits', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'strength',
                 damage: 40,
@@ -6759,7 +6759,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The gear gallery above {zone} has been rust-seized for a century. It moves one tooth with {tribute} standing in the gap.',
                 escapeText: '{tribute} works the gear gallery at {zone} along the top of the housings and never puts a foot between two teeth.',
-                cause: 'Crushed in the gear gallery',
+                cause: 'Crushed in the gear gallery', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 damage: 44,
@@ -6781,7 +6781,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Every sound in the tiled halls of {zone} reaches the rest of the building a second later. {tribute} has just dropped something metal.',
                 escapeText: '{tribute} moves through the tiled halls of {zone} on cloth-bound boots and the building says nothing about it at all.',
-                cause: 'Given away on the kill floor',
+                cause: 'Given away on the kill floor', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 damage: 30,
@@ -6792,7 +6792,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The rendering pits below {zone} are warm, deep and crusted over. Nothing has walked on the crust in a century. {tribute} does.',
                 escapeText: '{tribute} throws a length of chain out onto the crust over the rendering pits at {zone} and watches it go through.',
-                cause: 'Went into the rendering pits',
+                cause: 'Went into the rendering pits', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 damage: 38,
@@ -6898,7 +6898,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The Ferris wheel over {zone} turns a quarter revolution against the wind, and a car comes off it above {tribute}.',
                 escapeText: '{tribute} hears the wheel over {zone} take up and is not underneath it.',
-                cause: 'Crushed under the wheel',
+                cause: 'Crushed under the wheel', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 34,
                 bleeding: true,
@@ -6906,7 +6906,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The music box in {zone} plays four bars and stops. {tribute} works out that it is two stalls closer than it was last night.',
                 escapeText: '{tribute} walks away from the music in {zone} without once turning round.',
-                cause: 'Died of fright on the midway',
+                cause: 'Died of fright on the midway', code: 'hazard',
                 dodgeStat: 'willpower', dodgeAlt: 'endurance',
                 damage: 6,
                 sanity: 22,
@@ -6914,7 +6914,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The mirror maze in {zone} shows somebody standing behind {tribute}. There is nobody behind them.',
                 escapeText: '{tribute} keeps one hand on the glass in {zone} and walks out the way they came.',
-                cause: 'Lost in the mirror maze',
+                cause: 'Lost in the mirror maze', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 10,
                 sanity: 18,
@@ -6941,7 +6941,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} follows their own reflection into a dead end of the mirror maze at {zone}. Something is in the glass behind them.',
                 escapeText: '{tribute} closes their eyes in the maze of {zone} and walks out by touch alone.',
-                cause: 'Lost in the mirror maze',
+                cause: 'Lost in the mirror maze', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 12,
                 sanity: 20,
@@ -6950,7 +6950,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The fog over {zone} thickens until {tribute} cannot see their own hand. The calliope starts up.',
                 escapeText: '{tribute} sits with their back to a booth in {zone} and waits the whiteness out.',
-                cause: 'Wandered lost in the fog',
+                cause: 'Wandered lost in the fog', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 8,
                 sanity: 15,
@@ -6961,7 +6961,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A jay in {zone} calls for help in a voice {tribute} watched die at the bloodbath. {tribute} runs toward it.',
                 escapeText: '{tribute} hears the loop in the pleading from {zone} — the same words, thrice — and stops their feet.',
-                cause: 'Lured into the dark',
+                cause: 'Lured into the dark', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 14,
                 sanity: 18,
@@ -6979,7 +6979,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A guy-wire on the big top of {zone} parts. A hundredweight of pole and canvas comes down across {tribute}.',
                 escapeText: '{tribute} hears the wire\'s note change over {zone} and dives clear of the canvas fall.',
-                cause: 'Crushed by the falling big top',
+                cause: 'Crushed by the falling big top', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 20,
                 terrains: ['ruins', 'open'],
@@ -7002,7 +7002,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // noWeapons law — nothing here is a weapon, and the arena knows it.
                 text: 'The carousel in {zone} starts in the night at full speed with the calliope going. {tribute} is on it and it runs for eleven minutes.',
                 escapeText: '{tribute} is off the carousel platform in {zone} before it gets to speed, and watches the rest of it from the grass.',
-                cause: 'Thrown from the carousel',
+                cause: 'Thrown from the carousel', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'willpower',
                 damage: 28,
@@ -7015,7 +7015,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The mirror maze in {zone} shows {tribute} eleven of themselves and one of somebody else. By the time they find the door the other is gone.',
                 escapeText: '{tribute} closes one eye going through the mirror maze in {zone}, kills the depth of it, and walks out in under a minute.',
-                cause: 'Killed in the mirror maze',
+                cause: 'Killed in the mirror maze', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'stealth',
                 damage: 26,
@@ -7072,7 +7072,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // weapon, and the power is still on from somewhere.
                 text: 'The big top at {zone} has held a hundred tonnes of rain since the last storm and the centre pole has leaned a degree a day. {tribute} is under it.',
                 escapeText: '{tribute} looks up at the belly of the big top at {zone}, does the arithmetic, and camps outside in the wet.',
-                cause: 'Brought down under the big top',
+                cause: 'Brought down under the big top', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 damage: 38,
@@ -7083,7 +7083,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The midway speakers at {zone} start up at two in the morning describing {tribute}: clothes, district and what they are carrying.',
                 escapeText: '{tribute} finds the speaker horn over {zone} and puts a rock through it before it gets past the district number.',
-                cause: 'Called out by the Barker',
+                cause: 'Called out by the Barker', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 damage: 30,
@@ -7095,7 +7095,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Nothing in this park was built as a weapon. The tent pole {tribute} has carried for six days snaps the first time they swing it hard.',
                 escapeText: '{tribute} stops trying to arm themselves in the carnival at {zone} and works instead on being somewhere else, which is the actual answer here.',
-                cause: 'Killed empty-handed',
+                cause: 'Killed empty-handed', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 damage: 34,
@@ -7105,7 +7105,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The haunted manor at {zone} still has power on the track. The car that comes round the corner behind {tribute} has somebody in it.',
                 escapeText: '{tribute} walks the maintenance gangway through the haunted manor at {zone} rather than the track, and nothing comes round any corner.',
-                cause: 'Killed in the haunted manor',
+                cause: 'Killed in the haunted manor', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'willpower',
                 damage: 36,
@@ -7225,7 +7225,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Every trail ever walked in {zone} is still printed in the ash, and one of them is fresh and behind {tribute}.',
                 escapeText: '{tribute} walks the hard ground through {zone} and leaves nothing for anyone to read.',
-                cause: 'Killed from ambush in the ash',
+                cause: 'Killed from ambush in the ash', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 damage: 22,
                 bleeding: true,
@@ -7241,7 +7241,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The ash sea in {zone} is level because it is filling something. {tribute} goes into it to the chest.',
                 escapeText: '{tribute} probes ahead of themselves across {zone} and finds the buried edge before standing on it.',
-                cause: 'Swallowed by the ash',
+                cause: 'Swallowed by the ash', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 24,
                 fatigue: 30,
@@ -7249,7 +7249,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The drift on the slope above {zone} lets go, and a slow grey wave rolls {tribute} under and packs itself around them.',
                 escapeText: '{tribute} reads the slope over {zone} starting to creep and swims off its line before it runs.',
-                cause: 'Buried in an ash slide',
+                cause: 'Buried in an ash slide', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 24,
                 fatigue: 20,
@@ -7265,7 +7265,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} breaks through an ash crust in {zone} into a mudpot, and the grey water underneath is just off the boil.',
                 escapeText: '{tribute} probes the crust of {zone} with a staff and walks the solid seams.',
-                cause: 'Boiled in a mudpot',
+                cause: 'Boiled in a mudpot', code: 'burns',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 20,
                 burned: true,
@@ -7302,7 +7302,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} follows their own three-day-old footprints in a circle around {zone} for most of the afternoon.',
                 escapeText: '{tribute} notices the boot-tread in {zone} is their own and sits down to think it through.',
-                cause: 'Walked in circles until the wasteland won',
+                cause: 'Walked in circles until the wasteland won', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 6,
                 fatigue: 22,
@@ -7328,7 +7328,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // finished, and nothing edible anywhere under `noForage`.
                 text: 'Every step across {zone} is knee-deep and every one prints. {tribute} has left a readable line across the drifts all day.',
                 escapeText: '{tribute} works the wind line across {zone} where the ash is scoured to rock and leaves nothing behind them at all.',
-                cause: 'Run down across the drifts',
+                cause: 'Run down across the drifts', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'endurance',
                 damage: 24,
@@ -7339,7 +7339,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The mudpots in {zone} boil under a grey skin the colour of the ground. {tribute} finds the edge of one with a foot.',
                 escapeText: '{tribute} throws a stone ahead of themselves across the mudpots of {zone} and listens to what it lands in before they follow it.',
-                cause: 'Scalded in the mudpots',
+                cause: 'Scalded in the mudpots', code: 'burns',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 dodgeDifficulty: 7,
@@ -7373,7 +7373,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The mountain shifts while {tribute} is on the caldera rim of {zone}. Half the rim goes down the outside slope.',
                 escapeText: '{tribute} feels the rim of {zone} start to talk through the soles of their feet and is off it before it goes.',
-                cause: 'Went down with the caldera rim',
+                cause: 'Went down with the caldera rim', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'endurance',
                 dodgeDifficulty: 8,
@@ -7399,7 +7399,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // of ash and the mountain is still deciding.
                 text: 'The lava tubes under {zone} run for kilometres. The one {tribute} entered narrows, turns and joins another.',
                 escapeText: '{tribute} pays out a length of cord behind them through the lava tubes of {zone} and follows it back out.',
-                cause: 'Lost in the lava tubes',
+                cause: 'Lost in the lava tubes', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'willpower',
                 damage: 18,
@@ -7421,7 +7421,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The caldera vultures have been down on something two ridges from {zone} for three days. This morning they are circling {tribute}.',
                 escapeText: '{tribute} keeps moving under the caldera vultures at {zone} all day rather than resting, and they go back to the thing two ridges over.',
-                cause: 'Taken by the caldera vultures',
+                cause: 'Taken by the caldera vultures', code: 'hazard',
                 dodgeStat: 'endurance',
                 dodgeAlt: 'willpower',
                 damage: 26,
@@ -7558,7 +7558,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The dredger below {zone} starts up. Everything loose on the pit wall above {tribute} comes off at once.',
                 escapeText: '{tribute} gets into the cut of the wall in {zone} when the dredger takes up.',
-                cause: 'Buried in the pit',
+                cause: 'Buried in the pit', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 30,
                 bleeding: true,
@@ -7584,7 +7584,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A cart chocked above {zone} for a century comes off its blocks. The rails bring it at {tribute} out of the dark.',
                 escapeText: '{tribute} feels the rail sing under their boot in {zone} and flattens into the wall as the cart takes the bend.',
-                cause: 'Run down by a loose cart',
+                cause: 'Run down by a loose cart', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 24,
             },
@@ -7619,7 +7619,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Pit gas pools in the low gallery of {zone}. {tribute}\'s lamp dims a moment before their legs go.',
                 escapeText: '{tribute} watches the flame gutter in {zone} and climbs back toward air that wants them alive.',
-                cause: 'Overcome by pit gas',
+                cause: 'Overcome by pit gas', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 14,
                 fatigue: 20,
@@ -7628,7 +7628,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The circling wind takes {tribute} at the rim of {zone} with both arms full. They go down on the road side.',
                 escapeText: '{tribute} drops to a crouch on the rim of {zone} and gives the gust nothing to work with.',
-                cause: 'Blown off the rim',
+                cause: 'Blown off the rim', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'strength',
                 damage: 20,
@@ -7653,7 +7653,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // shrinkingArena law — the ground itself is being taken away.
                 text: 'The bench above {zone} lets go a load of scree the size of a house. The road under {tribute} is four metres wide.',
                 escapeText: '{tribute} hears the first stones come off the bench above {zone} and is into the cut of the wall before the rest arrives.',
-                cause: 'Buried in the scree',
+                cause: 'Buried in the scree', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 dodgeDifficulty: 7,
@@ -7665,7 +7665,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The powder magazine in {zone} still holds stock and a century has not made it safer. {tribute} is inside with a lamp.',
                 escapeText: '{tribute} works out what the magazine in {zone} was for from the thickness of the door and does not take the lamp in.',
-                cause: 'Killed in the powder magazine',
+                cause: 'Killed in the powder magazine', code: 'burns',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 dodgeDifficulty: 8,
                 damage: 48,
@@ -7677,7 +7677,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The spiral road is the only way down and every bench overlooks every other. {tribute} is halfway round the open side of {zone}.',
                 escapeText: '{tribute} takes the spiral road out of {zone} in the dead hour before light, when the benches can see nothing at all.',
-                cause: 'Shot off the spiral road',
+                cause: 'Shot off the spiral road', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 damage: 30,
@@ -7719,7 +7719,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // overlooked by every other, and the border closing from day one.
                 text: 'The border has taken a bench off the rim of {zone} every morning since the first. The top two are gone and {tribute} camped on the third.',
                 escapeText: '{tribute} works out on the first day which way the quarry is closing and spends every night one bench lower than they need to.',
-                cause: 'Caught by the closing rim',
+                cause: 'Caught by the closing rim', code: 'border',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'endurance',
                 damage: 30,
@@ -7731,7 +7731,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The dredger works the flooded pit below {zone} and has had nothing to dredge in a century. It turns toward {tribute} at the waterline.',
                 escapeText: '{tribute} stays above the old waterline mark on the pit wall at {zone} and whatever works the water below it stays in the water.',
-                cause: 'Taken by the Dredger',
+                cause: 'Taken by the Dredger', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 dodgeDifficulty: 8,
@@ -7742,7 +7742,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The blast bats come off the upper benches at dusk in one column and go out through the single gap in the rim. {tribute} is standing in the gap.',
                 escapeText: '{tribute} is out of the rim gap at {zone} before dusk, having watched the column go out through it on each of the last two evenings.',
-                cause: 'Knocked off the bench by the bats',
+                cause: 'Knocked off the bench by the bats', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 damage: 28,
@@ -7763,7 +7763,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The silt hounds hunt the lower benches of {zone} by sound off the stone. There is no soft ground in this quarry and {tribute} has walked on rock for six days.',
                 escapeText: '{tribute} takes the tailings slope out of {zone} instead of the road, where the crushed rock takes a footfall without giving it back.',
-                cause: 'Run down by the silt hounds',
+                cause: 'Run down by the silt hounds', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 damage: 34,
@@ -7887,7 +7887,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The blue light in the caves under {zone} is steady and has no source {tribute} can find. They follow it four galleries in.',
                 escapeText: '{tribute} marks the way back into the caves of {zone} and does not go past their own marks.',
-                cause: 'Lost in the ice caves',
+                cause: 'Lost in the ice caves', code: 'hazard',
                 dodgeStat: 'willpower', dodgeAlt: 'endurance',
                 damage: 10,
                 sanity: 18,
@@ -7906,7 +7906,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The slick tunnel out of {zone} steepens mid-slide. {tribute} arrives at the bottom with nothing slowing them.',
                 escapeText: '{tribute} jams boots and elbows into the walls of {zone} and burns off the speed in scrapes.',
-                cause: 'Killed on the ice slide',
+                cause: 'Killed on the ice slide', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 20,
                 bleeding: true,
@@ -7915,7 +7915,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A serac above {zone} that has leaned for a decade comes over as {tribute} passes beneath it.',
                 escapeText: '{tribute} refuses the shortcut under the leaning block in {zone}, and is alive to feel it land.',
-                cause: 'Crushed by a falling serac',
+                cause: 'Crushed by a falling serac', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 damage: 28,
                 terrains: ['highland', 'open'],
@@ -7933,7 +7933,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Whiteout takes the surface of {zone}. {tribute} walks for an hour with no horizon in any direction.',
                 escapeText: '{tribute} digs in where they stand on {zone} and lets the whiteout blow itself out.',
-                cause: 'Lost in the whiteout',
+                cause: 'Lost in the whiteout', code: 'hypothermia',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 10,
                 frostbitten: true,
@@ -7954,7 +7954,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The glare off the surface of {zone} closes {tribute}\'s eyes to weeping slits over the afternoon.',
                 escapeText: '{tribute} soots their cheekbones and slits a cloth for their eyes before crossing {zone}.',
-                cause: 'Snow-blinded on the glacier',
+                cause: 'Snow-blinded on the glacier', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 8,
                 sanity: 12,
@@ -7979,7 +7979,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // and no fire anywhere under this arena's law.
                 text: 'The serac above {zone} has leaned a degree further every day this week. It goes over with {tribute} in its shadow.',
                 escapeText: '{tribute} counts the lean of the serac over {zone} against yesterday and camps a hundred metres out from under it.',
-                cause: 'Crushed under a serac',
+                cause: 'Crushed under a serac', code: 'hypothermia',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 dodgeDifficulty: 8,
@@ -7992,7 +7992,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The slick tunnels through {zone} are polished to glass by a century of meltwater. {tribute} starts sliding and finds nothing to hold.',
                 escapeText: '{tribute} cuts steps down the slick tunnel out of {zone} with a heel, four inches at a time, and takes an hour over forty metres.',
-                cause: 'Went down the slick tunnels',
+                cause: 'Went down the slick tunnels', code: 'hypothermia',
                 dodgeStat: 'agility',
                 dodgeAlt: 'strength',
                 damage: 30,
@@ -8003,7 +8003,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The moulin at {zone} takes the whole surface melt down a shaft with no measured bottom. Its lip has moved since {tribute} was last here.',
                 escapeText: '{tribute} finds the lip of the moulin at {zone} by throwing ice at it rather than by standing on it.',
-                cause: 'Went down the moulin',
+                cause: 'Went down the moulin', code: 'hypothermia',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 dodgeDifficulty: 8,
@@ -8050,7 +8050,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // daylight coming down through it, and nothing here will burn.
                 text: 'The firn slope above {zone} holds a person for about six paces at a time. {tribute} is on the eleventh.',
                 escapeText: '{tribute} crosses the firn slope above {zone} spreading their weight on a flattened pack and never loads a single step.',
-                cause: 'Went through the firn',
+                cause: 'Went through the firn', code: 'hypothermia',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 damage: 30,
@@ -8084,7 +8084,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The crevasse worms work the thin ice of the blue galleries under {zone} and come through the wall rather than along the floor. {tribute} has their back to a wall.',
                 escapeText: '{tribute} sleeps in the middle of the gallery floor at {zone} rather than against a wall, cold and exposed and entirely correct.',
-                cause: 'Taken by a crevasse worm',
+                cause: 'Taken by a crevasse worm', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 dodgeDifficulty: 8,
@@ -8201,7 +8201,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A lead opens across {zone} without a sound. The plate {tribute} is standing on is now separate from every other.',
                 escapeText: '{tribute} watches the plates in {zone} work against each other and stays off the seam.',
-                cause: 'Adrift on the pack ice',
+                cause: 'Adrift on the pack ice', code: 'hypothermia',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 16,
                 frostbitten: true,
@@ -8210,7 +8210,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Something passes under the thin plate {tribute} is crossing in {zone} as a travelling shadow, and it is not small.',
                 escapeText: '{tribute} is off the thin plate in {zone} before the shadow reaches it.',
-                cause: 'Taken under the ice',
+                cause: 'Taken under the ice', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 dodgeDifficulty: 7,
                 damage: 38,
@@ -8228,7 +8228,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The plate under {tribute} in {zone} splits. They are in the black water to the waist before they can move.',
                 escapeText: '{tribute} hears the shot-crack run under {zone} and is on the thick side of the split when it opens.',
-                cause: 'Went through the ice',
+                cause: 'Went through the ice', code: 'hypothermia',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 20,
                 frostbitten: true,
@@ -8237,7 +8237,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Two plates close on the lead {tribute} is skirting in {zone} and shear together at their heels.',
                 escapeText: '{tribute} watches the far plate begin to swing toward {zone} and clears the pinch with a stride to spare.',
-                cause: 'Crushed between ice plates',
+                cause: 'Crushed between ice plates', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 28,
                 bleeding: true,
@@ -8245,7 +8245,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Something under the thin ice of {zone} tracks {tribute} for fifty metres and then hits the plate from below, once, hard.',
                 escapeText: '{tribute} sees the shadow slide beneath {zone} and angles onto ice too thick to punch.',
-                cause: 'Taken from below',
+                cause: 'Taken from below', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 18,
                 sanity: 20,
@@ -8273,7 +8273,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The floe {tribute} camps on in {zone} drifts all night. At dawn nothing they planned a route to is within reach.',
                 escapeText: '{tribute} reads the current seams off {zone} at dusk and camps on ice that stays put.',
-                cause: 'Drifted out of the Games',
+                cause: 'Drifted out of the Games', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 6,
                 sanity: 15,
@@ -8307,7 +8307,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // edible anywhere, and water that is not survivable.
                 text: 'The plate {tribute} is standing on in {zone} parts from its neighbour. The lead between them goes from a metre to three.',
                 escapeText: '{tribute} reads the pressure in the plate under {zone} and is across the joint before it opens.',
-                cause: 'Went into the lead',
+                cause: 'Went into the lead', code: 'hypothermia',
                 dodgeStat: 'agility',
                 dodgeAlt: 'endurance',
                 dodgeDifficulty: 8,
@@ -8319,7 +8319,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Two plates come together along the edge of {zone} at walking pace. {tribute} is standing on the joint.',
                 escapeText: '{tribute} hears the plates grinding along {zone} and is up onto the ridge before the joint closes.',
-                cause: 'Crushed between the plates',
+                cause: 'Crushed between the plates', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'strength',
                 damage: 42,
@@ -8340,7 +8340,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The grease ice across {zone} holds a careful crossing and not a fast one. Something behind {tribute} starts moving.',
                 escapeText: '{tribute} crosses the grease ice out of {zone} at the pace the ice wants rather than the pace they want.',
-                cause: 'Went through the grease ice',
+                cause: 'Went through the grease ice', code: 'hypothermia',
                 dodgeStat: 'agility',
                 dodgeAlt: 'willpower',
                 damage: 30,
@@ -8351,7 +8351,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Something surfaces in the black lead beside {zone}, breathes out for a long time and goes back down. It is longer than the plate {tribute} is standing on.',
                 escapeText: '{tribute} is off the edge of the lead at {zone} and twenty metres inboard before whatever it was finishes its breath.',
-                cause: 'Taken from the ice edge',
+                cause: 'Taken from the ice edge', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 dodgeDifficulty: 8,
@@ -8377,7 +8377,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // the water is not survivable.
                 text: 'The big berg alongside {zone} rolls over. The wave off it crosses the plate {tribute} is standing on.',
                 escapeText: '{tribute} keeps two hundred metres of pack between themselves and the big berg at {zone}, which is the distance somebody who knows ice would keep.',
-                cause: 'Washed off the plate',
+                cause: 'Washed off the plate', code: 'hypothermia',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 damage: 36,
@@ -8409,7 +8409,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The bergy bits off {zone} are a field of ice blocks between the plates, and each rolls under weight. {tribute} is four blocks out.',
                 escapeText: '{tribute} waits at the edge of the bergy bits off {zone} for the field to pack tight against the plate and crosses it as one surface.',
-                cause: 'Went in among the bergy bits',
+                cause: 'Went in among the bergy bits', code: 'hypothermia',
                 dodgeStat: 'agility',
                 dodgeAlt: 'endurance',
                 damage: 34,
@@ -8419,7 +8419,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The storm petrels over {zone} follow whatever is moving on the ice all day. They have been over {tribute} since morning.',
                 escapeText: '{tribute} lies up under a pressure ridge at {zone} for two hours until the petrels lose interest and go and follow something else.',
-                cause: 'Given away by the petrels',
+                cause: 'Given away by the petrels', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'willpower',
                 damage: 28,
@@ -8526,7 +8526,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The cornice above {zone} has been in the sun all afternoon. It comes down on {tribute}.',
                 escapeText: '{tribute} crosses under the cornice above {zone} early, before the sun gets to it.',
-                cause: 'Buried in an avalanche',
+                cause: 'Buried in an avalanche', code: 'hypothermia',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 36,
                 frostbitten: true,
@@ -8534,7 +8534,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The wind over the col above {zone} takes {tribute} off their line and onto open slab.',
                 escapeText: '{tribute} waits for the lull on the col above {zone} and crosses in it.',
-                cause: 'Blown from the col',
+                cause: 'Blown from the col', code: 'hazard',
                 dodgeStat: 'strength', dodgeAlt: 'agility',
                 damage: 30,
                 bleeding: true,
@@ -8551,7 +8551,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The slope above {zone} fractures with a boom, and the mountain sends a winter\'s worth of snow through {tribute}\'s position.',
                 escapeText: '{tribute} feels {zone} settle underfoot with a whump and is off the loaded slope before it runs.',
-                cause: 'Buried by an avalanche',
+                cause: 'Buried by an avalanche', code: 'hypothermia',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 28,
                 frostbitten: true,
@@ -8571,7 +8571,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A snow-loaded pine comes down across {tribute}\'s line through {zone}.',
                 escapeText: '{tribute} hears the trunk\'s long crack in {zone} and is two trees away when it lands.',
-                cause: 'Crushed by a falling pine',
+                cause: 'Crushed by a falling pine', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 damage: 24,
                 bleeding: true,
@@ -8590,7 +8590,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The bog meadow of {zone} takes {tribute}\'s leg to the thigh and holds it.',
                 escapeText: '{tribute} reads the sedge colour across {zone} and walks the firm seams between the soft.',
-                cause: 'Swallowed by the bog',
+                cause: 'Swallowed by the bog', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 10,
                 fatigue: 22,
@@ -8634,7 +8634,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // kills you is up, loaded, and one noise away.
                 text: 'The slope above {zone} has been loading since the first night. It releases on the noise {tribute} makes crossing the run-out.',
                 escapeText: '{tribute} crosses the run-out below {zone} one at a time, quietly, high on the flank, and the slope keeps holding.',
-                cause: 'Buried in an avalanche',
+                cause: 'Buried in an avalanche', code: 'hypothermia',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 dodgeDifficulty: 8,
@@ -8647,7 +8647,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The scree chute out of {zone} moves under {tribute} the whole way down, and halfway through the blocks start going too.',
                 escapeText: '{tribute} takes the scree chute out of {zone} on the solid rib at its edge and lets the rest of it run without them.',
-                cause: 'Killed in the scree chutes',
+                cause: 'Killed in the scree chutes', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'endurance',
                 damage: 30,
@@ -8669,7 +8669,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The knife ridge out of {zone} is a boot wide with four hundred metres either side. The wind on it changes direction twice with {tribute} on the crest.',
                 escapeText: '{tribute} crosses the knife ridge out of {zone} astride it, hands and knees and dignity nowhere, and gets to the far end.',
-                cause: 'Blown off the knife ridge',
+                cause: 'Blown off the knife ridge', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'willpower',
                 dodgeDifficulty: 8,
@@ -8679,7 +8679,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The tarn in {zone} is summit meltwater at four degrees all the way down. {tribute} is in it to the chest before the cold registers.',
                 escapeText: '{tribute} fills at the tarn in {zone} from the bank on their belly and keeps everything but one arm dry.',
-                cause: 'Died of cold shock in the tarn',
+                cause: 'Died of cold shock in the tarn', code: 'hypothermia',
                 dodgeStat: 'endurance',
                 dodgeAlt: 'intelligence',
                 damage: 24,
@@ -8705,7 +8705,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // downhill, and nothing gets sent in over the ridge.
                 text: 'The cirque above {zone} is loaded snow with one exit, and the exit is the run-out. The cornice at the top goes with {tribute} in the bowl.',
                 escapeText: '{tribute} reads the cornice line above the cirque at {zone} and stays out of the bowl entirely.',
-                cause: 'Buried in the cirque',
+                cause: 'Buried in the cirque', code: 'hypothermia',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 dodgeDifficulty: 8,
@@ -8717,7 +8717,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The updraughts off these faces carry a parachute two valleys over, and nothing has reached anybody since the first morning. {tribute} has been waiting on one for three days.',
                 escapeText: '{tribute} stops watching the sky over {zone} on the third day and spends the attention on the ground instead, which pays.',
-                cause: 'Waited for a parachute',
+                cause: 'Waited for a parachute', code: 'hazard',
                 dodgeStat: 'willpower',
                 dodgeAlt: 'intelligence',
                 damage: 10,
@@ -8740,7 +8740,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The chough flocks off the knife ridge above {zone} go up whenever anything moves on the tops. They have just gone up over {tribute}, in view of the whole valley.',
                 escapeText: '{tribute} crosses below the chough ground at {zone} and not one bird comes off the ridge.',
-                cause: 'Given away by the choughs',
+                cause: 'Given away by the choughs', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'intelligence',
                 damage: 28,
@@ -8751,7 +8751,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The bog meadow at {zone} is the easy line between the timber and the tarn, and a metre of black peat under a skin of moss. {tribute} is a hundred metres into it.',
                 escapeText: '{tribute} reads the sedge line across the bog meadow at {zone} and follows it on ground that holds.',
-                cause: 'Went into the bog meadow',
+                cause: 'Went into the bog meadow', code: 'hypothermia',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'strength',
                 damage: 20,
@@ -8876,7 +8876,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Cloud comes up the mountain into {zone} from below. {tribute} is in it for four hours.',
                 escapeText: '{tribute} watches the cloud come up into {zone} and gets above it in time.',
-                cause: 'Lost on the terraces',
+                cause: 'Lost on the terraces', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 8,
                 fatigue: 28,
@@ -8885,7 +8885,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The terrace wall above {tribute} in {zone} bellies out and drops a century of stacked stone on them.',
                 escapeText: '{tribute} sees the wall of {zone} weeping fresh grit and is off the step before it comes down.',
-                cause: 'Crushed by a terrace wall',
+                cause: 'Crushed by a terrace wall', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 26,
                 bleeding: true,
@@ -8911,7 +8911,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The shaft {tribute} shelters in off {zone} puts out something heavy. The lamp flame goes flat.',
                 escapeText: '{tribute} watches their flame gutter in {zone} and backs out into honest air.',
-                cause: 'Overcome by shaft gas',
+                cause: 'Overcome by shaft gas', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 14,
                 fatigue: 20,
@@ -8920,7 +8920,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A stranded cable car above {zone} comes off the wire and lands where {tribute} is standing.',
                 escapeText: '{tribute} hears the bracket shear over {zone} and is clear before the car finishes its century-late trip.',
-                cause: 'Crushed by a falling cable car',
+                cause: 'Crushed by a falling cable car', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 26,
             },
@@ -8982,7 +8982,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The tailings fan across {zone} is a century of crushed rock at the steepest angle it will hold. It goes under {tribute}.',
                 escapeText: '{tribute} traverses the tailings fan in {zone} along the top of the fan rather than across its face, and it stays where it is.',
-                cause: 'Carried down the tailings',
+                cause: 'Carried down the tailings', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'endurance',
                 damage: 30,
@@ -8993,7 +8993,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The slurry ponds below {zone} carry a crust about as thick as paper. {tribute} is standing on it.',
                 escapeText: '{tribute} works around the slurry ponds of {zone} on the rock lip, which adds a mile and costs nothing.',
-                cause: 'Went into the slurry',
+                cause: 'Went into the slurry', code: 'poison',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 26,
                 poisoned: true,
@@ -9004,7 +9004,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The winch house in {zone} is the only roof on the terrace and has taken a century of falling stone. {tribute} has bedded down under it.',
                 escapeText: '{tribute} sleeps against the outside wall of the winch house in {zone} rather than under what is left of its roof.',
-                cause: 'Buried in the winch house',
+                cause: 'Buried in the winch house', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 damage: 32,
@@ -9048,7 +9048,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Every terrace {tribute} has dropped onto is one they cannot climb back out of. They have dropped for four days and there are two left below them.',
                 escapeText: '{tribute} works out on the second terrace that this mountain only goes one way and starts choosing which way down very carefully indeed.',
-                cause: 'Ran out of terraces',
+                cause: 'Ran out of terraces', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'willpower',
                 damage: 14,
@@ -9059,7 +9059,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The cable spiders have strung the shaft mouths at {zone} between the winding gear at head height. {tribute} ducks under a beam into one.',
                 escapeText: '{tribute} goes through the shaft mouths at {zone} with a stick held up in front of their face and takes down every line before it takes them.',
-                cause: 'Caught by the cable spiders',
+                cause: 'Caught by the cable spiders', code: 'poison',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 damage: 30,
@@ -9188,7 +9188,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Something moves under the surface off {zone}. {tribute} is out of the water inside a minute.',
                 escapeText: '{tribute} is already climbing when whatever is under {zone} surfaces to look.',
-                cause: 'Taken from below',
+                cause: 'Taken from below', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 20,
                 sanity: 10,
@@ -9204,7 +9204,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The col above {zone} lets go a slab of wet snow that takes the whole traverse, and {tribute}, with it.',
                 escapeText: '{tribute} is off the traverse below {zone} before the slab reaches it, and watches the line they were on go into the sea.',
-                cause: 'Buried in a wet-snow slide',
+                cause: 'Buried in a wet-snow slide', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 26,
                 fatigue: 14,
@@ -9213,7 +9213,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Cold water gets into {tribute} on the crossing to {zone}. The shivering starts and does not stop.',
                 escapeText: '{tribute} makes the crossing to {zone} fast enough to still have something left to shiver with.',
-                cause: 'Died of immersion cold',
+                cause: 'Died of immersion cold', code: 'hypothermia',
                 dodgeStat: 'endurance', dodgeAlt: 'strength',
                 damage: 12,
                 frostbitten: true,
@@ -9223,7 +9223,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The sea cave under {zone} fills faster than {tribute} can find the way they came in.',
                 escapeText: '{tribute} reads the water in {zone} rising and is back out through the throat of the cave before it closes.',
-                cause: 'Trapped by the tide',
+                cause: 'Trapped by the tide', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 22,
                 sanity: 12,
@@ -9232,7 +9232,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A gull colony over {zone} decides {tribute} is close enough to the nests, and comes off the rock all at once.',
                 escapeText: '{tribute} backs off the nesting ledge on {zone} with their arms over their head and no worse than that.',
-                cause: 'Driven off a ledge by gulls',
+                cause: 'Driven off a ledge by gulls', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 14,
                 bleeding: true,
@@ -9249,7 +9249,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Fog comes off the water and takes {zone} entirely. {tribute} keeps walking the ledge.',
                 escapeText: '{tribute} sits down where they are when the fog takes {zone}, and waits it out instead of arguing with it.',
-                cause: 'Walked off a peak in fog',
+                cause: 'Walked off a peak in fog', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 25,
                 fatigue: 12,
@@ -9312,7 +9312,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The summit col above {zone} clears every few minutes. In one of them {tribute} is standing on the skyline in full view.',
                 escapeText: '{tribute} crosses the summit col above {zone} inside the cloud, blind and slow, and nothing on either peak sees them do it.',
-                cause: 'Shot off the summit col',
+                cause: 'Shot off the summit col', code: 'hypothermia',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'intelligence',
                 damage: 30,
@@ -9336,7 +9336,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // and nothing at all between the peaks but the sea.
                 text: 'The shelf at {zone} is the only flat ground in the arena, ten metres above a sea that has built all day. A set comes over it and takes {tribute}’s camp.',
                 escapeText: '{tribute} moves their kit off the shelf at {zone} onto the col before dark, which is colder and windier and keeps all of it.',
-                cause: 'Washed off the shelf',
+                cause: 'Washed off the shelf', code: 'hypothermia',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 damage: 30,
@@ -9348,7 +9348,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The cliff harriers over {zone} come in on {tribute} three times in an hour, from above and behind, on a face with no hand to spare.',
                 escapeText: '{tribute} gets under an overhang on the face at {zone} and lets the harriers work themselves out of interest.',
-                cause: 'Knocked off the face by the harriers',
+                cause: 'Knocked off the face by the harriers', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'willpower',
                 dodgeDifficulty: 7,
@@ -9369,7 +9369,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Something comes up under {tribute} swimming the reach off {zone} without breaking the surface, takes them down several metres and lets go.',
                 escapeText: '{tribute} crosses the open water reach off {zone} on a piece of driftwood with everything they own, and touches the sea with nothing but their hands.',
-                cause: 'Taken in the open water',
+                cause: 'Taken in the open water', code: 'hazard',
                 dodgeStat: 'endurance',
                 dodgeAlt: 'stealth',
                 dodgeDifficulty: 8,
@@ -9482,7 +9482,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A gust crosses {zone}. Everything not lashed down goes off the deck and {tribute} goes to the edge of it.',
                 escapeText: '{tribute} gets a line around something solid in {zone} before the gust can take them.',
-                cause: 'Blown from a platform',
+                cause: 'Blown from a platform', code: 'hazard',
                 dodgeStat: 'strength', dodgeAlt: 'agility',
                 damage: 22,
                 fatigue: 12,
@@ -9521,7 +9521,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The fog below {zone} climbs a few metres higher than it has all week, and {tribute} takes one breath of it.',
                 escapeText: '{tribute} sees the fog under {zone} rise and goes up two more branches without waiting to find out how far.',
-                cause: 'Breathed the understory fog',
+                cause: 'Breathed the understory fog', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 20,
                 sanity: 14,
@@ -9530,7 +9530,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Wind takes the whole crown of {zone} through an arc nobody could stand in, and {tribute} is standing in it.',
                 escapeText: '{tribute} gets low and gets a grip on {zone} before the wind reaches the part of the arc that throws people.',
-                cause: 'Thrown from the crown',
+                cause: 'Thrown from the crown', code: 'hazard',
                 dodgeStat: 'strength', dodgeAlt: 'agility',
                 damage: 24,
                 fatigue: 16,
@@ -9539,7 +9539,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Something has been living in the old nest at {zone} for a long time, and it does not leave when {tribute} arrives.',
                 escapeText: '{tribute} looks into the nest at {zone}, decides against every part of it, and climbs back the way they came.',
-                cause: 'Killed in the old nest',
+                cause: 'Killed in the old nest', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 damage: 26,
                 bleeding: true,
@@ -9557,7 +9557,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The moss hammock at {zone} is holding a season of rainwater. It gives all at once with {tribute} in it.',
                 escapeText: '{tribute} tests the moss at {zone} with one foot, feels the weight of water in it, and does not put the second foot down.',
-                cause: 'Went down with the hammock',
+                cause: 'Went down with the hammock', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 28,
                 terrains: ['forest', 'wetland'],
@@ -9589,7 +9589,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The fog below {zone} rises a hundred feet in the night. By morning the lowest hammocks are inside it and {tribute} is asleep in one.',
                 escapeText: '{tribute} watches the fog come up under {zone} in the evening and moves everything they have two levels higher before dark.',
-                cause: 'Breathed the understory fog',
+                cause: 'Breathed the understory fog', code: 'poison',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'endurance',
                 dodgeDifficulty: 7,
@@ -9602,7 +9602,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The swaying reach at {zone} moves three metres in a gust. {tribute} and the deck under them go out of phase.',
                 escapeText: '{tribute} rides the sway at {zone} out with their knees rather than fighting it, the way somebody who grew up in trees would.',
-                cause: 'Shaken out of the canopy',
+                cause: 'Shaken out of the canopy', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'endurance',
                 damage: 40,
@@ -9613,7 +9613,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The old nest in {zone} is dry, roofed and out of the wind. {tribute} climbs into it and it is not empty.',
                 escapeText: '{tribute} reads the bones worked into the walls of the old nest in {zone}, understands the arithmetic, and sleeps in the open.',
-                cause: 'Killed in the old nest',
+                cause: 'Killed in the old nest', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'intelligence',
                 damage: 36,
@@ -9623,7 +9623,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The silk across the crown break at {zone} is thick enough to hold a person. {tribute} walks into it at head height.',
                 escapeText: '{tribute} spots the line across the crown break at {zone} by the way it holds the light and goes under it on their belly.',
-                cause: 'Taken in the silk lines',
+                cause: 'Taken in the silk lines', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 damage: 32,
@@ -9669,7 +9669,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The silk-line stalkers build under a bridge rather than across it. {tribute} is halfway over the needle bridge at {zone} when the deck moves against the wind.',
                 escapeText: '{tribute} looks under the deck of the needle bridge at {zone} before setting foot on it, which is the one thing nobody thinks to do.',
-                cause: 'Taken under the bridge',
+                cause: 'Taken under the bridge', code: 'poison',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 dodgeDifficulty: 8,
@@ -9692,7 +9692,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The crown break at {zone} is the only gap in the canopy and takes direct sun for forty minutes a day. {tribute} is standing in it for all of them.',
                 escapeText: '{tribute} takes the forty minutes of sun at the crown break in {zone} from under the lip of it rather than out in the middle.',
-                cause: 'Killed at the crown break',
+                cause: 'Killed at the crown break', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'intelligence',
                 damage: 34,
@@ -9785,7 +9785,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The grove at {zone} finds its note all at once, and the trees around {tribute} come apart into splinters.',
                 escapeText: '{tribute} feels the pitch change in {zone} and is already running when the grove lets go.',
-                cause: 'Killed in a resonant shattering',
+                cause: 'Killed in a resonant shattering', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 30,
                 bleeding: true,
@@ -9801,7 +9801,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A splinter the length of a knife rides the wind out of {zone} and finds {tribute} before the sound of it arrives.',
                 escapeText: '{tribute} hears the pitch shift just enough in {zone} to get an arm up.',
-                cause: 'Struck by flying timber',
+                cause: 'Struck by flying timber', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 16,
                 bleeding: true,
@@ -9824,7 +9824,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The hollow trunks around {zone} sound in a voice {tribute} recognises. They answer it out loud.',
                 escapeText: '{tribute} hears the trunks at {zone} start up, recognises the trick, and keeps their mouth shut.',
-                cause: 'Lured into the deep organ',
+                cause: 'Lured into the deep organ', code: 'hazard',
                 dodgeStat: 'willpower', dodgeAlt: 'endurance',
                 damage: 14,
                 sanity: 26,
@@ -9833,7 +9833,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A hollowed lodgepole at {zone} has stood on nothing for two years. It comes down as {tribute} passes under it.',
                 escapeText: '{tribute} hears the tone of the trunk at {zone} change, which is the only warning it gives, and is clear when it goes.',
-                cause: 'Crushed by a hollow trunk',
+                cause: 'Crushed by a hollow trunk', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 30,
                 bleeding: true,
@@ -9842,7 +9842,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The wind through {zone} rises until {tribute} cannot hear their own footsteps, or anybody else\'s.',
                 escapeText: '{tribute} works out that the wind in {zone} cuts both ways and uses it, moving while the organ is loud.',
-                cause: 'Never heard them coming',
+                cause: 'Never heard them coming', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 18,
                 sanity: 12,
@@ -9851,7 +9851,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Beetles come out of the deadwood at {zone} in a sheet when {tribute} puts a hand on the wrong trunk.',
                 escapeText: '{tribute} reads the bore holes on the trunk at {zone} and picks a different one to lean on.',
-                cause: 'Died of the borer bites',
+                cause: 'Died of the borer bites', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 15,
                 infected: true,
@@ -9902,7 +9902,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Every step {tribute} takes across the splinter field of {zone} is carried by nine hundred hollow trunks to the whole forest.',
                 escapeText: '{tribute} crosses the splinter field of {zone} on the moss between the shards, and the forest says nothing about it at all.',
-                cause: 'Run down in the Whispering Forest',
+                cause: 'Run down in the Whispering Forest', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 damage: 28,
@@ -9913,7 +9913,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} makes one sound in the resonance chamber at {zone}. It comes back louder than it went in.',
                 escapeText: '{tribute} works out what the resonance chamber at {zone} does before making any noise in it, and moves through it silently.',
-                cause: 'Deafened and run down at the resonance chamber',
+                cause: 'Deafened and run down at the resonance chamber', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 22,
                 sanity: 24,
@@ -9932,7 +9932,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The wind throat above {zone} stops all at once. In the silence {tribute} can hear their own pulse and one other set of footsteps.',
                 escapeText: '{tribute} is flat and motionless in the needle drift of {zone} before the silence is a second old.',
-                cause: 'Found in the silence',
+                cause: 'Found in the silence', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'willpower',
                 dodgeDifficulty: 8,
@@ -9959,7 +9959,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // every fight in the arena is audible everywhere anyway.
                 text: 'The trunks in the deep organ at {zone} are wide enough to stand inside. Something is standing inside one as {tribute} passes it.',
                 escapeText: '{tribute} works through the deep organ at {zone} well out from the trunks, where nothing inside one of them has the reach.',
-                cause: 'Killed in the deep organ',
+                cause: 'Killed in the deep organ', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 dodgeDifficulty: 8,
@@ -9970,7 +9970,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Every fight in this forest is heard across it. Four tributes are walking toward the one {tribute} has just had at {zone}.',
                 escapeText: '{tribute} breaks off the fight at {zone} inside ten seconds and is two zones away before anybody can arrive at the sound of it.',
-                cause: 'Run down by what the forest told',
+                cause: 'Run down by what the forest told', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'stealth',
                 damage: 32,
@@ -9981,7 +9981,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The needle drift at {zone} is a metre deep and the only silent ground in the forest. Nothing under it can be seen, including the hole {tribute} puts a leg into.',
                 escapeText: '{tribute} probes the needle drift at {zone} with a pole ahead of every step and finds what is under it in the safe way.',
-                cause: 'Went into the needle drift',
+                cause: 'Went into the needle drift', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 damage: 28,
@@ -9992,7 +9992,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The resonance moths at {zone} gather on any sustained note. {tribute} has been humming under their breath for an hour.',
                 escapeText: '{tribute} catches themselves humming in {zone}, stops, and the moths that had started to gather go back into the dark.',
-                cause: 'Found by the resonance moths',
+                cause: 'Found by the resonance moths', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'willpower',
                 damage: 24,
@@ -10004,7 +10004,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The old sawmill at {zone} is the only stone building in the forest and nothing carries through its walls. {tribute} has been inside it for six hours.',
                 escapeText: '{tribute} spends one night in the sawmill at {zone} and goes back to sleeping where they can hear the forest.',
-                cause: 'Killed at the sawmill',
+                cause: 'Killed at the sawmill', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'stealth',
                 damage: 34,
@@ -10233,7 +10233,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The erosion gully through {zone} has no root left to hold its sides. The one {tribute} is under comes in on them.',
                 escapeText: '{tribute} crosses the erosion gully in {zone} at the one place it has a rock lip rather than a soil one.',
-                cause: 'Buried in the erosion gully',
+                cause: 'Buried in the erosion gully', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 damage: 30,
@@ -10268,7 +10268,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // will burn twice, and deadfall that drops without a sound.
                 text: 'The standing dead at {zone} is a hectare of trunks with no roots left. The first one goes, then the next, and {tribute} is in the middle of the row.',
                 escapeText: '{tribute} crosses the standing dead at {zone} at a diagonal to the fall line and is clear when the row goes over.',
-                cause: 'Killed in the standing dead',
+                cause: 'Killed in the standing dead', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 dodgeDifficulty: 8,
@@ -10301,7 +10301,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The char ridge above {zone} is four hundred metres of bare black rock in view of the whole mountain. {tribute} is crossing it.',
                 escapeText: '{tribute} crosses the char ridge above {zone} in the last of the dark, and the mountain does not see them do it.',
-                cause: 'Shot on the char ridge',
+                cause: 'Shot on the char ridge', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 damage: 32,
@@ -10312,7 +10312,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'One of the standing char at {zone} has been at the edge of {tribute}’s vision for two days. This morning it is thirty metres closer.',
                 escapeText: '{tribute} walks straight up to the standing char at {zone} and puts a hand on it, and it is a burned tree, and it stays one.',
-                cause: 'Taken by the Standing Char',
+                cause: 'Taken by the Standing Char', code: 'hazard',
                 dodgeStat: 'willpower',
                 dodgeAlt: 'stealth',
                 dodgeDifficulty: 8,
@@ -10411,7 +10411,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 id: 'sympathetic-detonation',
                 text: 'Something goes off under {zone} that nobody stepped on. Forty metres from {tribute} a second charge goes, and then the field starts setting itself off.',
                 escapeText: '{tribute} is flat in a shell scrape in {zone} before the second one goes, which is the only reason there is a {tribute} after the third.',
-                cause: 'Killed in a sympathetic detonation',
+                cause: 'Killed in a sympathetic detonation', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 dodgeDifficulty: 9,
@@ -10434,7 +10434,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The root mat under {tribute} in {zone} gives onto a charge that has sat there since the war.',
                 escapeText: '{tribute} feels the mat in {zone} shift wrong underfoot and gets clear before it matters.',
-                cause: 'Detonated buried ordnance',
+                cause: 'Detonated buried ordnance', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 34,
             },
@@ -10449,7 +10449,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A vine at {zone} closes around {tribute}\'s ankle and tightens as they pull.',
                 escapeText: '{tribute} cuts free of the vine at {zone} before it can properly close.',
-                cause: 'Strangled by crater vines',
+                cause: 'Strangled by crater vines', code: 'hazard',
                 dodgeStat: 'strength', dodgeAlt: 'agility',
                 damage: 14,
                 bleeding: true,
@@ -10474,7 +10474,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The vines at {zone} grow toward warmth. They reach {tribute} in the dark inside a minute.',
                 escapeText: '{tribute} cuts clear of the tangle at {zone} before it gets more than a wrist.',
-                cause: 'Taken by the vines',
+                cause: 'Taken by the vines', code: 'hazard',
                 dodgeStat: 'strength', dodgeAlt: 'agility',
                 damage: 24,
                 bleeding: true,
@@ -10492,7 +10492,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The pool at the bottom of {zone} has stood a long time. Whatever is in it gets into a cut on {tribute}.',
                 escapeText: '{tribute} keeps out of the water at {zone} entirely, which costs them an hour and nothing else.',
-                cause: 'Died of a fouled wound',
+                cause: 'Died of a fouled wound', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 12,
                 infected: true,
@@ -10511,7 +10511,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'One crate in the old ammo dump at {zone} cooks off while {tribute} is inside. Three more go after it.',
                 escapeText: '{tribute} is out of the dump at {zone} and behind a berm when the first crate goes.',
-                cause: 'Killed in the ammo dump',
+                cause: 'Killed in the ammo dump', code: 'burns',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 34,
                 burned: true,
@@ -10569,7 +10569,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The bunker under {zone} is roofed, dry and choked to the doorframe. Three paces in, {tribute} finds it goes back further than a room should.',
                 escapeText: '{tribute} throws a lit brand into the bunker at {zone} before going in, watches how far the light goes, and does not go in.',
-                cause: 'Killed in the bunker',
+                cause: 'Killed in the bunker', code: 'asphyxiation',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'willpower',
                 damage: 34,
@@ -10604,7 +10604,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // a dark that doubles everything.
                 text: 'The old ammo dump at {zone} has taken a century of rain and whatever the rain carried. {tribute} is a long way inside it with a light.',
                 escapeText: '{tribute} reads the stencilling on the outside of the ammo dump at {zone} and does not take a light past the door.',
-                cause: 'Killed in the ammo dump',
+                cause: 'Killed in the ammo dump', code: 'burns',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 dodgeDifficulty: 8,
                 damage: 50,
@@ -10615,7 +10615,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The dark comes down over the crater field. The adders move, the tangle moves, the salvage hound starts working the convoy road, and {tribute} is between craters with no light.',
                 escapeText: '{tribute} is in the bunker with the entrance narrowed to a crawl before the light goes out of the crater field entirely.',
-                cause: 'Taken in the dark of the crater field',
+                cause: 'Taken in the dark of the crater field', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'willpower',
                 damage: 36,
@@ -10750,7 +10750,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 oncePerRun: true,
                 text: 'A doorbell camera swivels to follow {tribute} across {zone} and chimes. {tribute} cannot find a wire to it.',
                 escapeText: '{tribute} spots the doorbell camera in {zone} and keeps to the hedge line, out of its arc.',
-                cause: 'Mauled on the green',
+                cause: 'Mauled on the green', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 damage: 4,
                 sanity: 14,
@@ -10761,7 +10761,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A phone starts ringing in the empty kitchen of {zone}. {tribute} stands over it for six rings and it stops.',
                 escapeText: '{tribute} hears the phone in {zone} and leaves the house before the second ring.',
-                cause: 'Died of fright',
+                cause: 'Died of fright', code: 'hazard',
                 dodgeStat: 'willpower', dodgeAlt: 'endurance',
                 damage: 3,
                 sanity: 20,
@@ -10790,7 +10790,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The sprinklers come up under {tribute} in {zone} at four in the morning on their timer.',
                 escapeText: '{tribute} hears the sprinkler heads rise across {zone} and gets under a porch before the water hits.',
-                cause: 'Mauled on the green',
+                cause: 'Mauled on the green', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 6,
                 fatigue: 15,
@@ -10801,7 +10801,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The hob in Number 27 at {zone} was left on and the gas has filled the house. {tribute} works that out after the headache starts.',
                 escapeText: '{tribute} smells the gas in {zone} at the doorway and does not go looking for the switch.',
-                cause: 'Gas asphyxiation indoors',
+                cause: 'Gas asphyxiation indoors', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 dodgeDifficulty: 7,
                 damage: 26,
@@ -10847,7 +10847,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The attic hatch in {zone} comes down with {tribute} on the ladder, and takes half the ceiling with it. The way back down is gone.',
                 escapeText: '{tribute} hears the hatch frame crack in {zone} and drops clear before the ceiling follows.',
-                cause: 'Gas asphyxiation indoors',
+                cause: 'Gas asphyxiation indoors', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 20,
                 bleeding: true,
@@ -10867,7 +10867,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // the horror is entirely domestic.
                 text: 'The porch light at Number 27 in {zone} is on a sensor. It comes on as {tribute} walks up the path, in view of the whole loop.',
                 escapeText: '{tribute} comes at the house in {zone} across the back gardens, under the sensor arc, and nothing on the street lights up at all.',
-                cause: 'Killed on a lit doorstep',
+                cause: 'Killed on a lit doorstep', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'stealth',
                 damage: 28,
@@ -10878,7 +10878,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Gas has leaked into the kitchen of the house in {zone} for two days. {tribute} strikes a light in it.',
                 escapeText: '{tribute} smells the gas in the kitchen at {zone} from the hallway and backs out without touching a switch.',
-                cause: 'Killed in a gas explosion',
+                cause: 'Killed in a gas explosion', code: 'burns',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 dodgeDifficulty: 7,
                 damage: 48,
@@ -10890,7 +10890,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Every sprinkler on the green at {zone} comes on at four in the morning. {tribute} is asleep in the middle of the lawn.',
                 escapeText: '{tribute} reads the heads set into the turf at {zone} and beds down on the gravel margin instead.',
-                cause: 'Found by the sprinklers',
+                cause: 'Found by the sprinklers', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 20,
                 bleeding: true,
@@ -10902,7 +10902,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Something has been under the cover of the pool at {zone} since the Capitol left. {tribute} puts a hand in the water.',
                 escapeText: '{tribute} lifts one corner of the pool cover at {zone}, looks at what the water does, and puts the corner back down.',
-                cause: 'Taken in the pool',
+                cause: 'Taken in the pool', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 dodgeDifficulty: 7,
@@ -10913,7 +10913,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The family dogs come round the loop road at {zone} at a trot. They know every garden on it and {tribute} does not.',
                 escapeText: '{tribute} gets a garden gate shut behind them in {zone} and the pack goes past on the road without breaking stride.',
-                cause: 'Run down by the family dogs',
+                cause: 'Run down by the family dogs', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'willpower',
                 damage: 32,
@@ -10937,7 +10937,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // and the cordon comes in a street at a time from the first day.
                 text: 'The cordon takes another street off the loop overnight. The house {tribute} has been holding at {zone} is outside it by morning.',
                 escapeText: '{tribute} works out which way the cordon is eating the loop road and moves house twice a day ahead of it.',
-                cause: 'Caught outside the cordon',
+                cause: 'Caught outside the cordon', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 damage: 32,
@@ -10949,7 +10949,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The substation at {zone} runs the porch lights and the sprinklers, and its fence is live. {tribute} goes over it for the shelter inside.',
                 escapeText: '{tribute} throws a length of hose at the substation fence at {zone}, watches what it does, and goes and sleeps in a shed.',
-                cause: 'Electrocuted at the substation',
+                cause: 'Electrocuted at the substation', code: 'burns',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 dodgeDifficulty: 7,
                 damage: 46,
@@ -10982,7 +10982,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The cut-through between the gardens at {zone} is six feet wide with a fence either side. {tribute} is in the middle of it when both ends fill.',
                 escapeText: '{tribute} goes over a garden fence out of the cut-through at {zone} rather than out either end of it.',
-                cause: 'Cornered in the cut-through',
+                cause: 'Cornered in the cut-through', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'strength',
                 damage: 36,
@@ -11111,7 +11111,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The shears start up close enough to {tribute} in {zone} to hear the blades cross, and work round them in a circle.',
                 escapeText: '{tribute} walks out of {zone} at an even pace, and the shears do not follow.',
-                cause: 'Taken by the topiary',
+                cause: 'Taken by the topiary', code: 'hazard',
                 dodgeStat: 'willpower', dodgeAlt: 'endurance',
                 damage: 8,
                 sanity: 16,
@@ -11137,7 +11137,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} finds a gap at ankle height under the yew of {zone} and takes nine metres of it on their belly in the dark.',
                 escapeText: '{tribute} measures the gap under the hedge of {zone} against their shoulders and decides to stay a person.',
-                cause: 'Taken by the topiary',
+                cause: 'Taken by the topiary', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'endurance',
                 damage: 14,
@@ -11183,7 +11183,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The hedge {tribute} leans on in {zone} is at blood heat and moving very slightly.',
                 escapeText: '{tribute} takes their hand off the hedge in {zone} slowly, and steps back into the middle of the path.',
-                cause: 'Taken by the topiary',
+                cause: 'Taken by the topiary', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 damage: 16,
                 sanity: 14,
@@ -11194,7 +11194,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // §7.3: the map is the antagonist, and the hedges eat the cannon.
                 text: 'The wall at the end of the long alley in {zone} was not there this morning, and the way {tribute} came in by is now nine metres of yew.',
                 escapeText: '{tribute} marks every junction out of {zone} with a cut in the hedge at knee height and finds their way back by them.',
-                cause: 'Lost in the Labyrinth',
+                cause: 'Lost in the Labyrinth', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'willpower',
                 damage: 12,
@@ -11237,7 +11237,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The dead end {tribute} backs into in {zone} was a through-way yesterday. The wall behind them closes while they are facing the one in front.',
                 escapeText: '{tribute} keeps one hand on the left-hand hedge the entire way through {zone}, which is the oldest trick there is, and it works.',
-                cause: 'Cornered in the dead end',
+                cause: 'Cornered in the dead end', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 damage: 32,
@@ -11263,7 +11263,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // the hedges eat the cannon; the map is the antagonist.
                 text: 'The outer ring of {zone} goes all the way round. {tribute} has walked it for two hours without returning to where they started.',
                 escapeText: '{tribute} counts paces along the outer ring of {zone}, notices the count does not close, and cuts inward through the hedge instead.',
-                cause: 'Lost on the outer ring',
+                cause: 'Lost on the outer ring', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'willpower',
                 damage: 12,
@@ -11298,7 +11298,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The false centre of {zone} has a fountain, a bench and four ways out. {tribute} has arrived at it three times today from three directions.',
                 escapeText: '{tribute} marks the false centre of {zone} with a cut in the bench and does not arrive at it a fourth time.',
-                cause: 'Died at the false centre',
+                cause: 'Died at the false centre', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'willpower',
                 damage: 14,
@@ -11309,7 +11309,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The gardener’s gate at {zone} is the only gap in the outer wall and has stood open since the first morning. {tribute} walks toward it.',
                 escapeText: '{tribute} looks at the open gardener’s gate at {zone} for a long while and does not go through it, which is correct.',
-                cause: 'Went through the gardener’s gate',
+                cause: 'Went through the gardener’s gate', code: 'hazard',
                 dodgeStat: 'willpower', dodgeAlt: 'endurance',
                 dodgeDifficulty: 8,
                 damage: 30,
@@ -11466,7 +11466,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The fire door swings shut behind {tribute} in {zone} and a bar drops on the far side of it.',
                 escapeText: '{tribute} hears the closer hiss on the fire door in {zone} and gets a boot in it before it seats.',
-                cause: 'Locked in during session',
+                cause: 'Locked in during session', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 6,
                 fatigue: 12,
@@ -11485,7 +11485,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The gauge on the boiler in {zone} has been climbing all day, and the pipe {tribute} is standing beside lets go at the seam in a sheet of live steam.',
                 escapeText: '{tribute} hears the boiler in {zone} change its note and is around the corner when the seam goes.',
-                cause: 'Boiler burst (scalding)',
+                cause: 'Boiler burst (scalding)', code: 'burns',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 dodgeDifficulty: 7,
                 damage: 30,
@@ -11512,7 +11512,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The bell rings over {tribute} in {zone} off the timetable, one long peal. Everything in the school that moves starts moving.',
                 escapeText: '{tribute} hears the wrong bell over {zone}, trusts the posted timetable over the noise, and stays exactly where they are.',
-                cause: 'Locked in during session',
+                cause: 'Locked in during session', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 10,
                 sanity: 12,
@@ -11524,7 +11524,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // events that could only happen in a building built for children.
                 text: 'The bell in the main corridor of {zone} goes for the change of period. Every door on the corridor unlocks, including the ones {tribute} wedged.',
                 escapeText: '{tribute} reads the timetable posted in the main corridor of {zone}, works out what is about to unlock, and is not behind any of it.',
-                cause: 'Caught at the change of period',
+                cause: 'Caught at the change of period', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 damage: 30,
@@ -11547,7 +11547,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The boiler room under {zone} still holds pressure. A pipe at chest height lets go beside {tribute}.',
                 escapeText: '{tribute} hears the boiler under {zone} start to work up and is out of the plant room before the gauge means anything.',
-                cause: 'Scalded in the boiler room',
+                cause: 'Scalded in the boiler room', code: 'burns',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 dodgeDifficulty: 7,
@@ -11558,7 +11558,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The lockers in {zone} are three hundred steel doors in two facing rows. The one behind {tribute} opens.',
                 escapeText: '{tribute} works the locker rows in {zone} from the end, systematically, with their back never turned to an open door.',
-                cause: 'Killed in the lockers',
+                cause: 'Killed in the lockers', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 damage: 34,
@@ -11569,7 +11569,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The flooded pool at {zone} is a metre of green water over tile. Something not small is living in the filter housing {tribute} is wading toward.',
                 escapeText: '{tribute} works around the flooded pool in {zone} along the poolside rail and never puts a foot in the water.',
-                cause: 'Taken in the flooded pool',
+                cause: 'Taken in the flooded pool', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'endurance',
                 damage: 36,
@@ -11595,7 +11595,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // else about the building works.
                 text: 'The library at {zone} has three doors and shelving to the ceiling. {tribute} is between two stacks when one of the doors shuts.',
                 escapeText: '{tribute} works the library at {zone} from the wall side of the stacks with a line of sight to two doors at all times.',
-                cause: 'Killed in the library',
+                cause: 'Killed in the library', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 damage: 36,
@@ -11605,7 +11605,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The gymnasium at {zone} has a sprung floor over a void and sixty years of damp in the boards. {tribute} runs across the middle of it.',
                 escapeText: '{tribute} crosses the gymnasium at {zone} along the wall line where the joists are doubled.',
-                cause: 'Went through the gym floor',
+                cause: 'Went through the gym floor', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 damage: 34,
@@ -11616,7 +11616,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The register reads out in the auditorium at {zone} at the start of every period. This time it includes {tribute}’s name and district.',
                 escapeText: '{tribute} is out of the auditorium at {zone} before the register gets past the first ten names.',
-                cause: 'Answered the Register',
+                cause: 'Answered the Register', code: 'hazard',
                 dodgeStat: 'willpower', dodgeAlt: 'endurance',
                 dodgeDifficulty: 8,
                 damage: 26,
@@ -11627,7 +11627,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The roof of {zone} is the only place in the school with a sightline out, and it has one stairwell off it. Somebody is coming up it while {tribute} sleeps.',
                 escapeText: '{tribute} sleeps at the head of the stairs rather than out on the roof at {zone}, where they can hear the whole building underneath them.',
-                cause: 'Cornered on the roof',
+                cause: 'Cornered on the roof', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 damage: 34,
@@ -11637,7 +11637,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The field dogs have held the playing field at {zone} since the first day. It is the only ground between the school and the fence and {tribute} has to cross it.',
                 escapeText: '{tribute} crosses the playing field at {zone} at first light along the hedge line, and the pack is at the far end of it.',
-                cause: 'Run down by the field dogs',
+                cause: 'Run down by the field dogs', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 damage: 36,
@@ -11802,7 +11802,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 oncePerRun: true,
                 text: '{tribute} reads the warning placard in {zone} by torchlight, standing two metres from the isotope store it is warning about.',
                 escapeText: '{tribute} reads the placard in {zone} from the doorway and goes back the way they came.',
-                cause: 'Radiation from the isotope store',
+                cause: 'Radiation from the isotope store', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 14,
                 sanity: 12,
@@ -11812,7 +11812,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The snow bridge under {tribute} in {zone} was roofing a crevasse. It gives while they are on it.',
                 escapeText: '{tribute} probes the snow ahead of them in {zone}, finds the hollow note, and goes around.',
-                cause: 'Went through the lead',
+                cause: 'Went through the lead', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 dodgeDifficulty: 7,
                 damage: 26,
@@ -11866,7 +11866,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The whiteout comes over the apron at {zone} in under a minute. The habitation ring is forty metres off and {tribute} cannot see it.',
                 escapeText: '{tribute} gets a hand to the guide rope across the apron at {zone} before the whiteout closes and follows it in.',
-                cause: 'Lost forty metres from the door',
+                cause: 'Lost forty metres from the door', code: 'hypothermia',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'willpower',
                 dodgeDifficulty: 8,
@@ -11880,7 +11880,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The isotope store in {zone} has stood open since the station emptied. {tribute} has slept two rooms along from it for three nights.',
                 escapeText: '{tribute} reads the trefoil on the isotope store door in {zone} and does not need to be told twice.',
-                cause: 'Died of what was in the isotope store',
+                cause: 'Died of what was in the isotope store', code: 'poison',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 30,
                 poisoned: true,
@@ -11891,7 +11891,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The lead beside {zone} was not open yesterday. The ice {tribute} is standing on is already separate from the shelf.',
                 escapeText: '{tribute} reads the new crack along the shelf at {zone} and is on the landward side of it before the lead widens.',
-                cause: 'Went into the open lead',
+                cause: 'Went into the open lead', code: 'hypothermia',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 damage: 38,
@@ -11902,7 +11902,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Something moves under the ice beside {zone} at {tribute}\'s pace for two hundred metres and stops when they stop.',
                 escapeText: '{tribute} changes direction three times crossing the shelf at {zone}, and whatever is under the ice does not follow the third.',
-                cause: 'Taken from under the ice',
+                cause: 'Taken from under the ice', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'willpower',
                 dodgeDifficulty: 8,
@@ -11974,7 +11974,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The ridge above {zone} is the only windbreak on the shelf. {tribute} on top of it is the only vertical thing for nine kilometres.',
                 escapeText: '{tribute} works along the lee of the ridge at {zone} rather than over the top of it and is never once on a skyline.',
-                cause: 'Shot off the ridge',
+                cause: 'Shot off the ridge', code: 'hypothermia',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'intelligence',
                 damage: 30,
@@ -12077,7 +12077,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} walks face-first into a line across the trail in {zone}. Every anchor in the grove moves at once.',
                 escapeText: '{tribute} catches the shine of a line across the trail in {zone} and goes under it, breathing again on the far side.',
-                cause: 'Taken from above',
+                cause: 'Taken from above', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 damage: 8,
                 sanity: 12,
@@ -12132,7 +12132,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} finds two small punctures on the back of their calf in {zone}. They did not feel either of them.',
                 escapeText: '{tribute} feels the lightest touch at their ankle in {zone} and kicks free before anything closes.',
-                cause: 'Envenomed',
+                cause: 'Envenomed', code: 'poison',
                 dodgeStat: 'endurance', dodgeAlt: 'strength',
                 damage: 12,
                 poisoned: true,
@@ -12150,7 +12150,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Something moves through the canopy over {zone}, against the wind, keeping pace with {tribute} exactly.',
                 escapeText: '{tribute} changes direction three times crossing {zone}, and whatever is above them loses interest, or pretends to.',
-                cause: 'Taken from above',
+                cause: 'Taken from above', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 damage: 5,
                 sanity: 16,
@@ -12167,7 +12167,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A line at throat height crosses the run through {zone}, and {tribute} finds it at a run.',
                 escapeText: '{tribute} ducks the throat-height line across {zone} without breaking stride, because they have stopped trusting clear trails.',
-                cause: 'Wrapped',
+                cause: 'Wrapped', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 dodgeDifficulty: 7,
                 damage: 20,
@@ -12189,7 +12189,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // much before. And nothing here heals under this arena's law.
                 text: 'The silk across the path in {zone} runs at ankle height. {tribute} walks through it and every line above them moves.',
                 escapeText: '{tribute} finds the ankle line across {zone} with a stick held out in front of them and steps over it without touching it.',
-                cause: 'Taken off the trail',
+                cause: 'Taken off the trail', code: 'poison',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 dodgeDifficulty: 7,
@@ -12201,7 +12201,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A trap-door in the ground at {zone} opens under {tribute} with something already halfway out of it.',
                 escapeText: '{tribute} notices the disc of hinged leaf litter in {zone} for what it is and puts their weight nowhere near it.',
-                cause: 'Taken by a trap-door spider',
+                cause: 'Taken by a trap-door spider', code: 'poison',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 dodgeDifficulty: 8,
@@ -12213,7 +12213,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The silk bridge across {zone} is the fastest way over the sink. It was built for catching and it takes {tribute}\'s weight for about four paces.',
                 escapeText: '{tribute} tests the silk bridge at {zone} with a rock, watches what comes to the vibration, and wades the sink instead.',
-                cause: 'Caught on the silk bridge',
+                cause: 'Caught on the silk bridge', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'stealth',
                 damage: 32,
@@ -12235,7 +12235,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Web Hollow in {zone} is roofed in silk thick enough to keep the rain off. {tribute} slept in it because it was dry.',
                 escapeText: '{tribute} works out why Web Hollow in {zone} is the only dry ground in the wood, and sleeps wet somewhere else.',
-                cause: 'Taken in Web Hollow',
+                cause: 'Taken in Web Hollow', code: 'poison',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'stealth',
                 damage: 36,
@@ -12260,7 +12260,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // every wound taken here is a wound carried out of it.
                 text: 'The drift comes down through the low wood over {zone} on a hundred lines at once. {tribute} is under all of it.',
                 escapeText: '{tribute} sees the drift start out of the canopy over {zone} and is out from under the wood before it lands.',
-                cause: 'Taken by the Drift',
+                cause: 'Taken by the Drift', code: 'poison',
                 dodgeStat: 'agility',
                 dodgeAlt: 'stealth',
                 dodgeDifficulty: 7,
@@ -12286,7 +12286,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The sink below {zone} is peat and needle litter over standing water, and the silk across the top has held leaves up for years. {tribute} walks onto it.',
                 escapeText: '{tribute} reads the sink below {zone} for what it is by the way the litter sits too flat, and goes round.',
-                cause: 'Went into the sink',
+                cause: 'Went into the sink', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'strength',
                 damage: 24,
@@ -12307,7 +12307,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The ridge path above {zone} is the only route with no trees over it and no silk on it. Something is waiting at the top of it for {tribute}.',
                 escapeText: '{tribute} takes the ridge path above {zone} at a dead run and is off the far end of it before anything can make use of the fact.',
-                cause: 'Ambushed on the ridge path',
+                cause: 'Ambushed on the ridge path', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 damage: 32,
@@ -12452,7 +12452,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The lights in {zone} go off for exactly one second. In that second, {tribute} hears the whole place breathe in.',
                 escapeText: '{tribute} happens to be blinking when the lights in {zone} drop, and is spared the second entirely.',
-                cause: 'Followed something',
+                cause: 'Followed something', code: 'hazard',
                 dodgeStat: 'willpower', dodgeAlt: 'endurance',
                 sanity: 15,
                 damage: 3,
@@ -12478,7 +12478,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'There is a figure at the end of the corridor in {zone}, facing away. {tribute} speaks to it. It does not move at all.',
                 escapeText: '{tribute} sees the figure in the corridor of {zone} and backs around the corner before it finishes being still.',
-                cause: 'Followed something',
+                cause: 'Followed something', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 sanity: 22,
                 damage: 4,
@@ -12525,7 +12525,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The hum in {zone} has been one note since the first morning. Tonight it is a different note and {tribute} can feel it in their teeth.',
                 escapeText: '{tribute} finds the plant room the hum in {zone} is coming out of, puts a hand on the casing, and it is only a machine.',
-                cause: 'Lost to the hum',
+                cause: 'Lost to the hum', code: 'hazard',
                 dodgeStat: 'willpower', dodgeAlt: 'endurance',
                 dodgeDifficulty: 8,
                 sanity: 30,
@@ -12536,7 +12536,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The stairwell in {zone} goes down four flights and arrives at the floor it left. {tribute} does it twice.',
                 escapeText: '{tribute} takes the stairwell in {zone} down one flight at a time counting risers, and the fourth flight comes out somewhere new.',
-                cause: 'Never got out of the stairwell',
+                cause: 'Never got out of the stairwell', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'willpower',
                 damage: 14,
@@ -12547,7 +12547,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The carpet in {zone} is damp underfoot for thirty metres with no source anywhere. It was dry when {tribute} came through yesterday.',
                 escapeText: '{tribute} crosses the damp stretch of {zone} on the skirting rail, fast, and does not look at what the carpet does behind them.',
-                cause: 'Taken on the carpet',
+                cause: 'Taken on the carpet', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'stealth',
                 damage: 30,
@@ -12584,7 +12584,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // of it; the events have to be about duration, not about damage.
                 text: 'The reception desk at {zone} has a visitor book on it. The last entry carries today’s date, in {tribute}’s handwriting.',
                 escapeText: '{tribute} leaves the visitor book at {zone} shut, on principle, and walks past the desk without breaking step.',
-                cause: 'Broke at reception',
+                cause: 'Broke at reception', code: 'hazard',
                 dodgeStat: 'willpower', dodgeAlt: 'endurance',
                 dodgeDifficulty: 8,
                 sanity: 34,
@@ -12594,7 +12594,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The sub-level under {zone} is one floor below the bottom floor. The stairs {tribute} came down are a wall when they turn round.',
                 escapeText: '{tribute} props the sub-level door of {zone} open with a chair before going through it, and the chair is still there when they come back.',
-                cause: 'Left in the sub-level',
+                cause: 'Left in the sub-level', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'willpower',
                 damage: 14,
@@ -12627,7 +12627,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'There is a group at the far end of the long hall at {zone}, not moving, facing the door. They were not there when {tribute} came in.',
                 escapeText: '{tribute} walks the long hall at {zone} straight down the middle at the same pace the whole way, and nothing at the far end is there by the time they reach it.',
-                cause: 'Taken by the Others',
+                cause: 'Taken by the Others', code: 'hazard',
                 dodgeStat: 'willpower',
                 dodgeAlt: 'stealth',
                 damage: 32,
@@ -12728,7 +12728,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // The sanity beat: distance, visible and useless.
                 text: '{tribute} sees another tribute across the canyon from {zone}, close enough to make out a face and two days of climbing away.',
                 escapeText: '{tribute} sees movement on the far wall from {zone} and gets out of the sightline before they are seen back.',
-                cause: 'Heat on the bench',
+                cause: 'Heat on the bench', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 damage: 3,
                 sanity: 14,
@@ -12737,7 +12737,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} finds a cairn on the trail through {zone} built within the day.',
                 escapeText: '{tribute} finds a cairn in {zone}, reads it as bait, and takes the harder line around it.',
-                cause: 'Heat on the bench',
+                cause: 'Heat on the bench', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 6,
                 sanity: 8,
@@ -12778,7 +12778,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // about it even where drinking is legal.
                 text: 'The river runs silty and red past {zone} after a flash upstream. {tribute} drinks it with the grit in it.',
                 escapeText: '{tribute} digs a seep hole in the sand beside the river at {zone} and lets the bank filter what the flood fouled.',
-                cause: 'Thirst within sight of the river',
+                cause: 'Thirst within sight of the river', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 8,
                 thirst: 20,
@@ -12804,7 +12804,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} hears running water around the next bend of {zone}. There is no water in that drainage.',
                 escapeText: '{tribute} hears the water sound in {zone} and refuses it, because the map in their head says dry.',
-                cause: 'Thirst within sight of the river',
+                cause: 'Thirst within sight of the river', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 dodgeDifficulty: 7,
                 damage: 6,
@@ -12815,7 +12815,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} finds a wall of petroglyphs in {zone}: spirals, bighorn, small running figures. Scratched under them is a tally of days that stops at nine.',
                 escapeText: '{tribute} passes the petroglyph wall in {zone} without stopping. Some galleries you do not linger in.',
-                cause: 'Heat on the bench',
+                cause: 'Heat on the bench', code: 'hazard',
                 damage: 2,
                 sanity: 10,
                 terrains: ['ruins', 'highland'],
@@ -12857,7 +12857,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'It is forty degrees on the lower bench of {zone} and eleven on the rim. {tribute} has spent the day descending from one to the other.',
                 escapeText: '{tribute} lies up in the shade of the slot through the middle of the day at {zone} and walks the bench in the cool.',
-                cause: 'Died of heat on the bench',
+                cause: 'Died of heat on the bench', code: 'hazard',
                 dodgeStat: 'endurance',
                 dodgeAlt: 'intelligence',
                 damage: 22,
@@ -12891,7 +12891,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The condors over {zone} have circled {tribute} for two days, lower each day. Today they are landing on the rocks ahead of them.',
                 escapeText: '{tribute} gets up, shouts at the condors over {zone} until they lift, and makes a point of walking briskly for the rest of the day.',
-                cause: 'Taken by the condors',
+                cause: 'Taken by the condors', code: 'hazard',
                 dodgeStat: 'willpower',
                 dodgeAlt: 'endurance',
                 damage: 26,
@@ -12915,7 +12915,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // bottom and shade at the top and no way to hold both.
                 text: 'The butte at {zone} is reached by a saddle a metre wide. {tribute} is on top of it with everything they own and an empty canteen.',
                 escapeText: '{tribute} takes one look at the butte at {zone}, works out it is a place to be trapped rather than a place to be safe, and stays off it.',
-                cause: 'Died of thirst on the butte',
+                cause: 'Died of thirst on the butte', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'endurance',
                 damage: 22,
@@ -12946,7 +12946,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The river at the bottom of {zone} runs a hundred metres wide at the speed of a running horse. It is the only drink in the canyon and {tribute} goes down the bank to it.',
                 escapeText: '{tribute} fills at the river at {zone} from an eddy behind a boulder with a line on their wrist and never stands in the main flow.',
-                cause: 'Taken by the river',
+                cause: 'Taken by the river', code: 'hazard',
                 dodgeStat: 'endurance',
                 dodgeAlt: 'agility',
                 damage: 38,
@@ -12957,7 +12957,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The rim pinyon at {zone} is the coolest ground in the arena and a mile of vertical above the nearest water. {tribute} has not drunk since the morning before last.',
                 escapeText: '{tribute} makes the round trip from the rim pinyon at {zone} down to the seeps and back in one night, which nearly kills them and does not.',
-                cause: 'Died of thirst on the rim',
+                cause: 'Died of thirst on the rim', code: 'hazard',
                 dodgeStat: 'endurance',
                 dodgeAlt: 'willpower',
                 damage: 20,
@@ -13061,7 +13061,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // The premise, read aloud.
                 text: '{tribute} reads the keeper\'s schedule at {zone}: seven releases, seven dates, printed and framed. The last line says Quarantine and lists no contents.',
                 escapeText: '{tribute} reads the schedule at {zone}, copies it onto their arm, and decides that a timetable is a gift.',
-                cause: 'Taken at feeding time',
+                cause: 'Taken at feeding time', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 2,
                 sanity: 12,
@@ -13071,7 +13071,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} rounds a corner in {zone} and finds an enclosure door standing open. The schedule gives it four more days.',
                 escapeText: '{tribute} sees the open door in {zone} and is moving away from it before their mind finishes the sentence.',
-                cause: 'Constricted',
+                cause: 'Constricted', code: 'hazard',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 16,
                 bleeding: true,
@@ -13080,7 +13080,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The PA over {zone} plays the recorded feeding-time announcement for the two o\'clock show. {tribute} cannot find a way to stop it.',
                 escapeText: '{tribute} uses the feeding-time recording over {zone} as cover and crosses open ground under the noise.',
-                cause: 'Taken at feeding time',
+                cause: 'Taken at feeding time', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 damage: 4,
                 sanity: 14,
@@ -13096,7 +13096,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'A released animal crosses {zone} thirty feet from {tribute}, looks straight at them, and keeps walking.',
                 escapeText: '{tribute} freezes as something big crosses {zone}, and it passes without ever once looking at them.',
-                cause: 'Taken at feeding time',
+                cause: 'Taken at feeding time', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 damage: 2,
                 sanity: 12,
@@ -13116,7 +13116,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} shelters under an interpretive sign in {zone} and reads it: range, diet, hunting behaviour and a map of its preferred dens. It was released yesterday.',
                 escapeText: '{tribute} reads the signage in {zone} and treats it as intelligence: diet, habits, and everywhere not to sleep.',
-                cause: 'Taken at feeding time',
+                cause: 'Taken at feeding time', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 3,
                 sanity: 10,
@@ -13125,7 +13125,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // The marquee: the keeper's own record of the countdown.
                 text: '{tribute} finds the keeper\'s logbook in {zone}. The early entries are feed weights and vet notes. The last one reads: they know the schedule better than we do.',
                 escapeText: '{tribute} finds the keeper\'s logbook in {zone} and stops reading at the page where the handwriting changes.',
-                cause: 'Whatever was in Quarantine',
+                cause: 'Whatever was in Quarantine', code: 'hazard',
                 damage: 2,
                 sanity: 16,
                 id: 'menagerie-logbook',
@@ -13134,7 +13134,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The moat around the enclosure in {zone} has drained to knee depth. {tribute} wades it.',
                 escapeText: '{tribute} looks at the drained moat in {zone}, does the arithmetic in both directions, and crosses fast.',
-                cause: 'Trampled',
+                cause: 'Trampled', code: 'hazard',
                 dodgeStat: 'endurance', dodgeAlt: 'strength',
                 damage: 12,
                 fatigue: 15,
@@ -13150,7 +13150,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} sees a shape moving between the enclosures in {zone}. The schedule has nothing due out for four days and has been right about everything so far.',
                 escapeText: '{tribute} sees the shape in {zone}, checks the dates on the board, and refuses to believe their eyes long enough to leave.',
-                cause: 'Taken at feeding time',
+                cause: 'Taken at feeding time', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'stealth',
                 damage: 22,
@@ -13161,7 +13161,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} follows {zone} to the perimeter fence. Beyond the chain-link is raked earth with no tracks on it, and the floodlights face inward.',
                 escapeText: '{tribute} walks the fence line of {zone}, learns what they needed to know about the outside, and keeps it to themselves.',
-                cause: 'Whatever was in Quarantine',
+                cause: 'Whatever was in Quarantine', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 4,
                 sanity: 14,
@@ -13172,7 +13172,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // accurate. Nothing here is a weapon; the animals are.
                 text: 'The reptile house in {zone} is on the schedule for this hour. {tribute} is still inside it.',
                 escapeText: '{tribute} reads the keeper’s schedule at the gate of {zone}, works out what is due, and is out of the reptile house with twenty minutes to spare.',
-                cause: 'Killed at the reptile house',
+                cause: 'Killed at the reptile house', code: 'poison',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 dodgeDifficulty: 7,
@@ -13184,7 +13184,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Twelve tonnes of herd comes through the plaza at {zone} at a run. The plaza is not wide enough for it and {tribute} both.',
                 escapeText: '{tribute} gets behind the ticket kiosk in {zone} and lets the herd go through the plaza without them in it.',
-                cause: 'Trampled by the herd',
+                cause: 'Trampled by the herd', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'stealth',
                 damage: 44,
@@ -13195,7 +13195,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The bear moat at {zone} was built to hold from the inner side. {tribute} is on the inner side of it.',
                 escapeText: '{tribute} works out which side of the bear moat at {zone} the wall is designed for and stays on the other one.',
-                cause: 'Killed in the bear moat',
+                cause: 'Killed in the bear moat', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'strength',
                 damage: 42,
@@ -13217,7 +13217,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The primate wood in {zone} goes completely quiet. The troop comes down out of it on three sides of {tribute}.',
                 escapeText: '{tribute} hears the primate wood at {zone} go quiet and is out of the trees before the troop finishes surrounding them.',
-                cause: 'Taken by the troop',
+                cause: 'Taken by the troop', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'willpower',
                 damage: 36,
@@ -13253,7 +13253,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The aquarium at {zone} lost power years ago and its tanks are green to the glass. {tribute} walks under the big tank, which has held pressure for decades.',
                 escapeText: '{tribute} works the aquarium at {zone} along the back-of-house corridor rather than the viewing gallery.',
-                cause: 'Killed in the aquarium',
+                cause: 'Killed in the aquarium', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 damage: 38,
@@ -13264,7 +13264,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The mesh is down on the south side of the aviary at {zone} and everything in it has been out and hungry for six days. {tribute} walks in under the dome.',
                 escapeText: '{tribute} works round the outside of the aviary dome at {zone} rather than through it, and nothing comes down.',
-                cause: 'Killed in the aviary',
+                cause: 'Killed in the aviary', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 damage: 32,
@@ -13274,7 +13274,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Nothing in this park was made to cut anybody. {tribute} has spent a week looking and is still carrying a pry bar.',
                 escapeText: '{tribute} gives up on arming themselves in the Menagerie and works instead on knowing the schedule better than anybody else, which is the real weapon here.',
-                cause: 'Killed empty-handed',
+                cause: 'Killed empty-handed', code: 'hazard',
                 dodgeStat: 'intelligence',
                 dodgeAlt: 'agility',
                 damage: 34,
@@ -13284,7 +13284,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The elephant paddock at {zone} is two hectares of open ground with a ha-ha instead of a fence. Nothing shows until it is over the lip and {tribute} is in the middle of it.',
                 escapeText: '{tribute} crosses the elephant paddock at {zone} along the ha-ha itself, below the line of the ground, and is never once skylined in it.',
-                cause: 'Trampled in the paddock',
+                cause: 'Trampled in the paddock', code: 'hazard',
                 dodgeStat: 'stealth',
                 dodgeAlt: 'agility',
                 damage: 44,
@@ -13386,7 +13386,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} follows a breadcrumb trail in {zone} backward for two hours without reaching the start of it.',
                 escapeText: '{tribute} finds breadcrumbs in {zone} and steps over the line without following it in either direction.',
-                cause: 'Ate what was offered',
+                cause: 'Ate what was offered', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 4,
                 sanity: 14,
@@ -13395,7 +13395,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'There is a cottage in {zone} that was not there yesterday, and {tribute} has slept in sight of the spot twice. The garden is mature and the path to the door is worn.',
                 escapeText: '{tribute} notes the new cottage in {zone}, notes that they are not going to think about it, and moves on.',
-                cause: 'Took a bargain',
+                cause: 'Took a bargain', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 2,
                 sanity: 16,
@@ -13403,7 +13403,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'Smoke stands straight up from a chimney in {zone} in moving air. {tribute} watches it for an hour and nobody comes out.',
                 escapeText: '{tribute} sees the chimney smoke over {zone} and gives the house the wide berth every story recommends.',
-                cause: 'Took a bargain',
+                cause: 'Took a bargain', code: 'asphyxiation',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 damage: 3,
                 sanity: 10,
@@ -13411,7 +13411,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} drops a stone down the well in {zone} to sound the depth, and something at the bottom says, quite clearly: ask.',
                 escapeText: '{tribute} leans over the well in {zone}, hears the water shift before they speak, and walks away with the question unasked.',
-                cause: 'Answered the well',
+                cause: 'Answered the well', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 dodgeDifficulty: 7,
                 damage: 6,
@@ -13421,7 +13421,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The wolf steps onto the track in front of {tribute} in {zone}, looks at them, and steps aside to let them past.',
                 escapeText: '{tribute} sees the wolf ahead in {zone} and leaves the track before it can decide anything about them.',
-                cause: 'Went into the bramble',
+                cause: 'Went into the bramble', code: 'hazard',
                 dodgeStat: 'stealth', dodgeAlt: 'agility',
                 damage: 2,
                 sanity: 15,
@@ -13430,7 +13430,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} brushes a spindle in the dark of {zone}, one of dozens set at hand height through the room. The prick burns well past what a needle should.',
                 escapeText: '{tribute} sees the light catch a needle point in {zone} and keeps their hands to themselves through the whole house.',
-                cause: 'Took a bargain',
+                cause: 'Took a bargain', code: 'burns',
                 dodgeStat: 'agility', dodgeAlt: 'endurance',
                 damage: 14,
                 poisoned: true,
@@ -13440,7 +13440,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} walks the Field of Stones through {zone} and reads them. Each carries one first name. Several stones are blank.',
                 escapeText: '{tribute} crosses the stones in {zone} without reading a single one, eyes on the far hedge the whole way.',
-                cause: 'Took a bargain',
+                cause: 'Took a bargain', code: 'hazard',
                 dodgeStat: 'endurance', dodgeAlt: 'strength',
                 damage: 3,
                 sanity: 18,
@@ -13459,7 +13459,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'There is a name carved at eye height into a door in {zone}, weathered grey. It is {tribute}\'s name and the cut is older than they are.',
                 escapeText: '{tribute} finds their own name carved on a door in {zone} and does not open it, which is the only move that wins.',
-                cause: 'Took a bargain',
+                cause: 'Took a bargain', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 dodgeDifficulty: 7,
                 damage: 5,
@@ -13479,7 +13479,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'There is a mirror in the Spinning House reach of {zone}. {tribute} says nothing to it and it answers.',
                 escapeText: '{tribute} turns the mirror in {zone} to the wall without once looking into it.',
-                cause: 'Took a bargain',
+                cause: 'Took a bargain', code: 'hazard',
                 dodgeStat: 'intelligence', dodgeAlt: 'willpower',
                 damage: 4,
                 sanity: 20,
@@ -13488,7 +13488,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The light in {zone} changes colour without getting dimmer, and every path {tribute} had marked is somewhere else.',
                 escapeText: '{tribute} feels {zone} make up its mind about them, and finds it has decided, for now, to be generous.',
-                cause: 'Went into the bramble',
+                cause: 'Went into the bramble', code: 'hazard',
                 dodgeStat: 'charisma', dodgeAlt: 'intelligence',
                 damage: 6,
                 sanity: 16,
@@ -13500,7 +13500,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // nothing in this wood heals a wound.
                 text: 'The gingerbread house in {zone} is warm inside and the table is laid and there is a chair pulled out, and {tribute} eats what is on the plate.',
                 escapeText: '{tribute} stands in the doorway of the gingerbread house in {zone}, looks at the laid table for a long moment, and shuts the door.',
-                cause: 'Ate what was on the plate',
+                cause: 'Ate what was on the plate', code: 'poison',
                 dodgeStat: 'willpower',
                 dodgeAlt: 'intelligence',
                 dodgeDifficulty: 7,
@@ -13513,7 +13513,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} calls down the well in {zone}. What answers is not an echo and it asks a question.',
                 escapeText: '{tribute} calls down the well in {zone}, hears the echo come back exactly as an echo should, and draws their water.',
-                cause: 'Went down the well',
+                cause: 'Went down the well', code: 'hazard',
                 dodgeStat: 'willpower', dodgeAlt: 'endurance',
                 dodgeDifficulty: 8,
                 damage: 24,
@@ -13524,7 +13524,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The spinning house in {zone} is turning slowly when {tribute} arrives and faster once they are inside. The door is on the far side now.',
                 escapeText: '{tribute} watches the spinning house in {zone} for one full turn, times the door, and does not go in at all.',
-                cause: 'Lost in the spinning house',
+                cause: 'Lost in the spinning house', code: 'hazard',
                 dodgeStat: 'agility',
                 dodgeAlt: 'intelligence',
                 damage: 28,
@@ -13535,7 +13535,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The bramble around {zone} opens ahead of {tribute} and closes behind them, leaving one way on.',
                 escapeText: '{tribute} cuts a way out through the side of the bramble corridor in {zone} rather than following it to wherever it wanted them.',
-                cause: 'Taken by the Bramble',
+                cause: 'Taken by the Bramble', code: 'hazard',
                 dodgeStat: 'strength',
                 dodgeAlt: 'willpower',
                 damage: 32,
@@ -13575,7 +13575,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 // of them costs something; nothing in this wood heals a wound.
                 text: 'The path through {zone} is swept and edged and has run straight for two hours. {tribute} has passed the same milestone twice.',
                 escapeText: '{tribute} leaves the swept path through {zone} entirely and goes through the standing trees, which is slower, and gets somewhere.',
-                cause: 'Never left the Path',
+                cause: 'Never left the Path', code: 'hazard',
                 dodgeStat: 'willpower',
                 dodgeAlt: 'intelligence',
                 damage: 12,
@@ -13586,7 +13586,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} leans over the millpond at {zone} to drink. The reflection is half a second behind them the whole time.',
                 escapeText: '{tribute} scoops from the millpond at {zone} without looking into it, drinks with their back to the water, and fills their bottle blind.',
-                cause: 'Taken in the millpond',
+                cause: 'Taken in the millpond', code: 'hazard',
                 dodgeStat: 'willpower',
                 dodgeAlt: 'agility',
                 dodgeDifficulty: 8,
@@ -13598,7 +13598,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The sisters in the deep wood of {zone} ask {tribute} three questions in turn and wait for the answers. The third is about somebody at home.',
                 escapeText: '{tribute} answers none of the three questions the sisters put to them in {zone} and keeps walking while they are still asking.',
-                cause: 'Answered the Sisters',
+                cause: 'Answered the Sisters', code: 'hazard',
                 dodgeStat: 'willpower', dodgeAlt: 'endurance',
                 dodgeDifficulty: 7,
                 sanity: 32,
@@ -13619,7 +13619,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: 'The ravens over {zone} have followed {tribute} since the second day. Today there are eleven of them.',
                 escapeText: '{tribute} counts the ravens over {zone}, gets the same number as yesterday, and finds that it helps.',
-                cause: 'Taken by the ravens',
+                cause: 'Taken by the ravens', code: 'hazard',
                 dodgeStat: 'willpower',
                 dodgeAlt: 'agility',
                 damage: 26,
@@ -13720,7 +13720,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         id: 'u-a7-bad-water-desperate',
         text: 'There is water in {zone} and {tribute} has not had any for two days. They know what the film on it means. They drink anyway.',
         escapeText: '{tribute} looks at the water in {zone} for a long moment, and then keeps walking, which costs them more than it sounds.',
-        cause: 'Drank from standing water they knew was bad',
+        cause: 'Drank from standing water they knew was bad', code: 'poison',
         dodgeStat: 'willpower', dodgeAlt: 'intelligence', dodgeDifficulty: 7,
         damage: 18, poisoned: true, quench: 25, weight: 1,
         // Placed on the measured distribution rather than above it: thirst
@@ -13753,7 +13753,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         id: 'u-a7-covering-the-retreat',
         text: 'Somebody has to be last out of {zone} and {tribute} does not make anybody else decide who.',
         escapeText: '{tribute} is last out of {zone} and gets out of it, which is not the same as having been safe.',
-        cause: 'Died covering a retreat',
+        cause: 'Died covering a retreat', code: 'hazard',
         dodgeStat: 'agility', dodgeAlt: 'endurance', dodgeDifficulty: 7,
         damage: 38, bleeding: true, weight: 1, witnesses: true,
         requires: { alone: false, stance: ['Defensive', 'Fortified', 'Nursing', 'Tending'] },
@@ -13762,7 +13762,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         id: 'u-a7-went-back-for-them',
         text: '{tribute} is out of {zone} and clear, and then {tribute} turns round and goes back in, because of who is still in there.',
         escapeText: '{tribute} goes back into {zone} for somebody and comes out of it again with them, which is the rarest thing in this arena.',
-        cause: 'Went back for somebody and did not come out',
+        cause: 'Went back for somebody and did not come out', code: 'hazard',
         dodgeStat: 'agility', dodgeAlt: 'willpower', dodgeDifficulty: 8,
         damage: 42, bleeding: true, weight: 1, witnesses: true,
         requires: { alone: false },
@@ -13782,7 +13782,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         id: 'u-a7-body-simply-stopped',
         text: 'There is nothing left of {tribute} to spend. In {zone}, without any particular drama, the body stops taking instructions.',
         escapeText: '{tribute} sits down in {zone} because the alternative was falling down, and gets up again an hour later.',
-        cause: 'The body simply stopped',
+        cause: 'The body simply stopped', code: 'hazard',
         dodgeStat: 'endurance', dodgeAlt: 'willpower', dodgeDifficulty: 8,
         damage: 45, fatigue: 25, weight: 1.5,
         // `Wasted` is 0.1% of live samples — a gate nothing reaches. `Lean`
@@ -13794,7 +13794,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         id: 'u-a7-heart-on-the-climb',
         text: '{tribute} is most of the way up the ground in {zone} when their chest decides it has finished with this.',
         escapeText: '{tribute} stops halfway up in {zone}, hangs there until the hammering stops, and goes on more slowly.',
-        cause: 'Heart gave out on the climb',
+        cause: 'Heart gave out on the climb', code: 'hazard',
         dodgeStat: 'endurance', dodgeAlt: 'strength', dodgeDifficulty: 8,
         damage: 40, fatigue: 20, weight: 1.5,
         requires: { elevationOrChoke: true, fatigueAbove: 40 },
@@ -13803,7 +13803,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         id: 'u-a7-seizure-at-the-floor',
         text: 'Whatever has been building behind {tribute}\'s eyes arrives in {zone} all at once, and they go down in it.',
         escapeText: 'Something goes through {tribute} in {zone} like current and lets go of them again, and they do not know what it was.',
-        cause: 'Seizure',
+        cause: 'Seizure', code: 'hazard',
         dodgeStat: 'willpower', dodgeAlt: 'endurance', dodgeDifficulty: 8,
         damage: 35, sanity: 10, weight: 1,
         requires: { sanityBand: 'gone' },
@@ -13812,7 +13812,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         id: 'u-a7-fever-nobody-could-name',
         text: 'The thing in {tribute}\'s blood in {zone} has no name anybody here would know and it is winning.',
         escapeText: 'The fever in {tribute} breaks in {zone}, on its own, for no reason they will ever learn.',
-        cause: 'Died of a fever nobody could name',
+        cause: 'Died of a fever nobody could name', code: 'hazard',
         dodgeStat: 'endurance', dodgeAlt: 'willpower', dodgeDifficulty: 8,
         damage: 34, infected: true, fatigue: 20, weight: 1,
         requires: { wounded: true, alone: true },
@@ -13821,7 +13821,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         id: 'u-a7-starved-within-reach',
         text: 'There is food in {zone}. {tribute} has walked past it twice. They are not seeing it any more.',
         escapeText: '{tribute} makes themselves look properly in {zone}, the way they would have on day one, and there it is.',
-        cause: 'Starved within reach of food',
+        cause: 'Starved within reach of food', code: 'starvation',
         dodgeStat: 'intelligence', dodgeAlt: 'willpower', dodgeDifficulty: 7,
         damage: 32, hunger: 15, weight: 1,
         requires: { hungerAbove: 48 },
@@ -13832,7 +13832,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         id: 'u-a7-rope-parted',
         text: 'The rope {tribute} has been trusting all week parts in {zone}, at the worst possible height, with a sound like a word.',
         escapeText: 'The rope goes in {zone} and {tribute} is already holding something else with the other hand.',
-        cause: 'Rope parted on the descent',
+        cause: 'Rope parted on the descent', code: 'hazard',
         dodgeStat: 'agility', dodgeAlt: 'strength', dodgeDifficulty: 7,
         damage: 40, bleeding: true, weight: 1,
         requires: { elevationOrChoke: true, carrying: 'utility' },
@@ -13841,7 +13841,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         id: 'u-a7-weapon-broke',
         text: 'The blade {tribute} is holding in {zone} has been going since the horn. It picks the exchange it matters in to stop being a blade.',
         escapeText: '{tribute} feels the blade go loose in {zone} and gets out of the exchange before it matters.',
-        cause: 'Weapon broke in the wrong exchange',
+        cause: 'Weapon broke in the wrong exchange', code: 'hazard',
         dodgeStat: 'agility', dodgeAlt: 'strength', dodgeDifficulty: 7,
         damage: 30, bleeding: true, weight: 1,
         requires: { carrying: 'weapon' },
@@ -13889,7 +13889,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         id: 'u-a7-walked-off-in-the-dark',
         text: '{tribute} is moving in {zone} after dark on legs that stopped reporting back some hours ago, and the ground ends.',
         escapeText: '{tribute} finds the edge in {zone} with a foot rather than with all of themselves, and sits down where they are until light.',
-        cause: 'Walked off an edge in the dark',
+        cause: 'Walked off an edge in the dark', code: 'hazard',
         dodgeStat: 'agility', dodgeAlt: 'intelligence', dodgeDifficulty: 8,
         damage: 44, bleeding: true, weight: 1.5,
         requires: { time: 'night', elevationOrChoke: true, fatigueAbove: 30 },
@@ -13898,7 +13898,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         id: 'u-a7-own-trap-in-the-dark',
         text: '{tribute} comes back to {zone} in the dark and forgets, for four steps, what they spent yesterday afternoon doing to it.',
         escapeText: '{tribute} remembers their own trap line in {zone} a half-step before it remembers them.',
-        cause: 'Caught in their own trap in the dark',
+        cause: 'Caught in their own trap in the dark', code: 'hazard',
         dodgeStat: 'intelligence', dodgeAlt: 'agility', dodgeDifficulty: 7,
         damage: 34, bleeding: true, weight: 1,
         requires: { time: 'night' },
@@ -14016,7 +14016,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         weight: 0.5,
         text: 'The ledge {tribute} is working along in {zone} gives under their weight. It is nine metres onto rock.',
         escapeText: '{tribute} feels the ledge in {zone} start to go and is flat on their face on solid ground before it finishes going.',
-        cause: 'Fell',
+        cause: 'Fell', code: 'hazard',
         dodgeStat: 'agility',
         dodgeAlt: 'intelligence',
         dodgeDifficulty: 7,
@@ -14043,7 +14043,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         weight: 0.5,
         text: '{tribute} lies down in {zone} for an hour. The cold comes up through the ground and they do not wake up.',
         escapeText: '{tribute} wakes in {zone} shaking hard enough that they cannot hold anything for some minutes.',
-        cause: 'Died in their sleep',
+        cause: 'Died in their sleep', code: 'hazard',
         dodgeStat: 'endurance', dodgeAlt: 'strength',
         dodgeDifficulty: 8,
         damage: 30,
@@ -14106,7 +14106,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         weight: 0.5,
         text: '{tribute} is carrying more than they can run with. Something in {zone} makes them run.',
         escapeText: '{tribute} drops half of what they are carrying in {zone} and finds they can move again.',
-        cause: 'Caught carrying too much',
+        cause: 'Caught carrying too much', code: 'hazard',
         dodgeStat: 'strength',
         dodgeAlt: 'endurance',
         dodgeDifficulty: 7,
@@ -14201,7 +14201,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
     {
         text: 'A swarm of stinging insects finds {tribute} in {zone} and follows them for four hundred metres.',
         escapeText: '{tribute} gets downwind of the swarm in {zone} before it finds them properly.',
-        cause: 'Stung to death by a swarm',
+        cause: 'Stung to death by a swarm', code: 'hazard',
         dodgeStat: 'agility',
         dodgeAlt: 'intelligence',
         damage: 10,
@@ -14211,7 +14211,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
     {
         text: 'The ground gives way to old, buried wire in {zone} and {tribute} is caught in it before they see it.',
         escapeText: '{tribute} spots the wire snarled through {zone} and steps wide of it.',
-        cause: 'Caught in buried wire',
+        cause: 'Caught in buried wire', code: 'hazard',
         dodgeStat: 'intelligence', dodgeAlt: 'willpower',
         damage: 8,
         bleeding: true,
@@ -14242,7 +14242,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
     {
         text: 'A rockslide comes down across {zone} with {tribute} in the middle of the crossing.',
         escapeText: '{tribute} hears the slope shift in {zone} and clears it in time.',
-        cause: 'Buried in a rockslide',
+        cause: 'Buried in a rockslide', code: 'hazard',
         dodgeStat: 'agility', dodgeAlt: 'endurance',
         damage: 18,
         bleeding: true,
@@ -14311,7 +14311,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
     {
         text: 'The high ground in {zone} is the only high ground, and the storm finds {tribute} standing on it.',
         escapeText: '{tribute} gets off the ridge in {zone} before the next one comes down.',
-        cause: 'Struck by lightning',
+        cause: 'Struck by lightning', code: 'burns',
         dodgeStat: 'intelligence', dodgeAlt: 'willpower',
         damage: 45,
         burned: true,
@@ -14348,7 +14348,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         id: 'the-drop',
         text: 'The ledge {tribute} is working along in {zone} narrows to half a boot, with nothing under the outside edge.',
         escapeText: '{tribute} gets a hand to the rock in {zone} and stops with half of one boot over the drop.',
-        cause: 'Fell',
+        cause: 'Fell', code: 'hazard',
         dodgeStat: 'agility',
         dodgeAlt: 'strength',
         dodgeDifficulty: 7,
@@ -14379,7 +14379,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         id: 'the-wrong-berry',
         text: '{tribute} eats something in {zone} they have never seen before, and within a minute their throat has decided about it.',
         escapeText: '{tribute} chews something unfamiliar in {zone}, thinks better of it, and spits it into the dirt.',
-        cause: 'Died of an allergic reaction',
+        cause: 'Died of an allergic reaction', code: 'hazard',
         dodgeStat: 'intelligence',
         dodgeAlt: 'endurance',
         dodgeDifficulty: 9,
@@ -14394,7 +14394,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         id: 'the-wrong-berry-scavenging',
         text: 'There is nothing left in {zone} that {tribute} recognises, so they eat something they do not, and it does not agree with the decision.',
         escapeText: '{tribute} tests an unfamiliar thing from {zone} on their lip first, the way somebody taught them, and throws it away.',
-        cause: 'Died of an allergic reaction',
+        cause: 'Died of an allergic reaction', code: 'hazard',
         dodgeStat: 'intelligence',
         dodgeAlt: 'endurance',
         dodgeDifficulty: 9,
@@ -14409,7 +14409,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         id: 'static-charge',
         text: 'Everything metal {tribute} is carrying through {zone} starts to hum, and the hair on their arms stands straight up, and there is no time at all between that and the strike.',
         escapeText: '{tribute} drops everything metal in {zone} and gets flat, and the strike goes into the ground eight metres away.',
-        cause: 'Struck',
+        cause: 'Struck', code: 'burns',
         dodgeStat: 'intelligence',
         dodgeAlt: 'agility',
         dodgeDifficulty: 9,
@@ -14567,32 +14567,32 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
     {
         text: '{tribute}, Bloodthirsty, hears a fight two zones over and runs toward it through ground they never checked.',
         escapeText: '{tribute} runs toward the sound from {zone} and, for once, looks where they are putting their feet.',
-        cause: 'Ran into the arena\'s own trap', dodgeStat: 'agility', dodgeAlt: 'endurance', damage: 28, bleeding: true, requires: { trait: 'Bloodthirsty', minSurvivors: 4 },
+        cause: 'Ran into the arena\'s own trap', code: 'hazard', dodgeStat: 'agility', dodgeAlt: 'endurance', damage: 28, bleeding: true, requires: { trait: 'Bloodthirsty', minSurvivors: 4 },
     },
     {
         text: '{tribute} has been Fortified in {zone} for days, and a position that is not moved from is a position the arena has had time to work on.',
         escapeText: '{tribute} shifts camp fifty metres in {zone} for no reason they can name, and the thing that came for the old camp finds it empty.',
-        cause: 'Dug in too long', dodgeStat: 'intelligence', dodgeAlt: 'willpower', damage: 30, requires: { stance: ['Fortified'] },
+        cause: 'Dug in too long', code: 'hazard', dodgeStat: 'intelligence', dodgeAlt: 'willpower', damage: 30, requires: { stance: ['Fortified'] },
     },
     {
         text: '{tribute}, Skittish, breaks cover in {zone} at a sound that was nothing, and the breaking cover was not nothing.',
         escapeText: '{tribute} flinches at the sound in {zone} and, this once, stays down.',
-        cause: 'Killed breaking cover', dodgeStat: 'willpower', dodgeAlt: 'endurance', damage: 24, bleeding: true, requires: { trait: 'Skittish', minSurvivors: 4 },
+        cause: 'Killed breaking cover', code: 'hazard', dodgeStat: 'willpower', dodgeAlt: 'endurance', damage: 24, bleeding: true, requires: { trait: 'Skittish', minSurvivors: 4 },
     },
     {
         text: 'The voices {tribute} has been hearing in {zone} agree on a direction, and it is the direction of the drop.',
         escapeText: '{tribute} hears the voices in {zone} tell them where to walk and walks the other way.',
-        cause: 'Walked where the voices said', dodgeStat: 'willpower', dodgeAlt: 'endurance', dodgeDifficulty: 7, damage: 40, requires: { sanityBand: 'unravelling', elevationOrChoke: true },
+        cause: 'Walked where the voices said', code: 'hazard', dodgeStat: 'willpower', dodgeAlt: 'endurance', dodgeDifficulty: 7, damage: 40, requires: { sanityBand: 'unravelling', elevationOrChoke: true },
     },
     {
         text: '{tribute}, Stoic, does not mention the wound in {zone} to anyone, including themselves, for three days.',
         escapeText: '{tribute} finally looks at the wound in {zone} and does something about it.',
-        cause: 'Died of a wound they would not admit to', dodgeStat: 'intelligence', dodgeAlt: 'willpower', damage: 16, infected: true, requires: { trait: 'Stoic' },
+        cause: 'Died of a wound they would not admit to', code: 'hazard', dodgeStat: 'intelligence', dodgeAlt: 'willpower', damage: 16, infected: true, requires: { trait: 'Stoic' },
     },
     {
         text: '{tribute}, scavenging, turns over the body in {zone} that everybody else walked around, and finds out why they walked around it.',
         escapeText: '{tribute} sees the wire under the body in {zone} before their hand closes on the pack.',
-        cause: 'Killed at a rigged corpse', dodgeStat: 'intelligence', dodgeAlt: 'willpower', damage: 34, bleeding: true, requires: { stance: ['Scavenging'] },
+        cause: 'Killed at a rigged corpse', code: 'hazard', dodgeStat: 'intelligence', dodgeAlt: 'willpower', damage: 34, bleeding: true, requires: { stance: ['Scavenging'] },
     },
     {
         text: '{tribute}, desperate, drinks from the first water they find in {zone} without looking at it.',
@@ -14701,17 +14701,17 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
     {
         text: 'The wound {tribute} thought had closed opens again in {zone} under the weight of their pack. They have nothing left to bind it with.',
         escapeText: '{tribute} feels the old wound give in {zone} and gets the weight off it in time.',
-        cause: 'An old wound opened again', dodgeStat: 'endurance', dodgeAlt: 'strength', damage: 30, bleeding: true, weight: 0.5, requires: { trait: 'Bloodied' },
+        cause: 'An old wound opened again', code: 'hazard', dodgeStat: 'endurance', dodgeAlt: 'strength', damage: 30, bleeding: true, weight: 0.5, requires: { trait: 'Bloodied' },
     },
     {
         text: '{tribute} has not slept properly in days. On the fourth night in {zone} they cannot tell afterwards whether they slept at all.',
         escapeText: '{tribute} gets one hour in {zone}, uninterrupted.',
-        cause: 'Stopped being able to tell sleep from waking', dodgeStat: 'willpower', dodgeAlt: 'endurance', damage: 24, sanity: -8, weight: 0.5, requires: { time: 'night' },
+        cause: 'Stopped being able to tell sleep from waking', code: 'hazard', dodgeStat: 'willpower', dodgeAlt: 'endurance', damage: 24, sanity: -8, weight: 0.5, requires: { time: 'night' },
     },
     {
         text: '{tribute} takes everything medical they are carrying at once in {zone}.',
         escapeText: '{tribute} counts out what they are carrying in {zone} and puts most of it back.',
-        cause: 'Took too much of the cure', dodgeStat: 'intelligence', dodgeAlt: 'willpower', damage: 26, poisoned: true, weight: 0.5, requires: { sanityBand: 'unravelling' },
+        cause: 'Took too much of the cure', code: 'poison', dodgeStat: 'intelligence', dodgeAlt: 'willpower', damage: 26, poisoned: true, weight: 0.5, requires: { sanityBand: 'unravelling' },
     },
     // ---- and two more boons, to keep the ratio where it was --------------
     {
@@ -14735,7 +14735,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         id: 'universal-the-wrong-camp',
         text: '{tribute} walks into somebody else\'s camp in {zone} in the dark and has about four seconds to be somebody worth not killing. They are not.',
         escapeText: '{tribute} walks into somebody else\'s camp in {zone} in the dark, puts their hands up, and says something that buys them the walk back out.',
-        cause: 'Killed walking into the wrong camp',
+        cause: 'Killed walking into the wrong camp', code: 'hazard',
         dodgeStat: 'charisma', dodgeAlt: 'agility', dodgeDifficulty: 6,
         damage: 22, bleeding: true, weight: 0.5, requires: { time: 'night', minSurvivors: 6 },
     },
@@ -14743,7 +14743,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         id: 'universal-the-shared-fire',
         text: 'There is a fire in {zone} that is not {tribute}\'s, and somebody at it who could go either way. {tribute} says the wrong thing.',
         escapeText: 'There is a fire in {zone} that is not {tribute}\'s, and somebody at it who could go either way. {tribute} says the right thing, and eats.',
-        cause: 'Killed at a stranger\'s fire',
+        cause: 'Killed at a stranger\'s fire', code: 'hazard',
         dodgeStat: 'charisma', dodgeAlt: 'intelligence', dodgeDifficulty: 5,
         damage: 14, weight: 0.5, requires: { time: 'night', minSurvivors: 5 },
         feed: 12,
@@ -14752,7 +14752,7 @@ export const UNIVERSAL_EVENTS: ArenaEventDef[] = [
         id: 'universal-the-sponsor-cut',
         text: 'A parachute comes down in {zone} and it is not for {tribute}, and the person it is for is standing right there. {tribute} argues the point.',
         escapeText: 'A parachute comes down in {zone} and {tribute} talks the person it was meant for into splitting it.',
-        cause: 'Killed over a parachute',
+        cause: 'Killed over a parachute', code: 'hazard',
         dodgeStat: 'charisma', dodgeAlt: 'intelligence', dodgeDifficulty: 6,
         damage: 16, weight: 0.4, feed: 10, quench: 8, requires: { minSurvivors: 4 },
     },
@@ -14877,6 +14877,9 @@ function stampEventIds(arenaId: string, events: ArenaEventDef[]) {
 
 for (const [id, pack] of Object.entries(ARENA_FLAVOR)) stampEventIds(id, pack.events);
 stampEventIds('generic', GENERIC_ARENA_FLAVOR.events);
+// AUDIT-11 §9/§10: the new universal causes and beats, folded in before the
+// ids are stamped so they get derived ids like every other shared event.
+UNIVERSAL_EVENTS.push(...UNIVERSAL_EVENTS_GROUP6);
 stampEventIds('universal', UNIVERSAL_EVENTS);
 
 export function arenaFlavor(arenaId: string, arena?: Arena): ArenaFlavor {

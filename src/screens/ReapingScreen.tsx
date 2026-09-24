@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { ConfirmButton } from '../components/ConfirmButton';
 import { Hint } from '../components/Hint';
 import { GameState, Tribute } from '../models/types';
 import { RunProfileCard } from '../components/RunProfileCard';
@@ -212,9 +213,11 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
 
             <div className="flex justify-center gap-2">
                 <Hint text="Draw a different cast from a new sub-seed">
-                    <button onClick={onReroll} className="btn">
+                    {/* AUDIT-11 §4: rerolling throws away the cast, any coaching
+                        and any rigging, so it takes two presses. */}
+                    <ConfirmButton onConfirm={onReroll} className="btn" confirmLabel="Discard this cast? Press again">
                         <Shuffle className="w-4 h-4" /> Reroll cast
-                    </button>
+                    </ConfirmButton>
                 </Hint>
                 <button onClick={onConfirm} className="btn btn-primary">
                     Confirm tributes <FastForward className="w-4 h-4" />

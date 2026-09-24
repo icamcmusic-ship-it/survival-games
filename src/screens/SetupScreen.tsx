@@ -9,6 +9,8 @@ import type { SlotSummary } from '../store/gameStore';
 import { useStore } from '../store/createStore';
 import { enterFullscreen, prefsStore } from '../store/prefsStore';
 import { Hint } from '../components/Hint';
+import { ConfirmButton } from '../components/ConfirmButton';
+import { resumeWithRecap } from '../ui/uiStore';
 import { gamesProfileFor, profileHeadline } from '../engine/gamesProfile';
 // PERF: imported from the data module directly, not via `engine/arenaSignature`
 // — the setup screen is the app's cold-start path and must not drag the
@@ -511,6 +513,9 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                         placeholder="Add a note to this save…"
                                         aria-label={`Note for ${label}`}
                                         maxLength={120}
+                                        // AUDIT-11 U11: keyed on the save's identity so a
+                                        // discarded or overwritten slot never shows the old note.
+                                        key={`${i}:${slot.seed}:${slot.savedAt}:${slot.note ?? ''}`}
                                         defaultValue={slot.note ?? ''}
                                         onBlur={e => {
                                             if ((e.target.value.trim() || '') !== (slot.note ?? '')) {
@@ -530,17 +535,20 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                     </div>
                                 </div>
                                 <div className="flex gap-2 flex-none">
-                                    <button
-                                        onClick={() => {
+                                    {/* AUDIT-11 U12: one tap used to delete the save. */}
+                                    <ConfirmButton
+                                        onConfirm={() => {
                                             gameActions.discardSlot((i + 1) as 1 | 2 | 3);
                                             setSlots(gameActions.readSaveSlots());
                                             if (i === 0) setSavedRun(null);
                                         }}
                                         className="btn btn-sm btn-ghost"
+                                        ariaLabel={`Discard ${label}`}
+                                        confirmLabel="Delete for good?"
                                     >
                                         Discard
-                                    </button>
-                                    <button onClick={() => { void gameActions.resumeFromSlot((i + 1) as 1 | 2 | 3); }} className="btn btn-primary btn-sm">
+                                    </ConfirmButton>
+                                    <button onClick={() => { void resumeWithRecap((i + 1) as 1 | 2 | 3); }} className="btn btn-primary btn-sm">
                                         Resume
                                     </button>
                                 </div>
@@ -567,7 +575,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                             // its intrinsic width, so this row was 7px wider
                             // than a 380px phone and took the whole document
                             // sideways with it.
-                            className="flex-1 min-w-0 bg-[var(--paper-panel)] px-3 py-2.5 font-mono font-bold text-[var(--ink)] focus:outline-none focus:bg-white"
+                            className="flex-1 min-w-0 bg-[var(--paper-panel)] px-3 py-2.5 font-mono font-bold text-[var(--ink)] focus-ring focus:bg-[var(--paper)]"
                         />
                         <button
                             onClick={() => setSeed(randomSeed())}
@@ -851,11 +859,11 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                 >
                                     <div className="min-w-0 w-full">
                                         <div className="flex items-baseline justify-between gap-2">
-                                            <span className={`font-black uppercase leading-tight ${selected ? 'text-white text-base' : 'text-[var(--ink)] text-label'}`}>
+                                            <span className={`font-black uppercase leading-tight ${selected ? 'text-[var(--chrome-ink)] text-base' : 'text-[var(--ink)] text-label'}`}>
                                                 {a.name}
                                             </span>
                                             {unseenArena(a.id, a.name) && (
-                                                <span className={`flex-none align-middle font-mono text-nano font-extrabold uppercase tracking-wider px-1 border ${selected ? 'text-[#c9b8a0] border-[#c9b8a0]' : 'text-[var(--red)] border-[var(--red)]'}`}>
+                                                <span className={`flex-none align-middle font-mono text-nano font-extrabold uppercase tracking-wider px-1 border ${selected ? 'text-[var(--chrome-muted)] border-[var(--chrome-muted)]' : 'text-[var(--red)] border-[var(--red)]'}`}>
                                                     New
                                                 </span>
                                             )}
@@ -865,7 +873,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                             there is one, the description otherwise — and
                                             nothing else. The full description and the
                                             briefing belong to the selection. */}
-                                        <div className={`text-mini mt-0.5 leading-snug ${selected ? 'text-[#c9b8a0]' : 'text-[var(--color-ink-500)] line-clamp-2'}`}>
+                                        <div className={`text-mini mt-0.5 leading-snug ${selected ? 'text-[var(--chrome-muted)]' : 'text-[var(--color-ink-500)] line-clamp-2'}`}>
                                             {selected ? a.description : (SIGNATURE_BLURBS[a.id] ?? a.description)}
                                         </div>
                                         {/* §(requests): the long-form reveal, for a player
@@ -874,7 +882,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                             list would be unreadable, which is exactly why
                                             `description` stays a catalogue line. */}
                                         {selected && ARENA_REVEALS[a.id] && (
-                                            <p className="text-mini mt-1.5 leading-relaxed text-[#c9b8a0] m-0">
+                                            <p className="text-mini mt-1.5 leading-relaxed text-[var(--chrome-muted)] m-0">
                                                 {ARENA_REVEALS[a.id]}
                                             </p>
                                         )}

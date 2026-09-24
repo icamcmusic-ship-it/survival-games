@@ -177,7 +177,8 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     },
     'Light Sleeper': {
         info: 'Wakes at a snapped twig. A steady awareness bonus that works around the clock.',
-        mods: { awareness: 1.2 },
+        // AUDIT-11 §11.5: ~20% off (1.2). 11.2% win rate at the audit's n=400.
+        mods: { awareness: 0.95 },
     },
     'Hardy': {
         // §8: a pure-niche resist with an always-on rider, the way Frost-Born
@@ -213,7 +214,8 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     // ---- the mind -----------------------------------------------------
     'Stoic': {
         info: 'Does not come apart. Loses far less sanity to deprivation, darkness and the sky at night.',
-        mods: { sanityDrain: -0.35, sanityRecovery: 4, resolveDrift: 1 },
+        // AUDIT-11 §11.5: ~20% off every term (-0.35 / 4 / 1).
+        mods: { sanityDrain: -0.28, sanityRecovery: 3.2, resolveDrift: 0.8 },
     },
     'Fragile': {
         info: 'The arena is louder inside their head than anyone else\'s. Loses sanity faster and recovers it slower.',
@@ -307,7 +309,8 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         // in the modifier table too. See the rule at the top of this file: a
         // key with a read site and no writer is the same bug as a modifier with
         // no read site, wearing the other hat.
-        mods: { meleePower: 2, unarmedPower: 2.5, odds: 1.5, ambush: -0.04, intimidation: 0.8 },
+        // AUDIT-11 §11.5: ~20% off every positive term (2 / 2.5 / 1.5 / 0.8).
+        mods: { meleePower: 1.6, unarmedPower: 2, odds: 1.2, ambush: -0.04, intimidation: 0.64 },
     },
     'Marksman': {
         info: 'Trained on the range. Genuinely dangerous with a bow, a slingshot or a blowgun.',
@@ -446,7 +449,10 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         // a drift that still reads as "nobody is buying them a parachute"
         // without closing the door, and the concealment rider raised to pay
         // out where the trait's identity actually lives.
-        mods: { excitement: -0.4, sponsorTrust: -0.4, odds: -1, targetDraw: -28, concealment: 0.12 },
+        // AUDIT-11 §11.6: capped at 2 sd of the combat category (it was 3.3 sd,
+        // nearly all `targetDraw`). -15 is still one of the largest draw discounts in
+        // the game; concealment keeps the trait's promise where it lives.
+        mods: { excitement: -0.4, sponsorTrust: -0.4, odds: -1, targetDraw: -15, concealment: 0.12 },
     },
 
     // ---- the pack and the pantry ---------------------------------------
@@ -624,7 +630,10 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         // mutt-damage discount and the break-off are both raised. A tribute
         // who has met the Gamemakers' animals twice and walked away should be
         // genuinely hard for the third one to kill.
-        mods: { fearGain: -0.4, sanityDrain: -0.2, combatPower: 1.5, resolveDrift: 1, retreat: 0.15, muttDamage: -0.6 },
+        // AUDIT-11 §11.6: capped at 2 sd of the combat category (it was 4.1 sd,
+        // almost all of it `combatPower` and `resolveDrift`). The mutt discount
+        // is the trait's identity and keeps most of its size.
+        mods: { fearGain: -0.4, sanityDrain: -0.13, combatPower: 0.5, resolveDrift: 0.5, retreat: 0.12, muttDamage: -0.45 },
     },
     'Merciful': {
         info: 'Earned by letting someone live who did not have to. The Capitol finds it fascinating; the arena finds it expensive.',
@@ -1104,6 +1113,77 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         info: 'The last of a group of four or more. Everyone they trained with is in the sky and they are still walking.',
         earned: true,
         mods: { resolveDrift: -0.3, griefResist: 0.3, treachery: 0.15, odds: 0.3 },
+    },
+    /*
+     * AUDIT-11 §16: sixteen traits, each built from modifier keys that
+     * already have a read site. Where the audit's effect names a mechanic
+     * with no hook of its own (a voice imitated, a promise that cannot be
+     * broken, a hazard read a cycle early) it is approximated by the nearest
+     * existing axis, and the info line says only what the mods actually do.
+     */
+    'Night Owl': {
+        info: 'Comes alive after dark. Sharper and quicker at night, and pays for it in the daytime.',
+        mods: { awarenessNight: 2, nightMovement: 0.4, ambush: 0.03, fatigueDay: 3 },
+    },
+    'Salt-Tongued': {
+        info: 'Lies easily and is hard to catch at it — and is believed a little less even when telling the truth.',
+        mods: { suspicionResist: 0.25, rumourCredibility: -0.2 },
+    },
+    'Bone-Setter': {
+        info: 'Knows how a body goes back together. Field dressings and treatment take far more often.',
+        mods: { medicine: 0.25 },
+    },
+    'Heavy Sleeper': {
+        info: 'Sleeps like the dead and wakes rested. Recovers much more at night, and hears much less of it.',
+        mods: { fatigueNight: -6, awarenessNight: -2 },
+    },
+    'Pack Rat': {
+        info: 'Keeps everything. Carries one more item than anybody else, and rattles when they walk.',
+        mods: { capacity: 1, concealment: -0.05 },
+    },
+    'Forgets Faces': {
+        info: 'Cannot hold on to a face, or a grudge. Regard moves faster in both directions, and old hatreds sharpen them less.',
+        mods: { trustGain: 0.3, vengeanceEdge: -1 },
+    },
+    'Oathkeeper': {
+        info: 'Their word is a fixed point. Almost never breaks a promise or an alliance, pays what they owe, and is trusted for it.',
+        mods: { treachery: -0.3, betrayalResist: 0.3, debtHonour: 0.4, trustGain: 0.1, charterHold: 0.3 },
+    },
+    'Glass Jaw': {
+        info: 'Goes down to a clean hit and knows it. Frightens easily, and is very good at not being where the hit lands.',
+        mods: { fearGain: 0.3, retreat: 0.15 },
+    },
+    'Firewalker': {
+        info: 'Grew up next to heat. Burns and heatstroke land much softer, and the cold gets in faster.',
+        mods: { burnResist: 0.45, heatResist: 0.2, coldResist: -0.3 },
+    },
+    'Wanderlust': {
+        info: 'Cannot stay put. Covers more ground, turns up more caches — and is turned up by more people.',
+        mods: { scavenge: 0.1, forage: 0.04, targetDraw: 0.5 },
+    },
+    'Homebody': {
+        info: 'Makes a camp and defends it. Builds better shelter and fights harder with somebody beside them, and is slow to leave.',
+        mods: { campSkill: 0.15, defended: 0.1, retreat: -0.05 },
+    },
+    'Mimic': {
+        info: 'Can throw a voice or borrow one. Better at drawing people into an ambush, and at holding a room.',
+        mods: { ambush: 0.06, persuasion: 0.05, excitement: 0.1 },
+    },
+    'Cannon-Counter': {
+        info: 'Counts every cannon and always knows the number. Steadier in the endgame, and harder to surprise.',
+        mods: { awareness: 0.4, resolveDrift: 0.3, odds: 0.2 },
+    },
+    "Sponsor's Pet": {
+        info: 'The Capitol adores them. More parachutes, a warmer sponsor line — and allies who notice.',
+        mods: { sponsorAppeal: 1.5, sponsorTrust: 0.5, trustGain: -0.15 },
+    },
+    'Twitchy Trigger': {
+        info: 'Swings first, every time. Quicker into a fight and quicker to strike from cover, and harder to stop once started.',
+        mods: { aggressionScore: 0.6, ambush: 0.05, retreat: -0.1, treachery: 0.05 },
+    },
+    'Weather-Nose': {
+        info: 'Smells the weather coming. Takes less from cold and heat and notices the arena turning before it turns.',
+        mods: { coldResist: 0.15, heatResist: 0.15, awareness: 0.3 },
     },
 };
 

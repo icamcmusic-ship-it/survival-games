@@ -16,6 +16,7 @@ import { openWound } from './wounds';
 import { isOverprepared, volunteersToCarry } from '../data/traits';
 import { ARCHETYPES } from '../data/archetypes';
 import { witnessKindness } from './rapport';
+import { allied } from './alliance';
 
 /**
  * AUDIT-9 batch 4, pilot 1: the rescue line.
@@ -170,7 +171,7 @@ function canAttemptRescue(state: GameState, rescuer: Tribute, stranded: Tribute)
  */
 function willingness(rescuer: Tribute, stranded: Tribute): number {
     let chance = RESCUE_LINE.baseWillingness;
-    if (rescuer.allianceId !== undefined && rescuer.allianceId === stranded.allianceId) {
+    if (allied(rescuer, stranded)) {
         chance += RESCUE_LINE.allyWillingness;
     }
     chance += Math.max(0, getRel(rescuer, stranded.id)) * RESCUE_LINE.perRegard;

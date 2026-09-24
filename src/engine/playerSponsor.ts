@@ -5,7 +5,7 @@ import { SPONSOR_MARKET, QUALITY_BIAS } from '../data/balance';
 import { SPONSOR_BLOCS } from './sponsorBlocs';
 import { RNG } from '../utils/rng';
 import { giveItem, itemPhrase, mintItem } from './items';
-import { ensureMemory } from './memory';
+import { cycleOf, ensureMemory } from './memory';
 import { clampTribute } from './vitals';
 
 /**
@@ -113,6 +113,10 @@ export function sendPlayerParachute(state: GameState, tributeId: string, itemId:
     const dropped = giveItem(t, gift);
 
     ensureMemory(t).giftsReceived += 1;
+    // AUDIT-11 E6: a parachute is the player's hand on the run exactly as a
+    // Gamemaker command is, so it goes in the same log — which is what lets a
+    // what-if branch (and a replay link) put it back at the cycle it landed.
+    (state.interventionLog ??= []).push({ cycle: cycleOf(state), type: 'parachute', targetId: t.id, itemId });
     // §6.6: the blocs saw the parachute land too. For a while they treat the
     // tribute as covered — see `processSponsors`.
     state.playerGiftCycle = state.playerGiftCycle ?? {};

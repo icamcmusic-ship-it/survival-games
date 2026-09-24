@@ -25,6 +25,7 @@ import { isAggressiveStance, isEvasiveStance } from '../../data/stances';
 import { loseSanity } from '../sanityBands';
 import { isActive } from '../downed';
 import { decayUpkeep, postActionUpkeep, preActionUpkeep, worldClockUpkeep } from './upkeep';
+import { allied } from '../alliance';
 
 /**
  * The global attribute ceiling, borrowed as a normaliser: arrival order needs
@@ -559,8 +560,8 @@ export function processFeast(ctx: SimContext) {
         const t2 = shuffled.splice(ctx.rng.nextInt(0, shuffled.length - 1), 1)[0];
 
         // Allies who both showed up do not fight over the table.
-        const allied = t1.allianceId !== undefined && t1.allianceId === t2.allianceId;
-        if (allied && !hasVengeanceAgainst(t1, t2.id) && !hasVengeanceAgainst(t2, t1.id)) {
+        const sameGroup = allied(t1, t2);
+        if (sameGroup && !hasVengeanceAgainst(t1, t2.id) && !hasVengeanceAgainst(t2, t1.id)) {
             ctx.logEvent(
                 `${t1.name} and ${t2.name} load up together and cover each other on the way out.`,
                 [t1.id, t2.id],
@@ -743,9 +744,9 @@ function attendanceChance(
     alive.forEach(other => {
         if (other.id === t.id) return;
         const rel = getRel(t, other.id);
-        const allied = t.allianceId !== undefined && t.allianceId === other.allianceId;
+        const sameGroup = allied(t, other);
         // Trusted allies go together — the table is safer with backup.
-        if (allied || rel > 40) chance += FEAST.allyDrawWeight;
+        if (sameGroup || rel > 40) chance += FEAST.allyDrawWeight;
         // Rivals are a reason to stay in the trees, unless you want them dead.
         else if (rel < -30) {
             chance += hasVengeanceAgainst(t, other.id) ? FEAST.rivalDeterWeight : -FEAST.rivalDeterWeight;

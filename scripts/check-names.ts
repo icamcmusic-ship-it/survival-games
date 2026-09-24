@@ -78,6 +78,19 @@ districts.forEach(d => {
     });
 });
 
+// AUDIT-11 §15: single given names only. A space, a hyphen, or a second
+// capitalised word ("Rook Ashby", "RookAshby") is a surname sneaking in.
+{
+    const surnameShaped = (n: string) => /\s/.test(n) || /-/.test(n) || /[a-z][A-Z]/.test(n);
+    districts.forEach(d => {
+        const all = [...DISTRICT_NAMES[d].Male, ...DISTRICT_NAMES[d].Female, ...(NEUTRAL_NAMES[d] ?? [])];
+        const bad = all.filter(surnameShaped);
+        if (bad.length) problems.push(`district ${d}: entries with a space or a second capitalised word — ${bad.join(', ')}`);
+    });
+    const probes: Array<[string, boolean]> = [['Rook', false], ['Rook Ashby', true], ['RookAshby', true], ['Rook-Ashby', true]];
+    probes.forEach(([n, want]) => { if (surnameShaped(n) !== want) problems.push(`surname rule misreads "${n}"`); });
+}
+
 /**
  * §(requests): the third pool, held to the same rules as the gendered two —
  * and to one of its own. `NEUTRAL_NAMES` exists to flatten the initial-letter

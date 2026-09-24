@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
+import { useEscapeLayer } from '../ui/useDialogFocus';
 
 /**
  * The "why is this number what it is" affordance.
@@ -36,19 +37,11 @@ export function Explainer({
         const onDown = (e: MouseEvent) => {
             if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
         };
-        const onKey = (e: KeyboardEvent) => {
-            // Scoped to this popover only: Escape inside a tribute modal must
-            // close the explainer first and leave the modal alone.
-            if (e.key === 'Escape' && open) {
-                e.stopPropagation();
-                setOpen(false);
-            }
-        };
+        // AUDIT-11 U3: Escape is routed through the shared layer stack
+        // (`useEscapeLayer` below), so it closes this popover and nothing else.
         document.addEventListener('mousedown', onDown);
-        document.addEventListener('keydown', onKey, true);
         return () => {
             document.removeEventListener('mousedown', onDown);
-            document.removeEventListener('keydown', onKey, true);
             // Audit 3 §1.7: Escape closed the popover and left focus on a node
             // that no longer exists, which drops the keyboard reader back at
             // the top of the document. A popover is not a modal and does not
@@ -56,6 +49,7 @@ export function Explainer({
             wrapRef.current?.querySelector('button')?.focus();
         };
     }, [open]);
+    useEscapeLayer(open, () => setOpen(false));
 
     return (
         <span ref={wrapRef} className={`relative inline-flex ${className}`}>

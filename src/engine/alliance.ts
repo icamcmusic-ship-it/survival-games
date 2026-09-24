@@ -70,6 +70,19 @@ export function maintainPerformance(t: Tribute, otherId: string, delta: number) 
 }
 
 /**
+ * AUDIT-11 E1/E2: whether two records share an alliance. Both ids must be
+ * defined — two loners both carry `allianceId === undefined`, and a raw
+ * `a.allianceId === b.allianceId` read every pair of them as allies (and its
+ * negation read none of them as rivals). Every tribute-to-tribute alliance
+ * comparison goes through here or `isHostileTo`; `eslint.config.js` bans the
+ * raw form.
+ */
+export function allied(a: { allianceId?: string }, b: { allianceId?: string }): boolean {
+    // eslint-disable-next-line no-restricted-syntax -- the one sanctioned comparison.
+    return a.allianceId !== undefined && a.allianceId === b.allianceId;
+}
+
+/**
  * Whether `o` counts as a rival to `t` for sighting, noise and firelight.
  * Two loners both carry `allianceId === undefined`, so a bare
  * `o.allianceId !== t.allianceId` reads them as allies — which meant a lone
@@ -78,7 +91,7 @@ export function maintainPerformance(t: Tribute, otherId: string, delta: number) 
  */
 export function isHostileTo(t: Tribute, o: Tribute): boolean {
     if (o.id === t.id) return false;
-    return o.allianceId === undefined || t.allianceId === undefined || o.allianceId !== t.allianceId;
+    return !allied(o, t);
 }
 
 /**
@@ -326,24 +339,20 @@ export function leaderStyleOf(leader: Tribute): 'democratic' | 'tyrant' | 'absen
     return 'democratic';
 }
 
-/**
- * §(requests): when a new alliance is allowed to come into existence at all.
+/*
+ * §(requests) / AUDIT-11 E7: when a new alliance may come into existence.
  *
- * Alliances and pacts are agreed on the training floor — over three days and a
- * lunch hour, in front of everybody — and nowhere else. The bloodbath is the
- * one phase that used to mint groups of its own at the moment the gong went,
- * which read as twenty-four strangers spontaneously organising in the sixty
- * seconds they had to run for a pack.
- *
- * Only *new* formation is gated. Everything agreed in training is carried into
- * the arena untouched by `initializePactAlliances` and the Career pack, and a
- * group that already exists keeps recruiting, merging, splitting and dissolving
- * on its own schedule.
+ * Alliances and pacts are agreed on the training floor and nowhere else in
+ * the bloodbath. There used to be an `allianceFormationAllowed(state)` gate
+ * (`phase !== 'bloodbath'`) read by `processAlliances` and `declareLovers` —
+ * but `processAlliances` is not called in the bloodbath phase at all
+ * (`simulator.ts` dispatches `processBloodbath` and returns before it), so the
+ * gate was always true where it was read, and its early return in
+ * `declareLovers` was counted by callers as a declaration. The rule is
+ * structural: the only groups minted during the bloodbath are the ones
+ * `phases/bloodbath.ts` carries in from training (the Career pack and the
+ * floor pacts). The gate is gone rather than left to imply otherwise.
  */
-export function allianceFormationAllowed(state: GameState): boolean {
-    return state.phase !== 'bloodbath';
-}
-
 export function registerAlliance(ctx: SimContext, id: string, members: Tribute[]): Alliance {
     const records = allianceRecords(ctx.state);
     // Star-crossed lovers get the record — a camp, a leader for movement — but
@@ -636,6 +645,26 @@ export function fractureBlocs(ctx: SimContext) {
 }
 
 /**
+ * AUDIT-11 E14: drop records nobody alive belongs to, at the end of every
+ * phase. `reconcileAlliances` only runs inside `processAlliances`, so a group
+ * wiped out in the bloodbath (`floor-pact-…` with both members dead) lingered
+ * for up to two phases as a standing alliance of nobody. Only the fully-dead
+ * case is handled here; a group down to one is `reconcileAlliances`' business,
+ * because the survivor has a beat to be given. Whatever the group was holding
+ * stays on the ground, exactly as it does there.
+ */
+export function pruneDeadAlliances(ctx: SimContext) {
+    const records = ctx.state.alliances;
+    if (!records) return;
+    Object.keys(records).forEach(id => {
+        if (membersOf(ctx.state, id).length > 0) return;
+        recordAllianceState(ctx.state, records[id]);
+        distributeCache(ctx, records[id], []);
+        delete records[id];
+    });
+}
+
+/**
  * AUDIT-10 B05: fold one alliance's current state into the durable chronicle.
  *
  * Called every cycle for every living group, so the peak is the peak as it
@@ -758,8 +787,12 @@ export function reconcileAlliances(ctx: SimContext) {
             const ranked = [...members].sort((a, b) => b.kills - a.kills);
             const [first, second] = ranked;
             if (first && second && first.kills >= ALLIANCES.crownRivalryMinKills && second.kills >= 1) {
-                adjustRel(first, second.id, -ALLIANCES.crownRivalryPerCycle);
-                adjustRel(second, first.id, -ALLIANCES.crownRivalryPerCycle);
+                // AUDIT-11 §11.1(a): the crown gets closer as the field thins,
+                // and the rivalry for it wears harder with every cannon.
+                const fallen = 1 - ctx.state.tributes.filter(o => o.status === 'alive').length / Math.max(1, ctx.state.tributes.length);
+                const wear = ALLIANCES.crownRivalryPerCycle * (1 + ALLIANCES.crownRivalryLateGain * fallen);
+                adjustRel(first, second.id, -wear);
+                adjustRel(second, first.id, -wear);
                 if (ctx.rng.chance(ALLIANCES.crownRivalryLineChance)) {
                     ctx.logEvent(
                         `${first.name} and ${second.name} are keeping score against each other now, not just against the arena. The pack pretends not to notice.`,
@@ -973,7 +1006,7 @@ export function careerSocialFactor(a: Tribute, b: Tribute): number {
     return pair.reduce((lowest, [self, other]) => {
         if (!isCareerish(self) || isCareerish(other)) return lowest;
         if (self.trainingPact?.includes(other.id)) return lowest;
-        if (self.allianceId !== undefined && self.allianceId === other.allianceId) return lowest;
+        if (allied(self, other)) return lowest;
         const worthHaving = other.trainingScore >= ALLIANCES.careerRespectScore
             || other.attributes.strength >= ALLIANCES.careerRespectStrength
             || other.kills >= ALLIANCES.careerRespectKills;

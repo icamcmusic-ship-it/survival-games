@@ -6,6 +6,7 @@ import { loseSanity } from './sanityBands';
 import { noteSighting } from './memory';
 import { depletionOf, hopsTo, severedEdgeSet, zoneNames } from './map';
 import { noteMilestone } from './milestones';
+import { allied } from './alliance';
 
 /**
  * §16: what standing there actually does.
@@ -82,7 +83,7 @@ function scoutArrival(ctx: SimContext, t: Tribute) {
         if (hops === undefined || hops > OBJECTIVES.scoutSweepHops) return;
         const rivals = alive.filter(o =>
             o.id !== t.id && o.zone === zone
-            && (o.allianceId === undefined || o.allianceId !== t.allianceId)).length;
+            && !allied(o, t)).length;
         noteSighting(state, t, zone, rivals, depletionOf(state, zone));
         swept += 1;
         counted += rivals;

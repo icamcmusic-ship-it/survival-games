@@ -1,33 +1,63 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useDialogFocus } from '../ui/useDialogFocus';
 import { GameState } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
-import { gameActions } from '../store/gameStore';
-import { pathForView } from '../store/router';
+import { ViewName, gameActions } from '../store/gameStore';
+import { navigate, routeIsAvailable } from '../store/router';
 import { chronicleStore, setChronicle } from '../store/chronicleStore';
 import { useStore } from '../store/createStore';
 import { prefsStore, setPrefs } from '../store/prefsStore';
+import { resumeWithRecap, setUi } from '../ui/uiStore';
 
 /**
  * §2.2: one search across the whole run.
  *
- * The chronicle search was per-view and searched log text only. A reader
- * looking for "where did Rue die", "what is the Warren", or "which achievement
- * was I close to" had three different controls to find and none of them
- * answered across categories. Cmd-K / Ctrl-K opens one field that searches
- * tribute names, sector names, and the chronicle itself, and every result is
- * an action rather than a highlight.
+ * Cmd-K / Ctrl-K opens one field that searches actions, tribute names, sector
+ * names, and the chronicle itself; every result is an action.
+ *
+ * AUDIT-11 U7/U8/U9 + §4:
+ *  - useful before a run exists (New game, Resume slot N, Hall of Fame,
+ *    How to play, Settings, spoiler toggle);
+ *  - only offers routes that can actually render (`routeIsAvailable`), and
+ *    filter/sector actions land on the chronicle, via one navigation;
+ *  - a real combobox: `aria-activedescendant`, option ids, and the active
+ *    row kept scrolled into view;
+ *  - results grouped by kind with the match highlighted.
  */
+
+type Kind = 'action' | 'tribute' | 'zone' | 'log';
 
 type Result = {
     id: string;
-    kind: 'tribute' | 'zone' | 'log' | 'view';
+    kind: Kind;
     label: string;
     detail?: string;
+    /** Extra words an action should match on. */
+    keywords?: string;
     run: () => void;
 };
 
 const MAX_PER_KIND = 6;
+
+const GROUP_LABEL: Record<Kind, string> = {
+    action: 'Actions',
+    tribute: 'Tributes',
+    zone: 'Sectors',
+    log: 'Chronicle',
+};
+
+function Highlight({ text, needle }: { text: string; needle: string }) {
+    if (!needle) return <>{text}</>;
+    const at = text.toLowerCase().indexOf(needle);
+    if (at < 0) return <>{text}</>;
+    return (
+        <>
+            {text.slice(0, at)}
+            <mark className="palette-mark">{text.slice(at, at + needle.length)}</mark>
+            {text.slice(at + needle.length)}
+        </>
+    );
+}
 
 export function CommandPalette({ gameState, onSelectTribute }: {
     gameState: GameState | null;
@@ -37,10 +67,9 @@ export function CommandPalette({ gameState, onSelectTribute }: {
     const [query, setQuery] = useState('');
     const [cursor, setCursor] = useState(0);
     const inputRef = useRef<HTMLInputElement>(null);
-    // Subscribed rather than read inside the memo: the default command list
-    // names the tribute being watched, and a `getState()` call in there is
-    // captured on the first render and never refreshed.
+    const listId = useId();
     const chron = useStore(chronicleStore, s => s);
+    const spoilerSafe = useStore(prefsStore, p => p.spoilerSafe);
 
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
@@ -49,78 +78,99 @@ export function CommandPalette({ gameState, onSelectTribute }: {
                 setOpen(v => !v);
                 setQuery('');
                 setCursor(0);
-                return;
             }
-            if (e.key === 'Escape' && open) setOpen(false);
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
-    }, [open]);
+    }, []);
 
+    // Recomputed on open so the save-slot list is current.
+    const slots = useMemo(() => (open ? gameActions.readSaveSlots() : []), [open]);
 
     const results = useMemo<Result[]>(() => {
         const needle = query.trim().toLowerCase();
-        if (!gameState) return [];
-        const out: Result[] = [];
+        const go = (view: ViewName, q?: string) => navigate(view, q);
 
-        const go = (view: 'game' | 'roster' | 'chronicle' | 'hallOfFame') => {
-            gameActions.setView(view);
-            window.location.hash = pathForView(view);
+        // ---------- actions: available with or without a run ----------
+        const actions: Result[] = [];
+        const view = (id: ViewName, label: string, keywords = '') => {
+            if (routeIsAvailable(id)) actions.push({ id: `v-${id}`, kind: 'action', label, keywords, run: () => go(id) });
         };
 
-        if (!needle) {
-            // §2.5: the three things a reader does most often, each with the
-            // key that also does it. The palette is where a shortcut is
-            // discovered; the help overlay (`?`) is where it is confirmed.
+        if (gameState) {
             const watchedId = chron.followedId ?? chron.filterTributeId;
             const watched = watchedId ? gameState.tributes.find(t => t.id === watchedId) ?? null : null;
-            const deaths = gameState.log.filter(l => l.category === 'death' || l.category === 'kill');
-            const atDeath = deaths.findIndex(l => l.id === chron.focusLogId);
-            const nextDeath = deaths[atDeath === -1 ? 0 : Math.min(deaths.length - 1, atDeath + 1)];
-
-            const watching: Result[] = watched ? [
-                {
-                    id: 'v-open-watched', kind: 'view',
+            const inRun = gameState.phase !== 'reaping';
+            if (watched) {
+                actions.push({
+                    id: 'v-open-watched', kind: 'action',
                     label: `Open ${watched.name}'s dossier`,
                     detail: 'the tribute you are watching · O',
                     run: () => onSelectTribute?.(watched.id),
-                },
-                {
-                    id: 'v-filter-watched', kind: 'view',
-                    label: chron.filterTributeId === watched.id
-                        ? 'Clear the chronicle filter'
-                        : `Filter the chronicle to ${watched.name}`,
-                    detail: 'X',
+                });
+                if (inRun) {
+                    actions.push({
+                        id: 'v-filter-watched', kind: 'action',
+                        label: chron.filterTributeId === watched.id
+                            ? 'Clear the chronicle filter'
+                            : `Filter the chronicle to ${watched.name}`,
+                        detail: 'X',
+                        run: () => {
+                            const clearing = chron.filterTributeId === watched.id;
+                            setChronicle(clearing
+                                ? { filterTributeId: null, filterTributeId2: null }
+                                : { filterTributeId: watched.id, filterTributeId2: null, filterPairMode: 'either' });
+                            go('chronicle', clearing ? undefined : `tribute=${encodeURIComponent(watched.id)}`);
+                        },
+                    });
+                }
+            }
+            const deaths = gameState.log.filter(l => l.category === 'death' || l.category === 'kill');
+            const atDeath = deaths.findIndex(l => l.id === chron.focusLogId);
+            const nextDeath = deaths[atDeath === -1 ? 0 : Math.min(deaths.length - 1, atDeath + 1)];
+            if (nextDeath && inRun && !spoilerSafe) {
+                actions.push({
+                    id: 'v-next-death', kind: 'action',
+                    label: 'Jump to the next death',
+                    detail: `${nextDeath.day === 0 ? nextDeath.phase : `day ${nextDeath.day}`} · D`,
                     run: () => {
-                        setChronicle(chron.filterTributeId === watched.id
-                            ? { filterTributeId: null, filterTributeId2: null }
-                            : { filterTributeId: watched.id, filterTributeId2: null, filterPairMode: 'either' });
-                        go('game');
+                        setChronicle({ focusLogId: nextDeath.id });
+                        go('chronicle', `day=${nextDeath.day}&phase=${encodeURIComponent(nextDeath.phase)}`);
                     },
-                },
-            ] : [];
-
-            const deathJump: Result[] = nextDeath ? [{
-                id: 'v-next-death', kind: 'view',
-                label: 'Jump to the next death',
-                detail: `${nextDeath.day === 0 ? nextDeath.phase : `day ${nextDeath.day}`} · D`,
-                run: () => { setChronicle({ focusLogId: nextDeath.id }); go('game'); },
-            }] : [];
-
-            return [
-                ...watching,
-                ...deathJump,
-                { id: 'v-arena', kind: 'view', label: 'Go to the arena', run: () => go('game') },
-                { id: 'v-chronicle', kind: 'view', label: 'Go to the chronicle', run: () => go('chronicle') },
-                { id: 'v-roster', kind: 'view', label: 'Go to the roster', run: () => go('roster') },
-                { id: 'v-hof', kind: 'view', label: 'Go to the hall of fame', run: () => go('hallOfFame') },
-                {
-                    id: 'v-spoiler', kind: 'view',
-                    label: prefsStore.getState().spoilerSafe ? 'Turn spoiler-safe viewing off' : 'Turn spoiler-safe viewing on',
-                    run: () => setPrefs({ spoilerSafe: !prefsStore.getState().spoilerSafe }),
-                },
-            ];
+                });
+            }
+            view('roster', 'Go to the reaping', 'roster cast');
+            view('game', 'Go to the arena', 'standings map');
+            view('chronicle', 'Go to the chronicle', 'log read');
         }
+        slots.forEach((slot, i) => {
+            if (!slot) return;
+            const n = (i + 1) as 1 | 2 | 3;
+            actions.push({
+                id: `resume-${n}`, kind: 'action',
+                label: n === 1 ? 'Resume the autosaved run' : `Resume save slot ${n}`,
+                detail: `${slot.day === 0 ? slot.phase : `Day ${slot.day} — ${slot.phase}`} · ${slot.alive} alive · seed ${slot.seed}`,
+                keywords: 'load continue save slot',
+                run: () => { void resumeWithRecap(n); },
+            });
+        });
+        actions.push({ id: 'v-new', kind: 'action', label: 'Start a new game', keywords: 'setup arena seed', run: () => go('setup') });
+        view('hallOfFame', 'Go to the hall of fame', 'victors archive records');
+        view('howToPlay', 'How to play', 'help rules');
+        actions.push({ id: 'v-settings', kind: 'action', label: 'Open settings', keywords: 'theme sound units preferences', run: () => setUi({ settingsOpen: true }) });
+        actions.push({
+            id: 'v-spoiler', kind: 'action',
+            label: spoilerSafe ? 'Turn spoiler-safe viewing off' : 'Turn spoiler-safe viewing on',
+            keywords: 'spoiler hide deaths',
+            run: () => setPrefs({ spoilerSafe: !spoilerSafe }),
+        });
+
+        if (!needle) return actions;
+
+        const out: Result[] = actions
+            .filter(a => a.label.toLowerCase().includes(needle) || (a.keywords ?? '').includes(needle))
+            .slice(0, MAX_PER_KIND);
+        if (!gameState) return out;
 
         gameState.tributes
             .filter(t => t.name.toLowerCase().includes(needle)
@@ -132,46 +182,53 @@ export function CommandPalette({ gameState, onSelectTribute }: {
                 kind: 'tribute',
                 label: t.name,
                 detail: `District ${t.district} · ${ARCHETYPES[t.archetype]?.name ?? t.archetype}`
-                    + (t.status === 'dead' ? ` · died day ${t.dayOfDeath ?? '—'}` : ` · ${t.health} health`),
+                    + (t.status === 'dead' ? (spoilerSafe && gameState.phase !== 'ended' ? '' : ` · died day ${t.dayOfDeath ?? '—'}`) : ` · ${t.health} health`),
                 run: () => onSelectTribute?.(t.id),
             }));
 
-        gameState.arena.zones
-            .filter(z => !gameState.arenaHidden && z.name.toLowerCase().includes(needle))
-            .slice(0, MAX_PER_KIND)
-            .forEach(z => out.push({
-                id: `z-${z.name}`,
-                kind: 'zone',
-                label: z.name,
-                detail: `${z.terrain} · isolate this sector's log`,
-                run: () => { setChronicle({ selectedZone: z.name }); go('game'); },
+        if (routeIsAvailable('chronicle')) {
+            gameState.arena.zones
+                .filter(z => !gameState.arenaHidden && z.name.toLowerCase().includes(needle))
+                .slice(0, MAX_PER_KIND)
+                .forEach(z => out.push({
+                    id: `z-${z.name}`,
+                    kind: 'zone',
+                    label: z.name,
+                    detail: `${z.terrain} · isolate this sector in the chronicle`,
+                    run: () => { setChronicle({ selectedZone: z.name }); go('chronicle', `zone=${encodeURIComponent(z.name)}`); },
+                }));
+
+            const matches = gameState.log.filter(l => l.text.toLowerCase().includes(needle));
+            matches.slice(-MAX_PER_KIND).reverse().forEach(l => out.push({
+                id: `l-${l.id}`,
+                kind: 'log',
+                label: l.text.length > 90 ? `${l.text.slice(0, 89)}…` : l.text,
+                detail: l.day === 0 ? l.phase : `Day ${l.day} · ${l.phase}`,
+                run: () => {
+                    const q = query.trim();
+                    setChronicle({ searchText: q, filterDay: l.day });
+                    go('chronicle', `day=${l.day}&phase=${encodeURIComponent(l.phase)}&q=${encodeURIComponent(q)}`);
+                },
             }));
-
-        // Newest first: a search across a finished run is usually looking for
-        // something recent, and the chronicle page opens on whatever day the
-        // filter leaves standing.
-        const matches = gameState.log.filter(l => l.text.toLowerCase().includes(needle));
-        matches.slice(-MAX_PER_KIND).reverse().forEach(l => out.push({
-            id: `l-${l.id}`,
-            kind: 'log',
-            label: l.text.length > 90 ? `${l.text.slice(0, 89)}…` : l.text,
-            detail: l.day === 0 ? l.phase : `Day ${l.day} · ${l.phase}`,
-            run: () => {
-                setChronicle({ searchText: query.trim(), filterDay: l.day });
-                go('chronicle');
-            },
-        }));
-
+        }
         return out;
-    }, [query, gameState, onSelectTribute, chron]);
+    }, [query, gameState, onSelectTribute, chron, slots, spoilerSafe]);
+
+    // U9: keep the active option in view.
+    useEffect(() => {
+        if (!open) return;
+        document.getElementById(`${listId}-opt-${cursor}`)?.scrollIntoView({ block: 'nearest' });
+    }, [cursor, open, listId]);
 
     if (!open) return null;
 
     const choose = (r: Result | undefined) => {
         if (!r) return;
-        r.run();
         setOpen(false);
+        r.run();
     };
+    const needle = query.trim().toLowerCase();
+    const activeId = results[cursor] ? `${listId}-opt-${cursor}` : undefined;
 
     return (
         <PaletteDialog
@@ -180,60 +237,65 @@ export function CommandPalette({ gameState, onSelectTribute }: {
                 <input
                     ref={inputRef}
                     type="search"
+                    role="combobox"
+                    aria-expanded={results.length > 0}
+                    aria-controls={listId}
+                    aria-activedescendant={activeId}
+                    aria-autocomplete="list"
                     value={query}
                     onChange={e => { setQuery(e.target.value); setCursor(0); }}
                     onKeyDown={e => {
                         if (e.key === 'ArrowDown') { e.preventDefault(); setCursor(c => Math.min(results.length - 1, c + 1)); }
                         else if (e.key === 'ArrowUp') { e.preventDefault(); setCursor(c => Math.max(0, c - 1)); }
+                        else if (e.key === 'Home' && e.ctrlKey) { e.preventDefault(); setCursor(0); }
+                        else if (e.key === 'End' && e.ctrlKey) { e.preventDefault(); setCursor(Math.max(0, results.length - 1)); }
                         else if (e.key === 'Enter') { e.preventDefault(); choose(results[cursor]); }
                     }}
-                    placeholder="Search tributes, sectors and the chronicle…"
-                    aria-label="Search tributes, sectors and the chronicle"
+                    placeholder={gameState ? 'Search actions, tributes, sectors and the chronicle…' : 'Search actions…'}
+                    aria-label="Search tributes, sectors and the chronicle — and actions"
                     className="field text-sm w-full border-0 border-b-2 border-[var(--color-ink-800)] rounded-none"
                 />
             }
         >
-                <div className="max-h-[55vh] overflow-y-auto custom-scrollbar" role="listbox">
-                    {results.length === 0 ? (
-                        <div className="empty-state m-3">Nothing matches “{query}”.</div>
-                    ) : results.map((r, i) => (
-                        <button
-                            key={r.id}
+            <div id={listId} className="max-h-[55vh] overflow-y-auto custom-scrollbar" role="listbox" aria-label="Results">
+                {results.length === 0 ? (
+                    <div className="empty-state m-3" role="presentation">Nothing matches “{query}”.</div>
+                ) : results.map((r, i) => (
+                    <React.Fragment key={r.id}>
+                        {(i === 0 || results[i - 1].kind !== r.kind) && (
+                            <div role="presentation" className="eyebrow px-4 pt-2.5 pb-1 bg-[var(--paper-flush)]">{GROUP_LABEL[r.kind]}</div>
+                        )}
+                        <div
+                            id={`${listId}-opt-${i}`}
                             role="option"
                             aria-selected={i === cursor}
                             onMouseEnter={() => setCursor(i)}
+                            onMouseDown={e => e.preventDefault()}
                             onClick={() => choose(r)}
-                            className="w-full text-left px-4 py-2.5 flex items-baseline gap-3 border-b border-[var(--line-soft)]"
-                            style={i === cursor ? { background: 'var(--paper-flush)' } : undefined}
+                            className="w-full text-left px-4 py-2.5 min-h-[44px] flex items-baseline gap-3 border-b border-[var(--line-soft)] cursor-pointer"
+                            style={i === cursor ? { background: 'var(--paper-flush)', boxShadow: 'inset 3px 0 0 var(--red)' } : undefined}
                         >
-                            <span className="eyebrow flex-none w-16">{r.kind}</span>
                             <span className="min-w-0 flex-1">
-                                <span className="block text-sm text-[var(--ink)] truncate">{r.label}</span>
+                                <span className="block text-sm text-[var(--ink)] truncate"><Highlight text={r.label} needle={needle} /></span>
                                 {r.detail && (
                                     <span className="block text-mini text-[var(--color-ink-500)] truncate">{r.detail}</span>
                                 )}
                             </span>
-                        </button>
-                    ))}
-                </div>
-                <div className="px-4 py-2 text-micro font-mono uppercase tracking-wider text-[var(--color-ink-500)] flex gap-3 flex-wrap">
-                    <span>↑↓ move</span><span>⏎ open</span><span>Esc close</span>
-                </div>
+                        </div>
+                    </React.Fragment>
+                ))}
+            </div>
+            <div className="kbd-hint px-4 py-2 text-micro font-mono uppercase tracking-wider text-[var(--color-ink-500)] flex gap-3 flex-wrap">
+                <span>↑↓ move</span><span>⏎ open</span><span>Esc close</span>
+            </div>
         </PaletteDialog>
     );
 }
 
 /**
- * Audit 3 §1.7/§2.3: the palette declared `aria-modal="true"` and implemented
- * none of what that asserts. It focused its input on open and stopped there —
- * Tab walked straight out of the dialog into the page behind the scrim, with
- * the palette still covering it, and focus was never returned to whatever the
- * reader was on when they opened it.
- *
- * Split out as its own component purely so `useDialogFocus` can be called on a
- * node that mounts when the palette opens rather than on every render of a
- * component that is present for the whole run. The hook does the four things
- * `aria-modal` promises, and now the promise is kept.
+ * Split out so `useDialogFocus` runs on a node that mounts when the palette
+ * opens. The shared dialog stack handles Escape (topmost only), the focus
+ * trap, the inert background and the scroll lock.
  */
 function PaletteDialog({ onClose, input, children }: {
     onClose: () => void;
@@ -244,12 +306,17 @@ function PaletteDialog({ onClose, input, children }: {
     return (
         <div
             className="fixed inset-0 z-[60] bg-black/60 flex items-start justify-center p-4 pt-[12vh]"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Search everything"
             onClick={onClose}
         >
-            <div ref={panelRef} tabIndex={-1} className="panel w-full max-w-xl overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div
+                ref={panelRef}
+                tabIndex={-1}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Search everything"
+                className="panel w-full max-w-xl overflow-hidden"
+                onClick={e => e.stopPropagation()}
+            >
                 {input}
                 {children}
             </div>

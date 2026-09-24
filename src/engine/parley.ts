@@ -12,7 +12,7 @@ import { tradeRumours } from './rumours';
 import { assessZone } from './stance';
 import { adjustMutual, adjustRel, adjustTrust, getRel, respectOf, trustOf } from './relationships';
 import { addZoneThreat, cycleOf, ensureMemory, lieAboutZone, noteStoodBy, raiseSuspicion, rememberedThreat, shareZoneIntel, swearVengeance } from './memory';
-import { areLovers, maintainPerformance } from './alliance';
+import { areLovers, maintainPerformance, allied } from './alliance';
 import { earnTrait } from './earnedTraits';
 import { giveItem, itemPhrase } from './items';
 import { fearOf } from './fear';
@@ -221,7 +221,7 @@ function truceBreakerThisCycle(ctx: SimContext, a: Tribute, b: Tribute): Tribute
 /** The bare probability `breaksTruce` would roll against. */
 function truceBreakChance(ctx: SimContext, t: Tribute, other: Tribute): number {
     if (areLovers(t, other)) return 0;
-    if (t.allianceId !== undefined && t.allianceId === other.allianceId) return 0;
+    if (allied(t, other)) return 0;
     let chance = PARLEY.truceBreakBase
         + (ARCHETYPES[t.archetype].treachery + traitMod(t, 'treachery')) * PARLEY.truceBreakTreacheryWeight;
     const ratio = assessZone(other, [other, t], ctx.state).ratio;

@@ -337,6 +337,43 @@ function pushRewind(state: GameState) {
 
 function clearRewind() {
     rewindStack = [];
+    // AUDIT-11 E11: anything still holding a reference to the old ring (an
+    // in-flight what-if) can tell the run underneath it has gone.
+    rewindGeneration++;
+}
+
+/** AUDIT-11 E11: bumped whenever the ring is replaced by another run's. */
+let rewindGeneration = 0;
+
+/**
+ * AUDIT-11 E10: Run-to-end checkpoints without their chronicle.
+ *
+ * The fast-forward used to `structuredClone` the whole state — log included —
+ * on every advance, and kept only the last sixteen. The log is by far the
+ * largest part of a late-Games state and it is append-only, so a checkpoint's
+ * log is exactly a prefix of the live one. These are cloned without it, with
+ * the prefix length remembered here, and `rehydrateRewind` puts the prefix back
+ * once the loop stops — for only the sixteen that survived the ring.
+ */
+const pendingLogLength = new WeakMap<GameState, number>();
+
+function pushRewindLite(state: GameState) {
+    const snap = snapshotState({ ...state, log: [] });
+    pendingLogLength.set(snap, state.log.length);
+    rewindStack.push(snap);
+    if (rewindStack.length > REWIND_CAP) rewindStack.shift();
+}
+
+function rehydrateRewind(log: GameState['log']) {
+    const pending = rewindStack.filter(snap => pendingLogLength.has(snap));
+    if (pending.length === 0) return;
+    // One copy of the chronicle, shared as prefixes: entries are never mutated
+    // after they are written, and the simulator clones whatever it is handed.
+    const copy = snapshotState({ log } as GameState).log;
+    pending.forEach(snap => {
+        snap.log = copy.slice(0, pendingLogLength.get(snap));
+        pendingLogLength.delete(snap);
+    });
 }
 
 /**
@@ -888,6 +925,19 @@ export const gameActions = {
      * clears it — so the debrief branches off the same sixteen phases the
      * step-back button offered. Arena phases only (see `engine/whatIf.ts`).
      */
+    /**
+     * AUDIT-11 E12: the what-if reach, for the panel to say out loud. A branch
+     * can only start from a phase still on the rewind ring, so a Games longer
+     * than `cap` phases cannot be branched from its opening days.
+     */
+    whatIfLimit(): { cap: number; oldestDay: number | null; truncated: boolean } {
+        return {
+            cap: REWIND_CAP,
+            oldestDay: rewindStack[0]?.day ?? null,
+            truncated: rewindStack.length >= REWIND_CAP,
+        };
+    },
+
     whatIfCheckpoints(): Array<{ index: number; day: number; phase: GameState['phase'] }> {
         const arena = new Set<GameState['phase']>(['day', 'night', 'feast']);
         return rewindStack
@@ -906,14 +956,27 @@ export const gameActions = {
         const { gameState } = gameStore.getState();
         const checkpoint = rewindStack[index];
         if (!gameState || !checkpoint) return null;
-        const { playBranch, summariseBranches, WHAT_IF } = await loadEngine();
+        // AUDIT-11 E11: the loop awaits between branches, and a new Games can
+        // be started in between. Everything below is from *this* run or it is
+        // abandoned — never a checkpoint from one run judged against another.
+        const generation = rewindGeneration;
+        const stale = () => rewindGeneration !== generation || gameStore.getState().gameState !== gameState;
+        const { playBranch, summariseBranches, playerInterventionsAfter, WHAT_IF } = await loadEngine();
+        if (stale()) return null;
+        // AUDIT-11 E6: the player's own hand — Gamemaker commands and
+        // parachutes after the checkpoint — is replayed into every branch at
+        // the cycle it happened, so a branch is compared with a reality that
+        // had the same interventions rather than one that had them and it did
+        // not.
+        const planned = playerInterventionsAfter(checkpoint, gameState);
         const ends: GameState[] = [];
         for (let k = 0; k < WHAT_IF.branches; k++) {
             await new Promise(resolve => setTimeout(resolve, 0));
-            ends.push(playBranch(checkpoint, String(k)));
+            if (stale()) return null;
+            ends.push(playBranch(checkpoint, String(k), planned));
             onProgress?.(k + 1, WHAT_IF.branches);
         }
-        return summariseBranches(checkpoint, gameState, ends);
+        return summariseBranches(checkpoint, gameState, ends, planned.length);
     },
 
     /** Whether a step back is currently possible. */
@@ -1366,7 +1429,7 @@ export const gameActions = {
                      * debrief, which branches off that ring, had nothing to
                      * branch from on the commonest way to finish a Games.
                      */
-                    pushRewind(state);
+                    pushRewindLite(state);
                     if (!simulator.advance()) break;
                 }
                 state = simulator.getState();
@@ -1412,7 +1475,10 @@ export const gameActions = {
             // Whether it finished or was cancelled, show the player where the
             // simulation actually got to — unless the run was replaced, in
             // which case the new one owns the state.
-            if (gameStore.getState().simulator === simulator) gameActions.syncFromSimulator();
+            if (gameStore.getState().simulator === simulator) {
+                rehydrateRewind(simulator.getState().log);
+                gameActions.syncFromSimulator();
+            }
         }
     },
 

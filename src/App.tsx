@@ -5,13 +5,16 @@
 
 import { decodeCampaignResult } from './utils/campaignLink';
 import { fidelityMessage, fidelityOf, parseInterventionLog } from './utils/replayManifest';
-import React, { Suspense, lazy, useEffect, useState } from 'react';
-import { Settings2, Swords } from 'lucide-react';
+import React, { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Menu, Settings2, Swords, X } from 'lucide-react';
 import { ShareButton } from './components/ShareButton';
 import { SettingsPanel } from './components/SettingsPanel';
 import { SetupScreen } from './screens/SetupScreen';
 import { gameActions, gameStore, prefetchEngine, ViewName } from './store/gameStore';
-import { initRouter, pathForView, redirectView, resolveView } from './store/router';
+import { initRouter, navigate, pathForView, redirectView, resolveView } from './store/router';
+import { setUi, uiStore } from './ui/uiStore';
+import { persistenceMode } from './utils/storage';
+import { useEscapeLayer } from './ui/useDialogFocus';
 
 /**
  * PERF: only the shell and the setup screen are in the initial chunk.
@@ -69,6 +72,9 @@ import { prefsStore } from './store/prefsStore';
 import { DEFAULT_GAME_CONFIG } from './data/constants';
 import { ARENA_DEATH_BUDGET, BLOODBATH } from './data/balance';
 
+/** Routes kept inline on the phone header while a run exists. */
+const RUN_ROUTES: ViewName[] = ['roster', 'game', 'chronicle'];
+
 export default function App() {
   const gameState = useStore(gameStore, s => s.gameState);
   const view = useStore(gameStore, s => s.view);
@@ -82,7 +88,55 @@ export default function App() {
     ? gameState.tributes.find(t => t.id === paletteTributeId) ?? null
     : null;
   const isReplayedRun = useStore(gameStore, s => s.isReplayedRun);
-  const [showSettings, setShowSettings] = React.useState(false);
+  const showSettings = useStore(uiStore, u => u.settingsOpen);
+  const setShowSettings = (open: boolean) => setUi({ settingsOpen: open });
+  const recap = useStore(uiStore, u => u.recap);
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEscapeLayer(menuOpen, () => setMenuOpen(false));
+
+  /*
+   * AUDIT-11 U2: the header's real height, published as `--header-h` so the
+   * broadcast bar and anything else sticky sits under it instead of under a
+   * guessed 3.75rem that was wrong the moment the nav wrapped.
+   */
+  const headerRef = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const write = () => document.documentElement.style.setProperty('--header-h', `${el.offsetHeight}px`);
+    write();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(write);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  /*
+   * AUDIT-11 §4: on a route change, move focus to the new screen's heading so
+   * a screen reader announces where the reader has landed. Not on first load.
+   */
+  const prevView = useRef(view);
+  useEffect(() => {
+    if (prevView.current === view) return;
+    prevView.current = view;
+    let frames = 0;
+    let raf = 0;
+    const tryFocus = () => {
+      const main = document.getElementById('main-content');
+      const heading = main?.querySelector<HTMLElement>('h1, h2');
+      if (heading && !main?.querySelector('[aria-busy="true"]')) {
+        if (!heading.hasAttribute('tabindex')) heading.setAttribute('tabindex', '-1');
+        heading.focus({ preventScroll: true });
+        return;
+      }
+      if (frames++ < 60) raf = requestAnimationFrame(tryFocus);
+    };
+    raf = requestAnimationFrame(tryFocus);
+    return () => cancelAnimationFrame(raf);
+  }, [view]);
+
+  // §4: the persistent saved / not-saved chip.
+  const persistent = React.useMemo(() => persistenceMode() === 'persistent', []);
   /**
    * F02: a share link whose campaign payload did not validate still launches —
    * the seed and rules are fine — but it launches under the receiver's own
@@ -251,24 +305,37 @@ export default function App() {
   return (
     <div className="min-h-screen text-[var(--color-ink-300)] selection:bg-[var(--red)] selection:text-white">
       <a href="#main-content" className="skip-link">Skip to main content</a>
-      <header className="sticky top-0 z-20 bg-[var(--ink)] border-b-[3px] border-[var(--red)]">
-        <div className="max-w-6xl mx-auto flex justify-between items-center flex-wrap gap-3 px-4 py-3.5">
-          <h1 className="text-xl md:text-2xl uppercase tracking-tight flex items-center gap-2 text-white m-0" style={{ fontFamily: 'var(--font-display)' }}>
-            <Swords className="w-5 h-5 text-[var(--red)]" />
-            Survival Games
+      <header ref={headerRef} className="app-header sticky top-0 z-30 border-b-[3px] border-[var(--red)]">
+        <div className="relative max-w-6xl mx-auto flex justify-between items-center gap-2 sm:gap-3 px-4 py-2.5 lg:py-3.5">
+          <h1 className="text-lg sm:text-xl md:text-2xl uppercase tracking-tight flex items-center gap-2 m-0 min-w-0 truncate" style={{ fontFamily: 'var(--font-display)', color: 'var(--chrome-ink)' }}>
+            <Swords className="w-5 h-5 text-[var(--red-on-ink)] flex-none" aria-hidden="true" />
+            <span className={gameState ? 'sr-only sm:not-sr-only truncate' : 'truncate'}>Survival Games</span>
           </h1>
 
-          <nav aria-label="Primary" className="flex gap-1 items-center flex-wrap">
+          <div className="flex gap-1 sm:gap-2 items-center flex-none">
             {isReplayedRun && gameState && (
               // B3-01: a run the player took the controls of is no longer a
               // replay of anybody's Games, and a badge that still says so is
               // the same false claim F19 exists to prevent.
-              <span className="chip chip-coin hidden sm:inline-flex">
+              <span className="chip chip-coin hidden md:inline-flex">
                 {gameState.replayBranched ? 'Branched from' : 'Replay'} · {gameState.seed}
+              </span>
+            )}
+            {gameState && (
+              // §4: whether this run survives a refresh. `persistenceMode()`
+              // is 'session' when storage is blocked (private windows, quota).
+              <span
+                className={`chip hidden md:inline-flex ${persistent ? '' : 'chip-accent'}`}
+                role="status"
+                title={persistent ? 'This run autosaves every phase' : 'Storage is unavailable — this run will be lost on refresh'}
+                style={persistent ? { color: 'var(--chrome-muted)', borderColor: 'var(--chrome-muted)', background: 'transparent' } : undefined}
+              >
+                {persistent ? '● Saved' : '○ Not saved'}
               </span>
             )}
             <span className="chip chip-gold" role="status" aria-label={`${coins} Capitol Coins available for wagers`} title="Capitol Coins available for wagers">{coins} <span aria-hidden="true">⨷</span></span>
             {gameState && (
+              <span className="hidden md:inline-flex">
               <ShareButton seed={gameState.seed} arenaId={gameState.arena.id} gamemakerMode={gameState.gamemakerMode} config={gameState.baseConfig} quellId={gameState.gamesProfile?.quell?.id ?? null} campaign={gameState.campaign}
                 // F19: the two inputs the link cannot carry, counted off the
                 // run so the control can describe itself honestly.
@@ -276,40 +343,93 @@ export default function App() {
                 interventions={gameState.gamemakerCommands ?? 0}
                 // B3-01: and the one it now can — the commands themselves.
                 interventionLog={gameState.interventionLog} />
+              </span>
             )}
-            {/* Real links now that screens are real routes: the address bar
-                follows them, and middle-click / open-in-new-tab work. The click
-                handler keeps the store in step for the case where the hash is
-                already what it's about to become. */}
             <button
               onClick={() => setShowSettings(true)}
-              // AUDIT-7 §2.1: `tap-target` is the opt-in for a control that is
-              // neither a `.btn` nor a nav link and still needs a thumb's worth
-              // of room on a phone. This one is icon-only, so it has no text to
-              // make it tall — it measured 44x28 at 380px.
-              className="px-2 py-1.5 tap-target inline-flex items-center justify-center"
+              // AUDIT-7 §2.1: icon-only, so `tap-target` supplies the size.
+              className="nav-link px-2 py-1.5 tap-target inline-flex items-center justify-center"
               title="Settings — units, sound, auto-play brakes"
               aria-label="Open settings"
               aria-haspopup="dialog"
-              style={{ color: '#a89a86' }}
             >
               <Settings2 className="w-4 h-4" />
             </button>
-            {navItems.filter(i => i.show).map(item => (
-              <a
-                key={item.id}
-                href={`#${pathForView(item.id)}`}
-                onClick={() => gameActions.setView(item.id)}
-                aria-current={view === item.id ? 'page' : undefined}
-                className="px-3 py-1.5 text-mini font-extrabold uppercase tracking-[0.1em] transition-colors no-underline"
-                style={{ fontFamily: 'var(--font-mono)', color: view === item.id ? 'var(--red-on-ink)' : '#a89a86' }}
-              >
-                {item.label}
-              </a>
-            ))}
-          </nav>
+            {/* Real links now that screens are real routes. Desktop: inline. */}
+            <nav aria-label="Primary" className="hidden lg:flex gap-1 items-center">
+              {navItems.filter(i => i.show).map(item => (
+                <a
+                  key={item.id}
+                  href={`#${pathForView(item.id)}`}
+                  onClick={() => gameActions.setView(item.id)}
+                  aria-current={view === item.id ? 'page' : undefined}
+                  className="nav-link px-3 py-1.5 text-mini font-extrabold uppercase tracking-[0.1em] transition-colors no-underline"
+                  style={{ fontFamily: 'var(--font-mono)' }}
+                >
+                  {item.label}
+                </a>
+              ))}
+            </nav>
+            {/* AUDIT-11 §4: below lg the header is one row — logo, coins, the
+                run's own routes, and a menu for everything else. */}
+            <nav aria-label="Run" className="flex lg:hidden items-center">
+              {navItems.filter(i => i.show && RUN_ROUTES.includes(i.id)).map(item => (
+                <a
+                  key={item.id}
+                  href={`#${pathForView(item.id)}`}
+                  onClick={() => { gameActions.setView(item.id); setMenuOpen(false); }}
+                  aria-current={view === item.id ? 'page' : undefined}
+                  className="nav-link px-1.5 min-h-[44px] inline-flex items-center text-micro font-extrabold uppercase tracking-[0.06em] no-underline"
+                  style={{ fontFamily: 'var(--font-mono)' }}
+                >
+                  {item.label}
+                </a>
+              ))}
+            </nav>
+            <button
+              type="button"
+              className="nav-link lg:hidden tap-target inline-flex items-center justify-center px-2 py-1.5"
+              aria-expanded={menuOpen}
+              aria-controls="app-menu"
+              aria-label={menuOpen ? 'Close menu' : 'Open menu'}
+              onClick={() => setMenuOpen(v => !v)}
+            >
+              {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
+          {menuOpen && (
+            <nav id="app-menu" aria-label="Primary" className="app-menu lg:hidden">
+              {navItems.filter(i => i.show && !RUN_ROUTES.includes(i.id)).map(item => (
+                <a
+                  key={item.id}
+                  href={`#${pathForView(item.id)}`}
+                  onClick={() => { gameActions.setView(item.id); setMenuOpen(false); }}
+                  aria-current={view === item.id ? 'page' : undefined}
+                  className="nav-link text-mini font-extrabold uppercase tracking-[0.1em] no-underline"
+                  style={{ fontFamily: 'var(--font-mono)' }}
+                >
+                  {item.label}
+                </a>
+              ))}
+              {gameState && (
+                <div className="px-3 py-2 md:hidden flex flex-wrap gap-2 items-center border-t border-[var(--chrome-muted)]/30">
+                  <span className="text-micro font-mono uppercase" style={{ color: 'var(--chrome-muted)' }}>
+                    {persistent ? '● Autosaved' : '○ Not saved — storage unavailable'}
+                  </span>
+                  <ShareButton seed={gameState.seed} arenaId={gameState.arena.id} gamemakerMode={gameState.gamemakerMode} config={gameState.baseConfig} quellId={gameState.gamesProfile?.quell?.id ?? null} campaign={gameState.campaign}
+                    veteransSeated={gameState.veteransSeated?.length ?? 0}
+                    interventions={gameState.gamemakerCommands ?? 0}
+                    interventionLog={gameState.interventionLog} />
+                </div>
+              )}
+            </nav>
+          )}
         </div>
       </header>
+
+      {/* AUDIT-11 U17: one app-level live region for shortcut announcements,
+          so a shortcut that switches screens is still spoken. */}
+      <div id="app-announcer" role="status" aria-live="polite" className="sr-only" />
 
       {/* §2.2: Cmd-K / Ctrl-K, across the whole run. Mounted at the app level
           so it works from any screen, including the ones that have no search. */}
@@ -319,15 +439,25 @@ export default function App() {
           once means two focus traps fighting each other and a reader who cannot
           tab out of either. On the arena route the palette hands the id down
           and the arena opens it in the one sheet it already owns. */}
-      {paletteTribute && gameState && view !== 'game' && (
+      {/* AUDIT-11 U5: GameScreen is only mounted while the Games are live —
+          on the end screen and the victor's interview the app opens it. */}
+      {paletteTribute && gameState && !(view === 'game' && gameState.phase !== 'ended' && gameState.phase !== 'epilogue') && (
         <TributeModal
+          key={paletteTribute.id}
           tribute={paletteTribute}
           gameState={gameState}
           onClose={() => setPaletteTributeId(null)}
         />
       )}
 
-      <main id="main-content" tabIndex={-1} className="max-w-6xl mx-auto px-4 py-8">
+      <main id="main-content" tabIndex={-1} className="max-w-6xl mx-auto px-4 py-5 lg:py-8">
+        {recap && gameState && (
+          // §4: a one-line recap after resuming a saved run.
+          <div role="status" className="panel p-3 mb-4 flex items-start justify-between gap-3" style={{ borderColor: 'var(--gold-line)', borderWidth: '2px' }}>
+            <p className="text-sm text-[var(--color-ink-200)] m-0">{recap}</p>
+            <button type="button" className="btn btn-sm flex-none min-h-[28px] px-3" onClick={() => setUi({ recap: null })}>Dismiss</button>
+          </div>
+        )}
         {linkNotice && (
           <div role="alert" className="panel p-4 mb-5 flex items-start justify-between gap-4"
             style={{ borderColor: 'var(--color-coin-400)', borderWidth: '2px' }}>
@@ -346,6 +476,7 @@ export default function App() {
             // F19: a Games the player set up themselves inherits no claim from
             // a previous link or relaunch, so the banner goes with it.
             gameActions.setLinkNotice(null);
+            setUi({ recap: null });
             void gameActions.startGame(seed, arenaId, gamemakerMode, config, false, forceQuell, pinnedQuellId ?? undefined);
           }} />
         )}
@@ -393,10 +524,11 @@ export default function App() {
                * than at the top of the log.
                */
               onOpenEvidence={evidence => {
-                if (evidence.day !== undefined && evidence.phase) {
-                  window.location.hash = `#/chronicle?day=${evidence.day}&phase=${evidence.phase}`;
-                }
-                gameActions.setView('chronicle');
+                // AUDIT-11 U4: the query travels with the navigation instead
+                // of being overwritten by it.
+                navigate('chronicle', evidence.day !== undefined && evidence.phase
+                  ? `day=${evidence.day}&phase=${encodeURIComponent(evidence.phase)}`
+                  : undefined);
               }}
             />
           ) : gameState.phase === 'epilogue' ? (

@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { Hint } from './Hint';
 import { frontName } from '../engine/weatherFront';
 import { useTransientFlag } from '../ui/useTransientFlag';
+import { useEscapeLayer } from '../ui/useDialogFocus';
 import { GameState } from '../models/types';
 import { FastForward, Undo2, Volume2, VolumeX } from 'lucide-react';
 import { PlaybackPopover, PlayUntil, Speed } from './PlaybackPopover';
@@ -57,6 +58,18 @@ export function BroadcastBar({
     const prefs = useStore(prefsStore, p => p);
     const runProgress = useStore(gameStore, s => s.runProgress);
     const [showExport, setShowExport] = useState(false);
+    const [expanded, setExpanded] = useState(false);
+    const controlsId = useId();
+    // Publish the bar's height so sticky elements below it can sit under it.
+    const barRef = useRef<HTMLDivElement>(null);
+    useEffect(() => {
+        const el = barRef.current;
+        if (!el || typeof ResizeObserver === 'undefined') return;
+        const root = document.documentElement;
+        const ro = new ResizeObserver(() => root.style.setProperty('--bar-h', `${el.offsetHeight}px`));
+        ro.observe(el);
+        return () => { ro.disconnect(); root.style.removeProperty('--bar-h'); };
+    }, []);
 
     // §2.4: "what just changed". After Proceed the counters jump with nothing
     // to say which of them moved, so each flashes for a moment when it does.
@@ -75,6 +88,8 @@ export function BroadcastBar({
 
     const [checkpointsOpen, setCheckpointsOpen] = useState(false);
     const checkpoints = checkpointsOpen ? gameActions.checkpoints() : [];
+    useEscapeLayer(checkpointsOpen, () => setCheckpointsOpen(false));
+    useEscapeLayer(showExport, () => setShowExport(false));
     // §2.2: rewind is bounded — sixteen phases in memory, three across a
     // refresh — and the bound used to be invisible, so the list just quietly
     // stopped reaching back any further.
@@ -101,7 +116,11 @@ export function BroadcastBar({
     });
 
     return (
-        <div className="panel sticky top-[3.75rem] z-20 px-4 py-2.5 mb-5 flex flex-wrap items-center gap-x-4 gap-y-2">
+        /* AUDIT-11 U2: sticks under the *measured* header (`--header-h`, set by
+           App) instead of a guessed 3.75rem, and below `lg` collapses to one
+           row — phase, counts and a toggle — expanding for Undo, speed and
+           export. Proceed is on the bottom nav there. */
+        <div ref={barRef} className="panel sticky below-header z-20 px-4 py-2 lg:py-2.5 mb-5 flex flex-wrap items-center gap-x-4 gap-y-2">
             <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2 flex-wrap">
                     <h2 className="display-title text-lg leading-none">{phaseLabel}</h2>
@@ -109,7 +128,7 @@ export function BroadcastBar({
                         {arenaSealed ? '❓ Arena sealed' : gameState.arena.name}
                     </span>
                 </div>
-                <div className="font-mono text-micro uppercase tracking-wider text-[var(--color-ink-500)] mt-0.5">
+                <div className={`font-mono text-micro uppercase tracking-wider text-[var(--color-ink-500)] mt-0.5 ${expanded ? '' : 'truncate lg:whitespace-normal'}`}>
                     <span className={aliveDelta !== 0 ? 'text-[var(--red)] font-black' : ''}>
                         {aliveCount} alive
                         {aliveDelta !== 0 && <span> ({aliveDelta > 0 ? '+' : ''}{aliveDelta})</span>}
@@ -172,8 +191,18 @@ export function BroadcastBar({
                 </div>
             </div>
 
+            <button
+                type="button"
+                className="btn btn-sm btn-ghost lg:hidden flex-none tap-target"
+                aria-expanded={expanded}
+                aria-controls={controlsId}
+                onClick={() => setExpanded(v => !v)}
+            >
+                {expanded ? 'Less' : 'More'} <span aria-hidden="true">{expanded ? '▴' : '▾'}</span>
+            </button>
+
             {!isOver && (
-                <div className="flex items-center gap-2 flex-wrap">
+                <div id={controlsId} className={`${expanded ? 'flex' : 'hidden lg:flex'} items-center gap-2 flex-wrap`}>
                     <span className="relative">
                         <button
                             onClick={() => gameActions.stepBack()}
@@ -281,7 +310,7 @@ export function BroadcastBar({
                 </div>
             )}
 
-            <div className="flex items-center gap-1">
+            <div className={`${expanded ? 'flex' : 'hidden lg:flex'} items-center gap-1`}>
                 <button
                     onClick={() => setPrefs({ muteAudio: !prefs.muteAudio })}
                     aria-pressed={prefs.muteAudio}

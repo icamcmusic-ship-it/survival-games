@@ -469,23 +469,23 @@ export function groupLogs(logs: EventLog[]): Array<[string, EventLog[]]> {
  */
 function AnthemCard({ day, fallen }: { day: number; fallen: Tribute[] }) {
     return (
-        <div className="panel p-4 my-3" style={{ background: 'var(--ink)', borderColor: 'var(--red)' }}>
+        <div className="panel p-4 my-3" style={{ background: 'var(--chrome-bg)', borderColor: 'var(--red)' }}>
             <div className="text-center space-y-1 mb-3">
-                <div className="eyebrow" style={{ color: 'var(--red)' }}>The anthem plays</div>
-                <div className="text-mini font-mono uppercase tracking-widest text-[#a89a86]">
+                <div className="eyebrow" style={{ color: 'var(--red-on-ink)' }}>The anthem plays</div>
+                <div className="text-mini font-mono uppercase tracking-widest text-[var(--chrome-muted)]">
                     Day {day} · {fallen.length} fallen
                 </div>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                 {fallen.map(t => (
                     <div key={t.id} className="text-center border border-[#3a332c] py-2 px-1">
-                        <div className="font-mono text-micro font-black text-[var(--red)]">D{t.district}</div>
-                        <div className="text-xs font-bold text-white truncate">{t.name}</div>
-                        <div className="text-nano font-mono uppercase tracking-wider text-[#a89a86] truncate">
+                        <div className="font-mono text-micro font-black text-[var(--red-on-ink)]">D{t.district}</div>
+                        <div className="text-xs font-bold text-[var(--chrome-ink)] truncate">{t.name}</div>
+                        <div className="text-nano font-mono uppercase tracking-wider text-[var(--chrome-muted)] truncate">
                             {t.gender === 'Male' ? 'Male' : 'Female'} · {t.age}
                         </div>
                         {t.causeOfDeath && (
-                            <div className="text-nano text-[#8a7d6d] mt-0.5 leading-tight">{t.causeOfDeath}</div>
+                            <div className="text-nano text-[var(--chrome-muted)] mt-0.5 leading-tight">{t.causeOfDeath}</div>
                         )}
                     </div>
                 ))}

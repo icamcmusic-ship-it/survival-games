@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useId, useMemo, useState } from 'react';
 import { Hint } from './Hint';
 import { useDialogFocus } from '../ui/useDialogFocus';
 import { useTransientFlag } from '../ui/useTransientFlag';
@@ -270,6 +270,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
     // A5: four tabs, defaulting to Overview, and an optional second tribute
     // rendered beside the first.
     const [tab, setTab] = useState<ModalTab>('overview');
+    const tabBase = useId();
     const [compareId, setCompareId] = useState('');
     const compare = compareId ? gameState.tributes.find(o => o.id === compareId) ?? null : null;
     const archetype = ARCHETYPES[tribute.archetype];
@@ -387,7 +388,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                 content on a 380px phone. The sheet is the surface a player
                 spends the whole run in, so it gets the phone's width back and
                 takes the desktop padding from `sm:` up. */}
-            <div ref={panelRef} tabIndex={-1} className="panel p-4 sm:p-6 max-w-3xl w-full max-h-[88vh] overflow-y-auto custom-scrollbar animate-riseIn" onClick={e => e.stopPropagation()}>
+            <div ref={panelRef} tabIndex={-1} className="panel p-4 sm:p-6 max-w-3xl w-full sheet-maxh overflow-y-auto overscroll-contain custom-scrollbar animate-riseIn" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-start mb-3 gap-4">
                     <div className="min-w-0">
                         <h3 className="display-title text-2xl">
@@ -474,16 +475,26 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                         {/* A5: comparison mode — the single most-requested feature
                             in every simulator of this genre, and all the data was
                             already here. */}
+                        {/* AUDIT-11 §4: one "Compare with" control. With a
+                            host that owns the full comparison view it opens
+                            that; otherwise it shows the inline side-by-side. */}
                         <select
-                            className="field text-xs w-auto"
-                            value={compareId}
-                            onChange={e => setCompareId(e.target.value)}
+                            id="compare-with"
+                            className="field text-xs w-auto max-w-[9.5rem] sm:max-w-none"
+                            value={onCompare ? '' : compareId}
+                            onChange={e => {
+                                const id = e.target.value;
+                                if (onCompare) { if (id) onCompare(id); }
+                                else setCompareId(id);
+                            }}
                             aria-label="Compare with another tribute"
                         >
                             <option value="">Compare with…</option>
-                            {gameState.tributes
+                            {[...gameState.tributes]
                                 .filter(o => o.id !== tribute.id)
-                                .sort((a, b) => a.district - b.district)
+                                .sort((a, b) => Number(a.status === 'dead') - Number(b.status === 'dead')
+                                    || a.district - b.district
+                                    || a.name.localeCompare(b.name))
                                 .map(o => (
                                     <option key={o.id} value={o.id}>{o.name} (D{o.district}){o.status === 'dead' ? ' †' : ''}</option>
                                 ))}
@@ -701,41 +712,31 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                     </div>
                 )}
 
-                {/* §2.3: comparison, from the sheet a reader is already
-                    looking at. The moment somebody wants this is the moment a
-                    rivalry sharpens, which is a moment they are on one of the
-                    two sheets. */}
-                {onCompare && (
-                    <div className="flex flex-wrap items-center gap-2 mb-4">
-                        <label className="eyebrow" htmlFor="compare-with">Compare with</label>
-                        <select
-                            id="compare-with"
-                            className="field text-xs w-auto"
-                            defaultValue=""
-                            onChange={e => { if (e.target.value) onCompare(e.target.value); }}
-                        >
-                            <option value="">pick a tribute…</option>
-                            {[...gameState.tributes]
-                                .filter(t => t.id !== tribute.id)
-                                .sort((a, b) => Number(a.status === 'dead') - Number(b.status === 'dead')
-                                    || a.district - b.district
-                                    || a.name.localeCompare(b.name))
-                                .map(t => (
-                                    <option key={t.id} value={t.id}>
-                                        {t.name} (D{t.district}){t.status === 'dead' ? ' †' : ''}
-                                    </option>
-                                ))}
-                        </select>
-                    </div>
-                )}
-
                 {/* A5: four tabs instead of fifteen sections in one column. */}
-                <div className="seg mb-4 w-full" role="tablist" aria-label="Tribute sheet sections">
+                {/* AUDIT-11 U18: complete ARIA tabs — roving tabindex, arrow
+                    keys, Home/End, and a labelled tabpanel. */}
+                <div className="seg mb-4 w-full" role="tablist" aria-label="Tribute sheet sections"
+                    onKeyDown={e => {
+                        const ids = TABS.map(([id]) => id);
+                        const at = ids.indexOf(tab);
+                        let next = -1;
+                        if (e.key === 'ArrowRight') next = (at + 1) % ids.length;
+                        else if (e.key === 'ArrowLeft') next = (at - 1 + ids.length) % ids.length;
+                        else if (e.key === 'Home') next = 0;
+                        else if (e.key === 'End') next = ids.length - 1;
+                        if (next < 0) return;
+                        e.preventDefault();
+                        setTab(ids[next]);
+                        document.getElementById(`${tabBase}-tab-${ids[next]}`)?.focus();
+                    }}>
                     {TABS.map(([id, label]) => (
                         <button
                             key={id}
+                            id={`${tabBase}-tab-${id}`}
                             role="tab"
                             aria-selected={tab === id}
+                            aria-controls={`${tabBase}-panel`}
+                            tabIndex={tab === id ? 0 : -1}
                             onClick={() => setTab(id)}
                             className="seg-item flex-1"
                         >
@@ -770,7 +771,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                     </div>
                 )}
 
-                <div className="space-y-5">
+                <div className="space-y-5" role="tabpanel" id={`${tabBase}-panel`} aria-labelledby={`${tabBase}-tab-${tab}`}>
                     {tab === 'overview' && <>
                     <section>
                         <h4 className="panel-title mb-2">Condition</h4>

@@ -11,6 +11,7 @@ import { injuryGrade } from './wounds';
 import { fill } from './encounters';
 import { getZone } from './map';
 import { RNG } from '../utils/rng';
+import { allied } from './alliance';
 
 /**
  * Skills that improve with use.
@@ -74,6 +75,12 @@ const ARCHETYPE_SPECIALITY: Record<ArchetypeId, Proficiency> = {
     understudy: 'forage',
     archivist: 'oratory',
     quiet: 'stealth',
+    // AUDIT-11 §16: the pilot four. Navigation, cooking, deception and watchkeeping
+    // already exist as `navigation`, `fieldcookery`, `deception` and `vigilance`.
+    hermit: 'vigilance',
+    showrunner: 'deception',
+    'healer-pacifist': 'medicine',
+    engineer: 'knots',
     // AUDIT-9 stage D: the walk is the job.
     courier: 'pacing',
 };
@@ -154,9 +161,11 @@ export function academyTraining(rng: RNG, t: Tribute) {
     drilled.forEach(id => { t.weaponFamiliarity![id] = PROFICIENCY.familiarCap; });
 
     const classes = new Set(drilled.map(id => ITEMS.find(i => i.id === id)?.weaponClass));
-    const skills: Proficiency[] = ['melee'];
-    if (classes.has('ranged')) skills.push('ranged');
-    if (classes.has('thrown')) skills.push('ranged', 'throwing');
+    // AUDIT-11 E15: a set, so a thrown weapon beside a bow does not list
+    // 'ranged' twice.
+    const skills = new Set<Proficiency>(['melee']);
+    if (classes.has('ranged')) skills.add('ranged');
+    if (classes.has('thrown')) { skills.add('ranged'); skills.add('throwing'); }
     t.proficiencies = t.proficiencies ?? {};
     skills.forEach(skill => {
         t.proficiencies![skill] = Math.max(t.proficiencies![skill] ?? 0, VOLUNTEER.academyCombatFloor);
@@ -481,7 +490,7 @@ export function teachSkills(ctx: SimContext) {
     alive.forEach(teacher => {
         if (!teacher.allianceId) return;
         const students = alive.filter(o =>
-            o.id !== teacher.id && o.allianceId === teacher.allianceId && o.zone === teacher.zone);
+            o.id !== teacher.id && allied(o, teacher) && o.zone === teacher.zone);
         if (students.length === 0) return;
 
         const skill = (Object.keys(teacher.proficiencies ?? {}) as Proficiency[])
