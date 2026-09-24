@@ -14,6 +14,7 @@ import { hasTool } from './items';
 import { isUnlitZone } from './map';
 import { ARENA_SIGNATURES, BLEEDING, ESCALATION, MEMORY, PROC_SIGNATURE, SIGNATURE_RULES } from '../data/balance';
 import { loseSanity } from './sanityBands';
+import { allied } from './alliance';
 
 /**
  * Arena signature mechanics.
@@ -435,7 +436,7 @@ function saltflatsSignature(ctx: SimContext, _cycle: number, rng: RNG) {
     // fed to the memory layer, so hunters can actually act on it.
     exposed.forEach(observer => {
         openZones.forEach(z => {
-            const rivals = exposed.filter(o => o.zone === z && o.allianceId !== observer.allianceId && o.id !== observer.id).length;
+            const rivals = exposed.filter(o => o.zone === z && !allied(o, observer) && o.id !== observer.id).length;
             if (rivals > 0) noteSighting(ctx.state, observer, z, rivals, 0);
         });
         observer.vitals.thirst += ARENA_SIGNATURES.saltFlats.thirst;
@@ -706,7 +707,7 @@ function carnivalSignature(ctx: SimContext, _cycle: number, rng: RNG) {
     // The whole park sees where the lights are — and who is standing in them.
     if (caught.length > 0) {
         getAlive(ctx.state).forEach(observer => {
-            const rivals = caught.filter(o => o.allianceId !== observer.allianceId && o.id !== observer.id).length;
+            const rivals = caught.filter(o => !allied(o, observer) && o.id !== observer.id).length;
             if (rivals > 0 && observer.zone !== target) noteSighting(ctx.state, observer, target, rivals, 0);
         });
     }

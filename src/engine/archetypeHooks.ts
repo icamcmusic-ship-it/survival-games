@@ -27,6 +27,7 @@ import { addNotoriety } from './notoriety';
 import { incurDebt } from './debts';
 import { chokepointByName } from '../models/types';
 import { noteStage, runFunnelOutcomes } from './funnel';
+import { allied } from './alliance';
 
 /**
  * A2: the behavioural half of an archetype.
@@ -133,7 +134,7 @@ type Signature = (ctx: SimContext, t: Tribute) => boolean;
 /** Everyone alive who is not this tribute and not their ally. */
 function others(ctx: SimContext, t: Tribute): Tribute[] {
     return getAlive(ctx.state).filter(o =>
-        o.id !== t.id && (o.allianceId === undefined || o.allianceId !== t.allianceId));
+        o.id !== t.id && !allied(o, t));
 }
 
 function say(ctx: SimContext, t: Tribute, key: keyof typeof ARCHETYPE_SIGNATURE_TEXTS, cast: string[], vars: Record<string, string> = {}, type?: EventType) {
@@ -157,7 +158,7 @@ export const SIGNATURES: Record<string, Signature> = {
     /** Career: the pack declares itself, out loud, at somebody's expense. */
     careerDeclaration: (ctx, t) => {
         // gated: needs a live pack and a mark
-        const pack = getAlive(ctx.state).filter(o => o.allianceId !== undefined && o.allianceId === t.allianceId);
+        const pack = getAlive(ctx.state).filter(o => allied(o, t));
         if (pack.length < 2) return false;
         const mark = others(ctx, t).sort((a, b) => a.health - b.health)[0];
         if (!mark) return false;
@@ -190,7 +191,7 @@ export const SIGNATURES: Record<string, Signature> = {
     protectorStand: (ctx, t) => {
         const ward = getAlive(ctx.state).find(o =>
             o.id !== t.id && o.zone === t.zone
-            && (o.allianceId === t.allianceId || getRel(t, o.id) > ARCHETYPE_HOOKS.standRegard));
+            && (allied(o, t) || getRel(t, o.id) > ARCHETYPE_HOOKS.standRegard));
         if (!ward) return false;
         say(ctx, t, 'protectorStand', [t.id, ward.id], { ward: ward.name });
         t.objective = { kind: 'protect', wardId: ward.id, expires: (ctx.state.cycle ?? 0) + ARCHETYPE_HOOKS.signatureObjectiveCycles };
@@ -447,7 +448,7 @@ export const SIGNATURES: Record<string, Signature> = {
             // tribute knows that this tribute does not — which is empty by
             // construction, and the branch could never fire.
             const listener = getAlive(ctx.state).filter(o => o.id !== t.id && o.zone !== t.zone
-                && (o.allianceId === t.allianceId || getRel(t, o.id) > ARCHETYPE_HOOKS.courierMinRegard))
+                && (allied(o, t) || getRel(t, o.id) > ARCHETYPE_HOOKS.courierMinRegard))
                 .find(o => tradeableZones(ctx.state, t, o).length >= ARCHETYPE_HOOKS.courierIntelZones);
             if (!listener) return false;
             say(ctx, t, 'courierRun', [t.id, listener.id], { client: listener.name, where: listener.zone }, 'objective-formed');
@@ -466,7 +467,7 @@ export const SIGNATURES: Record<string, Signature> = {
          * piece needed the one state its own alliance behaviour avoids.
          */
         const clients = getAlive(ctx.state).filter(o => o.id !== t.id
-            && (o.allianceId !== undefined && o.allianceId === t.allianceId
+            && (allied(o, t)
                 ? true
                 : getRel(t, o.id) > ARCHETYPE_HOOKS.courierMinRegard)
             && (o.vitals.hunger > ARCHETYPE_HOOKS.courierHungerLine || o.health < ARCHETYPE_HOOKS.courierHurtLine));
@@ -506,7 +507,7 @@ export const SIGNATURES: Record<string, Signature> = {
          * That is the test now.
          */
         const alliesPresent = (o: Tribute) => o.allianceId !== undefined
-            && getAlive(ctx.state).some(a => a.id !== o.id && a.zone === o.zone && a.allianceId === o.allianceId);
+            && getAlive(ctx.state).some(a => a.id !== o.id && a.zone === o.zone && allied(a, o));
         const here = others(ctx, t).filter(o => o.zone === t.zone && o.health < t.health && !alliesPresent(o));
         if (here.length === 0) return false;
         const mark = here.sort((a, b) => a.health - b.health)[0];
@@ -538,7 +539,7 @@ export const SIGNATURES: Record<string, Signature> = {
         if (t.inventory.length < ARCHETYPE_HOOKS.inventoryMinItems) return false;
         const ally = getAlive(ctx.state).find(o =>
             o.id !== t.id && o.zone === t.zone
-            && (o.allianceId !== undefined && o.allianceId === t.allianceId));
+            && allied(o, t));
         /*
          * AUDIT-7 §8.2: the version of this a soloist can reach.
          *
@@ -575,7 +576,7 @@ export const SIGNATURES: Record<string, Signature> = {
     martyrOffer: (ctx, t) => {
         const ward = getAlive(ctx.state).find(o =>
             o.id !== t.id && o.zone === t.zone
-            && (o.allianceId === t.allianceId || getRel(t, o.id) > ARCHETYPE_HOOKS.martyrOfferRegard));
+            && (allied(o, t) || getRel(t, o.id) > ARCHETYPE_HOOKS.martyrOfferRegard));
         if (!ward) return false;
         say(ctx, t, 'martyrOffer', [t.id, ward.id], { ward: ward.name }, 'desperation-fights');
         // The offer is not rhetorical: they hand over the margin they were

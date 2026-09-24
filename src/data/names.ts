@@ -56,6 +56,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Uvarov', 'Ouro', 'Ursine', 'Zendal', 'Quadrille', 'Zibel', 'Yestre', 'Ormolet', 'Xantheon', 'Yvane',
             // AUDIT-9 stage D: vetted candidates from the audit's §11.
             'Avelune', 'Cirelle',
+            // AUDIT-11 §15.
+            'Solenne', 'Sienna', 'Tesla',
         ],
     },
     // District 2 — Masonry & Peacekeepers: Roman names, stone, and
@@ -77,6 +79,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Zosim', 'Yeomanry', 'Unctor', 'Ossuar', 'Zanthe', 'Oubliette', 'Ingar', 'Yrsa', 'Zorath', 'Yvarr',
             // AUDIT-9 stage D: vetted candidates from the audit's §11.
             'Caldrin', 'Torven', 'Bravik', 'Dorsen',
+            // AUDIT-11 §15.
+            'Rook', 'Gneiss', 'Tuff', 'Scree', 'Slate',
         ],
         Female: [
             'Clove', 'Enobaria', 'Lyme', 'Livia', 'Diana', 'Victoria', 'Aurelia', 'Octavia', 'Portia', 'Juno',
@@ -94,6 +98,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Obdur', 'Zelot', 'Xiphos', 'Ylva', 'Ulfheim', 'Zemin', 'Ogmund', 'Uldric', 'Ostrog', 'Xenos',
             // AUDIT-9 stage D: vetted candidates from the audit's §11.
             'Stenra',
+            // AUDIT-11 §15.
+            'Pumice',
         ],
     },
     // District 3 — Technology: circuitry words worn plain, plus Beetee-style
@@ -113,6 +119,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Xenark', 'Kelvinor', 'Quantic', 'Jitteren', 'Verilog',
             // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
             'Ustor', 'Xand', 'Opto', 'Ionn', 'Quibit', 'Zolta', 'Xantic', 'Ondel', 'Uvex', 'Quarz',
+            // AUDIT-11 §15.
+            'Rivet', 'Gasket', 'Axle', 'Cog', 'Flywheel', 'Ferrous',
         ],
         Female: [
             'Wiress', 'Cyra', 'Nova', 'Beta', 'Echo', 'Ada', 'Dot', 'Logic', 'Spark', 'Meg',
@@ -151,6 +159,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Quahog', 'Orca', 'Ulva', 'Zeeman', 'Xandine', 'Zephyral', 'Yolde', 'Yarrowreef', 'Quillara', 'Ostrean',
             // AUDIT-9 stage D: vetted candidates from the audit's §11.
             'Coralin', 'Tavil',
+            // AUDIT-11 §15.
+            'Coble', 'Galley', 'Rigg', 'Sprat', 'Dace', 'Tench', 'Burbot', 'Gudgeon', 'Wrack', 'Curlew',
         ],
         Female: [
             'Annie', 'Cresta', 'Mags', 'Nerida', 'Trawler', 'Coral', 'Siren', 'Delta', 'Marina', 'Ocean',
@@ -168,6 +178,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Ushant', 'Yare', 'Iselin', 'Ythan', 'Yssel', 'Xebecca', 'Umbriel', 'Ondelle', 'Ulvine', 'Yvelle',
             // AUDIT-9 stage D: vetted candidates from the audit's §11.
             'Pelora',
+            // AUDIT-11 §15.
+            'Samphire', 'Dulse', 'Laver', 'Dunlin', 'Tern',
         ],
     },
     // District 5 — Power: current, light, and the grid. Words that hum,
@@ -189,6 +201,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Urd', 'Xelas', 'Xanthin', 'Xerus', 'Yonge', 'Zephyrin', 'Xandor', 'Ohmura', 'Uvolt',
             // AUDIT-9 stage D: vetted candidates from the audit's §11.
             'Dynel', 'Arclen', 'Helion',
+            // AUDIT-11 §15.
+            'Henry', 'Bellows',
         ],
         Female: [
             'Electra', 'Nova', 'Astra', 'Flare', 'Aurora', 'Lumina', 'Solara', 'Nebula', 'Helix', 'Voltina',
@@ -227,6 +241,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Unar', 'Onward', 'Ulrich', 'Yancy', 'Xantho', 'Oaklan', 'Ultan', 'Quintin', 'Yarrel',
             // AUDIT-9 stage D: vetted candidates from the audit's §11.
             'Railen', 'Tressel',
+            // AUDIT-11 §15.
+            'Tongs',
         ],
         Female: [
             'Lane', 'Piper', 'Stella', 'Velocity', 'Siena', 'Mercedes', 'Cheyenne', 'Carline', 'Aviara', 'Raven',
@@ -244,6 +260,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Zephyros', 'Yarding', 'Oakum', 'Ulmar', 'Querry', 'Zephyrel', 'Xandry', 'Ostler', 'Urbain',
             // AUDIT-9 stage D: vetted candidates from the audit's §11.
             'Axira', 'Trenna',
+            // AUDIT-11 §15.
+            'Brisk',
         ],
     },
     // District 7 — Lumber: trees named straight off the hillside, plus
@@ -265,6 +283,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Umbrel', 'Yewen', 'Quickset', 'Ulmus', 'Yarrowood', 'Yewel', 'Undertimber', 'Ordrey', 'Ulmwood',
             // AUDIT-9 stage D: vetted candidates from the audit's §11.
             'Aldren', 'Sylven', 'Torrel',
+            // AUDIT-11 §15.
+            'Hawthorn', 'Gorse', 'Cairn',
         ],
         Female: [
             'Johanna', 'Knotwood', 'Willow', 'Larchen', 'Alderly', 'Leafwyn', 'Cedarlyn', 'Fern', 'Leaf', 'Cedarly',
@@ -280,6 +300,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Xylona', 'Quakena', 'Yewlin', 'Nurselogh', 'Kindlinge',
             // AUDIT-7 §11.6: weighted toward the initials the pools are short of.
             'Zirco', 'Undergrowth', 'Oakhew', 'Ossier', 'Quirin', 'Zephyrwood', 'Quillwood', 'Yarden', 'Iselwood',
+            // AUDIT-11 §15.
+            'Heath', 'Siskin', 'Caddis', 'Mayfly',
         ],
     },
     // District 8 — Textiles: fabric, thread, and the sewing table. Plain
@@ -301,6 +323,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Zibellin', 'Quiller', 'Yarnell', 'Xestile', 'Ombre', 'Ingram', 'Querda', 'Ysolt', 'Orlon',
             // AUDIT-9 stage D: vetted candidates from the audit's §11.
             'Tavilin',
+            // AUDIT-11 §15.
+            'Abacus',
         ],
         Female: [
             'Cecelia', 'Paylor', 'Wilma', 'Nan', 'Taffet', 'Lace', 'Damaris', 'Percale', 'Chiffon', 'Taffeta',
@@ -318,6 +342,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Undyed', 'Ottoman', 'Zendale', 'Quinsy', 'Youghal', 'Xanthide', 'Oakweft', 'Ulmine', 'Yardwell',
             // AUDIT-9 stage D: vetted candidates from the audit's §11.
             'Wevra', 'Sereva', 'Looma', 'Hemra',
+            // AUDIT-11 §15.
+            'Tussah', 'Madder', 'Woad', 'Sepia',
         ],
     },
     // District 9 — Grain: the harvest and the mill. Bread words, field words,
@@ -339,6 +365,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Yeld', 'Oryza', 'Undercrop', 'Oakhull', 'Xandel', 'Ostgrain', 'Ultgrain', 'Orsey', 'Umberly',
             // AUDIT-9 stage D: vetted candidates from the audit's §11.
             'Barlen', 'Rillan',
+            // AUDIT-11 §15.
+            'Millet', 'Teff', 'Barley', 'Rye', 'Kasha', 'Caraway', 'Chervil',
         ],
         Female: [
             'Grainne', 'Acacia', 'Bushra', 'Charlene', 'Cerealia', 'Garner', 'Sibella', 'Poppy', 'Ryetta', 'Saffron',
@@ -356,6 +384,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Zephyrum', 'Zizania', 'Quickgrass', 'Ulmer', 'Querlot', 'Yarrowe', 'Ixil', 'Yestergrain', 'Zolder',
             // AUDIT-9 stage D: vetted candidates from the audit's §11.
             'Harlowe', 'Ryeva',
+            // AUDIT-11 §15.
+            'Lovage', 'Borage', 'Clary',
         ],
     },
     // District 10 — Livestock: herd, hide, and range. Ranch-hand real names
@@ -380,6 +410,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Jeb', 'Hock', 'Nubb', 'Ellum', 'Urnst', 'Yokel', 'Ingle', 'Tupp', 'Kern', 'Branner', 'Jessup', 'Elkin', 'Neatherd', 'Isley', 'Kessel',
             // AUDIT-9 stage D: vetted candidates from the audit's §11.
             'Brannoc', 'Herdan', 'Corven', 'Tallowen', 'Avren',
+            // AUDIT-11 §15.
+            'Colter', 'Hayward', 'Plowman', 'Ashby',
         ],
         Female: [
             'Brandy', 'Lassie', 'Fawn', 'Doe', 'Filly', 'Rodella', 'Sierra', 'Bryanna', 'Meadow', 'Dixie',
@@ -400,6 +432,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Nanser', 'Ewelind', 'Jilla', 'Udra', 'Ivyn', 'Elmet', 'Nella', 'Jenna', 'Urda', 'Ysa', 'Kinelle', 'Renna', 'Edeline', 'Islen',
             // AUDIT-9 stage D: vetted candidates from the audit's §11.
             'Marlowe',
+            // AUDIT-11 §15.
+            'Heifer', 'Ewe', 'Lambkin',
         ],
     },
     // District 11 — Agriculture: orchards, row crops, and wildflowers, cut
@@ -424,6 +458,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Jute', 'Earing', 'Nutley', 'Ishem', 'Urdan', 'Yamm', 'Kenner', 'Bolen', 'Jemmer', 'Emmer', 'Nardel', 'Ilex', 'Ulmar', 'Yarrowell',
             // AUDIT-9 stage D: vetted candidates from the audit's §11.
             'Sowen', 'Arliss',
+            // AUDIT-11 §15.
+            'Hedger', 'Thatch', 'Wattle', 'Daub', 'Pell',
         ],
         Female: [
             'Rue', 'Seeder', 'Blossom', 'Feverfew', 'Holly', 'Lily', 'Rose', 'Petal', 'Flora', 'Rosemary',
@@ -444,6 +480,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Junell', 'Elaine', 'Nimet', 'Isabeau', 'Ursell', 'Yara', 'Kelda', 'Baylea', 'Jessamy', 'Emmerin', 'Nixen', 'Ivorette', 'Umbelle', 'Yewen', 'Kettel',
             // AUDIT-9 stage D: vetted candidates from the audit's §11.
             'Pomelle', 'Sprigga',
+            // AUDIT-11 §15.
+            'Lark', 'Plover',
         ],
     },
     // District 12 — Coal mining, split by class. Seam names come from wild
@@ -469,6 +507,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Jedd', 'Emberlyn', 'Nixon', 'Inkwell', 'Urnsley', 'Yarrel', 'Kellan', 'Brackin', 'Jorn', 'Eskil', 'Nylen', 'Idris', 'Ulfen', 'Yancey',
             // AUDIT-9 stage D: vetted candidates from the audit's §11.
             'Coalyn', 'Cindrel', 'Ashwen', 'Merrow',
+            // AUDIT-11 §15.
+            'Tarn', 'Pewter', 'Cooper', 'Wright', 'Roach',
         ],
         Female: [
             'Katniss', 'Primrose', 'Maysilee', 'Ember', 'Eglantine', 'Hazel', 'Iris', 'Violet', 'Willow', 'Bramble',
@@ -489,6 +529,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Jessa', 'Edana', 'Nyla', 'Isleth', 'Ursela', 'Yarra', 'Kessen', 'Breena', 'Junia', 'Elka', 'Nettleby', 'Ivara', 'Umbra', 'Yewel', 'Kinnow',
             // AUDIT-9 stage D: vetted candidates from the audit's §11.
             'Delva',
+            // AUDIT-11 §15.
+            'Loess', 'Sleet',
         ],
     },
     // §BUG-5: these four shipped at 30 entries per gender against the original

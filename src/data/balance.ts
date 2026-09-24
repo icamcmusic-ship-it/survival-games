@@ -2952,6 +2952,13 @@ export const COMBAT = {
      */
     mercyRegard: 18,
     mercyTrust: 12,
+    /**
+     * AUDIT-11 E16: how many cycles "you let me walk away once" stays the
+     * headline of a later kill between the same two. Past it, or once the pair
+     * have been allies since, the sparing is history and the kill is read for
+     * what it is now (often a betrayal, with a beat of its own).
+     */
+    mercyMemoryCycles: 12,
     /** Below this, a landed hit reads as finishing the fight rather than opening it. */
     finishingHealthThreshold: 30,
     /** Power a Vengeful tribute brings against the specific person they hate. */
@@ -3636,6 +3643,14 @@ export const OBJECTIVES = {
     avengerDeterrent: 0.05,
     /** §4: what attacking somebody your ally has a truce with costs on the board. */
     thirdPartyTruceCost: 30,
+    /**
+     * AUDIT-11 §5: scoring a convergence or finale opponent instead of taking
+     * the first in roster order. Grudge per point of negative regard, the
+     * bonus for a sworn name, and what a standing truce with them costs.
+     */
+    faceOffGrudgeWeight: 0.5,
+    faceOffVengeanceBonus: 40,
+    faceOffTruceCost: 30,
 
     // ---- §16: the six intentions added after the cascade was surveyed ----
     /*
@@ -4539,6 +4554,29 @@ export const EPILOGUE = {
     retrievalRecoveryShare: 0.4,
     /** Sponsor credit earned purely by being unfindable, worth Caesar asking about. */
     ghostTrustNotable: 12,
+} as const;
+
+/**
+ * AUDIT-11 §5 "Remove omniscience": what a tribute assumes about somebody they
+ * have not had a good look at. `impressionOf` blends the last sighting toward
+ * these as it ages over `MEMORY.sightingLifetime` (plus `staleGrace` cycles).
+ */
+export const PERCEPTION = {
+    /** Health assumed of a stranger, or of somebody not seen for a while. */
+    priorHealth: 75,
+    /** Chance a stranger is armed, as a 0-1 expectation. */
+    priorArmed: 0.5,
+    /** Visible loot value assumed of a stranger. */
+    priorLoot: 12,
+    /** Extra cycles past the sighting lifetime before a snapshot is worth nothing. */
+    staleGrace: 2,
+    /** Kills a maximal reputation is read as, for the endgame edge. */
+    notorietyKills: 4,
+    /**
+     * Betrayal: each non-target alliance-mate standing in the same zone is a
+     * witness who may react, and multiplies the mark's weight by this.
+     */
+    betrayalWitnessFactor: 0.75,
 } as const;
 
 export const MEMORY = {

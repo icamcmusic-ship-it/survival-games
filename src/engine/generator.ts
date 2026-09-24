@@ -3,7 +3,7 @@ import { Tribute, Attributes, GameConfig, ArchetypeId, Gender, Handedness, LimbR
 import { TRAITS, DEFAULT_GAME_CONFIG, traitFits } from '../data/constants';
 import { traitMod } from '../data/traits';
 import { ARCHETYPES, archetypeWeightsFor } from '../data/archetypes';
-import { GENERATION, TESSERAE, VOLUNTEER } from '../data/balance';
+import { GENERATION, RELATIONSHIPS, TESSERAE, VOLUNTEER } from '../data/balance';
 import { DISTRICT_NAMES, NEUTRAL_NAMES } from '../data/names';
 import { REAPING_NOTE_TEXTS } from '../data/pregames';
 import { LEGACY_EFFECTS, craftOf, legacyOf } from '../data/districts';
@@ -653,8 +653,11 @@ export function generateTributes(
             const pair = tributes.filter(t => t.district === district);
             if (pair.length !== 2) continue;
             const [a, b] = pair;
-            a.relationships[b.id] = shape.pairBond;
-            b.relationships[a.id] = shape.pairBond;
+            // AUDIT-11 E17: the Quell bond is set after `seedBackstoryRelationships`
+            // applied the district-partner floor, so it must not undercut it.
+            const bond = Math.max(shape.pairBond, RELATIONSHIPS.districtPartnerFloor);
+            a.relationships[b.id] = bond;
+            b.relationships[a.id] = bond;
             const bondNote = (partner: Tribute, self: Tribute) =>
                 rng.pick(REAPING_NOTE_TEXTS.pairBond)
                     .split('{partner}').join(partner.name)

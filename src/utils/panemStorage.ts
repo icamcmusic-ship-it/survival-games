@@ -2,7 +2,7 @@ import { CampaignSnapshot } from '../models/types';
 import { GameState, Tribute } from '../models/types';
 import { HEAD_GAMEMAKERS } from '../data/gamemakers';
 import { QUELLS } from '../data/gamesProfile';
-import { ACHIEVEMENTS, CareerTotals, evaluateAchievements, evaluateMetaAchievements, evaluateNearMisses, NearMiss } from '../data/achievements';
+import { ACHIEVEMENTS, ARCHETYPE_COUNT, CareerTotals, DEATH_CAUSE_CODE_COUNT, evaluateAchievements, evaluateMetaAchievements, evaluateNearMisses, NearMiss } from '../data/achievements';
 import { COIN_ECONOMY } from '../data/balance';
 import { arenaLaws } from '../engine/gamesProfile';
 import { Notable, runDelta, runNotables, victorsOf } from './notables';
@@ -10,6 +10,7 @@ import { ARENAS } from '../data/constants';
 import { dailySeed } from '../data/replayHooks';
 import { ARENA_MUTTS } from '../data/mutts';
 import { deathCausesInRun } from '../engine/encounters';
+import { deathCodeOf } from '../engine/causes';
 import {
     STORAGE_KEYS, StorageSpec, asNum, asObjMap, asRecord, asStrArray, readStored, removeStored,
     writeStored,
@@ -202,6 +203,12 @@ export interface PanemRecords {
     /** §10.1: the district that won the most recent finished run, and how many consecutive runs it has now won. */
     lastVictorDistrict?: number;
     victorDistrictStreak?: number;
+    /** AUDIT-11 §14: every death-cause code ever witnessed, for `meta-every-death`. */
+    causeCodesSeen?: string[];
+    /** AUDIT-11 §14: distinct seeds that reached a finished run, for `meta-ninety-nine-seeds`. */
+    seedsCompleted?: string[];
+    /** AUDIT-11 §14: consecutive finished runs without a Career victor, for `meta-no-career-season`. */
+    nonCareerStreak?: number;
 }
 
 /** One district's victory, stamped so it reads as a specific thing that happened. */
@@ -491,6 +498,9 @@ export const PANEM_SPEC: StorageSpec<PanemRecords> = {
             patronWins: Math.max(0, asNum(r.patronWins, 0)),
             lastVictorDistrict: Number.isFinite(asNum(r.lastVictorDistrict, NaN)) ? asNum(r.lastVictorDistrict, 0) : undefined,
             victorDistrictStreak: Math.max(0, asNum(r.victorDistrictStreak, 0)),
+            causeCodesSeen: asStrArray(r.causeCodesSeen),
+            seedsCompleted: asStrArray(r.seedsCompleted),
+            nonCareerStreak: Math.max(0, asNum(r.nonCareerStreak, 0)),
             /*
              * AUDIT-6 §9.3: `recentRuns` was written by `commitRun` and not
              * listed here, and `migrate` runs on *every* read — so the
@@ -601,6 +611,12 @@ export function careerTotals(records: PanemRecords): CareerTotals {
         gamemakerTotal: HEAD_GAMEMAKERS.length,
         maxCrownsUnderOneGamemaker: Math.max(0, ...Object.values(records.gamemakerRecords ?? {}).map(gm => gm.victors)),
         quellTotal: QUELLS.length,
+        archetypesCrowned: [...new Set(Object.values(records.districtCrowns ?? {}).flatMap(c => c.archetypes ?? []))],
+        archetypeTotal: ARCHETYPE_COUNT,
+        causeCodesSeen: records.causeCodesSeen ?? [],
+        causeCodeTotal: DEATH_CAUSE_CODE_COUNT,
+        seedsCompleted: records.seedsCompleted?.length ?? 0,
+        nonCareerStreak: records.nonCareerStreak ?? 0,
     };
     return totals;
 }
@@ -825,6 +841,18 @@ export function commitRun(state: GameState): RunOutcome {
         records.victorDistrictStreak = 0;
         records.lastVictorDistrict = undefined;
     }
+
+    // AUDIT-11 §14: the three career shelves the new meta achievements read.
+    records.causeCodesSeen = [...new Set([
+        ...(records.causeCodesSeen ?? []),
+        ...state.tributes.filter(t => t.status === 'dead').map(t => deathCodeOf(t)).filter(c => c !== 'unknown'),
+    ])].sort();
+    if (!(records.seedsCompleted ?? []).includes(state.seed)) {
+        records.seedsCompleted = [...(records.seedsCompleted ?? []), state.seed].slice(-500);
+    }
+    records.nonCareerStreak = hasVictor && winners.every(w => !w.isCareer)
+        ? (records.nonCareerStreak ?? 0) + 1
+        : hasVictor ? 0 : (records.nonCareerStreak ?? 0);
 
     // §10.9: the arena was played, victor or not — the picker reads this to
     // mark what the player has never seen.

@@ -8,6 +8,7 @@ import { adjustRel } from './relationships';
 import { addFear } from './fear';
 import { giveItem } from './items';
 import { rattle } from './memory';
+import { allied } from './alliance';
 
 /**
  * A1: the once-per-cycle beats that make a conditional stance a *state* rather
@@ -48,7 +49,7 @@ function tickShadow(ctx: SimContext, t: Tribute) {
 
     const zone = getZone(ctx.state.arena, quarry.zone);
     const alliesPresent = ctx.state.tributes.filter(o =>
-        o.status === 'alive' && o.id !== t.id && o.zone === t.zone && o.allianceId === t.allianceId).length;
+        o.status === 'alive' && o.id !== t.id && o.zone === t.zone && allied(o, t)).length;
 
     // Did they get away with it for another cycle?
     const spotted = t.zone === quarry.zone && isNoticed(ctx, t, quarry, zone, alliesPresent);
@@ -103,7 +104,7 @@ function tickDesperate(ctx: SimContext, t: Tribute) {
 
     const allies = ctx.state.tributes.filter(o =>
         o.status === 'alive' && o.id !== t.id
-        && o.allianceId === t.allianceId && o.zone === t.zone
+        && allied(o, t) && o.zone === t.zone
         && o.inventory.some(i => i.type === 'food' || i.type === 'water' || i.type === 'medical'));
     if (allies.length === 0) return;
 

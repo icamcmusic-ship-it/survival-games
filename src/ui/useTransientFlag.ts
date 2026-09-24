@@ -14,14 +14,18 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 export function useTransientFlag<T>(resting: T, ms: number): [T, (value: T) => void] {
     const [value, setValue] = useState<T>(resting);
     const timer = useRef<number | undefined>(undefined);
+    // AUDIT-11 U22: an object-literal `resting` is a new value every render;
+    // read it through a ref so `flash` keeps one identity and never re-fires.
+    const restingRef = useRef(resting);
+    useEffect(() => { restingRef.current = resting; });
 
     useEffect(() => () => window.clearTimeout(timer.current), []);
 
     const flash = useCallback((next: T) => {
         window.clearTimeout(timer.current);
         setValue(next);
-        timer.current = window.setTimeout(() => setValue(resting), ms);
-    }, [resting, ms]);
+        timer.current = window.setTimeout(() => setValue(restingRef.current), ms);
+    }, [ms]);
 
     return [value, flash];
 }

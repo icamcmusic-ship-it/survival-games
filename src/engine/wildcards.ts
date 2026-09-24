@@ -13,6 +13,7 @@ import { cycleOf, noteSighting, rememberedRivals, addZoneThreat } from './memory
 import { fearOf } from './fear';
 import { OBJECTIVES } from '../data/balance';
 import { loseSanity } from './sanityBands';
+import { allied } from './alliance';
 
 /**
  * REPLAY-01: the one scheduled disruption a run gets.
@@ -355,7 +356,7 @@ function resolveWildcard(ctx: SimContext, wildcard: Wildcard) {
 
             const hunters = alive.filter(t =>
                 t.id !== target.id
-                && (t.allianceId === undefined || t.allianceId !== target.allianceId)
+                && !allied(t, target)
                 && fearOf(t, target.id) < OBJECTIVES.huntAbandonFear);
             hunters.forEach(t => {
                 // The Capitol broadcasts where they are: this is public

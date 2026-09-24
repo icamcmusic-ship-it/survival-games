@@ -20,6 +20,7 @@ import { hasTruce } from './parley';
 import { debtTo } from './debts';
 import { trapsIn } from './fieldcraft';
 import { inventoryValue } from './items';
+import { allied } from './alliance';
 
 /**
  * What a tribute can actually see of someone without knowing their sheet.
@@ -137,10 +138,10 @@ export function assessZone(t: Tribute, occupants: Tribute[], state?: GameState) 
     let friendly = 0;
     occupants.forEach(o => {
         if (o.id === t.id) return;
-        const allied = t.allianceId !== undefined && t.allianceId === o.allianceId;
-        const friend = allied || getRel(t, o.id) > STANCE.friendRegardThreshold;
+        const sameGroup = allied(t, o);
+        const friend = sameGroup || getRel(t, o.id) > STANCE.friendRegardThreshold;
         // You know what your own allies can do; strangers you have to guess at.
-        if (friend) friendly += allied ? ownPower(o) : estimate(o);
+        if (friend) friendly += sameGroup ? ownPower(o) : estimate(o);
         else hostile += estimate(o);
     });
 
@@ -238,7 +239,7 @@ function buildSignals(ctx: SimContext, t: Tribute, occupants: Tribute[]): Stance
         const tracks = (o: Tribute) => readOf(t, o.id) > 0 || rivalRecord(t, o.id).fights > 0;
         const candidates = ctx.state.tributes.filter(o =>
             o.status === 'alive' && o.id !== t.id
-            && (o.allianceId === undefined || o.allianceId !== t.allianceId)
+            && !allied(o, t)
             && (t.attributes.stealth >= shadowFloor || tracks(o))
             // A §2: one zone over, or the same zone at a distance. Requiring
             // the quarry to be strictly next door meant a shadow lost the
@@ -398,11 +399,11 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
      */
     Patrolling: (ctx, t, sig) => {
         if (!t.allianceId) return false;
-        const pack = sig.occupants.filter(o => o.allianceId === t.allianceId).length;
+        const pack = sig.occupants.filter(o => allied(o, t)).length;
         if (pack < STANCE_MODES.patrolling.packMin) return false;
         const camps = ctx.state.camps ?? {};
         if (camps[t.id] !== undefined) return true;
-        if (sig.occupants.some(o => o.allianceId === t.allianceId && camps[o.id] !== undefined)) return true;
+        if (sig.occupants.some(o => allied(o, t) && camps[o.id] !== undefined)) return true;
         // Ground this alliance is holding is ground worth walking the edge of.
         // The horn is the one zone the engine tracks a holder for, and it is
         // also the one most worth a picket.
@@ -429,7 +430,7 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
             || Object.values(t.woundInfection ?? {}).some(v => (v ?? 0) > 0);
         if (!hurt) return false;
         return !sig.occupants.some(o => o.id !== t.id
-            && (o.allianceId === undefined || o.allianceId !== t.allianceId));
+            && !allied(o, t));
     },
 
     /*
@@ -468,11 +469,11 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
  * at bare `base`, lost to Defensive every time, and the widening bought
  * nothing. One function, two callers.
  */
-function nursingPatients(ctx: SimContext, t: Tribute, occupants: Tribute[]): Tribute[] {
+export function nursingPatients(ctx: SimContext, t: Tribute, occupants: Tribute[]): Tribute[] {
     return occupants.filter(o => {
         if (o.id === t.id) return false;
         if (!o.injuries.bleeding && o.health >= STANCE_MODES.nursing.allyHealthBelow) return false;
-        if (t.allianceId !== undefined && o.allianceId === t.allianceId) return true;
+        if (allied(t, o)) return true;
         // A truce is a working agreement, and letting the other party bleed
         // out is a strange way to honour one.
         if (hasTruce(ctx.state, t, o.id)) return true;
@@ -684,7 +685,7 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
 
     Patrolling: (ctx, t, sig) => {
         let s = STANCE_MODES.patrolling.base;
-        const pack = sig.occupants.filter(o => o.allianceId === t.allianceId).length;
+        const pack = sig.occupants.filter(o => allied(o, t)).length;
         s += (pack - STANCE_MODES.patrolling.packMin) * STANCE_MODES.patrolling.perExtraMember;
         s += profOf(t, 'tracking') * STANCE_MODES.patrolling.perTrackingPoint;
         if (sig.cannonNearby) s += STANCE_MODES.patrolling.cannonBonus;

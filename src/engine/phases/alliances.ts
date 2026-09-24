@@ -3,16 +3,16 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
 import { ARCHETYPES, archetypeCompatibility } from '../../data/archetypes';
-import { RESPECT, ALLIANCES, BETRAYAL, OBJECTIVES, PROFICIENCY, PROTECTOR_BOND, QUELL_MECHANICS, RELATIONSHIPS, ROMANCE, SUSPICION } from '../../data/balance';
+import { RESPECT, ALLIANCES, PERCEPTION, BETRAYAL, OBJECTIVES, PROFICIENCY, PROTECTOR_BOND, QUELL_MECHANICS, RELATIONSHIPS, ROMANCE, SUSPICION } from '../../data/balance';
 import { profOf, trainProficiency } from '../proficiency';
 import { applyDamage, checkDeath } from '../combat';
 import { clampTribute } from '../vitals';
 import { ALLIANCE_TEXTS, BETRAYAL_AFTERMATH_TEXTS, PROTECTOR_BOND_TEXTS, ROMANCE_BOND_TEXTS, ROMANCE_TEXTS } from '../../data/flavorText';
 import { adjustRel, getRel, trustOf } from '../relationships';
-import { cycleOf, cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, hasVengeanceAgainst, noteContact, raiseSuspicion, sharedHistoryOf, suspicionOf } from '../memory';
+import { cycleOf, cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, hasVengeanceAgainst, impressionOf, noteContact, raiseSuspicion, sharedHistoryOf, suspicionOf } from '../memory';
 import { fearOf } from '../fear';
 import { respectOf } from '../relationships';
-import { allianceFormationAllowed, careerSocialFactor, sniffPerformances, isStarCrossed, cacheDivisionLine, distributeCache } from '../alliance';
+import { careerSocialFactor, sniffPerformances, isStarCrossed, cacheDivisionLine, distributeCache } from '../alliance';
 import { allianceOf, areLovers, cacheValue, contributeToCache, isPerforming, maintainPerformance, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance, shownRegard } from '../alliance';
 import { resolveBetrayal, preemptiveBetrayer } from '../betrayal';
 import { resolveDuePacts } from '../alliancePact';
@@ -26,14 +26,20 @@ import { COLD_PERSONAS, PERSONA_THREAT, WARM_PERSONAS } from '../../data/persona
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
 
-/** Everything a betrayer stands to walk away with. */
-function lootValue(t: Tribute): number {
-    return t.inventory.reduce((sum, i) => sum + i.value, 0);
+/**
+ * Everything a betrayer stands to walk away with — AUDIT-11 §5: as far as
+ * they have seen it. Items picked up while the pair were apart are not on the
+ * betrayer's books until they next share a sector.
+ */
+function lootValue(ctx: SimContext, betrayer: Tribute, t: Tribute): number {
+    return impressionOf(ctx.state, betrayer, t).loot;
 }
 
-/** How easy this ally would be to put down right now. */
-function weakness(t: Tribute): number {
-    return (100 - t.health) + (t.injuries.bleeding ? 20 : 0) + (t.inventory.some(i => i.type === 'weapon') ? 0 : 25);
+/** How easy this ally would look to put down right now, from where the betrayer stands. */
+function weakness(ctx: SimContext, betrayer: Tribute, t: Tribute): number {
+    const seen = impressionOf(ctx.state, betrayer, t);
+    const bleedingInView = t.injuries.bleeding && t.zone === betrayer.zone;
+    return (100 - seen.health) + (bleedingInView ? 20 : 0) + (1 - seen.armed) * 25;
 }
 
 /**
@@ -58,9 +64,9 @@ function pickBetrayalTarget(ctx: SimContext, betrayer: Tribute, members: Tribute
         if (bonded) return { m, weight: 0 };
 
         let weight = 1;
-        weight += lootValue(m) * ALLIANCES.betrayalLootWeight;
+        weight += lootValue(ctx, betrayer, m) * ALLIANCES.betrayalLootWeight;
         weight += Math.max(0, -getRel(betrayer, m.id)) * ALLIANCES.betrayalDislikeWeight;
-        weight += weakness(m) * ALLIANCES.betrayalWeaknessWeight;
+        weight += weakness(ctx, betrayer, m) * ALLIANCES.betrayalWeaknessWeight;
         // Genuine affection is the one thing that stays a betrayer's hand.
         weight *= Math.max(0.05, 1 - Math.max(0, getRel(betrayer, m.id)) / 110);
         // §11.1: and the mark's own performance works on the betrayer too — a
@@ -87,6 +93,12 @@ function pickBetrayalTarget(ctx: SimContext, betrayer: Tribute, members: Tribute
         // apart, and the pack coming apart is a late-run event, not a day-two
         // one. Every other target in the alliance is preferred first.
         if (betrayer.isCareer && m.isCareer) weight *= ALLIANCES.careerInternalBetrayalFactor;
+        // AUDIT-11 §5: and the pack's reaction. Every other member standing in
+        // the mark's sector is somebody who sees it happen and may turn on the
+        // knife, so a mark off on their own is the safer one.
+        const witnesses = members.filter(w => w.id !== betrayer.id && w.id !== m.id
+            && w.status === 'alive' && w.zone === m.zone).length;
+        weight *= Math.pow(PERCEPTION.betrayalWitnessFactor, witnesses);
         return { m, weight: Math.max(0, weight) };
     }).filter(s => s.weight > 0);
 
@@ -457,13 +469,9 @@ export function processAlliances(ctx: SimContext) {
     // wildcard and enforced by nothing. When it stands, no new alliance forms,
     // no group recruits and no groups merge — what existed before the
     // announcement is grandfathered in, and lovers keep theirs secret.
-    // §(requests): ...and the standing rule underneath it. A new alliance is
-    // something people agree to on the training floor; the gong is not a
-    // negotiating table. `allianceFormationAllowed` covers formation, mergers,
-    // recruitment and a declared romance alike, and leaves everything already
-    // standing — the Career pack, the floor pacts — completely alone.
-    const alliancesForbidden = wildcardIs(ctx.state, 'rule-change-no-allies')
-        || !allianceFormationAllowed(ctx.state);
+    // AUDIT-11 E7: the bloodbath needs no gate here — this function is not
+    // called in that phase (see the note above `registerAlliance`).
+    const alliancesForbidden = wildcardIs(ctx.state, 'rule-change-no-allies');
     const stillAlive = getAlive(ctx.state);
     if (!alliancesForbidden && stillAlive.length > ALLIANCES.formationFieldSize) {
         for (let i = 0; i < stillAlive.length; i++) {
@@ -1256,11 +1264,6 @@ function tickBetrayalAftermath(ctx: SimContext) {
 }
 
 function declareLovers(ctx: SimContext, t1: Tribute, t2: Tribute, performer?: Tribute) {
-    // §(requests): a lovers' bond is an alliance record like any other, so it
-    // obeys the same rule about when one may be created. Everything above this
-    // (the growing regard, the sustained contact) keeps happening; only the
-    // declaration waits for a phase that is allowed to make a group.
-    if (!allianceFormationAllowed(ctx.state)) return;
     t1.traits.push('Star-Crossed');
     t2.traits.push('Star-Crossed');
     if (performer) {

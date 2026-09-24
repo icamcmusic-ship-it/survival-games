@@ -116,6 +116,16 @@
     --gold: #e3ae27;
     --gold-deep: #d2a124;
     --gold-line: #684c13;
+    /* AUDIT-11 U1: theme-stable chrome. The header, bottom nav and selected
+       arena card sit on a near-black band in *both* themes; `--ink` flips to
+       cream after dark, so they cannot use it. */
+    --chrome-bg: #140a06;
+    --chrome-ink: #f5efe0;
+    --chrome-muted: #bcae95;
+    --on-red: #ffffff;
+    --red-hover: #d3202f;
+    --header-h: 3.75rem;
+
     --shadow-ink: 6px 6px 0 var(--ink);
     --shadow-ink-sm: 4px 4px 0 var(--ink);
 
@@ -183,6 +193,12 @@
     --gold: #e3ae27;
     --gold-deep: #d2a124;
     --gold-line: #b58a2a;
+    --chrome-bg: #0b0705;
+    --chrome-ink: #f5efe0;
+    --chrome-muted: #bcae95;
+    --on-red: #140a06;
+    --red-hover: #ff8a90;
+
     --shadow-ink: 6px 6px 0 var(--ink);
     --shadow-ink-sm: 4px 4px 0 var(--ink);
 
@@ -238,6 +254,12 @@
     --gold: #e3ae27;
     --gold-deep: #d2a124;
     --gold-line: #b58a2a;
+    --chrome-bg: #0b0705;
+    --chrome-ink: #f5efe0;
+    --chrome-muted: #bcae95;
+    --on-red: #140a06;
+    --red-hover: #ff8a90;
+
     --shadow-ink: 6px 6px 0 var(--ink);
     --shadow-ink-sm: 4px 4px 0 var(--ink);
 
@@ -539,7 +561,7 @@ html[data-reduce-motion='true'] {
     .masthead-eyebrow {
         display: inline-block;
         background: var(--red);
-        color: #fff;
+        color: var(--on-red);
         font-family: var(--font-mono);
         font-weight: 800;
         font-size: 0.7rem;
@@ -647,13 +669,13 @@ html[data-reduce-motion='true'] {
     .btn-primary {
         background: var(--red);
         border-color: var(--ink);
-        color: #fff;
+        color: var(--on-red);
         box-shadow: var(--shadow-ink-sm);
     }
 
     .btn-primary:hover:not(:disabled) {
-        background: #d3202f;
-        color: #fff;
+        background: var(--red-hover);
+        color: var(--on-red);
     }
 
     .btn-primary:active:not(:disabled) {
@@ -731,7 +753,7 @@ html[data-reduce-motion='true'] {
     .seg-item[aria-pressed="true"],
     .seg-item.is-active {
         background: var(--ink);
-        color: #fff;
+        color: var(--paper);
     }
 
     .skip-link {
@@ -741,7 +763,7 @@ html[data-reduce-motion='true'] {
         z-index: 60;
         padding: 0.5rem 0.9rem;
         background: var(--red);
-        color: #fff;
+        color: var(--on-red);
         font-family: var(--font-mono);
         font-size: 0.7rem;
         font-weight: 800;
@@ -813,7 +835,7 @@ html[data-reduce-motion='true'] {
     .chip-accent {
         border-color: var(--red);
         background: var(--red);
-        color: #fff;
+        color: var(--on-red);
     }
 
     .chip-gold {
@@ -944,8 +966,8 @@ html[data-reduce-motion='true'] {
         position: sticky;
         top: 0;
         z-index: 1;
-        background: var(--ink);
-        color: #a89a86;
+        background: var(--chrome-bg);
+        color: var(--chrome-muted);
         border-left-color: var(--red);
         font-family: var(--font-mono);
         font-size: 0.55rem;
@@ -954,7 +976,7 @@ html[data-reduce-motion='true'] {
         text-transform: uppercase;
     }
 
-    .log-row.log-head:hover { background: var(--ink); }
+    .log-row.log-head:hover { background: var(--chrome-bg); }
 
     .log-time {
         font-family: var(--font-mono);
@@ -1188,14 +1210,14 @@ html[data-reduce-motion='true'] {
     }
 
     .arena-card.is-selected {
-        background: var(--ink);
+        background: var(--chrome-bg);
         border-color: var(--red);
         border-width: 2px;
         padding: 0.9rem 1rem;
     }
 
     .arena-card.is-selected:hover {
-        background: var(--ink);
+        background: var(--chrome-bg);
     }
 
     /* Two lines of blurb on an unselected card, clipped rather than wrapped,
@@ -1589,3 +1611,49 @@ input[type="range"]:focus-visible {
             align-items: center;
         }
     }
+
+
+/* ============================================================================
+   AUDIT-11 — chrome, dialogs, touch.
+   ========================================================================== */
+
+/* §4: keyboard hints mean nothing on a touch-only device. */
+@media (hover: none) and (pointer: coarse) {
+    .kbd-hint { display: none !important; }
+}
+
+/* U2: the broadcast bar and sticky table heads sit under the measured header. */
+.below-header { top: var(--header-h); }
+.sticky-under-chrome { position: sticky; top: calc(var(--header-h) + var(--bar-h, 0px)); z-index: 2; }
+
+.app-header { background: var(--chrome-bg); color: var(--chrome-ink); }
+.app-header .nav-link { color: var(--chrome-muted); }
+.app-header .nav-link[aria-current="page"] { color: var(--red-on-ink); }
+.app-header .nav-link:hover { color: var(--chrome-ink); }
+
+/* §4: mobile menu. */
+.app-menu {
+    position: absolute;
+    right: 0.75rem;
+    top: calc(100% + 3px);
+    min-width: 13rem;
+    background: var(--chrome-bg);
+    border: 2px solid var(--red);
+    display: flex;
+    flex-direction: column;
+    padding: 0.25rem;
+    z-index: 40;
+}
+.app-menu .nav-link { padding: 0.75rem 0.9rem; min-height: 44px; display: flex; align-items: center; }
+
+/* Palette result highlighting. */
+.palette-mark { background: transparent; color: var(--red); font-weight: 800; }
+
+/* U21-adjacent: a visible ring for inputs that draw their own border. */
+.focus-ring:focus-visible { outline: 3px solid var(--red); outline-offset: 2px; }
+
+/* U15: the sheet fits between mobile toolbars (dynamic viewport units). */
+.sheet-maxh { max-height: 88vh; max-height: 88dvh; }
+
+/* §4: an armed destructive button. */
+.btn-danger-armed { background: var(--red) !important; color: var(--on-red) !important; border-color: var(--ink) !important; }

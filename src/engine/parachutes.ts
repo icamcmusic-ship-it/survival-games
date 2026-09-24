@@ -4,6 +4,7 @@ import { PARACHUTES } from '../data/balance';
 import { giveItem, itemPhrase } from './items';
 import { isActive } from './downed';
 import { adjustRel } from './relationships';
+import { allied } from './alliance';
 
 /**
  * AUDIT-9 stage C §4: a sponsor gift is an object that has to land somewhere.
@@ -92,7 +93,7 @@ export function resolveParachutes(ctx: SimContext) {
              * the fight they were going to have anyway.
              */
             const rival = present.find(t => t.id !== owner.id
-                && (t.allianceId === undefined || t.allianceId !== owner.allianceId));
+                && !allied(t, owner));
             if (rival) {
                 const ownerSpeed = attr(owner, 'agility') + attr(owner, 'intelligence') * PARACHUTES.contestWitWeight;
                 const rivalSpeed = attr(rival, 'agility') + attr(rival, 'intelligence') * PARACHUTES.contestWitWeight;
@@ -120,7 +121,7 @@ export function resolveParachutes(ctx: SimContext) {
          * crate with another tribute's name on it is the beat this models.
          */
         const ally = addressee?.allianceId
-            ? present.find(t => t.allianceId === addressee.allianceId)
+            ? present.find(t => allied(t, addressee))
             : undefined;
         const taker = ally ?? present[0];
         if (taker) {

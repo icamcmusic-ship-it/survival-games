@@ -430,6 +430,26 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             // Audit 2 §10.1: many of them, none of them much.
             role: 'swarm',
         },
+        /*
+         * AUDIT-11 §7: the warren had two mutts, and one of them is only rats.
+         * Two more that belong underground: a pack that runs the tunnels, and
+         * something that hears you through the wall.
+         */
+        {
+            id: 'tunnel-hounds', name: 'Tunnel Hounds',
+            packSize: [2, 4], damage: 18, speed: 8,
+            inflicts: { bleeding: true },
+            terrainPreference: ['cave', 'ruins'],
+            role: 'herder',
+        },
+        {
+            id: 'blind-burrowers', name: 'Blind Burrowers',
+            packSize: [1, 2], damage: 20, speed: 4,
+            fearAura: 8,
+            nocturnal: true,
+            terrainPreference: ['cave', 'ruins'],
+            role: 'ambusher',
+        },
     ],
 
     islands: [
@@ -1995,6 +2015,124 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
             terrainPreference: ['highland', 'ruins'],
             role: 'swarm',
             fearAura: 5,
+        },
+    ],
+    /*
+     * AUDIT-11 §7: the five procedural biomes that shipped with no bestiary
+     * entry of their own. Generated arenas still roll their own roster; these
+     * are the biome's canonical mutts, the same role `dunes` and `tundra` play.
+     */
+    steppe: [
+        {
+            id: 'grass-runners', name: 'Grass Runners',
+            packSize: [3, 6], damage: 12, speed: 9,
+            terrainPreference: ['open', 'highland'],
+            role: 'herder',
+        },
+        {
+            id: 'steppe-kites', name: 'Steppe Kites',
+            packSize: [1, 2], damage: 16, speed: 10,
+            inflicts: { bleeding: true },
+            terrainPreference: ['open', 'highland'],
+            role: 'ambusher',
+        },
+        {
+            id: 'burrow-marmots', name: 'Burrow Marmots',
+            packSize: [5, 10], damage: 3, speed: 5,
+            inflicts: { infected: true },
+            terrainPreference: ['open', 'forest'],
+            role: 'swarm',
+        },
+    ],
+    saltmarsh: [
+        {
+            id: 'brine-leeches', name: 'Brine Leeches',
+            packSize: [6, 14], damage: 2, speed: 3,
+            inflicts: { infected: true },
+            terrainPreference: ['wetland', 'water'],
+            role: 'parasite',
+        },
+        {
+            id: 'reed-herons', name: 'Reed Herons',
+            packSize: [1, 3], damage: 15, speed: 8,
+            inflicts: { bleeding: true },
+            terrainPreference: ['wetland', 'water', 'open'],
+            role: 'ambusher',
+        },
+        {
+            id: 'mudflat-crabs', name: 'Mudflat Crabs',
+            packSize: [3, 6], damage: 8, speed: 4,
+            terrainPreference: ['wetland', 'water', 'ruins'],
+            role: 'scavenger',
+        },
+    ],
+    boreal: [
+        {
+            id: 'pine-lynx', name: 'Pine Lynx',
+            packSize: [1, 1], damage: 22, speed: 8,
+            inflicts: { bleeding: true },
+            nocturnal: true,
+            terrainPreference: ['forest', 'highland'],
+            role: 'ambusher',
+        },
+        {
+            id: 'bog-elk', name: 'Bog Elk',
+            packSize: [1, 2], damage: 20, speed: 6,
+            terrainPreference: ['forest', 'wetland', 'open'],
+            role: 'herder',
+        },
+        {
+            id: 'taiga-midges', name: 'Taiga Midges',
+            packSize: [20, 40], damage: 1, speed: 6,
+            fearAura: 4,
+            terrainPreference: ['forest', 'wetland', 'water'],
+            role: 'swarm',
+        },
+    ],
+    bayou: [
+        {
+            id: 'cypress-gators', name: 'Cypress Gators',
+            packSize: [1, 2], damage: 24, speed: 5,
+            inflicts: { bleeding: true },
+            terrainPreference: ['water', 'wetland'],
+            role: 'ambusher',
+        },
+        {
+            id: 'moss-whisperers', name: 'Moss Whisperers',
+            packSize: [1, 1], damage: 6, speed: 4,
+            fearAura: 11,
+            nocturnal: true,
+            terrainPreference: ['forest', 'wetland'],
+            role: 'mimic',
+        },
+        {
+            id: 'cottonmouth-knots', name: 'Cottonmouth Knots',
+            packSize: [2, 5], damage: 10, speed: 7,
+            inflicts: { poisoned: true },
+            terrainPreference: ['wetland', 'water', 'forest'],
+            role: 'parasite',
+        },
+    ],
+    badlands: [
+        {
+            id: 'mesa-vultures', name: 'Mesa Vultures',
+            packSize: [3, 6], damage: 8, speed: 8,
+            terrainPreference: ['highland', 'open', 'ruins'],
+            role: 'scavenger',
+        },
+        {
+            id: 'arroyo-coyotes', name: 'Arroyo Coyotes',
+            packSize: [3, 5], damage: 13, speed: 9,
+            inflicts: { bleeding: true },
+            terrainPreference: ['open', 'highland', 'ruins'],
+            role: 'herder',
+        },
+        {
+            id: 'scree-scorpions', name: 'Scree Scorpions',
+            packSize: [1, 3], damage: 14, speed: 5,
+            inflicts: { poisoned: true },
+            terrainPreference: ['highland', 'ruins', 'open'],
+            role: 'parasite',
         },
     ],
 };

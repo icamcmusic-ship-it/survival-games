@@ -1,7 +1,7 @@
 import { Alliance, AllianceDisputeRecord, Item, Tribute } from '../models/types';
 import { SimContext } from './context';
 import { ALLIANCE_DISPUTE } from '../data/balance';
-import { allianceRecords, membersOf } from './alliance';
+import { allianceRecords, membersOf, allied } from './alliance';
 import { cycleOf } from './memory';
 import { adjustRel, adjustTrust, getRel } from './relationships';
 import { isActive } from './downed';
@@ -513,8 +513,8 @@ export function tickDisputeAftermath(ctx: SimContext) {
          * shows.
          */
         if (gone.length > 0) {
-            const rejoined = gone.filter(t => t.allianceId === d.allianceId);
-            const away = gone.filter(t => t.allianceId !== d.allianceId);
+            const rejoined = gone.filter(t => allied(t, d));
+            const away = gone.filter(t => !allied(t, d));
             if (away.length > 0) {
                 ctx.logEvent(
                     `${away.map(t => t.name).join(' and ')} ${away.length === 1 ? 'has' : 'have'} not gone back, `
@@ -534,8 +534,8 @@ export function tickDisputeAftermath(ctx: SimContext) {
             return;
         }
         // ...and "still in the camp" is also a claim about now, not about then.
-        const stillIn = stayed.filter(t => t.allianceId === d.allianceId);
-        const driftedOff = stayed.filter(t => t.allianceId !== d.allianceId);
+        const stillIn = stayed.filter(t => allied(t, d));
+        const driftedOff = stayed.filter(t => !allied(t, d));
         if (driftedOff.length > 0) {
             ctx.logEvent(
                 `${driftedOff.map(t => t.name).join(' and ')} said nothing at the time and ${driftedOff.length === 1 ? 'is' : 'are'} `

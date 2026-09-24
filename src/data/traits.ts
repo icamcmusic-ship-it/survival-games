@@ -1105,6 +1105,77 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         earned: true,
         mods: { resolveDrift: -0.3, griefResist: 0.3, treachery: 0.15, odds: 0.3 },
     },
+    /*
+     * AUDIT-11 §16: sixteen traits, each built from modifier keys that
+     * already have a read site. Where the audit's effect names a mechanic
+     * with no hook of its own (a voice imitated, a promise that cannot be
+     * broken, a hazard read a cycle early) it is approximated by the nearest
+     * existing axis, and the info line says only what the mods actually do.
+     */
+    'Night Owl': {
+        info: 'Comes alive after dark. Sharper and quicker at night, and pays for it in the daytime.',
+        mods: { awarenessNight: 2, nightMovement: 0.4, ambush: 0.03, fatigueDay: 3 },
+    },
+    'Salt-Tongued': {
+        info: 'Lies easily and is hard to catch at it — and is believed a little less even when telling the truth.',
+        mods: { suspicionResist: 0.25, rumourCredibility: -0.2 },
+    },
+    'Bone-Setter': {
+        info: 'Knows how a body goes back together. Field dressings and treatment take far more often.',
+        mods: { medicine: 0.25 },
+    },
+    'Heavy Sleeper': {
+        info: 'Sleeps like the dead and wakes rested. Recovers much more at night, and hears much less of it.',
+        mods: { fatigueNight: -6, awarenessNight: -2 },
+    },
+    'Pack Rat': {
+        info: 'Keeps everything. Carries one more item than anybody else, and rattles when they walk.',
+        mods: { capacity: 1, concealment: -0.05 },
+    },
+    'Forgets Faces': {
+        info: 'Cannot hold on to a face, or a grudge. Regard moves faster in both directions, and old hatreds sharpen them less.',
+        mods: { trustGain: 0.3, vengeanceEdge: -1 },
+    },
+    'Oathkeeper': {
+        info: 'Their word is a fixed point. Almost never breaks a promise or an alliance, pays what they owe, and is trusted for it.',
+        mods: { treachery: -0.3, betrayalResist: 0.3, debtHonour: 0.4, trustGain: 0.1, charterHold: 0.3 },
+    },
+    'Glass Jaw': {
+        info: 'Goes down to a clean hit and knows it. Frightens easily, and is very good at not being where the hit lands.',
+        mods: { fearGain: 0.3, retreat: 0.15 },
+    },
+    'Firewalker': {
+        info: 'Grew up next to heat. Burns and heatstroke land much softer, and the cold gets in faster.',
+        mods: { burnResist: 0.45, heatResist: 0.2, coldResist: -0.3 },
+    },
+    'Wanderlust': {
+        info: 'Cannot stay put. Covers more ground, turns up more caches — and is turned up by more people.',
+        mods: { scavenge: 0.1, forage: 0.04, targetDraw: 0.5 },
+    },
+    'Homebody': {
+        info: 'Makes a camp and defends it. Builds better shelter and fights harder with somebody beside them, and is slow to leave.',
+        mods: { campSkill: 0.15, defended: 0.1, retreat: -0.05 },
+    },
+    'Mimic': {
+        info: 'Can throw a voice or borrow one. Better at drawing people into an ambush, and at holding a room.',
+        mods: { ambush: 0.06, persuasion: 0.05, excitement: 0.1 },
+    },
+    'Cannon-Counter': {
+        info: 'Counts every cannon and always knows the number. Steadier in the endgame, and harder to surprise.',
+        mods: { awareness: 0.4, resolveDrift: 0.3, odds: 0.2 },
+    },
+    "Sponsor's Pet": {
+        info: 'The Capitol adores them. More parachutes, a warmer sponsor line — and allies who notice.',
+        mods: { sponsorAppeal: 1.5, sponsorTrust: 0.5, trustGain: -0.15 },
+    },
+    'Twitchy Trigger': {
+        info: 'Swings first, every time. Quicker into a fight and quicker to strike from cover, and harder to stop once started.',
+        mods: { aggressionScore: 0.6, ambush: 0.05, retreat: -0.1, treachery: 0.05 },
+    },
+    'Weather-Nose': {
+        info: 'Smells the weather coming. Takes less from cold and heat and notices the arena turning before it turns.',
+        mods: { coldResist: 0.15, heatResist: 0.15, awareness: 0.3 },
+    },
 };
 
 

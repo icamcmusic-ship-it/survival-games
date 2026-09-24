@@ -10,6 +10,7 @@ import { getZone, zoneFeatures } from './map';
 import { Item, Tribute } from '../models/types';
 import { mintItem } from './items';
 import { MENTOR_DRAMA, MENTORS, QUALITY_BIAS, VICTOR_MENTOR } from '../data/balance';
+import { allied } from './alliance';
 
 /**
  * Mentors, as a sponsorship mechanic.
@@ -277,7 +278,7 @@ export function processMentorPleas(ctx: SimContext, alive: Tribute[]): Set<strin
             o.status === 'alive'
             && o.id !== t.id
             && o.district !== t.district
-            && o.allianceId !== undefined && o.allianceId === t.allianceId
+            && allied(o, t)
             && o.zone === t.zone
             && o.mentorLegacy !== undefined
             && o.sponsorTrust >= MENTOR_TRUST_FLOOR);

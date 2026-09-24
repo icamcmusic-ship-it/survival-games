@@ -10,6 +10,8 @@ import { GameState, ZoneEffectKind } from '../models/types';
 import { dropSupplies, severRandomEdge, startZoneEffect } from './zoneEffects';
 import { announceFeastTheme } from './phases/feast';
 import { cycleOf, noteSighting } from './memory';
+import { allied } from './alliance';
+import { sendPlayerParachute } from './playerSponsor';
 
 /**
  * Gamemaker weather, expressed as exposure profiles.
@@ -242,6 +244,13 @@ export function replayPlannedInterventions(ctx: SimContext) {
     ctx.state.plannedInterventions = queue.filter(a => a.cycle > now);
     due.forEach(a => {
         if (a.scheduled) return;
+        // AUDIT-11 E6: a parachute is replayed through the same booth the
+        // player used; its gift stream is seeded off the run, so it lands the
+        // same item it did the first time.
+        if (a.type === 'parachute') {
+            if (a.targetId && a.itemId) sendPlayerParachute(ctx.state, a.targetId, a.itemId);
+            return;
+        }
         triggerGamemakerEvent(ctx, a.type as GamemakerEventType, a.targetId, false, true);
     });
 }
@@ -390,7 +399,7 @@ function runGamemakerEvent(
         );
         alive.forEach(t => {
             if (t.id === target.id) return;
-            if (t.allianceId !== undefined && t.allianceId === target.allianceId) return;
+            if (allied(t, target)) return;
             // The Capitol broadcasts where they are — a bounty is public.
             noteSighting(ctx.state, t, target.zone, 1, 0);
             t.objective = { kind: 'hunt', targetId: target.id, expires: cycleOf(ctx.state) + OBJECTIVES.huntCycles };

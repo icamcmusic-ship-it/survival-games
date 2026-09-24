@@ -10,6 +10,7 @@ import { witnessKindness } from './rapport';
 import { giveItem } from './items';
 import { addExcitement } from './audience';
 import { clampTribute } from './vitals';
+import { allied } from './alliance';
 
 /**
  * Debts: what being saved actually costs.
@@ -240,7 +241,7 @@ export function tickDistrictBonds(ctx: SimContext) {
         // lives. Partners who have not laid eyes on each other in days, who
         // have fought, or where one sold the other out, do not drift warmer
         // by arithmetic — this used to tick every cycle for everybody.
-        const inContact = t.allianceId !== undefined && t.allianceId === partner.allianceId
+        const inContact = allied(t, partner)
             || cyclesSinceContact(ctx.state, t, partner.id) <= DEBTS.districtBondContactWindow;
         if (!inContact) return;
         const fought = (t.memory?.rivals?.[partner.id]?.fights ?? 0) > 0;
@@ -305,7 +306,7 @@ export function offerLoans(ctx: SimContext) {
         if (spares.length === 0) return;
         const borrower = alive.find(o =>
             o.id !== lender.id
-            && o.allianceId === lender.allianceId
+            && allied(o, lender)
             // AUDIT-9 B10: lending is a physical handover, so it needs the
             // locality test rather than the zone name.
             && samePlace(ctx.state.arena, lender, o)

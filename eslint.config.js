@@ -80,6 +80,22 @@ export default tseslint.config(
     },
     {
         /*
+         * AUDIT-11 E1/E2: two loners both carry `allianceId === undefined`, so
+         * a raw `a.allianceId === b.allianceId` reads them as allies and its
+         * negation never reads them as rivals. Eight engine sites had that bug.
+         * Comparing an `allianceId` to a record id or to `undefined` is fine;
+         * comparing two of them goes through `allied()` / `isHostileTo()`.
+         */
+        files: ['src/engine/**/*.ts'],
+        rules: {
+            'no-restricted-syntax': ['error', {
+                selector: "BinaryExpression[operator=/^[!=]==?$/][left.property.name='allianceId'][right.property.name='allianceId']",
+                message: 'Compare alliances with allied(a, b) or isHostileTo(t, o) from engine/alliance.ts — two undefined ids are not allies.',
+            }],
+        },
+    },
+    {
+        /*
          * Check scripts are Node programs — except the Playwright harness,
          * whose `page.evaluate` callbacks are serialised and run *in the
          * browser*, so `document` and `window` are legitimately in scope there.

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { useEscapeLayer } from '../ui/useDialogFocus';
 import { Hint } from './Hint';
 import { Pause, Play } from 'lucide-react';
 import { prefsStore, setPrefs } from '../store/prefsStore';
@@ -53,17 +54,15 @@ export function PlaybackPopover({
         const onDown = (e: PointerEvent) => {
             if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
         };
-        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
         window.addEventListener('pointerdown', onDown);
-        window.addEventListener('keydown', onKey);
         return () => {
             window.removeEventListener('pointerdown', onDown);
-            window.removeEventListener('keydown', onKey);
             // Audit 3 §1.7: hand the trigger its focus back on close, so Escape
             // does not drop a keyboard reader at the top of the document.
             ref.current?.querySelector('button')?.focus();
         };
     }, [open]);
+    useEscapeLayer(open, () => setOpen(false));
 
     const brakeCount = [pauseOnDeath, prefs.pauseOnBetrayal, prefs.pauseOnAlliance, prefs.pauseOnSponsor, prefs.pauseOnFollowed]
         .filter(Boolean).length;

@@ -7,6 +7,7 @@ import { traitMod } from '../data/traits';
 import { concealmentModifier, effectiveIntelligence } from './physique';
 import { encumbranceOf, hasTool } from './items';
 import { isAggressiveStance, isEvasiveStance } from '../data/stances';
+import { allied } from './alliance';
 
 /**
  * Concealment and awareness — the two halves of whether one tribute ever finds
@@ -171,7 +172,7 @@ export function awareness(t: Tribute, dark = false): number {
  */
 export function isNoticed(ctx: SimContext, hider: Tribute, seeker: Tribute, zone: Zone | undefined, alliesPresent: number): boolean {
     // Allies are not hiding from each other.
-    if (hider.allianceId !== undefined && hider.allianceId === seeker.allianceId) return true;
+    if (allied(hider, seeker)) return true;
 
     const dark = isDark(ctx);
     const advantage = hider.attributes.stealth - awareness(seeker, dark);
@@ -237,7 +238,7 @@ export function endgameVisibility(ctx: SimContext): number {
  */
 export function rollAmbush(ctx: SimContext, attacker: Tribute, defender: Tribute, zone: Zone | undefined): boolean {
     // You cannot ambush someone who is already fighting you, or an ally.
-    if (attacker.allianceId !== undefined && attacker.allianceId === defender.allianceId) return false;
+    if (allied(attacker, defender)) return false;
     // A1: Fortified is prepared ground with sightlines its occupant chose.
     // Nobody surprises them on it — that is the whole reason to dig in.
     if (defender.stance === 'Fortified') return false;

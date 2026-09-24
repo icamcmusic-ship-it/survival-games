@@ -12,7 +12,7 @@
  * routing also leaves `location.search` untouched, so the seed-replay links
  * ShareButton builds (`?seed=…&arena=…`) keep working exactly as before.
  */
-import { ViewName, gameStore } from './gameStore';
+import { ViewName, gameActions, gameStore } from './gameStore';
 
 /** The one place a screen's name and its URL are tied together. */
 const ROUTES: Array<{ view: ViewName; path: string }> = [
@@ -36,7 +36,7 @@ const ROUTES: Array<{ view: ViewName; path: string }> = [
  * because before that GameScreen has no Games to show. Deep-linking into either
  * without it is a redirect, not a blank page.
  */
-function routeIsAvailable(view: ViewName): boolean {
+export function routeIsAvailable(view: ViewName): boolean {
     const { gameState } = gameStore.getState();
     // §(requests 5): only the reaping still renders here. Everything the old
     // roster page did lives in the arena's Roster tab.
@@ -100,8 +100,13 @@ export function resolveView(target: ViewName | null): ViewName {
     return routeIsAvailable(target) ? target : fallbackFor(target);
 }
 
+// AUDIT-11 U4: a query waiting to ride along with the next view change.
+let pendingQuery: string | null = null;
+
 function writeUrl(view: ViewName, replace: boolean) {
-    const url = `${window.location.pathname}${window.location.search}#${pathForView(view)}`;
+    const query = pendingQuery ? `?${pendingQuery}` : '';
+    pendingQuery = null;
+    const url = `${window.location.pathname}${window.location.search}#${pathForView(view)}${query}`;
     if (replace) window.history.replaceState(null, '', url);
     else window.history.pushState(null, '', url);
 }
@@ -168,4 +173,23 @@ export function initRouter(adoptUrl = true): () => void {
         window.removeEventListener('hashchange', onHashChange);
         unsubscribe();
     };
+}
+
+/**
+ * AUDIT-11 U4: navigate to a view *with* a screen query
+ * (`#/chronicle?day=4&phase=night`). Setting the hash and then calling
+ * `setView` used to let the router push a bare `#/chronicle` over it, so the
+ * chronicle opened at page 0. The query now travels with the push.
+ */
+export function navigate(view: ViewName, query?: string) {
+    const { view: current } = gameStore.getState();
+    if (current === view) {
+        const url = `${window.location.pathname}${window.location.search}#${pathForView(view)}${query ? `?${query}` : ''}`;
+        window.history.pushState(null, '', url);
+        window.dispatchEvent(new CustomEvent('sg:route-query'));
+        return;
+    }
+    pendingQuery = query ?? null;
+    gameActions.setView(view);
+    pendingQuery = null;
 }

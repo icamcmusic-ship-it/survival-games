@@ -19,7 +19,8 @@ import { sleepForagePenalty } from './survival';
 import { cycleOf, addZoneThreat, rememberedThreat, hasVengeanceAgainst, noteContact, noteSighting, raiseSuspicion } from './memory';
 import { adjustMutual, adjustRel, getRel } from './relationships';
 import { hasTruce, tryParley } from './parley';
-import { areLovers, maintainPerformance } from './alliance';
+import { areLovers, maintainPerformance, allied, isHostileTo } from './alliance';
+import { nursingPatients } from './stance';
 import { incurDebt } from './debts';
 import { DEBTS } from '../data/balance';
 import { giveItem, hasTool, itemPhrase, mintItem, spoilageBonus } from './items';
@@ -145,7 +146,7 @@ function rollEscape(ctx: SimContext, t: Tribute, event: ArenaEventDef, isBoon: b
     if (!isBoon) {
         const helpers = ctx.state.tributes.filter(o =>
             o.status === 'alive' && o.id !== t.id && o.zone === t.zone
-            && (o.allianceId !== undefined && o.allianceId === t.allianceId));
+            && allied(o, t));
         if (helpers.length > 0) {
             const helper = helpers[0];
             // R-4: the absence of aid is as socially informative as aid. An
@@ -654,7 +655,7 @@ function isDesperate(ctx: SimContext, t: Tribute, other: Tribute): boolean {
 
 /** A pair who happen to be standing in the same zone with time on their hands. */
 export function resolvePairEncounter(ctx: SimContext, t: Tribute, other: Tribute) {
-    const inSameAlliance = t.allianceId !== undefined && t.allianceId === other.allianceId;
+    const inSameAlliance = allied(t, other);
     const relationship = getRel(t, other.id);
     const vars = { t1: t.name, t2: other.name, zone: t.zone };
     noteContact(ctx.state, t, other);
@@ -1022,8 +1023,11 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
 
     // Audit 5 §12: tending. The turn is the ally.
     if (t.stance === 'Nursing') {
-        const ally = getAlive(ctx.state).find(o => o.id !== t.id && o.zone === t.zone && o.allianceId === t.allianceId
-            && (o.injuries.bleeding || o.health < STANCE_MODES.nursing.allyHealthBelow));
+        // AUDIT-11 E3: the same patient list the stance was chosen from —
+        // truce partners, debtors and a protect-ward included. The action used
+        // to re-pick by raw alliance id, so a loner nursing their ward treated
+        // a random loner stranger instead.
+        const ally = nursingPatients(ctx, t, getAlive(ctx.state).filter(o => o.zone === t.zone))[0];
         say('nurse');
         if (ally) {
             if (ally.injuries.bleeding && ctx.rng.chance(STANCE_MODES.nursing.staunchBase + profOf(t, 'medicine') * STANCE_MODES.nursing.staunchPerMedicine)) {
@@ -1090,7 +1094,7 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
         noteMilestone(ctx, 'patrol-posted', [t.id]);
         say('patrol');
         reachableZones(ctx.state.arena, t.zone, ctx.state.collapsedZones ?? []).forEach(z => {
-            noteSighting(ctx.state, t, z.name, getAlive(ctx.state).filter(o => o.zone === z.name && o.allianceId !== t.allianceId).length, depletionOf(ctx.state, z.name));
+            noteSighting(ctx.state, t, z.name, getAlive(ctx.state).filter(o => o.zone === z.name && isHostileTo(t, o)).length, depletionOf(ctx.state, z.name));
         });
         trainProficiency(t, 'tracking');
         return;

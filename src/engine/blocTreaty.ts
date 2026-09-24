@@ -27,7 +27,7 @@
 import { Alliance, GameState, Tribute } from '../models/types';
 import { BLOC_TREATY } from '../data/balance';
 import { SimContext, getAlive } from './context';
-import { allianceRecords, membersOf, pickLeader } from './alliance';
+import { allianceRecords, membersOf, pickLeader, allied } from './alliance';
 import { adjustRel, getRel } from './relationships';
 import { cycleOf } from './memory';
 import { profOf, trainProficiency } from './proficiency';
@@ -47,7 +47,7 @@ function treatyKey(a: string, b: string): string {
 
 /** True when these two tributes are on opposite sides of a standing treaty. */
 export function underBlocTreaty(state: GameState, a: Tribute, b: Tribute): boolean {
-    if (!a.allianceId || !b.allianceId || a.allianceId === b.allianceId) return false;
+    if (!a.allianceId || !b.allianceId || allied(a, b)) return false;
     const key = treatyKey(a.allianceId, b.allianceId);
     return treaties(state).some(t => treatyKey(t.aId, t.bId) === key && cycleOf(state) < t.until);
 }

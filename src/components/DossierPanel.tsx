@@ -55,7 +55,7 @@ function Section({ id, title, children, defaultOpen = false, accent }: {
     );
 }
 
-export function DossierPanel({
+export const DossierPanel = React.memo(function DossierPanel({
     gameState,
     isOver,
     arenaSealed,
@@ -680,4 +680,4 @@ export function DossierPanel({
             </Section>
         </div>
     );
-}
+});

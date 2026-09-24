@@ -117,7 +117,9 @@ export type ArchetypeId =
      * somebody else standing in the zone is an archetype most players never see
      * do its thing.
      */
-    | 'cartographer' | 'debtor' | 'forecaster' | 'understudy' | 'archivist' | 'quiet';
+    | 'cartographer' | 'debtor' | 'forecaster' | 'understudy' | 'archivist' | 'quiet'
+    // AUDIT-11 §16: the pilot four.
+    | 'hermit' | 'showrunner' | 'healer-pacifist' | 'engineer';
 
 export interface Attributes {
     strength: number;
@@ -768,8 +770,11 @@ export type DeathCauseCode =
 /** AUDIT-10 B3-01: one Gamemaker command, as recorded and as replayed. */
 export interface InterventionRecord {
     cycle: number;
+    /** A `GamemakerEventType`, or `'parachute'` for a player sponsor gift. */
     type: string;
     targetId?: string;
+    /** AUDIT-11 E6: for a parachute, the catalogue item that was sent. */
+    itemId?: string;
     /** Fired by the Capitol's calendar rather than by the player. */
     scheduled?: boolean;
 }
@@ -1344,6 +1349,11 @@ export interface Tribute {
      * Ids of everyone who has spared this tribute, most recent last.
      */
     sparedBy?: string[];
+    /**
+     * AUDIT-11 E16: the cycle each `sparedBy` entry was earned, so mercy can
+     * age. Missing on older saves; an entry with no cycle is treated as fresh.
+     */
+    sparedAt?: Record<string, number>;
     /** §12: times they dropped below the near-death line and came back off it. */
     lowHealthRecoveries?: number;
     /** §12: weather fronts this tribute stood in and walked out of. */
@@ -2151,6 +2161,16 @@ export interface RivalRecord {
      */
     lastSeenZone?: string;
     lastSeenCycle?: number;
+    /**
+     * AUDIT-11 §5: what that person looked like at the same sighting — health,
+     * whether they were visibly armed, and what they were visibly carrying.
+     * Read through `impressionOf` (engine/perception.ts), which regresses it
+     * toward an average tribute as it ages, so the hunt score and betrayal
+     * targeting stop reading the live sheet.
+     */
+    lastSeenHealth?: number;
+    lastSeenArmed?: boolean;
+    lastSeenLoot?: number;
 }
 
 /**
@@ -2635,6 +2655,13 @@ export interface Obligation {
     status: 'open' | 'kept' | 'broken' | 'lapsed' | 'moot';
     /** For an escort, where to. */
     detail?: string;
+    /**
+     * AUDIT-11 E5: a rescue whose ally went down inside the window while the
+     * promiser was active and within one hop, and did not come. The keep check
+     * fires the instant the two are together, so "together at expiry" could
+     * never be the breach condition; this is.
+     */
+    rescueMissed?: boolean;
 }
 
 export type Phase = 'setup' | 'roster' | 'reaping'

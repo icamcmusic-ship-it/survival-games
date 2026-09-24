@@ -4,6 +4,7 @@ import { cycleOf } from './memory';
 import { adjustRel, adjustTrust } from './relationships';
 import { REUNION } from '../data/balance';
 import { noteMilestone } from './milestones';
+import { allied } from './alliance';
 
 /**
  * AUDIT-10 B5-01: real reunions.
@@ -29,11 +30,11 @@ import { noteMilestone } from './milestones';
  */
 export function tickReunions(ctx: SimContext) {
     const now = cycleOf(ctx.state);
-    const allied = getAlive(ctx.state).filter(t => t.allianceId !== undefined);
+    const grouped = getAlive(ctx.state).filter(t => t.allianceId !== undefined);
 
-    allied.forEach(t => {
-        allied.forEach(other => {
-            if (other.id === t.id || other.allianceId !== t.allianceId) return;
+    grouped.forEach(t => {
+        grouped.forEach(other => {
+            if (other.id === t.id || !allied(other, t)) return;
             if (!samePlace(ctx.state.arena, t, other)) return;
 
             const ledger = t.lastTogetherCycle ?? (t.lastTogetherCycle = {});

@@ -1,9 +1,9 @@
 import { targetDrawOf } from './targeting';
 import { GameState, Objective, Tribute, Zone } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
-import { ENDGAME, ESCALATION, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, MEMORY, MOVEMENT, OBJECTIVES, PLANNING, REPUTATION_TARGETING, RISK, STANDING_GOAL } from '../data/balance';
+import { ENDGAME, ESCALATION, PERCEPTION, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, MEMORY, MOVEMENT, OBJECTIVES, PLANNING, REPUTATION_TARGETING, RISK, STANDING_GOAL } from '../data/balance';
 import { SimContext } from './context';
-import { cycleOf, cyclesSinceContact, ensureMemory, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
+import { cycleOf, cyclesSinceContact, ensureMemory, hasVengeanceAgainst, impressionOf, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
 import { getZone, hopsTo, nextHopToward, severedEdgeSet, zoneFeatures } from './map';
 import { notorietyFraction } from './notoriety';
 import { injuryGrade } from './wounds';
@@ -12,7 +12,7 @@ import { fearOf } from './fear';
 import { breakTruce, breaksTruce, hasTruce } from './parley';
 import { perceivedBond, targetReluctance } from './rapport';
 import { prerequisiteFor, pressTension, queueGoal } from './intent';
-import { areLovers } from './alliance';
+import { areLovers, allied, isHostileTo } from './alliance';
 import { sharesVengeancePact } from './vengeancePact';
 import { getRel } from './relationships';
 import { SURVIVAL_TEXTS } from '../data/flavorText';
@@ -247,11 +247,14 @@ export function endgameEdge(state: GameState, t: Tribute): number {
     if (field.length === 0) return 1;
     const avg = (f: (o: Tribute) => number) => field.reduce((sum, o) => sum + f(o), 0) / field.length;
     let edge = 0;
-    edge += (t.health - avg(o => o.health)) / 200;
-    edge += (t.kills - avg(o => o.kills)) / 6;
+    // AUDIT-11 §5: the field as this tribute knows it — their last look at
+    // each rival's condition, and a reputation built from cannons and hearsay
+    // standing in for a kill count nobody outside the Capitol can read.
+    edge += (t.health - avg(o => impressionOf(state, t, o).health)) / 200;
+    edge += (t.kills - avg(o => notorietyFraction(t, o.id) * PERCEPTION.notorietyKills)) / 6;
     edge += (t.inventory.some(i => i.type === 'weapon') ? 0.15 : -0.2);
     const allies = state.tributes.filter(o =>
-        o.status === 'alive' && o.id !== t.id && o.allianceId !== undefined && o.allianceId === t.allianceId).length;
+        o.status === 'alive' && o.id !== t.id && allied(o, t)).length;
     edge += Math.min(0.2, allies * 0.1);
     edge += (t.inventory.some(i => i.type === 'food') && t.inventory.some(i => i.type === 'water')) ? 0.05 : -0.05;
     // §7 (audit): the Capitol expects blood from a finalist who has never
@@ -309,9 +312,30 @@ function chooseObjective(
     // reads exactly like `finaleZone` below it, one stage earlier and for a
     // field of up to six rather than two, which is the whole point: the run's
     // middle endgame should be people meeting, not people politely orbiting.
+    // AUDIT-11 §5: who, of the people standing here, is the one to go for.
+    // Both rungs below used to take the first match in roster order, so low
+    // district ids were targeted systematically. Scored from what `t` can see
+    // (they are in the same sector) plus their own grudges and truces.
+    const faceOffScore = (o: Tribute) => {
+        const seen = impressionOf(state, t, o);
+        return (100 - seen.health) + (1 - seen.armed) * 30
+            - fearOf(t, o.id)
+            + Math.max(0, -getRel(t, o.id)) * OBJECTIVES.faceOffGrudgeWeight
+            + (hasVengeanceAgainst(t, o.id) ? OBJECTIVES.faceOffVengeanceBonus : 0)
+            - (hasTruce(state, t, o.id) ? OBJECTIVES.faceOffTruceCost : 0);
+    };
+    const pickFaceOff = (pool: Tribute[]) => pool.length === 0 ? undefined
+        : pool.reduce((top, o) => (faceOffScore(o) > faceOffScore(top) ? o : top));
+
     if (state.convergenceZone && !state.finaleZone) {
-        const rival = state.tributes.find(o =>
-            o.status === 'alive' && o.id !== t.id && o.zone === t.zone && o.allianceId !== t.allianceId);
+        const inZone = state.tributes.filter(o =>
+            o.status === 'alive' && o.zone === t.zone && isHostileTo(t, o));
+        // AUDIT-11 §5: the convergence closes the map, it does not switch off
+        // fear. The ordinary hunt drops a mark past `huntAbandonFear`; a
+        // terrified loner facing the Career pack here falls through to the
+        // flee rung instead of walking into them.
+        const terrified = inZone.some(o => fearOf(t, o.id) >= OBJECTIVES.huntAbandonFear);
+        const rival = terrified ? undefined : pickFaceOff(inZone);
         if (rival) {
             const o = offer(99, { kind: 'hunt', targetId: rival.id, expires: expiry(OBJECTIVES.huntCycles) });
             if (o) return o;
@@ -340,8 +364,8 @@ function chooseObjective(
         // non-lover in roster order and *then* asking where they are meant that
         // with three finalists, a tribute standing next to one of them formed no
         // intention at all because somebody else, elsewhere, was found first.
-        const rival = state.tributes.find(o =>
-            o.status === 'alive' && o.id !== t.id && o.zone === t.zone && !areLovers(t, o));
+        const rival = pickFaceOff(state.tributes.filter(o =>
+            o.status === 'alive' && o.id !== t.id && o.zone === t.zone && !areLovers(t, o)));
         if (rival) {
             const o = offer(100, { kind: 'hunt', targetId: rival.id, expires: expiry(OBJECTIVES.huntCycles) });
             if (o) return o;
@@ -355,7 +379,7 @@ function chooseObjective(
     // 1. Get out. Standing somewhere they are badly outmatched beats every
     //    other consideration a tribute has.
     const hostilesHere = here.filter(o =>
-        o.id !== t.id && (o.allianceId === undefined || o.allianceId !== t.allianceId));
+        o.id !== t.id && !allied(o, t));
     const scaredOf = hostilesHere.some(o => fearOf(t, o.id) >= OBJECTIVES.fleeFear);
     const fleePull = objectiveBiasFor(t, 'flee');
     if ((scaredOf || (!dry && fleePull > 0 && hostilesHere.length > 0 && ctx.rng.chance(fleePull)))
@@ -401,7 +425,7 @@ function chooseObjective(
     //     them a stated plan, not just a silent pull in the movement layer.
     if (t.allianceId) {
         const mates = state.tributes.filter(o =>
-            o.status === 'alive' && o.id !== t.id && o.allianceId === t.allianceId);
+            o.status === 'alive' && o.id !== t.id && allied(o, t));
         const together = mates.some(o => o.zone === t.zone);
         if (mates.length > 0 && !together) {
             const known = mates.find(o => cyclesSinceContact(state, t, o.id) <= MEMORY.sightingLifetime * 2);
@@ -507,7 +531,7 @@ function chooseObjective(
         // was never actually shown. `cyclesSinceContact` is identity-scoped.
         const visible = state.tributes.filter(o =>
             o.status === 'alive' && o.id !== t.id
-            && (o.allianceId === undefined || o.allianceId !== t.allianceId)
+            && !allied(o, t)
             && rememberedRivals(state, t, o.zone) > 0
             && cyclesSinceContact(state, t, o.id) <= MEMORY.sightingLifetime
             && fearOf(t, o.id) < OBJECTIVES.huntAbandonFear);
@@ -522,6 +546,7 @@ function chooseObjective(
         // under truce is off the list *unless* they are the best target on it
         // and the hunter decides, then and there, to go back on their word.
         // That decision is the break.
+        const myAllies = state.tributes.filter(o => o.status === 'alive' && o.id !== t.id && allied(o, t));
         const candidates = visible.filter(o => !hasTruce(state, t, o.id));
         const underTruce = visible.filter(o => hasTruce(state, t, o.id));
         if (candidates.length > 0 || underTruce.length > 0) {
@@ -531,14 +556,18 @@ function chooseObjective(
             // (from what the hunter last saw, not the live sheet), the loot,
             // and the grudge — minus how much this person frightens them.
             const rawScore = (o: Tribute) => {
-                const winnable = (100 - o.health)
-                    + (o.inventory.some(i => i.type === 'weapon') ? 0 : 30)
+                // AUDIT-11 §5: "from what the hunter last saw" is now true —
+                // the snapshot from their last sighting, going soft with age,
+                // rather than the live health and pack of somebody out of view.
+                const seen = impressionOf(state, t, o);
+                const winnable = (100 - seen.health)
+                    + (1 - seen.armed) * 30
                     + (o.allianceId === undefined ? 15 : 0);
-                const loot = o.inventory.reduce((sum, i) => sum + i.value, 0) * 0.3;
+                const loot = seen.loot * 0.3;
                 // A §4: an unwilling tribute who hunts at all hunts the
                 // weakest thing on the board; a willing one does not need to.
                 const picky = Math.max(0, -riskTolerance(ctx, t)) * RISK.targetWeakWeight;
-                const weakness = (100 - o.health) * picky;
+                const weakness = (100 - seen.health) * picky;
                 const grudge = Math.max(0, -getRel(t, o.id)) * 0.5;
                 // A2: whose board this is. The shared arithmetic above is
                 // "easiest kill worth the most loot", which is how everybody
@@ -575,10 +604,11 @@ function chooseObjective(
                 // has an agreement with my ally A is not a private matter
                 // between me and B — A gave their word, and it is A's word I
                 // would be making worthless.
-                const trucedWithAnAlly = visible.some(ally =>
-                    ally.id !== o.id
-                    && ally.allianceId !== undefined && ally.allianceId === t.allianceId
-                    && hasTruce(state, ally, o.id));
+                // AUDIT-11 E4: the hunter's actual allies. This used to search
+                // `visible`, which already excludes alliance-mates, so the
+                // cost was never charged.
+                const trucedWithAnAlly = myAllies.some(ally =>
+                    ally.id !== o.id && hasTruce(state, ally, o.id));
                 const thirdPartyCost = trucedWithAnAlly ? OBJECTIVES.thirdPartyTruceCost : 0;
                 return (winnable + loot + weakness + grudge - fearOf(t, o.id) + reputation - thirdPartyCost
                     + targetDrawOf(o)
@@ -675,7 +705,7 @@ function chooseObjective(
             // §4.5: a sworn protector bond outranks the alliance test — a
             // protector does not need a charter to refuse to leave their ward.
             && ((t.protectorBonds?.includes(o.id))
-                || (o.allianceId !== undefined && o.allianceId === t.allianceId))
+                || allied(o, t))
             // A2: an archetype that exists to keep somebody alive notices a
             // ward sooner and on thinner grounds than one that does not.
             && (o.health < OBJECTIVES.wardHealth + protectPull * OBJECTIVES.wardBiasHealth

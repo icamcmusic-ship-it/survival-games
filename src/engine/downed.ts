@@ -13,6 +13,7 @@ import { canReach, noteAttempt, noteRefusal } from './actions';
 import { killTribute, enterShock } from './combat';
 import { loseSanity } from './sanityBands';
 import { reattributeWound } from './woundLedger';
+import { allied } from './alliance';
 
 /**
  * §9.1: the downed state and the rescue window.
@@ -40,7 +41,7 @@ export function isActive(t: Tribute): boolean {
 
 /** §9.1: whether these two would cross a zone for each other. */
 function wouldHelp(rescuer: Tribute, downed: Tribute): boolean {
-    if (rescuer.allianceId && rescuer.allianceId === downed.allianceId) return true;
+    if (allied(rescuer, downed)) return true;
     if (rescuer.protectorBonds?.includes(downed.id)) return true;
     return (rescuer.relationships[downed.id] ?? 0) > STANCE.friendRegardThreshold;
 }

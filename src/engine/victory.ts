@@ -1,6 +1,6 @@
 import { SimContext, getAlive } from './context';
 import { Tribute } from '../models/types';
-import { areLovers } from './alliance';
+import { areLovers, allied } from './alliance';
 import { isActive } from './downed';
 import { wildcardIs } from './gamesProfile';
 import { QUELL_MECHANICS } from '../data/balance';
@@ -43,7 +43,7 @@ export function checkDualVictory(ctx: SimContext): [Tribute, Tribute] | undefine
     // after it so the player's explicit choice outranks a drawn twist.
     if (ctx.state.config.singleVictor) return undefined;
 
-    const allied = (a.allianceId !== undefined && a.allianceId === b.allianceId) || areLovers(a, b);
+    const paired = allied(a, b) || areLovers(a, b);
 
     // 'Two Victors': the Capitol's own promise, tested at the last possible
     // moment. Any final two qualify — allied or not — but the promise is
@@ -67,7 +67,7 @@ export function checkDualVictory(ctx: SimContext): [Tribute, Tribute] | undefine
         );
     }
 
-    if (wildcardIs(ctx.state, 'rule-change-allies') && allied) {
+    if (wildcardIs(ctx.state, 'rule-change-allies') && paired) {
         ctx.logEvent(
             `The cannon does not fire. The anthem does. Under this year's rule change, ${a.name} and ${b.name} `
             + `are both still standing — and two may win. The Games are over.`,

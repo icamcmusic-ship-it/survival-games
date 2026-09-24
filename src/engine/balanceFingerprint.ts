@@ -1,4 +1,12 @@
 import * as BALANCE from '../data/balance';
+import * as FLAVOR from '../data/flavorText';
+import * as ARENA_FLAVOR from '../data/arenaFlavor';
+import * as ARENA_FLAVOR_NEW from '../data/arenaFlavorNew';
+import * as PROCEDURAL_FLAVOR from '../data/proceduralFlavor';
+import * as NAMES from '../data/names';
+import { BUILDS, DEFAULT_GAME_CONFIG, IMPROVISED_ITEMS, INCOMPATIBLE_TRAITS, ITEMS } from '../data/constants';
+import { TRAIT_DEFS } from '../data/traits';
+import { ARCHETYPES, CAST_SHAPE_ARCHETYPE_WEIGHTS, CAST_SHAPE_EXCLUDES, DISTRICT_ARCHETYPE_WEIGHTS } from '../data/archetypes';
 
 /**
  * AUDIT-10 batch 6: "scenario manifests with recorded initial conditions
@@ -55,15 +63,53 @@ function stableStringify(value: unknown): string {
     return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stableStringify(v)}`).join(',')}}`;
 }
 
+/**
+ * AUDIT-11 E13: the *shape* of a text table — every string array reduced to
+ * its length, everything else walked. A flavour pool's size decides how many
+ * values `pickText` draws over, so adding a line moves the RNG stream and the
+ * run; rewording a line does not, and should not read as a mismatch.
+ */
+function poolShape(value: unknown): unknown {
+    if (Array.isArray(value)) {
+        return value.every(v => typeof v === 'string') ? `#${value.length}` : value.map(poolShape);
+    }
+    if (value === null || typeof value !== 'object') return typeof value === 'function' ? undefined : value;
+    return Object.fromEntries(Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, poolShape(v)]));
+}
+
 let cached: string | undefined;
 
-/** The digest of every exported balance group, computed once per process. */
+/**
+ * The digest of every exported balance group, computed once per process.
+ *
+ * AUDIT-11 E13: balance alone missed replay-breaking changes. The item, trait
+ * and archetype tables and the generation config decide a run as surely as a
+ * knob does, and the sizes of the flavour and name pools decide how the RNG
+ * stream advances — #95's flavour rewrite changed streams with no mismatch.
+ * The arenas are left out: a run carries its own arena in its state.
+ */
 export function balanceFingerprint(): string {
     if (cached !== undefined) return cached;
     const groups = Object.entries(BALANCE as Record<string, unknown>)
         .filter(([, v]) => v !== null && typeof v === 'object')
         .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-    cached = digest(groups.map(([k, v]) => `${k}=${stableStringify(v)}`).join(';'));
+    const tables: Array<[string, unknown]> = [
+        ['@ITEMS', ITEMS], ['@IMPROVISED_ITEMS', IMPROVISED_ITEMS], ['@BUILDS', BUILDS],
+        ['@DEFAULT_GAME_CONFIG', DEFAULT_GAME_CONFIG], ['@INCOMPATIBLE_TRAITS', INCOMPATIBLE_TRAITS],
+        ['@TRAIT_DEFS', TRAIT_DEFS], ['@ARCHETYPES', ARCHETYPES],
+        ['@DISTRICT_ARCHETYPE_WEIGHTS', DISTRICT_ARCHETYPE_WEIGHTS],
+        ['@CAST_SHAPE_ARCHETYPE_WEIGHTS', CAST_SHAPE_ARCHETYPE_WEIGHTS],
+        ['@CAST_SHAPE_EXCLUDES', CAST_SHAPE_EXCLUDES],
+    ];
+    const pools: Array<[string, unknown]> = [
+        ['%flavorText', FLAVOR], ['%arenaFlavor', ARENA_FLAVOR], ['%arenaFlavorNew', ARENA_FLAVOR_NEW],
+        ['%proceduralFlavor', PROCEDURAL_FLAVOR], ['%names', NAMES],
+    ];
+    cached = digest([
+        ...groups.map(([k, v]) => `${k}=${stableStringify(v)}`),
+        ...tables.map(([k, v]) => `${k}=${stableStringify(v)}`),
+        ...pools.map(([k, v]) => `${k}=${stableStringify(poolShape({ ...(v as object) }))}`),
+    ].join(';'));
     return cached;
 }
 

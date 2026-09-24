@@ -1,7 +1,6 @@
 import { dayPhaseLabel } from '../ui/phaseLabels';
 import { SHORTCUTS, boundKey, keyLabel, keyMap } from '../data/shortcuts';
-import { evaluateInRunNearMisses } from '../data/achievements';
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { Hint } from '../components/Hint';
 import { EventCategory, GameState, Phase } from '../models/types';
 import { ArenaMap } from '../components/ArenaMap';
@@ -29,7 +28,8 @@ import { playAnthem, playCannon, playParachute, unlockAudio } from '../utils/sou
 import { canSeeArena, disclosureFor } from '../ui/disclosure';
 
 import { useStore } from '../store/createStore';
-import { useDialogFocus } from '../ui/useDialogFocus';
+import { isDialogOpen, useDialogFocus } from '../ui/useDialogFocus';
+import { announce } from '../ui/announce';
 
 const SPEED_DELAY: Record<Exclude<Speed, 'manual'>, number> = { '1x': 1200, '5x': 350, auto: 60 };
 
@@ -250,7 +250,7 @@ export function GameScreen({
         setMobilePane(p => (p === 'map' ? 'standings' : p));
     }, [inArena]);
 
-    const compareTribute = compareTributeId
+    const compareTribute = compareTributeId && compareTributeId !== selectedTributeId
         ? gameState.tributes.find(t => t.id === compareTributeId) ?? null
         : null;
     const selectedTribute = selectedTributeId
@@ -339,10 +339,7 @@ export function GameScreen({
      * §2.3: every binding is listed in the help overlay, and the overlay is
      * reachable from the `?` key rather than being a hidden desktop-only line.
      */
-    const shortcutHintRef = useRef<HTMLDivElement>(null);
-    const announceShortcut = (message: string) => {
-        if (shortcutHintRef.current) shortcutHintRef.current.textContent = message;
-    };
+    const announceShortcut = (message: string) => announce(message);
 
     /*
      * AUDIT-8 §2.1: the live key -> command map, rebuilt only when the
@@ -357,9 +354,16 @@ export function GameScreen({
         return a.gender.localeCompare(b.gender);
     }), [gameState.tributes]);
 
-    useEffect(() => {
-        const onKey = (e: KeyboardEvent) => {
+    /*
+     * AUDIT-11 U19: the handler is rebuilt every render (it closes over the
+     * live filters and log) but subscribed exactly once; the listener reads the
+     * latest version through a ref instead of resubscribing per log line.
+     */
+    const arenaKeyRef = useRef<(e: KeyboardEvent) => void>(() => {});
+    useLayoutEffect(() => {
+        arenaKeyRef.current = (e: KeyboardEvent) => {
             const target = e.target as HTMLElement | null;
+            if (isDialogOpen()) return;
             if (target && (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable)) return;
             if (e.ctrlKey || e.metaKey || e.altKey) return;
             if (selectedTributeId) return;
@@ -539,10 +543,12 @@ export function GameScreen({
                 announceShortcut('All chronicle filters reset');
             }
         };
+    });
+    useEffect(() => {
+        const onKey = (e: KeyboardEvent) => arenaKeyRef.current(e);
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [onNextPhase, isOver, selectedTributeId, showHelp, gameState, filters, sortedRoster, KEYS]);
+    }, []);
 
     const runningRef = useRef(false);
     runningRef.current = !!runProgress;
@@ -622,13 +628,15 @@ export function GameScreen({
         return map;
     }, [gameState.tributes]);
 
-    const allianceAccent = (allianceId?: string) => (allianceId ? allianceColours[allianceId] : undefined);
-
-    const nearMisses = useMemo(
-        () => (isOver ? [] : evaluateInRunNearMisses(gameState, []).slice(0, 8)),
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-        [gameState.cycle, gameState.phase, isOver]
+    // AUDIT-11 U20: stable identity so the memoised panels can skip renders.
+    const allianceAccent = useCallback(
+        (allianceId?: string) => (allianceId ? allianceColours[allianceId] : undefined),
+        [allianceColours]
     );
+
+    // AUDIT-11 U6: the in-run "Within reach this Games" list was a live
+    // spoiler (it names which survivor is about to earn a victory-shaped
+    // achievement). Near-misses stay an end-screen reveal only.
 
     const phaseLabel = isOver
         ? 'The Games Have Ended'
@@ -648,21 +656,30 @@ export function GameScreen({
     // leaves a listener with no idea the run is moving. A periodic count is
     // the honest middle: "eleven new events" tells you the shape of what you
     // missed without reading nine days of weather at you.
+    // AUDIT-11 U16: the count used to be re-rendered on every new line, so a
+    // screen reader re-announced a growing total ("3 new… 7 new… 12 new…")
+    // all through auto-play. Now lines accumulate silently for one settle
+    // window and the total is spoken once, then cleared.
     const seenLogCount = useRef(gameState.log.length);
+    const logLengthRef = useRef(gameState.log.length);
+    useEffect(() => { logLengthRef.current = gameState.log.length; });
+    const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const [newEventCount, setNewEventCount] = useState(0);
     useEffect(() => {
-        const unseen = gameState.log.length - seenLogCount.current;
-        if (unseen <= 0) {
+        if (gameState.log.length <= seenLogCount.current) {
             seenLogCount.current = gameState.log.length;
             return;
         }
-        setNewEventCount(unseen);
-        const settle = setTimeout(() => {
-            seenLogCount.current = gameState.log.length;
-            setNewEventCount(0);
+        if (settleTimer.current) return;
+        settleTimer.current = setTimeout(() => {
+            settleTimer.current = null;
+            const unseen = logLengthRef.current - seenLogCount.current;
+            seenLogCount.current = logLengthRef.current;
+            if (unseen > 0) setNewEventCount(unseen);
+            setTimeout(() => setNewEventCount(0), NEW_EVENT_SETTLE_MS);
         }, NEW_EVENT_SETTLE_MS);
-        return () => clearTimeout(settle);
     }, [gameState.log.length]);
+    useEffect(() => () => { if (settleTimer.current) clearTimeout(settleTimer.current); }, []);
 
     // §10 (requests): achievements are an end-of-run reveal, and only that.
     //
@@ -727,7 +744,7 @@ export function GameScreen({
                 undiscoverable unless you already know to press ?. Shown once,
                 on the first run, and never again after it is dismissed. */}
             {!prefs.seenShortcutHint && (
-                <div className="panel-flush px-4 py-2 mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-mini">
+                <div className="kbd-hint panel-flush px-4 py-2 mb-4 flex flex-wrap items-center gap-x-4 gap-y-1 text-mini">
                     <span className="eyebrow flex-none">Keyboard</span>
                     <span className="text-[var(--color-ink-300)]">
                         {/* §2.5: this line named two keys that do something
@@ -736,8 +753,10 @@ export function GameScreen({
                             reaches for most. */}
                         <kbd className="font-mono font-bold text-[var(--ink)]">space</kbd> advance
                         {' · '}<kbd className="font-mono font-bold text-[var(--ink)]">o</kbd> open who you're watching
-                        {' · '}<kbd className="font-mono font-bold text-[var(--ink)]">d</kbd> next death
-                        {' · '}<kbd className="font-mono font-bold text-[var(--ink)]">m</kbd> map
+                        {inArena && <>{' · '}<kbd className="font-mono font-bold text-[var(--ink)]">d</kbd> next death</>}
+                        {inArena
+                            ? <>{' · '}<kbd className="font-mono font-bold text-[var(--ink)]">m</kbd> map</>
+                            : <>{' · '}<kbd className="font-mono font-bold text-[var(--ink)]">c</kbd> chronicle</>}
                         {' · '}<kbd className="font-mono font-bold text-[var(--ink)]">?</kbd> all of them
                     </span>
                     <button
@@ -765,18 +784,24 @@ export function GameScreen({
                                     The tab comes back at the gong. */}
                                 {([
                                     ['standings', 'Standings'],
-                                    ...(inArena ? [['map', 'Map'] as const] : []),
+                                    ['map', 'Map'],
                                     ['roster', 'Roster'],
-                                ] as const).map(([id, label]) => (
-                                    <button
-                                        key={id}
-                                        onClick={() => selectMobilePane(id)}
-                                        aria-pressed={stageTab === id}
-                                        className="seg-item"
-                                    >
-                                        {label}
-                                    </button>
-                                ))}
+                                ] as const).map(([id, label]) => {
+                                    // AUDIT-11 §4: say when the map arrives
+                                    // rather than hiding the tab outright.
+                                    const locked = id === 'map' && !inArena;
+                                    return (
+                                        <button
+                                            key={id}
+                                            onClick={() => { if (!locked) selectMobilePane(id); }}
+                                            aria-pressed={stageTab === id}
+                                            aria-disabled={locked || undefined}
+                                            className={`seg-item ${locked ? 'opacity-60 cursor-not-allowed' : ''}`}
+                                        >
+                                            {label}{locked && <span className="text-micro"> · unlocks at the bloodbath</span>}
+                                        </button>
+                                    );
+                                })}
                             </div>
 
                             <div className="flex items-center gap-2 flex-wrap">
@@ -849,23 +874,6 @@ export function GameScreen({
 
                     {stageTab === 'standings' ? (
                         <div className="panel p-4 space-y-4">
-                            {/* Audit 5 §2.2: what this run is close to, while it can
-                                still be steered. `evaluateInRunNearMisses` was written
-                                for this and shown only on the end screen. */}
-                            {nearMisses.length > 0 && (
-                                <details className="text-xs">
-                                    <summary className="cursor-pointer font-mono text-micro uppercase tracking-wider text-[var(--color-ink-500)]">
-                                        Within reach this Games ({nearMisses.length})
-                                    </summary>
-                                    <ul className="mt-2 space-y-1 list-none m-0 p-0">
-                                        {nearMisses.map(m => (
-                                            <li key={m.id} className="text-[var(--color-ink-300)]">
-                                                <span className="font-bold text-[var(--color-ink-200)]">{m.name}</span> — {m.detail}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </details>
-                            )}
                             <StandingsTable
                                 gameState={gameState}
                                 onSelectTribute={setSelectedTributeId}
@@ -975,10 +983,10 @@ export function GameScreen({
 
             {/* A6: on mobile, one bottom tab bar rather than two segmented
                 controls and a tab bar all at once. */}
-            <nav aria-label="Arena panes" className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-[var(--ink)] border-t-[3px] border-[var(--red)] flex items-stretch">
+            <nav aria-label="Arena panes" className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-[var(--chrome-bg)] border-t-[3px] border-[var(--red)] flex items-stretch pb-[env(safe-area-inset-bottom)]">
                 {([
                     { id: 'standings', label: 'Table' },
-                    // §17: the map pane follows the same rule as the tab above it.
+                    // §17: no map pane before the gong.
                     ...(inArena ? [{ id: 'map' as const, label: 'Map' }] : []),
                     { id: 'roster', label: 'Roster' },
                     { id: 'tributes', label: `Cast ${aliveCount}` },
@@ -992,14 +1000,21 @@ export function GameScreen({
                         // wider than the phone, and the 44px floor is the same
                         // touch target the arena zones are held to.
                         className="flex-1 min-w-0 px-1 py-3 min-h-[44px] leading-tight text-micro font-extrabold uppercase tracking-[0.1em]"
-                        style={{ fontFamily: 'var(--font-mono)', color: mobilePane === tab.id ? 'var(--red-on-ink)' : '#a89a86' }}
+                        style={{ fontFamily: 'var(--font-mono)', color: mobilePane === tab.id ? 'var(--red-on-ink)' : 'var(--chrome-muted)' }}
                     >
                         {tab.label}
                     </button>
                 ))}
                 {!isOver && (
-                    <button onClick={onNextPhase} className="flex-none px-4 sm:px-5 min-h-[44px] bg-[var(--red)] text-white text-micro font-extrabold uppercase tracking-[0.1em]" style={{ fontFamily: 'var(--font-mono)' }}>
-                        Proceed
+                    <button
+                        onClick={onNextPhase}
+                        // AUDIT-11 U13: disabled while Run-to-End is simulating.
+                        disabled={!!runProgress}
+                        aria-disabled={!!runProgress || undefined}
+                        className="flex-none px-4 sm:px-5 min-h-[44px] bg-[var(--red)] text-white text-micro font-extrabold uppercase tracking-[0.1em] disabled:opacity-50"
+                        style={{ fontFamily: 'var(--font-mono)' }}
+                    >
+                        {runProgress ? 'Running…' : 'Proceed'}
                     </button>
                 )}
             </nav>
@@ -1011,7 +1026,6 @@ export function GameScreen({
                 {newEventCount > 0 ? `${newEventCount} new event${newEventCount === 1 ? '' : 's'}` : ''}
             </div>
             <div aria-live="polite" className="sr-only">{phaseAnnouncement}</div>
-            <div ref={shortcutHintRef} role="status" aria-live="polite" className="sr-only" />
 
             {showHelp && <HelpOverlay onClose={() => setShowHelp(false)} />}
 
@@ -1020,6 +1034,7 @@ export function GameScreen({
                 modals. */}
             {selectedTribute && compareTribute && (
                 <TributeCompare
+                    key={`${selectedTribute.id}:${compareTribute.id}`}
                     a={selectedTribute}
                     b={compareTribute}
                     gameState={gameState}
@@ -1030,6 +1045,7 @@ export function GameScreen({
 
             {selectedTribute && !compareTribute && (
                 <TributeModal
+                    key={selectedTribute.id}
                     tribute={selectedTribute}
                     gameState={gameState}
                     onCompare={setCompareTributeId}

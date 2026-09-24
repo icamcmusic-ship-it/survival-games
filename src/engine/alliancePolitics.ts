@@ -1,7 +1,7 @@
 import { Alliance, CharterRule, EventType, Tribute } from '../models/types';
 import { ALLIANCES, PROFICIENCY } from '../data/balance';
 import { SimContext, getAlive } from './context';
-import { allianceRecords, membersOf, pickLeader, registerAlliance } from './alliance';
+import { allianceRecords, membersOf, pickLeader, registerAlliance, allied } from './alliance';
 import { adjustRel, getRel } from './relationships';
 import { cycleOf, suspicionOf } from './memory';
 import { giveItem } from './items';
@@ -356,7 +356,7 @@ export function runAlliancePolitics(ctx: SimContext) {
     // tributes and nothing else — exactly the bug the Alliance record fixed.
     getAlive(ctx.state).forEach(t => {
         if (!t.allianceId || records[t.allianceId]) return;
-        const peers = getAlive(ctx.state).filter(o => o.allianceId === t.allianceId);
+        const peers = getAlive(ctx.state).filter(o => allied(o, t));
         if (peers.length < 2) { delete t.allianceId; return; }
         // Through `registerAlliance` rather than hand-built, so a group that
         // reaches here still gets a pact, a charter and roles. The hand-built

@@ -1,4 +1,4 @@
-import { GameState } from '../models/types';
+import { GameState, InterventionRecord } from '../models/types';
 import { Simulator } from './simulator';
 import { snapshotState } from '../utils/snapshot';
 import { WHAT_IF } from '../data/balance';
@@ -35,6 +35,12 @@ export interface WhatIfBranch {
 }
 
 export interface WhatIfResult {
+    /**
+     * AUDIT-11 E6: how many of the player's own interventions after the
+     * checkpoint (Gamemaker commands, parachutes) were replayed into each
+     * branch at the cycle they happened.
+     */
+    replayedInterventions: number;
     fromPhase: GameState['phase'];
     fromDay: number;
     actualVictorIds: string[];
@@ -53,8 +59,12 @@ function victorsOf(state: GameState): string[] {
  * `salt` undefined replays the checkpoint unchanged — the determinism control
  * the check uses to prove a branch differs only by the phase it re-rolled.
  */
-export function playBranch(checkpoint: GameState, salt?: string): GameState {
+export function playBranch(checkpoint: GameState, salt?: string, planned?: InterventionRecord[]): GameState {
     const start = snapshotState(checkpoint);
+    // AUDIT-11 E6: the player's interventions after the checkpoint, replayed
+    // at their cycles. They replace any replay-link queue the checkpoint was
+    // still carrying: whatever of that queue fired is already in `planned`.
+    if (planned) start.plannedInterventions = planned.map(p => ({ ...p }));
     const seed = start.seed;
     if (salt !== undefined) start.seed = `${seed}~whatif-${salt}`;
     const sim = new Simulator(start);
@@ -66,12 +76,24 @@ export function playBranch(checkpoint: GameState, salt?: string): GameState {
     return sim.getState();
 }
 
+/**
+ * AUDIT-11 E6: the player's own interventions that happened after
+ * `checkpoint` in `actual`. The log is append-only, so they are its tail past
+ * the checkpoint's length. The Capitol's scheduled commands are left out — a
+ * branch's own calendar fires those from the seed.
+ */
+export function playerInterventionsAfter(checkpoint: GameState, actual: GameState): InterventionRecord[] {
+    const before = checkpoint.interventionLog?.length ?? 0;
+    return (actual.interventionLog ?? []).slice(before).filter(r => !r.scheduled);
+}
+
 /** Fold finished branches into the debrief's verdict. */
-export function summariseBranches(checkpoint: GameState, actual: GameState, ends: GameState[]): WhatIfResult {
+export function summariseBranches(checkpoint: GameState, actual: GameState, ends: GameState[], replayedInterventions = 0): WhatIfResult {
     const actualVictorIds = victorsOf(actual);
     const key = actualVictorIds.join(',');
     const branches = ends.map(end => ({ victorIds: victorsOf(end), endDay: end.day }));
     return {
+        replayedInterventions,
         fromPhase: checkpoint.phase,
         fromDay: checkpoint.day,
         actualVictorIds,
@@ -85,7 +107,8 @@ export function whatIf(checkpoint: GameState, actual: GameState): WhatIfResult {
     if (!BRANCHABLE.has(checkpoint.phase)) {
         throw new Error(`what-if branches start from an arena phase, not '${checkpoint.phase}'`);
     }
+    const planned = playerInterventionsAfter(checkpoint, actual);
     const ends: GameState[] = [];
-    for (let k = 0; k < WHAT_IF.branches; k++) ends.push(playBranch(checkpoint, String(k)));
-    return summariseBranches(checkpoint, actual, ends);
+    for (let k = 0; k < WHAT_IF.branches; k++) ends.push(playBranch(checkpoint, String(k), planned));
+    return summariseBranches(checkpoint, actual, ends, planned.length);
 }

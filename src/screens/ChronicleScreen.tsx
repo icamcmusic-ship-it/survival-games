@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { EventCategory, EventLog, GameState, Tribute } from '../models/types';
 import { CATEGORY_GROUPS, categoryMeta } from '../ui/eventStyles';
 import { MomentShare, groupBeats, passesDensity, stripZoneClause, tierOf, withTributeLinks } from '../components/EventFeed';
@@ -6,7 +6,8 @@ import { ReplayFallenStrip } from '../components/ReplayFallenStrip';
 import { TributeModal } from '../components/TributeModal';
 import { TributeCompare } from '../components/TributeCompare';
 import { ChronicleFilters } from '../components/ChronicleFilters';
-import { chronicleStore, filtersActive, setChronicle } from '../store/chronicleStore';
+import { ChronicleState, chronicleStore, filtersActive, setChronicle } from '../store/chronicleStore';
+import { isDialogOpen } from '../ui/useDialogFocus';
 import { useStore } from '../store/createStore';
 import { prefsStore } from '../store/prefsStore';
 import { factLineOf } from '../ui/chronicleFacts';
@@ -104,15 +105,40 @@ function paginate(logs: EventLog[]): Page[] {
  * Deep links: `#/chronicle?day=4&phase=night` lands on the right page so a
  * shared moment opens where it happened rather than at the start.
  */
-function readDeepLink(): { day: number; phase: string } | null {
+function hashParams(): URLSearchParams | null {
     const hash = window.location.hash.replace(/^#/, '');
     const q = hash.indexOf('?');
-    if (q < 0) return null;
-    const params = new URLSearchParams(hash.slice(q + 1));
+    return q < 0 ? null : new URLSearchParams(hash.slice(q + 1));
+}
+
+function readDeepLink(): { day: number; phase: string } | null {
+    const params = hashParams();
+    if (!params) return null;
     const day = Number(params.get('day'));
     const phase = params.get('phase');
-    if (!Number.isFinite(day) || !phase) return null;
+    if (!params.has('day') || !Number.isFinite(day) || !phase) return null;
     return { day, phase };
+}
+
+/**
+ * AUDIT-11 §4: the reading filters are part of the link too —
+ * `#/chronicle?tribute=t3&zone=Lake&q=spear`. Unknown ids are ignored.
+ */
+function applyFilterLink(gameState: GameState) {
+    const params = hashParams();
+    if (!params) return;
+    const patch: Partial<ChronicleState> = {};
+    const tribute = params.get('tribute');
+    if (tribute && gameState.tributes.some(t => t.id === tribute)) {
+        patch.filterTributeId = tribute;
+        patch.filterTributeId2 = null;
+        patch.filterPairMode = 'either';
+    }
+    const zone = params.get('zone');
+    if (zone && gameState.arena.zones.some(z => z.name === zone)) patch.selectedZone = zone;
+    const q = params.get('q');
+    if (q) patch.searchText = q.slice(0, 80);
+    if (Object.keys(patch).length) setChronicle(patch);
 }
 
 function CopyPageLink({ page }: { page: Page }) {
@@ -134,9 +160,13 @@ function CopyPageLink({ page }: { page: Page }) {
     );
 }
 
-function writeDeepLink(page: Page | undefined) {
+function writeDeepLink(page: Page | undefined, filters?: Pick<ChronicleState, 'filterTributeId' | 'selectedZone' | 'searchText'>) {
     if (!page) return;
-    const url = `${window.location.pathname}${window.location.search}#/chronicle?day=${page.day}&phase=${page.phase}`;
+    const params = new URLSearchParams({ day: String(page.day), phase: page.phase });
+    if (filters?.filterTributeId) params.set('tribute', filters.filterTributeId);
+    if (filters?.selectedZone) params.set('zone', filters.selectedZone);
+    if (filters?.searchText.trim()) params.set('q', filters.searchText.trim());
+    const url = `${window.location.pathname}${window.location.search}#/chronicle?${params.toString()}`;
     window.history.replaceState(null, '', url);
 }
 
@@ -223,6 +253,8 @@ function LogRow({ log, cast, byId, facts, onSelectTribute, showZone, continuatio
 
 export function ChronicleScreen({ gameState }: { gameState: GameState }) {
     const filters = useStore(chronicleStore, s => s);
+    // AUDIT-11 §4: filters in the link apply before the first paint.
+    useLayoutEffect(() => { applyFilterLink(gameState); }, []); // eslint-disable-line react-hooks/exhaustive-deps
     const [selectedTributeId, setSelectedTributeId] = useState<string | null>(null);
     const [compareTributeId, setCompareTributeId] = useState<string | null>(null);
     const [showFilters, setShowFilters] = useState(false);
@@ -291,6 +323,11 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
     // whatever page is showing so the address bar is always shareable.
     const [deepLinkApplied, setDeepLinkApplied] = useState(false);
     useEffect(() => {
+        const onQuery = () => { applyFilterLink(gameState); setDeepLinkApplied(false); };
+        window.addEventListener('sg:route-query', onQuery);
+        return () => window.removeEventListener('sg:route-query', onQuery);
+    }, [gameState]);
+    useEffect(() => {
         if (deepLinkApplied || pages.length === 0) return;
         setDeepLinkApplied(true);
         const deep = readDeepLink();
@@ -307,7 +344,10 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
     }, [clamped, pageIndex]);
 
     const page = pages[clamped];
-    useEffect(() => { writeDeepLink(page); }, [page?.key]); // eslint-disable-line react-hooks/exhaustive-deps
+    useEffect(() => {
+        if (!deepLinkApplied) return;
+        writeDeepLink(page, filters);
+    }, [page?.key, deepLinkApplied, filters.filterTributeId, filters.selectedZone, filters.searchText]); // eslint-disable-line react-hooks/exhaustive-deps
 
     // §(requests): a new page starts at the top of the log. Paging forward
     // used to leave the reader wherever the previous page had scrolled them,
@@ -358,12 +398,13 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
     const selectedTribute = selectedTributeId
         ? gameState.tributes.find(t => t.id === selectedTributeId) ?? null
         : null;
-    const compareTribute = compareTributeId
+    const compareTribute = compareTributeId && compareTributeId !== selectedTributeId
         ? gameState.tributes.find(t => t.id === compareTributeId) ?? null
         : null;
 
     const days = useMemo(() => [...new Set(pages.map(p => p.day))], [pages]);
 
+    const swipeRef = useRef<{ x: number; y: number } | null>(null);
     const go = (step: number) => setPageIndex(i => Math.min(pages.length - 1, Math.max(0, i + step)));
 
     // Previous/Next belong on the arrow keys on a page whose entire model is
@@ -372,7 +413,7 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
         const onKey = (e: KeyboardEvent) => {
             const target = e.target as HTMLElement | null;
             if (target && (['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName) || target.isContentEditable)) return;
-            if (e.ctrlKey || e.metaKey || e.altKey || selectedTributeId) return;
+            if (e.ctrlKey || e.metaKey || e.altKey || selectedTributeId || isDialogOpen()) return;
             if (e.key === 'ArrowLeft') { e.preventDefault(); go(-1); }
             else if (e.key === 'ArrowRight') { e.preventDefault(); go(1); }
         };
@@ -384,7 +425,20 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
         : filters.textScale === 'large' ? 'chronicle-text-lg' : '';
 
     return (
-        <div className={`max-w-5xl mx-auto space-y-5 ${scaleClass} ${filters.narrowMeasure ? 'chronicle-narrow' : ''}`}>
+        <div
+            className={`max-w-5xl mx-auto space-y-5 ${scaleClass} ${filters.narrowMeasure ? 'chronicle-narrow' : ''}`}
+            // AUDIT-11 §4: swipe left/right to page on touch.
+            onTouchStart={e => { const t = e.touches[0]; swipeRef.current = { x: t.clientX, y: t.clientY }; }}
+            onTouchEnd={e => {
+                const start = swipeRef.current;
+                swipeRef.current = null;
+                if (!start || selectedTributeId) return;
+                const t = e.changedTouches[0];
+                const dx = t.clientX - start.x;
+                const dy = t.clientY - start.y;
+                if (Math.abs(dx) > 70 && Math.abs(dx) > Math.abs(dy) * 2) go(dx < 0 ? 1 : -1);
+            }}
+        >
             {/* ---------- header band ---------- */}
             <header className="panel p-5 flex flex-wrap items-end justify-between gap-4">
                 <div>
@@ -595,6 +649,7 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
               */}
             {selectedTribute && compareTribute && (
                 <TributeCompare
+                    key={`${selectedTribute.id}:${compareTribute.id}`}
                     a={selectedTribute}
                     b={compareTribute}
                     gameState={gameState}
@@ -605,6 +660,7 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
 
             {selectedTribute && !compareTribute && (
                 <TributeModal
+                    key={selectedTribute.id}
                     tribute={selectedTribute}
                     gameState={gameState}
                     onCompare={setCompareTributeId}

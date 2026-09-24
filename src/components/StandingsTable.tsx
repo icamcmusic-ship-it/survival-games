@@ -33,7 +33,7 @@ const COLUMNS: Array<{ id: Column; label: string; numeric?: boolean; className?:
 /** §2: odds move below this are noise rather than a trend. */
 const TREND_EPSILON = 0.5;
 
-export function StandingsTable({
+export const StandingsTable = React.memo(function StandingsTable({
     gameState,
     onSelectTribute,
     allianceAccent,
@@ -234,4 +234,4 @@ export function StandingsTable({
             </div>
         </div>
     );
-}
+});
