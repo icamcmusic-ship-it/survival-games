@@ -2530,12 +2530,19 @@ export const VOLUNTEER = {
      * the academy weapons they happened not to drill) is as cold in their
      * hands as in anyone's, which is the gap a clever outlier can use.
      */
-    academyWeaponsMin: 6,
-    academyWeaponsMax: 9,
+    // AUDIT-11 §11.1(b): 6-9 -> 3-5 classes. Measured alone at n=1,600 it
+    // is worth ~1.3 points of Career victor share (59.2% -> 57.9%), inside
+    // the noise on its own; kept because it is the audit's named lever and
+    // it leaves a clever outlier more of the armoury to be better at.
+    academyWeaponsMin: 3,
+    academyWeaponsMax: 5,
     /** The combat-skill floor (on PROFICIENCY.max 6) an academy volunteer arrives
      *  at: half the scale, against 0.25 for the rest of the field. 3.5 measured
-     *  Career victors 61.7% even without the strength bonus; 3 holds 59.1%. */
-    academyCombatFloor: 3,
+     *  Career victors 61.7% even without the strength bonus; 3 holds 59.1%.
+     *  AUDIT-11 §11.1: 3 -> 2. At n=1,600 on top of the attribute-roll cut it
+     *  moved Career victors 51.8% -> 50.0% alone; with the agility roll gone
+     *  as well, see the CHANGELOG for the combined figure. */
+    academyCombatFloor: 2,
 } as const;
 
 /**
@@ -3412,6 +3419,8 @@ export const COIN_ECONOMY = {
 } as const;
 
 export const MOVEMENT = {
+    /** AUDIT-11: pull toward a zone where somebody this tribute would rescue is downed. */
+    downedAllyPull: 6,
     /** A1: fatigue a plain move costs, used by the Fortified movement penalty. */
     baseMoveFatigue: 4,
     /**
@@ -4333,6 +4342,19 @@ export const TRAPS = {
 
     /** Odds an unsprung snare catches an animal instead, feeding its owner. */
     gameCatchChance: 0.35,
+    /**
+     * AUDIT-11 §11.4: catch odds added per point of the owner's `trapSkill`
+     * trait modifier (Trapper carries 0.28), so the trait yields food as well
+     * as bodies.
+     */
+    gameCatchPerTrapSkill: 0.5,
+    /**
+     * AUDIT-11 §11.4: a snare can be checked from the next sector over.
+     * Lines are laid on the approaches (§6.1), so requiring the owner to be
+     * standing on the snare meant most catches were never collected — the
+     * yield the Trapper trait was supposed to have.
+     */
+    gameCollectAdjacent: true,
     gameFeed: 30,
     /** AUDIT-6 §12.4: and the same again for what the snare caught. */
     gameFeedPerButchery: 3,
@@ -4661,7 +4683,8 @@ export const STANCE = {
      * cleanly no longer does.
      */
     /** §3.2: how far generalised dread pushes a tribute toward getting out. */
-    dreadEvasive: 3,
+    // AUDIT-11 §5: 3 -> 2, with `defensiveBase` 1 -> 2.2 — Evasive held 44%.
+    dreadEvasive: 2,
     cowedAggression: 1.5,
     switchMargin: 1.1,
     /**
@@ -4670,6 +4693,8 @@ export const STANCE = {
      * of their cycles; this gives the machinery a memory of its own churn.
      */
     churnMarginPerSwitch: 2.2,
+    /** AUDIT-11 §5: share of the churn widening a conditional challenger pays. */
+    conditionalChurnWeight: 0.35,
     churnDecayPerCycle: 0.25,
     churnMax: 4,
     /** Extra cycles of hold per unit of accumulated churn. */
@@ -4752,7 +4777,7 @@ export const STANCE = {
     lowSanityEvasive: 0.8,
     stealthPivot: 5,
     stealthEvasiveWeight: 0.06,
-    defensiveBase: 1,
+    defensiveBase: 2.2,
     defensiveTemperament: 0.5,
     allianceDefensive: 0.5,
     /**
@@ -4797,11 +4822,15 @@ export const STANCE_MODES = {
         // AUDIT-6 §3.1: two people holding a chokepoint is a picket. At three
         // this was half of why Patrolling held 0.5% of tribute-cycles.
         packMin: 2,
-        base: 3.6,
+        base: 4.2,
         perExtraMember: 0.3,
         perTrackingPoint: 0.25,
         cannonBonus: 0.8,
         woundedPenalty: 1.5,
+        /** AUDIT-11 §5: a solo tribute may patrol their own camp after holding it this long. */
+        soloCampHoldCycles: 2,
+        /** AUDIT-11 §5: pull of having a camp of one's own to walk the edge of. */
+        ownCampBonus: 0.8,
     },
     /*
      * AUDIT-7 §12.6: working on yourself rather than on the arena.
@@ -4814,7 +4843,7 @@ export const STANCE_MODES = {
      */
     tending: {
         /** Health, or an untreated wound, that makes stopping the priority. */
-        healthBelow: 60,
+        healthBelow: 75,
         base: 5.5,
         perMedicinePoint: 0.45,
         /** Per open wound site being worked on. */
@@ -4828,6 +4857,10 @@ export const STANCE_MODES = {
         sanityRelief: 4,
         /** Standing still with both hands busy, out of the way. */
         concealmentBonus: 0.08,
+        /** AUDIT-11 §5: an unarmed stranger in the sector no longer blocks self-tending. */
+        ignoreUnarmed: true,
+        /** AUDIT-11 §5: pull per ten health under `healthBelow`. */
+        perTenHealthBelow: 0.5,
     },
     /*
      * AUDIT-7 §12.6: deliberately visible, on ground you prepared.
@@ -4863,6 +4896,11 @@ export const STANCE_MODES = {
         concealmentCost: 0.25,
         /** Added to the chance somebody else walks into this sector. */
         trafficDraw: 0.2,
+        /** AUDIT-11 §5: live traps anywhere in the arena that make Baiting available. */
+        liveTrapsTrigger: 2,
+        /** AUDIT-11 §5: pull per live trap owned anywhere, up to the cap. */
+        perLiveTrap: 0.3,
+        liveTrapsCap: 4,
     },
     /** How much of the archetype's temperament a conditional stance inherits. */
     conditionalArchetypeWeight: 0.5,
@@ -4967,7 +5005,7 @@ export const STANCE_MODES = {
          * role-appropriate opportunity the audit's §8.6 asks for rather than
          * another widening of what counts as scavenging.
          */
-        base: 2.2,
+        base: 3.0,
         /** Pull from a cannon in an adjacent zone: someone dropped their kit. */
         cannonBonus: 1.6,
         /** Corpse-looting edge. */
@@ -4989,6 +5027,10 @@ export const STANCE_MODES = {
          * there, so the payoff existed and nothing let a tribute see it.
          */
         perBodyHere: 0.7,
+        /** AUDIT-11 §5: hunger above this makes Scavenging available (divided by the exit band while held). */
+        hungerTrigger: 40,
+        /** AUDIT-11 §5: pull per ten hunger above the trigger. */
+        perTenHunger: 0.6,
         /** Pull per point of kit value they are short of the threshold. */
         perMissingValue: 0.08,
         /** ...and the discount for a cannon site with people still on it. */
@@ -5918,6 +5960,8 @@ export const ALLIANCES = {
      */
     crownRivalryMinKills: 2,
     crownRivalryPerCycle: 3,
+    /** AUDIT-11 §11.1(a): rivalry wear multiplied by (1 + gain x share of the field dead). */
+    crownRivalryLateGain: 2,
     crownRivalryLineChance: 0.12,
     /** Base odds a group takes in a loner they get on with. */
     recruitChance: 0.35,
@@ -6014,6 +6058,13 @@ export const ALLIANCES = {
      * thing that happens to it.
      */
     careerInternalBetrayalFactor: 0.35,
+    /**
+     * AUDIT-11 §11.1(a): the pack comes apart *as the field thins*. Added to
+     * `careerInternalBetrayalFactor` in proportion to the share of the field
+     * already dead, so a Career-on-Career knife is still the last choice on
+     * day two and the first one once the crown is in sight.
+     */
+    careerLateBetrayalGain: 1.5,
 
     /**
      * §4.1: pacts, declared at formation. A scheduled split is a telegraphed
@@ -6588,6 +6639,22 @@ export const GENERATION = {
      * measures the trait.
      */
     districtThreeTrapperChance: 0.7,
+    /**
+     * AUDIT-11 §11.1: the Career-district attribute roll, each stat 0..max.
+     *
+     * This was a hard-coded 0-2 in both strength and agility, and it is the
+     * largest single lever on the Career victor share anybody has found. An
+     * 800-run ablation of the current branch: 0-2/0-2 57.9%, 0-1/0-1 51.7%,
+     * 0-1/0 51.0%, 0-2/0 52.3%, 0/0-2 53.5%, none at all 46.6%. Re-measured
+     * at n=1,600 with the other AUDIT-11 changes in: 0-1/0-1 51.8%, 0-1/0
+     * 48.6% (max district share 18.1% -> 16.4%); both at zero 46.0% (max
+     * district 16.2%, archetype table 7.6%-3.7% for n >= 500). Both zero: the
+     * roll is kept as a knob so the next pass can put some of it back. The academy
+     * lives in `VOLUNTEER` (weapon drill, the combat floor); a body that is
+     * simply bigger than everybody else's on top of that was the compounding.
+     */
+    careerStrengthRollMax: 0,
+    careerAgilityRollMax: 0,
     /** Age band that gets reaped. */
     minAge: 12,
     maxAge: 18,
@@ -8815,7 +8882,9 @@ export const ARCHETYPE_HOOKS = {
      * nobody for. Costs them real health — the offer is not rhetorical — and
      * buys the ward the largest single bond in the signature roster.
      */
-    martyrOfferHealth: 12,
+    // AUDIT-11 §11.3: 12 -> 8. The martyr pays for the offer out of their own
+    // health and sat near the bottom of the table; the offer still costs.
+    martyrOfferHealth: 8,
     martyrOfferBond: 30,
     martyrOfferResolve: 30,
     /** Regard above which somebody counts as worth dying for. */

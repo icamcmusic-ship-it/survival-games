@@ -7,7 +7,7 @@ import { adjustRel, adjustTrust, getRel } from './relationships';
 import { isActive } from './downed';
 import { giveItem } from './items';
 import { spend } from './actionBudget';
-import { canSpend, noteAttempt, noteRefusal } from './actions';
+import { Refusal, canSpend, noteAttempt, noteRefusal } from './actions';
 import { ARCHETYPES } from '../data/archetypes';
 
 /**
@@ -298,13 +298,26 @@ function holdHearing(ctx: SimContext, record: Alliance, members: Tribute[], abse
      * cycle of everything else. Anybody who cannot afford the half hour is not
      * at the hearing, and if that leaves too few people there is no hearing.
      */
+    /*
+     * AUDIT-11: one ledger entry per hearing, in the same unit as the attempt.
+     *
+     * Every member without the half hour was noted as a refusal, and then the
+     * hearing as a whole was noted again if too few were left — while a
+     * hearing that went ahead was one attempt however many members sat out.
+     * So a three-person hearing with one absentee read as one done and one
+     * refused, and the ledger's "35% got through" was mixing people with
+     * hearings. The hearing is the action; a member who could not make it is
+     * not a failed hearing. The reason recorded for a hearing that could not
+     * be held is the first absentee's.
+     */
+    let why: Refusal | undefined;
     const attending = members.filter(m => {
         const time = canSpend(m, ALLIANCE_DISPUTE.hearingHours);
-        if (!time.ok) noteRefusal(state, 'alliance-hearing', time.why);
+        if (!time.ok) why ??= time.why;
         return time.ok;
     });
     if (attending.length < ALLIANCE_DISPUTE.minMembers) {
-        noteRefusal(state, 'alliance-hearing', 'no-time');
+        noteRefusal(state, 'alliance-hearing', why ?? 'no-time');
         return;
     }
     attending.forEach(m => spend(m, ALLIANCE_DISPUTE.hearingHours));

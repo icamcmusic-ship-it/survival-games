@@ -787,8 +787,12 @@ export function reconcileAlliances(ctx: SimContext) {
             const ranked = [...members].sort((a, b) => b.kills - a.kills);
             const [first, second] = ranked;
             if (first && second && first.kills >= ALLIANCES.crownRivalryMinKills && second.kills >= 1) {
-                adjustRel(first, second.id, -ALLIANCES.crownRivalryPerCycle);
-                adjustRel(second, first.id, -ALLIANCES.crownRivalryPerCycle);
+                // AUDIT-11 §11.1(a): the crown gets closer as the field thins,
+                // and the rivalry for it wears harder with every cannon.
+                const fallen = 1 - ctx.state.tributes.filter(o => o.status === 'alive').length / Math.max(1, ctx.state.tributes.length);
+                const wear = ALLIANCES.crownRivalryPerCycle * (1 + ALLIANCES.crownRivalryLateGain * fallen);
+                adjustRel(first, second.id, -wear);
+                adjustRel(second, first.id, -wear);
                 if (ctx.rng.chance(ALLIANCES.crownRivalryLineChance)) {
                     ctx.logEvent(
                         `${first.name} and ${second.name} are keeping score against each other now, not just against the arena. The pack pretends not to notice.`,

@@ -378,8 +378,8 @@ export function generateTributes(
             // still the favourite, but a stockyard tribute now arrives with
             // the strength their work would actually have built.
             if (isCareer) {
-                attributes.strength += rng.nextInt(0, 2);
-                attributes.agility += rng.nextInt(0, 2);
+                attributes.strength += rng.nextInt(0, GENERATION.careerStrengthRollMax);
+                attributes.agility += rng.nextInt(0, GENERATION.careerAgilityRollMax);
             }
             if (district === 3) {
                 attributes.intelligence += rng.nextInt(2, 4);

@@ -12,6 +12,7 @@ import { riskTolerance } from './risk';
 import { injuryGrade } from './wounds';
 import { traitMod } from '../data/traits';
 import { isAggressiveStance, isEvasiveStance } from '../data/stances';
+import { isDowned, wouldHelp } from './downed';
 
 /**
  * Destination scoring.
@@ -123,6 +124,15 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
             score += rememberedBarren(state, t, z.name) * MOVEMENT.scavengeBarrenWeight;
             const bodies = state.tributes.filter(o => o.status === 'dead' && o.zone === z.name).length;
             score += bodies * MOVEMENT.scavengeBodyWeight;
+        }
+
+        // AUDIT-11: somebody they would kneel over is lying in the rescue
+        // window next door. Nothing in the scorer knew, so the only rescues
+        // that happened were the ones where a friend was already standing
+        // there — `treat-downed` got through 13% of the time, and most of the
+        // rest were helpers a sector away who had no reason to walk over.
+        if (state.tributes.some(o => o.id !== t.id && o.zone === z.name && isDowned(o) && wouldHelp(t, o))) {
+            score += MOVEMENT.downedAllyPull;
         }
 
         // A1: Shadowing follows one zone behind a specific person rather than

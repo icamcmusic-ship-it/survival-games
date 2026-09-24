@@ -1,5 +1,123 @@
 # Changelog
 
+## AUDIT-11 fix pass — balance (§11) and stance diversity (§5)
+
+Every number is `METRICS_RUNS=1600 npm run test:metrics` on this branch, with
+the pre-pass commit measured the same way. Probes in between used the metrics
+seeds and configs at 800-3,200 runs; a single 1,600-run sweep moves an
+archetype row by about ±1.5 points and Career victors by ±2.4.
+
+| indicator (n=1,600) | before | after |
+|---|---|---|
+| Career victors | 59.9% | **45.9%** (guard ratcheted 60% -> 55%, goal 45%) |
+| largest single-district share (new guard <= 20%) | 21.2% (D2) | 16.8% (D2) |
+| D1 / D2 / D4 | 20.6 / 21.2 / 19.2% | 15.0 / 16.8 / 15.2% |
+| top three districts | 61.0% | 47.1% |
+| best / worst archetype (n >= 500) | 11.51% / 3.08% | 8.01% / 3.75% |
+| archetype spread | 3.74x (FAIL, reported) | 2.14x (goal <= 2.3 met) |
+| whole-field spread, all 40 archetypes | 5.56x | 2.31x |
+| largest stance share (new guard <= 40%) | Evasive 44.0% | Evasive 35.8% |
+| Aggressive / Scavenging / Tending / Patrolling / Baiting | 28.4 / 1.6 / 1.3 / 1.5 / 2.6% | 22.3 / 10.0 / 3.5 / 2.0 / 2.6% |
+| treat-downed got through | 13% | 32% |
+| alliance-hearing got through | 36% | 61% |
+| Trapper (reaping trait) | 2.74% | 3.74% |
+| Light Sleeper / Stoic / Brute | 4.32 / 5.74 / 9.81% | 3.67 / 6.94 / 7.67% |
+| Hardened / Unremarkable combat magnitude | 4.1 sd / 3.3 sd | 2.0 sd / 1.9 sd |
+| run length / zero-kill victors / wipeouts | 11.61 d / 2.6% / 0.6% | 11.85 d / 3.4% / 0.1% |
+
+Archetypes named by the audit, before -> after: career 11.51 -> 8.01,
+mercenary 5.87 -> 6.21, martyr 3.68 -> 4.26, understudy 4.76 -> 3.46 (n=462),
+broker 3.64 -> 3.75, debtor 6.11 -> 4.93, confessor 5.33 -> 4.26, scavenger
+5.72 -> 6.51, saboteur 4.39 -> 3.81, penitent 4.47 -> 3.95, ghost 4.24 -> 4.90,
+diplomat 3.08 -> 4.06, scholar 3.30 -> 5.01. The four new archetypes (all under
+500 entrants, so reported rather than guarded): hermit 3.59 -> 4.62, showrunner
+5.13 -> 5.36, healer-pacifist 2.07 -> 3.55, engineer 7.65 -> 4.34; at 3,200
+runs they measured 4.3 / 5.4 / 3.5 / 4.6%.
+
+### Career share: it was the body, not the academy
+
+An ablation on this branch (800 runs each) answered what three earlier passes
+could not. Zeroing sponsor reputation for storied/strong districts: 57.3%.
+Zeroing `careerAggression` and `careerVisibleBonus`: 58.0%. Academy combat
+floor 3 -> 0: 57.9%. Removing the hard-coded Career-district **attribute roll**
+(strength and agility each +0-2, `generator.ts`): **46.6%**. It is now
+`GENERATION.careerStrengthRollMax` / `careerAgilityRollMax`; 0-1/0-1 measured
+51.7-51.8%, 0-1/0 48.6%, both zero 46.0%. Both are zero; the academy's weapon
+drill and combat floor are what mark a Career now.
+
+Kept alongside it: `VOLUNTEER.academyWeaponsMin/Max` 6-9 -> 3-5 (59.2 ->
+57.9%, the audit's lever (b), within noise alone), `academyCombatFloor` 3 -> 2
+(51.8 -> 50.0% on top of the roll cut), and lever (a) — the Career pack's
+internal betrayal weight and crown-rivalry wear now scale with the share of the
+field already dead (`ALLIANCES.careerLateBetrayalGain`, `crownRivalryLateGain`;
+57.9 -> 57.2%, within noise, kept because it is what the pack's own prose says).
+Tried and reverted: lever (c), storied/strong `targetDraw` 3/2 -> 8/5 (51.8 ->
+52.2%, nothing — the hunt score is dominated by the winnable/loot terms).
+
+Archetype stat biases (`archetypes.ts`): career loses its +1 strength, duellist
+its +1 strength, beast 3 -> 2 strength, engineer its +1 agility; the dump stats
+come off herald, broker, showrunner, forecaster, penitent, understudy and
+archivist, and diplomat, confessor, medic, scholar, underdog and healer-pacifist
+gain a point of endurance (penitent willpower). Healer-pacifist `targetDraw`
+-1 -> -4. `martyrOfferHealth` 12 -> 8.
+
+### Stances (§5): Evasive was the hold, not the scorer
+
+Instrumented: 63% of Evasive tribute-cycles were the minimum hold or the churn
+margin keeping the incumbent, 13% a forced break-off, and 73% of Evasive
+holders were sharing a zone with an armed stranger. The trigger conditions the
+audit asked for, with their payoffs:
+
+- **Scavenging** on hunger (`hungerTrigger` 40, `perTenHunger`) — the stance
+  already forages at `pickingsBonus`. Its scorer also now adds `perBodyHere`,
+  which `stanceReasons` printed and the scorer never counted.
+- **Tending** is blocked by an *armed* stranger only (`ignoreUnarmed`), and pulls
+  harder the lower the health (`perTenHealthBelow`).
+- **Patrolling** a camp of one's own after two held cycles, pack or not
+  (`soloCampHoldCycles`, `ownCampBonus`).
+- **Baiting** on trap stock: two live traps anywhere (`liveTrapsTrigger`,
+  `perLiveTrap`). It stayed at 2.6%; a trapper is rarely unwounded and armed.
+- A conditional challenger pays 35% of the churn widening
+  (`STANCE.conditionalChurnWeight`); Evasive `minHold` 3 -> 2;
+  `dreadEvasive` 3 -> 2; `defensiveBase` 1 -> 2.2.
+
+Stepwise at 400 runs, Evasive: 44.0 -> 43.2 (triggers) -> 41.0 (dread, base
+1.8) -> 38.6 (bases, churn weight) -> 35.5 (minHold) -> 35.0 (base 2.2).
+Reverted: `defensiveBase` 3 (Evasive 38.5% but Aggressive 22.8% and Defensive
+12.8%, heading for the 20% Aggressive guard) and Tending `healthBelow` 60 -> 75
+(Evasive 41.0 -> 40.7: the blocker was the armed stranger, not the threshold).
+The soak's worst stance change rate is 50% (was 60%, threshold 60%).
+
+### Traits
+
+- **Trapper**: a snare's game catch adds 0.5 x `trapSkill` to its odds and can
+  be collected from the next sector (`TRAPS.gameCatchPerTrapSkill`,
+  `gameCollectAdjacent`) — lines are laid on the approaches, so most catches
+  were never picked up.
+- **Light Sleeper / Stoic / Brute**: every positive modifier ~20% down.
+- **Hardened** (combatPower 1.5 -> 0.5, resolveDrift 1 -> 0.5, muttDamage
+  -0.6 -> -0.45) and **Unremarkable** (targetDraw -28 -> -15) capped at 2 sd of
+  the combat category as the metrics report measures it after the cap.
+
+### Treat-downed and hearings had root causes
+
+- **treat-downed (13% -> 32%)**: nothing in destination scoring knew a friend
+  was lying in the rescue window next door (`MOVEMENT.downedAllyPull`), and the
+  refusal ledger counted anybody anywhere with regard above zero — it now counts
+  only people who would actually help (`wouldHelp`) within a sector.
+- **alliance-hearing (36% -> 61%)**: every absent member was logged as a
+  refusal while a held hearing was one attempt; the ledger now records one
+  entry per hearing.
+
+### Guards and labels
+
+`scripts/metrics.ts` gains **largest stance share** (guard <= 40%, goal <= 35%)
+and **largest single-district win share** (guard <= 20%, goal <= 15%), both as
+selected extremes with the widened interval, and `Career victors` is ratcheted
+to 55%. Nine achievement rarity labels were relabelled to what
+`test:achievements` measured after the stance changes: `the-scavenger`
+legendary -> rare (20.6%), and eight `possible` -> `legendary` (0.4-0.6%).
+
 ## AUDIT-8 fix pass (this branch)
 
 `AUDIT-8.md` is the eighth full audit. This is the answer to its §1 — every

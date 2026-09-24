@@ -92,7 +92,11 @@ function pickBetrayalTarget(ctx: SimContext, betrayer: Tribute, members: Tribute
         // §4 (requests): a Career turning on another Career is the pack coming
         // apart, and the pack coming apart is a late-run event, not a day-two
         // one. Every other target in the alliance is preferred first.
-        if (betrayer.isCareer && m.isCareer) weight *= ALLIANCES.careerInternalBetrayalFactor;
+        if (betrayer.isCareer && m.isCareer) {
+            // AUDIT-11 §11.1(a): ...and the later it gets, the likelier.
+            const fallen = 1 - getAlive(ctx.state).length / Math.max(1, ctx.state.tributes.length);
+            weight *= ALLIANCES.careerInternalBetrayalFactor + ALLIANCES.careerLateBetrayalGain * fallen;
+        }
         // AUDIT-11 §5: and the pack's reaction. Every other member standing in
         // the mark's sector is somebody who sees it happen and may turn on the
         // knife, so a mark off on their own is the safer one.

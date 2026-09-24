@@ -40,7 +40,7 @@ export function isActive(t: Tribute): boolean {
 }
 
 /** §9.1: whether these two would cross a zone for each other. */
-function wouldHelp(rescuer: Tribute, downed: Tribute): boolean {
+export function wouldHelp(rescuer: Tribute, downed: Tribute): boolean {
     if (allied(rescuer, downed)) return true;
     if (rescuer.protectorBonds?.includes(downed.id)) return true;
     return (rescuer.relationships[downed.id] ?? 0) > STANCE.friendRegardThreshold;
@@ -282,7 +282,15 @@ export function tickDowned(ctx: SimContext) {
              * another downed tribute failing `canAct` is not a reachability
              * failure, and counting them buried the signal under it.
              */
-            if (!reach.ok && reach.why !== 'incapable' && (o.relationships[t.id] ?? 0) > 0) {
+            /*
+             * AUDIT-11: ...and only people who actually would have helped
+             * (`wouldHelp`, the same test the rescue itself uses) and were
+             * within a sector of it. This counted anybody anywhere in the arena
+             * with a regard above zero, so the ledger's "13% got through" was
+             * mostly acquaintances four zones away who were never coming.
+             */
+            if (!reach.ok && reach.why !== 'incapable' && wouldHelp(o, t)
+                && (o.zone === t.zone || (hopsTo(ctx.state.arena, o.zone, t.zone, ctx.state.collapsedZones ?? [], severedEdgeSet(ctx.state)) ?? 99) <= 1)) {
                 noteRefusal(ctx.state, 'treat-downed', reach.why);
             }
             return reach.ok;

@@ -177,7 +177,8 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     },
     'Light Sleeper': {
         info: 'Wakes at a snapped twig. A steady awareness bonus that works around the clock.',
-        mods: { awareness: 1.2 },
+        // AUDIT-11 §11.5: ~20% off (1.2). 11.2% win rate at the audit's n=400.
+        mods: { awareness: 0.95 },
     },
     'Hardy': {
         // §8: a pure-niche resist with an always-on rider, the way Frost-Born
@@ -213,7 +214,8 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     // ---- the mind -----------------------------------------------------
     'Stoic': {
         info: 'Does not come apart. Loses far less sanity to deprivation, darkness and the sky at night.',
-        mods: { sanityDrain: -0.35, sanityRecovery: 4, resolveDrift: 1 },
+        // AUDIT-11 §11.5: ~20% off every term (-0.35 / 4 / 1).
+        mods: { sanityDrain: -0.28, sanityRecovery: 3.2, resolveDrift: 0.8 },
     },
     'Fragile': {
         info: 'The arena is louder inside their head than anyone else\'s. Loses sanity faster and recovers it slower.',
@@ -307,7 +309,8 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         // in the modifier table too. See the rule at the top of this file: a
         // key with a read site and no writer is the same bug as a modifier with
         // no read site, wearing the other hat.
-        mods: { meleePower: 2, unarmedPower: 2.5, odds: 1.5, ambush: -0.04, intimidation: 0.8 },
+        // AUDIT-11 §11.5: ~20% off every positive term (2 / 2.5 / 1.5 / 0.8).
+        mods: { meleePower: 1.6, unarmedPower: 2, odds: 1.2, ambush: -0.04, intimidation: 0.64 },
     },
     'Marksman': {
         info: 'Trained on the range. Genuinely dangerous with a bow, a slingshot or a blowgun.',
@@ -446,7 +449,10 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         // a drift that still reads as "nobody is buying them a parachute"
         // without closing the door, and the concealment rider raised to pay
         // out where the trait's identity actually lives.
-        mods: { excitement: -0.4, sponsorTrust: -0.4, odds: -1, targetDraw: -28, concealment: 0.12 },
+        // AUDIT-11 §11.6: capped at 2 sd of the combat category (it was 3.3 sd,
+        // nearly all `targetDraw`). -15 is still one of the largest draw discounts in
+        // the game; concealment keeps the trait's promise where it lives.
+        mods: { excitement: -0.4, sponsorTrust: -0.4, odds: -1, targetDraw: -15, concealment: 0.12 },
     },
 
     // ---- the pack and the pantry ---------------------------------------
@@ -624,7 +630,10 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         // mutt-damage discount and the break-off are both raised. A tribute
         // who has met the Gamemakers' animals twice and walked away should be
         // genuinely hard for the third one to kill.
-        mods: { fearGain: -0.4, sanityDrain: -0.2, combatPower: 1.5, resolveDrift: 1, retreat: 0.15, muttDamage: -0.6 },
+        // AUDIT-11 §11.6: capped at 2 sd of the combat category (it was 4.1 sd,
+        // almost all of it `combatPower` and `resolveDrift`). The mutt discount
+        // is the trait's identity and keeps most of its size.
+        mods: { fearGain: -0.4, sanityDrain: -0.13, combatPower: 0.5, resolveDrift: 0.5, retreat: 0.12, muttDamage: -0.45 },
     },
     'Merciful': {
         info: 'Earned by letting someone live who did not have to. The Capitol finds it fascinating; the arena finds it expensive.',
