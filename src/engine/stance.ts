@@ -862,6 +862,14 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
 
     const cycle = ctx.state.cycle ?? 0;
     const ready = { ...(t.stanceReady ?? {}) };
+    // AUDIT-11: vacating one situation is not the same as walking into the
+    // next. A tribute whose conditional stance lapsed a cycle after they took
+    // it was chaining straight into another (Baiting -> Scavenging -> Tending,
+    // one a cycle), each entry skipping the hold because the incumbent had
+    // become invalid. The other conditional stances sit out that cycle.
+    const incumbentPre = STANCE_PRECONDITIONS[t.stance];
+    const chainBreak = !!STANCE_PROFILES[t.stance]?.conditional && t.stanceHeld <= 1
+        && !!incumbentPre && !incumbentPre(ctx, t, sig);
     const available = STANCES.filter(s => {
         const pre = STANCE_PRECONDITIONS[s];
         if (!pre) return true;
@@ -877,6 +885,7 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
         // emergency: it is never delayed and never locked out.
         if (s === t.stance || s === 'Desperate') return true;
         if (!heldLastCycle) return false;
+        if (chainBreak && STANCE_PROFILES[s]?.conditional) return false;
         return (t.stanceCooldown?.[s] ?? -Infinity) <= cycle;
     });
     t.stanceReady = ready;
@@ -910,7 +919,7 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
     };
 
     const ranked = (Object.entries(scores) as Array<[Stance, number]>).sort((a, b) => b[1] - a[1]);
-    let [bestStance, bestScore] = ranked[0] ?? ['Defensive', 0];
+    const [bestStance, bestScore] = ranked[0] ?? ['Defensive', 0];
 
     // A §1: what the scorer actually saw, kept for one cycle so the tribute
     // sheet can answer "why did they do that?" and the soak can audit it.
@@ -943,15 +952,6 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
     // A conditional stance whose situation has passed is vacated at once — the
     // hold is a stability device, not a trap.
     const stillValid = available.includes(t.stance);
-    // AUDIT-11: ...but vacating one situation is not the same as walking into
-    // the next. A tribute whose conditional stance lapsed was chaining straight
-    // into another (Baiting -> Scavenging -> Tending, one a cycle), each entry
-    // skipping the hold because the incumbent had become invalid. They fall
-    // back to a base stance for a cycle first.
-    if (!stillValid && STANCE_PROFILES[t.stance]?.conditional && STANCE_PROFILES[bestStance]?.conditional) {
-        const base = ranked.find(([stance]) => !STANCE_PROFILES[stance]?.conditional);
-        if (base) [bestStance, bestScore] = base;
-    }
 
     if (bestStance === t.stance) {
         t.stanceHeld += 1;
@@ -1023,7 +1023,9 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
         t.stanceCooldown = { ...(t.stanceCooldown ?? {}), [t.stance]: cycle + STANCE.conditionalCooldown };
     }
     t.stance = bestStance;
-    t.stanceHeld = 0;
+    // A chain-break fallback is a pause, not a commitment: it carries no hold,
+    // so the next real situation can be taken as soon as it is ready.
+    t.stanceHeld = chainBreak ? STANCE.minHold : 0;
     t.stanceChurn = Math.min(STANCE.churnMax, (t.stanceChurn ?? 0) + 1);
     if (bestStance !== 'Fortified') { t.fortifiedCycles = 0; t.fortifiedBeatShown = undefined; }
     settleShadowing();

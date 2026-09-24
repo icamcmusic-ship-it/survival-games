@@ -6102,7 +6102,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Whiteout Walker',
         hint: 'Win Cinder Peak after a whiteout, having walked the Ridge Line.',
         category: 'arena',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: (state, v) => !!v && state.arena.id === 'cinderpeak'
             && state.log.some(e => e.text.startsWith('WHITEOUT:'))
             && (v.visitedZones ?? []).includes('The Ridge Line'),
