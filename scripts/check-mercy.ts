@@ -114,8 +114,13 @@ if (sparingRuns > 0 && withdrawn / Math.max(1, sparingRuns) > 0.6) {
  * positive terms without it, 42.7% with it (120 runs; at 480, 32.6% / 42.8%). So the bar sits between those two
  * — it fails if the gratitude is removed and passes as shipped, which is the
  * only thing a bound here can honestly assert.
+ *
+ * AUDIT-11 E16: gratitude is now withheld from a tribute sworn to vengeance on
+ * their sparer, and mercy is forgotten after `mercyMemoryCycles`. Re-measured
+ * at 480 runs: 29.1% without gratitude, 37.7% with it. The bar moves to sit
+ * between them again.
  */
-if (gratefulPairs + ungratefulPairs > 0 && gratefulPairs / (gratefulPairs + ungratefulPairs) < 0.38) {
+if (gratefulPairs + ungratefulPairs > 0 && gratefulPairs / (gratefulPairs + ungratefulPairs) < 0.33) {
     failures.push(`only ${pct(gratefulPairs, gratefulPairs + ungratefulPairs)} of spared tributes end on `
         + 'positive terms with the person who spared them — the gratitude is not landing');
 }
