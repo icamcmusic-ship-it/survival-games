@@ -1,3 +1,4 @@
+import { scarResourceScale, weatherForage } from './arenaDepth';
 import { arenaHasLaw } from './gamesProfile';
 import { earnTrait } from './earnedTraits';
 import { Arena, EdgeRule, GameState, Tribute, Zone, ResolvedZoneFeatures, attr, chokepointByName } from '../models/types';
@@ -606,7 +607,9 @@ export function effectiveResources(state: GameState, zone: Zone | undefined): nu
     // §7: an infestation is the bloom's inverse — nothing here is worth
     // eating while the zone is crawling, however much of it there is.
     const swarming = effects.some(e => e.kind === 'swarming');
-    return swarming ? lifted * ZONE_EFFECTS.swarmingResourcePenalty : lifted;
+    const yielded = swarming ? lifted * ZONE_EFFECTS.swarmingResourcePenalty : lifted;
+    // AUDIT-11 §7: scarred ground and the weather move what the ground gives.
+    return yielded * scarResourceScale(state, zone.name) * weatherForage(state);
 }
 
 export function depleteZone(state: GameState, zoneName: string, amount: number) {

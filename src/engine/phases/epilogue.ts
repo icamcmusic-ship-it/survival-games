@@ -1,4 +1,5 @@
 import { deathCodeOf } from '../causes';
+import { revealRomances } from '../allianceBonds';
 import { SimContext, getAlive } from '../context';
 import { EpilogueQA, EventLog, Tribute } from '../../models/types';
 import { ensureMemory } from '../memory';
@@ -129,6 +130,8 @@ export function processEpilogue(ctx: SimContext) {
     // §1.4: close every truce still standing before the couch — the ledger
     // has to add up, and a promise the victor kept to the end deserves a line.
     closeTrucesAtEnd(ctx);
+    // AUDIT-11 §6: and every romance says, now, whether it was real.
+    revealRomances(ctx);
     const rng = ctx.rng;
     const alive = getAlive(ctx.state);
     const winner = alive[0];

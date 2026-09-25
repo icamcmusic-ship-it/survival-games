@@ -7,6 +7,7 @@ import { Explainer } from '../components/Explainer';
 import { heightLabel } from '../engine/physique';
 import { prefsStore } from '../store/prefsStore';
 import { useStore } from '../store/createStore';
+import { PredictionSlip } from '../components/PredictionSlip';
 import { traitInfo } from '../data/traitInfo';
 import {
     attributeBand, canSeeArchetype, canSeeAttributeBands, canSeeExactAttributes,
@@ -214,6 +215,9 @@ export function RosterPanel({
                     </div>
                 </div>
             )}
+
+            {/* AUDIT-11 §12/§8: the prediction slip and the campaign parlay. */}
+            {bettingOpen && <PredictionSlip tributes={tributes} />}
 
             {/* §6.8: the proposition book — settled from what the run does, not who wins. */}
             {bettingOpen && (

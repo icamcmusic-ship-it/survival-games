@@ -1,4 +1,5 @@
 import { GameState, Item, Tribute } from '../models/types';
+import { griefScaling } from './allianceBonds';
 import { forceStance } from './stance';
 import { noteRivalDeath } from './rapport';
 import { RNG } from '../utils/rng';
@@ -405,6 +406,8 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
                 && (killZone?.adjacent.includes(other.zone) ?? false)
                 && ctx.rng.chance(RELATIONSHIPS.killerIdentifiedNearby);
             const knowsKiller = witnessed || nearby;
+            // AUDIT-11 §6: grief scaled by the bond — and, for a close enough one, a lost day.
+            const bondHatred = griefScaling(ctx, other, victim, bond, knowsKiller && killer !== undefined && killer.id !== other.id, isLover);
 
             /*
              * §16: and now the name is written down somewhere it can travel.
@@ -429,7 +432,8 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
 
             if (killer && killer.id !== other.id && knowsKiller) {
                 const hatred = RELATIONSHIPS.griefTowardKiller * intensity
-                    + (wereAllied ? RELATIONSHIPS.griefTowardKillerAllyBonus : 0);
+                    + (wereAllied ? RELATIONSHIPS.griefTowardKillerAllyBonus : 0)
+                    + bondHatred;
                 const now = adjustRel(other, killer.id, -hatred);
                 // Vengeance is sworn on the event, not on the arithmetic.
                 //

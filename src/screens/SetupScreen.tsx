@@ -12,6 +12,8 @@ import { Hint } from '../components/Hint';
 import { ConfirmButton } from '../components/ConfirmButton';
 import { resumeWithRecap } from '../ui/uiStore';
 import { gamesProfileFor, profileHeadline } from '../engine/gamesProfile';
+import { rebellionCallsQuell, rebellionLabel, rebellionOf } from '../engine/campaign';
+import { campaignSnapshotOf } from '../utils/panemStorage';
 // PERF: imported from the data module directly, not via `engine/arenaSignature`
 // — the setup screen is the app's cold-start path and must not drag the
 // simulation engine (and its ~5k lines of flavour/balance tables) in with it.
@@ -21,7 +23,7 @@ import { canSeeArena, disclosureFor } from '../ui/disclosure';
 import { CLIMATE_LABELS, LAW_LABELS, lawsOf, lengthEstimate, terrainMix } from '../data/arenaBriefing';
 import { packFor } from '../data/arenaEventPacks';
 import { ARENA_MUTTS } from '../data/mutts';
-import { ARENA_DEATH_BUDGET, BLOODBATH, COIN_ECONOMY } from '../data/balance';
+import { ARENA_DEATH_BUDGET, BLOODBATH, CAMPAIGN_ARC, COIN_ECONOMY } from '../data/balance';
 import { RNG } from '../utils/rng';
 import { QUELLS } from '../data/gamesProfile';
 import { MUTATORS as MUTATOR_DECK, MUTATORS_PER_GAMES, drawMutators } from '../data/mutators';
@@ -634,13 +636,45 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                 </div>
                             )}
                         </div>
-                        <button
-                            onClick={() => { setSeed(todaySeed); setArenaId(dailyArenaId(todaySeed)); setConfig(dailyConfig()); }}
-                            className="btn btn-ghost text-mini flex-none"
-                        >
-                            {isDaily ? 'Reload daily' : 'Play the daily'}
-                        </button>
+                        <div className="flex gap-2 flex-none">
+                            <button
+                                onClick={() => { setSeed(todaySeed); setArenaId(dailyArenaId(todaySeed)); setConfig(dailyConfig()); }}
+                                className="btn btn-ghost text-mini"
+                            >
+                                {isDaily ? 'Reload daily' : 'Load the daily'}
+                            </button>
+                            {/* AUDIT-11 §12: the daily in one tap — seed, arena
+                                and config are all derived from the date. */}
+                            <button
+                                data-testid="start-daily"
+                                onClick={() => {
+                                    if (savedRun && !window.confirm('A Games is already in progress. Starting a new one abandons that run — continue?')) return;
+                                    onStart(todaySeed, dailyArenaId(todaySeed), gamemakerMode, dailyConfig(), false, null);
+                                }}
+                                className="btn btn-primary text-mini"
+                            >
+                                Start the daily
+                            </button>
+                        </div>
                     </div>
+                    {/* AUDIT-11 §8/§12: the campaign arc, a season ahead. */}
+                    {panem.runs > 0 && (() => {
+                        const r = rebellionOf(campaignSnapshotOf(panem));
+                        const feuds = panem.feuds ?? [];
+                        return (
+                            <div className="panel-flush p-3 mt-2 text-micro text-[var(--color-ink-500)]" data-testid="campaign-arc">
+                                <div className="text-xs font-bold text-[var(--ink)]">
+                                    The districts are {rebellionLabel(r)} &mdash; rebellion {Math.round(r)}/100
+                                </div>
+                                {rebellionCallsQuell(campaignSnapshotOf(panem))
+                                    ? <div className="mt-0.5 text-[var(--red)]">The Capitol has announced it: the next Games will be a Quarter Quell.</div>
+                                    : <div className="mt-0.5">At {CAMPAIGN_ARC.quellAt} the Capitol calls a Quell. Unrest makes the arena crueller and the sponsors warier.</div>}
+                                {feuds.length > 0 && (
+                                    <div className="mt-0.5">Feuds: {feuds.map(f => `${f.aName} (D${f.aDistrict}) vs ${f.bName} (D${f.bDistrict})`).join('; ')}.</div>
+                                )}
+                            </div>
+                        );
+                    })()}
                     {(() => {
                         // The Games profile is a pure function of the seed, so the
                         // temperament the player is committing to can be shown live.

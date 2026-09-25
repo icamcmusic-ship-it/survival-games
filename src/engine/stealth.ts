@@ -1,3 +1,4 @@
+import { scarCoverShift, weatherConcealment } from './arenaDepth';
 import { profOf, trainProficiency } from './proficiency';
 import { Tribute, Zone } from '../models/types';
 import { zoneFeatures } from './map';
@@ -197,6 +198,8 @@ export function isNoticed(ctx: SimContext, hider: Tribute, seeker: Tribute, zone
     // Generic arena rules: the soundscape and sightline move how much the
     // ground gives a hider away (arenaRules.ts; neutral when unset).
     hidden0 += acousticsConcealmentShift(ctx.state, zone);
+    // AUDIT-11 §7: the weather layer and the ground's scars (arenaDepth.ts).
+    hidden0 += weatherConcealment(ctx.state, seeker) + scarCoverShift(ctx.state, hider.zone);
     hidden0 *= sightlineConcealment(ctx.state);
     let hidden = Math.min(
         STEALTH.maxConcealment,

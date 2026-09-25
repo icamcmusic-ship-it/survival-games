@@ -1771,4 +1771,14 @@ export const IMPROVISED_ITEMS: Item[] = [
     { id: 'nail-board', name: 'Nailed Board', type: 'weapon', value: 9, durability: 30, weaponClass: 'melee', damage: 2 },
     /** Costs a fire and carries one. Terrible weapon; nothing else is light. */
     { id: 'brand', name: 'Burning Brand', type: 'weapon', value: 9, durability: 20, weaponClass: 'melee', damage: 2, light: true },
+
+    /*
+     * AUDIT-11 §13: crafted kit that is not a weapon. Durability here is uses:
+     * a snare kit is spent a trap at a time by `setTrap`, a bivouac sheet a
+     * storm at a time by the weather layer (`engine/arenaDepth.ts`).
+     */
+    /** Forest and wetland: bark, vine and sinew twisted into ready lines. */
+    { id: 'snare-kit', name: 'Snare Kit', type: 'tool', value: 8, durability: 3 },
+    /** Reeds and boughs woven into something a storm goes over rather than through. */
+    { id: 'bivouac', name: 'Bivouac Sheet', type: 'tool', value: 8, durability: 4 },
 ];

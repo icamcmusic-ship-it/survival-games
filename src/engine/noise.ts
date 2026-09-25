@@ -1,3 +1,4 @@
+import { weatherNoise } from './arenaDepth';
 import { GameState, Tribute } from '../models/types';
 import { SimContext } from './context';
 import { NOISE } from '../data/balance';
@@ -73,7 +74,8 @@ export function announceCrossing(
         crossingNoise(m, movers.length) > crossingNoise(worst, movers.length) ? m : worst);
     const raw = crossingNoise(loudest, movers.length);
     // Generic arena rules: soundscape floor/flux and sightline (arenaRules.ts).
-    const acoustics = effectiveAcoustics(state, dest);
+    // AUDIT-11 §7: a storm or rain drowns footsteps; fog carries them.
+    const acoustics = effectiveAcoustics(state, dest) * weatherNoise(state);
     const moverIds = new Set(movers.map(m => m.id));
 
     state.tributes.forEach(listener => {

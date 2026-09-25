@@ -1,3 +1,4 @@
+import { scarRegrowthScale } from './arenaDepth';
 import { ArenaRuleState, ArenaSightline, GameState, Tribute, Zone } from '../models/types';
 import { ARENA_RULES, ARENA_RULE_MECHANICS, STEALTH } from '../data/balance';
 import type { SimContext } from './context';
@@ -169,10 +170,12 @@ export function ruleTransitCycles(state: GameState, from: string): number {
 
 /** Multiplier on this zone's forage regrowth rate. */
 export function regrowthScale(state: GameState, zoneName: string): number {
+    // AUDIT-11 §7: a scarred zone grows back slower whatever the arena says.
+    const scar = scarRegrowthScale(state, zoneName);
     const table = state.arena.rules?.regrowthByTerrain;
-    if (!table) return 1;
+    if (!table) return scar;
     const zone = getZone(state.arena, zoneName);
-    return zone ? (table[zone.terrain] ?? 1) : 1;
+    return scar * (zone ? (table[zone.terrain] ?? 1) : 1);
 }
 
 // ---- Fire beacon ------------------------------------------------------------------

@@ -267,5 +267,37 @@ export function decodeCampaignResult(raw: string | null): CampaignDecode {
         if (recent.length) snapshot.recentRuns = recent;
     }
 
+    // AUDIT-11 §8/§12: the campaign arc.
+    const rebellion = num(r.rebellion);
+    if (rebellion !== undefined) snapshot.rebellion = Math.max(0, Math.min(100, Math.round(rebellion)));
+    const rep = record(r.districtReputation);
+    if (rep) {
+        const out: Record<number, number> = {};
+        let kept = 0;
+        for (const [key, v] of Object.entries(rep)) {
+            const id = district(Number(key));
+            const n = num(v);
+            if (id === undefined || n === undefined) continue;
+            out[id] = Math.max(-50, Math.min(50, Math.round(n)));
+            if (++kept >= MAX_RECORD_ENTRIES) break;
+        }
+        if (kept > 0) snapshot.districtReputation = out;
+    }
+    if (Array.isArray(r.feuds)) {
+        const feuds: NonNullable<CampaignSnapshot['feuds']> = [];
+        for (const member of r.feuds.slice(0, 8)) {
+            const e = record(member);
+            if (!e) continue;
+            const aName = text(e.aName);
+            const bName = text(e.bName);
+            const aDistrict = district(e.aDistrict);
+            const bDistrict = district(e.bDistrict);
+            const run = count(e.run);
+            if (!aName || !bName || aDistrict === undefined || bDistrict === undefined || run === undefined) continue;
+            feuds.push({ aName, aDistrict, bName, bDistrict, run });
+        }
+        if (feuds.length) snapshot.feuds = feuds;
+    }
+
     return { status: 'ok', snapshot };
 }

@@ -1,5 +1,6 @@
 import { STORY_PACING } from '../data/balance';
 import { GameState, LogOptions, Phase, Tribute } from '../models/types';
+import { lineHash } from '../utils/lineHash';
 import { RNG } from '../utils/rng';
 
 /**
@@ -129,6 +130,7 @@ export function getAlive(state: GameState): Tribute[] {
 }
 
 export function createContext(state: GameState, rng: RNG): SimContext {
+    let staleSet: Set<string> | undefined;
     const ctx: SimContext = {
         state,
         rng,
@@ -187,9 +189,38 @@ export function createContext(state: GameState, rng: RNG): SimContext {
             // mechanical stream blind to how much prose was written.
             const draw = state.proseDraws ?? 0;
             state.proseDraws = draw + 1;
-            const chosen = new RNG(`${state.seed}-prose-${draw}`).pick(options.length > 0 ? options : pool);
-            memory[pool[0]] = chosen;
-            used[pool[0]] = [...(used[pool[0]] ?? []), chosen];
+            const candidates = options.length > 0 ? options : pool;
+            const drawn = new RNG(`${state.seed}-prose-${draw}`).pick(candidates);
+            let chosen = drawn;
+            // AUDIT-11 §12: lines this player saw in recent sessions are
+            // passed over for the next unseen one in the pool, walking from
+            // the drawn index. Selection only — no extra draw — and the stale
+            // set is snapshotted onto the state, so a save rewords identically.
+            if (state.staleLines && state.staleLines.length > 0) {
+                const stale = staleSet ?? (staleSet = new Set(state.staleLines));
+                if (stale.has(lineHash(chosen))) {
+                    // Only a line with exactly the same `{token}` slots may
+                    // stand in: some callers branch on a template's tokens
+                    // (a `{watcher}` line names and draws a witness), so a
+                    // swap across slot shapes would change the Games, not
+                    // just its wording — and a share link carries no stale set.
+                    // The rotation below still records the *drawn* line, so
+                    // every later draw sees the same pool state it would have.
+                    const shape = slotShape(drawn);
+                    const at = pool.indexOf(drawn);
+                    const seenThisRun = used[pool[0]] ?? [];
+                    let fallback: string | undefined;
+                    for (let k = 1; k < pool.length; k++) {
+                        const next = pool[(at + k) % pool.length];
+                        if (stale.has(lineHash(next)) || slotShape(next) !== shape) continue;
+                        if (!seenThisRun.includes(next)) { chosen = next; fallback = undefined; break; }
+                        fallback = fallback ?? next;
+                    }
+                    if (fallback !== undefined && chosen === drawn) chosen = fallback;
+                }
+            }
+            memory[pool[0]] = drawn;
+            used[pool[0]] = [...(used[pool[0]] ?? []), drawn];
             return chosen;
         },
         logEvent(text, tributesInvolved, options, zone) {
@@ -303,4 +334,10 @@ export function compactWhy(state: GameState, actorId: string | undefined): strin
     const goal = trace.objectives?.[0]?.label;
     if (goal) out += ` · ${goal.toLowerCase()}`;
     return out.length > 90 ? `${out.slice(0, 89)}…` : out;
+}
+
+
+/** AUDIT-11 §12: a template's `{token}` slots, sorted — its mechanical shape. */
+function slotShape(line: string): string {
+    return [...new Set(line.match(/\{[a-zA-Z0-9_]+\}/g) ?? [])].sort().join('');
 }

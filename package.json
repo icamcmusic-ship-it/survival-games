@@ -57,6 +57,7 @@
     "test:intentions": "tsx scripts/check-intentions.ts",
     "test:triage": "tsx scripts/check-triage.ts",
     "test:credibility": "tsx scripts/check-credibility.ts",
+    "test:replayability": "tsx scripts/check-replayability.ts",
     "test:warnings": "tsx scripts/check-warnings.ts",
     "funnel": "tsx scripts/funnel.ts",
     "cohorts": "tsx scripts/cohorts.ts",

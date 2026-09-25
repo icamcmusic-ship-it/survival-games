@@ -201,6 +201,38 @@ on the run profile card. Rare-beat badges read `data/beatRarity.ts`, generated
 by `npm run fix:beat-rarity` (300 default runs; 14 structured beat types seen
 in under 10% of Games, e.g. expulsion 0.3%).
 
+**Replayability, second half (§8/§12).**
+- *Daily seed:* "Start the daily" launches today's date-derived seed, arena
+  and config in one tap; the run profile shows the daily's date.
+- *Prediction mode* (`engine/prediction.ts`, `PREDICTION`): a free slip in the
+  betting parlour (victor, first to fall, top killer, ranked final eight),
+  scored on the elimination order at the end, archived on the Hall of Fame
+  entry (`prediction`), totalled in `PanemRecords.predictions`, and feeding
+  `meta-oracle` / `meta-sharp-book`. The engine never reads it.
+- *Director personalities* (`data/directors.ts`): every Head Gamemaker has a
+  taste (mutt-lover, fire-lover, alliance-breaker, weather-obsessed,
+  sponsor-friendly, showrunner, hands-off) weighting the unscheduled
+  disruption pick and the Gamemaker weather pick (one draw each, as before),
+  escalated mutt odds, sponsor generosity and the run's betrayal rate; named
+  in the pregame briefing and on the run profile.
+- *Campaign arc* (`engine/campaign.ts`, `CAMPAIGN_ARC`): a rebellion meter
+  folded after every Games (outlying/Career victors, defiant interviews, young
+  deaths, wipeouts) that raises hazard/mutt odds, makes sponsors warier and at
+  70 calls a Quell (announced on setup a season ahead); district reputation
+  (crowns, kills, interview reception) moving opening sponsor trust and
+  generosity; rival victor feuds that make two districts' tributes start
+  hostile. All on `CampaignSnapshot`, so saves and campaign links carry them.
+- *Legacy tributes:* in a Quell (or 20% of Games after three campaign runs) a
+  Hall of Fame victor is reaped again, given name only, carrying their traits.
+- *Anti-staleness:* templates shown in the last three days are remembered as
+  hashes (`survivalGamesRecentLines`) and snapshotted onto `GameState.staleLines`;
+  `pickText` swaps a stale drawn line for the next unseen one with the same
+  `{token}` slots, while its rotation still records the drawn line, so draws
+  and outcomes are unchanged (`test:replayability` asserts this).
+- *Betting:* parlays across Games (`PARLAY`, one victor leg per Games, stake x
+  product of leg prices), `meta-parlay`, and a bankroll leaderboard in the
+  Hall of Fame.
+
 ## AUDIT-8 fix pass (this branch)
 
 `AUDIT-8.md` is the eighth full audit. This is the answer to its §1 — every

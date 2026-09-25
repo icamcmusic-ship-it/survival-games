@@ -1,4 +1,5 @@
 import { GameState, Stance, TraceReason, Tribute, ArchetypeId } from '../models/types';
+import { griefStance } from './allianceBonds';
 import { ARCHETYPES } from '../data/archetypes';
 import { DECISION_TRACE, FEAR, RISK, RIVAL_READ, STANCE, STANCE_HOLD, STANCE_MODES, STEALTH, VITALS } from '../data/balance';
 import { STANCES, STANCE_PROFILES } from '../data/stances';
@@ -852,6 +853,13 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
     if (inShock(ctx, t)) {
         forceStance(t, 'Evasive');
         t.decisionTrace = { cycle: ctx.state.cycle ?? 0, stances: [], forced: `in shock — ${t.shock?.cause ?? 'a near miss'}` };
+        return;
+    }
+    // AUDIT-11 §6: a grief day — reckless or shut down — is not a choice either.
+    const grief = griefStance(ctx.state, t);
+    if (grief) {
+        forceStance(t, grief);
+        t.decisionTrace = { cycle: ctx.state.cycle ?? 0, stances: [], forced: `grief (${t.griefDay?.kind ?? 'grief'})` };
         return;
     }
 

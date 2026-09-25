@@ -1,4 +1,5 @@
 import { Item, Tribute, attr } from '../models/types';
+import { thawRivals } from './allianceBonds';
 import { SimContext } from './context';
 import { DOWNED, STANCE } from '../data/balance';
 import { ARCHETYPES } from '../data/archetypes';
@@ -314,6 +315,8 @@ export function tickDowned(ctx: SimContext) {
                 // whatever they were doing.
                 enterShock(ctx, t, cause);
                 t.vitals.sanity += DOWNED.rescueSanityRelief;
+                // AUDIT-11 §6: a rival pulling you up is the arc turning.
+                thawRivals(ctx, rescuer, t);
                 adjustRel(t, rescuer.id, DOWNED.rescueBond);
                 adjustRel(rescuer, t.id, DOWNED.rescueBond);
                 rescuer.reachedDownedFirst = (rescuer.reachedDownedFirst ?? 0) + 1;

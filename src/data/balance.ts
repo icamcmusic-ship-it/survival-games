@@ -10028,3 +10028,287 @@ export const ARENA_RULE_MECHANICS = {
     /** The lighter's own share, on top: they were holding it. */
     ignitionLighterDamage: 10,
 } as const;
+
+/**
+ * AUDIT-11 §6: relationships and alliances — role duty, the fairness ledger,
+ * relationship arcs, grief days and training-station bonds. See
+ * `engine/allianceBonds.ts`.
+ */
+export const ALLIANCE_BONDS = {
+    /** Base chance a role-holder does their job in a cycle, before attributes. */
+    roleBaseSuccess: 0.45,
+    /** Per point of the role's governing attribute. */
+    rolePerAttribute: 0.05,
+    /** Trust each other member gives a role-holder who did the job. */
+    roleTrustGain: 2,
+    /** ...and takes away from one who neglected it. */
+    roleTrustLoss: 4,
+    /** Health below which a member counts as needing the medic. */
+    medicHurtHealth: 60,
+    /** Health the medic restores on a kept duty. */
+    medicHeal: 4,
+    /** Chance a watch-keeper nods off, before sleep debt and fatigue. */
+    watchFailBase: 0.04,
+    /** Per point of the watcher's sleep debt. */
+    watchFailPerDebt: 0.02,
+    /** Per point of fatigue above the fatigue line. */
+    watchFailPerFatigue: 0.004,
+    /** Fatigue above which the watcher is flagging. */
+    watchFailFatigueLine: 50,
+    /** Trust the sleepers take off a watcher who slept. */
+    watchFailTrustLoss: 6,
+    /** Chance per cycle a provider with the treachery for it takes the extra portion. */
+    greedBase: 0.04,
+    /** Per point of combined treachery (archetype + trait, x10). */
+    greedPerTreachery: 0.04,
+    /** Hunger a short-changed member goes without (0: the meal is a ledger, not a famine — test:intentions sits on its scavenge floor). */
+    shortHunger: 0,
+    /** Hunger the greedy provider saves. */
+    greedyHunger: 3,
+    /** Grudge per unfair split. */
+    grudgePerSplit: 12,
+    /** Regard the short-changed member loses for the provider. */
+    grudgeRegard: 5,
+    /** Grudge weight on picking the betrayer (per point of grudge). */
+    grudgeBetrayerWeight: 0.02,
+    /** Grudge weight on picking the mark (per point of grudge). */
+    grudgeTargetWeight: 0.03,
+    /** Grudge at which it is a schism grievance and a named motive. */
+    grudgeMotive: 24,
+    /** Regard at or below which two tributes read as rivals. */
+    rivalRegard: -15,
+    /** Regard a thawed rival is lifted to (at least). */
+    thawRegard: 30,
+    /** Chance each other member is awake to see an ally empty the stash. */
+    theftWitnessChance: 0.35,
+    /** Regard a witness to an ally's theft is dropped to (at most). */
+    theftRivalRegard: -35,
+    /** Bond (regard) at which a death can cost a grief day. */
+    griefDayBond: 70,
+    /** Chance of a grief day at full bond strength. */
+    griefDayChance: 0.15,
+    /** Cycles a grief day holds. */
+    griefDayCycles: 2,
+    /** Extra hatred toward a killer per point of bond above zero. */
+    vengeancePerBond: 0.25,
+    /** Warmth per shared station day between cross-district tributes. */
+    stationWarmth: 2,
+    /** Formation-chance weight per shared station day. */
+    stationFormWeight: 0.015,
+    /** Pact-willingness multiplier per shared station day. */
+    stationPactWeight: 0.1,
+    /** Shared station days at which the bond is named in the chronicle. */
+    stationNamedAt: 3,
+} as const;
+
+/**
+ * AUDIT-11 §12: prediction mode. Points per pick on the pre-bloodbath slip.
+ */
+export const PREDICTION = {
+    /** How many places the ranked final list holds. */
+    finalSize: 8,
+    winnerPoints: 5,
+    firstDeathPoints: 3,
+    topKillerPoints: 3,
+    /** Per named tribute who did make the last eight. */
+    finalEightPoints: 1,
+    /** Extra per tribute named in exactly the right place. */
+    exactPlacePoints: 1,
+    /** Share of the maximum at which a slip counts as a "sharp" call for the meta achievements. */
+    sharpShare: 0.5,
+} as const;
+
+/**
+ * AUDIT-11 §8/§12: the campaign arc — rebellion, district reputation, feuds,
+ * legacy tributes. Read through `engine/campaign.ts` and `utils/panemStorage.ts`.
+ */
+export const CAMPAIGN_ARC = {
+    /** Where a fresh campaign's rebellion meter starts. */
+    rebellionStart: 10,
+    rebellionMax: 100,
+    /** An outlying (District 7+) non-Career victor. */
+    rebellionOutlierVictor: 8,
+    /** A Career victor: the Capitol's order, restored. */
+    rebellionCareerVictor: -6,
+    /** The first district counted as outlying. */
+    outlierDistrictMin: 7,
+    /** Oldest age counted as a young death. */
+    youngDeathAge: 13,
+    /** A victor whose interview answers went down badly with the Capitol. */
+    rebellionDefiantInterview: 6,
+    /** A Games nobody survived. */
+    rebellionNoVictor: 4,
+    /** Per tribute aged 12-13 who died. */
+    rebellionYoungDeath: 1,
+    /** Rebellion at or above which the next Games is a Quarter Quell. */
+    quellAt: 70,
+    /** Rebellion bands below the Quell: restless, and murmuring (named in the briefing). */
+    restlessAt: 45,
+    murmurAt: 20,
+    /** District reputation at which the briefing names it. */
+    reputationNamedAt: 15,
+    /** Hazard and mutt multiplier gained at full rebellion (Capitol cruelty). */
+    crueltyMax: 0.2,
+    /** Share of sponsor generosity lost at full rebellion (sponsors grow wary). */
+    sponsorWarinessMax: 0.2,
+    /** Reputation per crown, per interview-reception point, and per kill by a district's tributes. */
+    reputationPerCrown: 10,
+    reputationPerReception: 3,
+    reputationPerKill: 1,
+    /** Share of reputation kept from one Games to the next. */
+    reputationKeep: 0.8,
+    reputationMax: 50,
+    /** Opening sponsor trust per point of district reputation. */
+    reputationTrustPerPoint: 0.2,
+    /** Sponsor generosity per point of district reputation. */
+    reputationGenerosityPerPoint: 0.004,
+    /** Feuds carried at once. */
+    feudMax: 3,
+    /** Regard two feuding districts' tributes start at toward each other. */
+    feudRegard: -20,
+    /** Legacy tributes: campaign runs before one can be reaped outside a Quell, and the chance per Games. */
+    legacyMinRuns: 3,
+    legacyChance: 0.2,
+} as const;
+
+/**
+ * AUDIT-11 §12: text anti-staleness across sessions.
+ */
+export const STALE_LINES = {
+    /** Days a seen template counts as stale. */
+    windowDays: 3,
+    /** Most template hashes remembered. */
+    cap: 800,
+} as const;
+
+/**
+ * AUDIT-11 §8: parlays across Games and the bankroll leaderboard.
+ */
+export const PARLAY = {
+    minLegs: 2,
+    maxLegs: 4,
+    minStake: 25,
+    /** A leg's multiplier is capped so a long-shot chain cannot print coins. */
+    legMultCap: 12,
+    /** Entries kept on the bankroll leaderboard. */
+    leaderboardSize: 10,
+} as const;
+
+/**
+ * AUDIT-11 §5/§7/§13: arena depth — the universal weather layer, zone scars,
+ * the hidden second cache, arena acts, crafted kit with wear, tribute plans,
+ * deception and the late-game risk curve. See `engine/arenaDepth.ts`.
+ */
+export const ARENA_DEPTH = {
+    /** Chance per cycle, with no weather in force or on the way, that some is telegraphed. */
+    weatherStartChance: 0.2,
+    /** Earliest day any weather arrives (the bloodbath is not rained on). */
+    weatherEarliestDay: 2,
+    /** How long a spell of weather lasts, in cycles. */
+    weatherMinCycles: 2,
+    weatherMaxCycles: 3,
+    /** Base weights for which kind comes, before the arena's own terrain and act bias it. */
+    weatherWeights: { fog: 1, heat: 1, storm: 0.8, rain: 1.2 },
+    /** Extra weight per share of the arena's zones on a matching terrain. */
+    weatherTerrainPull: 2,
+    /** Weight an arena act adds to the kind it favours. */
+    weatherActPull: 3,
+    /** Intelligence at which anyone reads the sky a cycle out, trait or none. */
+    telegraphIntelligence: 9,
+    /** Zone threat a braced tribute puts on exposed ground before a storm or heat. */
+    telegraphThreat: 18,
+    /** Shelter quality under which ground counts as exposed to storm and heat. */
+    exposedShelterBelow: 0.35,
+    /** Thirst added per cycle of heat, before traits and shelter. */
+    heatThirst: 7,
+    heatFatigue: 4,
+    /** Multipliers on the heat load by trait / preparation. */
+    heatBredScale: 0.3,
+    frostBornHeatScale: 1.5,
+    bracedScale: 0.5,
+    /** Storm: chip damage on exposed ground, scaled down by shelter. */
+    stormDamage: 3,
+    stormFatigue: 6,
+    stormSanity: 3,
+    frostBornStormScale: 0.4,
+    /** Rain: thirst relief for anybody out in it. */
+    rainQuench: 6,
+    /** Fog: nerves, for anyone who cannot see through it. */
+    fogSanity: 2,
+    /** Concealment shift a hider gets from each kind (seeker-side traits cancel fog). */
+    concealment: { fog: 0.12, heat: -0.03, storm: 0.08, rain: 0.05 },
+    /** Night-Sighted / Weather-Nose seekers lose this share of the fog's cover. */
+    fogSeerCancel: 0.75,
+    /** Multiplier on how far a crossing carries. */
+    noise: { fog: 1.1, heat: 1, storm: 0.55, rain: 0.75 },
+    /** Multiplier on forage yield. */
+    forage: { fog: 1, heat: 0.85, storm: 0.8, rain: 1.1 },
+    /** Combat power a ranged or thrown weapon loses. */
+    rangedPenalty: { fog: 1.5, heat: 0, storm: 2, rain: 0.75 },
+    /** Chance per cycle that rain or a storm puts out a burning zone. */
+    rainDousesFire: 0.5,
+
+    /** Zone scars: how long each persists after the thing that caused it ends. */
+    scarCycles: { burnt: 10, flooded: 6, collapsed: 30, trampled: 4 },
+    /** Resource multiplier while scarred. */
+    scarResources: { burnt: 0.45, flooded: 0.8, collapsed: 0.7, trampled: 0.85 },
+    /** Regrowth multiplier while scarred. */
+    scarRegrowth: { burnt: 0.4, flooded: 0.7, collapsed: 0.5, trampled: 1 },
+    /** Concealment shift for anyone hiding on scarred ground. */
+    scarCover: { burnt: -0.12, flooded: -0.05, collapsed: 0.08, trampled: -0.06 },
+    /** Traffic through a zone (sum of its edges) that tramples it. */
+    trampleTraffic: 9,
+    /** Share of a scarred zone's depletion forgiven when burnt ground greens over. */
+    ashBloomRestore: 0.5,
+
+    /** Hidden cache: day it becomes findable, and per-cycle find chances. */
+    cacheFromDay: 2,
+    cacheFinderChance: 0.4,
+    cacheOtherChance: 0.02,
+    /** Day a Cartographer/Tracker reads the supply trail and learns where it is. */
+    cacheHintDay: 3,
+    /** Items in it. */
+    cacheItems: 3,
+    cacheQualityBias: 0.2,
+
+    /** Arena acts: [act II, act III] trigger days and alive-counts (either triggers). */
+    actDays: [4, 7],
+    actAliveShare: [0.6, 0.3],
+    /** Most zones an act transforms at once. */
+    actMaxZones: 3,
+
+    /** Crafted kit: chance per cycle and skill floor to make a snare kit or a bivouac. */
+    snareKitChance: 0.2,
+    snareKitSkill: 1.2,
+    bivouacChance: 0.25,
+    /** Weapon failure: chance a breaking weapon hurts its holder, and how much. */
+    weaponFailInjuryChance: 0.45,
+    weaponFailDamage: 9,
+
+    /** Plans: triggers, lifetime and patience. */
+    planThirst: 55,
+    planHurtBelow: 45,
+    planChance: 0.35,
+    planMaxCycles: 8,
+    planMaxInterruptions: 3,
+    planMaxHops: 4,
+
+    /** Deception. */
+    decoyIntelligence: 7,
+    decoyChance: 0.2,
+    decoySeeThrough: 9,
+    decoyCycles: 3,
+    feignChance: 0.08,
+    feignHealthScale: 0.45,
+    feignCycles: 2,
+    feignCombatEdge: 2,
+
+    /** Late-game risk curve. */
+    riskLateField: 8,
+    riskDesperationWeight: 0.25,
+    hoarderKit: 90,
+    hoarderTurn: 0.35,
+    pacifistAggressionBelow: -0.2,
+    pacifistBreakAt: 0.55,
+    pacifistBreak: 0.45,
+} as const;

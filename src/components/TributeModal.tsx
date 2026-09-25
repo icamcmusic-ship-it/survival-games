@@ -842,8 +842,22 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                                 }
                             />
                         </div>
-                        {(momentum > 0 || rattled > 0 || hasBroken(tribute)) && tribute.status === 'alive' && (
+                        {(momentum > 0 || rattled > 0 || hasBroken(tribute) || !!tribute.griefDay) && tribute.status === 'alive' && (
                             <div className="flex flex-wrap gap-1.5 mt-2">
+                                {tribute.griefDay && (
+                                    <Explainer
+                                        align="left"
+                                        label={<span className="chip" style={{ color: 'var(--cat-death)' }}>
+                                            Grief · {tribute.griefDay.kind}
+                                        </span>}
+                                        title="Grief day"
+                                    >
+                                        They lost {gameState.tributes.find(t => t.id === tribute.griefDay!.forId)?.name ?? 'somebody'} and
+                                        {tribute.griefDay.kind === 'reckless'
+                                            ? ' have stopped being careful: Aggressive, whatever the odds, until it passes.'
+                                            : ' have shut down: Fortified where they are, until it passes.'}
+                                    </Explainer>
+                                )}
                                 {hasBroken(tribute) && (
                                     <Explainer
                                         align="left"

@@ -1,3 +1,4 @@
+import { scarBlocks } from './arenaDepth';
 import { GameState, Terrain, Tribute, ZoneEffect, ZoneEffectKind } from '../models/types';
 import { injure, openWound } from './wounds';
 import { BLEEDING, TERRAIN_DRYNESS as TERRAIN_DRYNESS_TABLE, ZONE_EFFECTS } from '../data/balance';
@@ -83,6 +84,8 @@ function quakingAge(ctx: SimContext, effect: ZoneEffect): number {
  * same effect passes its own number.
  */
 export function startZoneEffect(ctx: SimContext, zone: string, kind: ZoneEffectKind, announce = true, severity = 1) {
+    // AUDIT-11 §7: scarred ground limits what can happen there next.
+    if (scarBlocks(ctx.state, zone, kind)) return;
     const vocab = ctx.state.arena.effectVocab?.[kind];
     const list = effectsFor(ctx.state, zone);
     const cycle = cycleOf(ctx.state);

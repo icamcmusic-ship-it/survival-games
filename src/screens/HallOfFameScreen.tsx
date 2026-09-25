@@ -155,6 +155,42 @@ export function HallOfFameScreen() {
 
             <PanemRecordBook panem={panem} />
 
+            {/* AUDIT-11 §8/§12: the bankroll leaderboard and the prediction career. */}
+            {((panem.bankrollBoard?.length ?? 0) > 0 || (panem.predictions?.scored ?? 0) > 0) && (
+                <div className="panel p-4 grid grid-cols-1 md:grid-cols-2 gap-4" data-testid="bankroll-board">
+                    <div>
+                        <h3 className="panel-title">Bankroll leaderboard</h3>
+                        {(panem.bankrollBoard?.length ?? 0) === 0
+                            ? <p className="text-micro text-[var(--color-ink-500)] mt-1">No Games closed with a book yet.</p>
+                            : (
+                                <ol className="mt-2 space-y-1 text-label">
+                                    {panem.bankrollBoard!.map((b, i) => (
+                                        <li key={`${b.seed}-${b.run}-${i}`} className="flex justify-between gap-3">
+                                            <span className="font-mono text-[var(--color-ink-500)]">{i + 1}. Games {b.run} · {b.seed}</span>
+                                            <span className="font-semibold">{b.coins} ⨷</span>
+                                        </li>
+                                    ))}
+                                </ol>
+                            )}
+                        {panem.parlay && (
+                            <p className="text-micro text-[var(--color-ink-500)] mt-2">
+                                Open parlay: {panem.parlay.stake} coins, {panem.parlay.won.length}/{panem.parlay.legs} legs in.
+                            </p>
+                        )}
+                    </div>
+                    <div>
+                        <h3 className="panel-title">Prediction slips</h3>
+                        {panem.predictions && panem.predictions.scored > 0 ? (
+                            <p className="text-label mt-2">
+                                {panem.predictions.scored} scored · best {panem.predictions.best} pts ·
+                                {' '}{panem.predictions.winnersCalled} victor{panem.predictions.winnersCalled === 1 ? '' : 's'} called ·
+                                {' '}average {(panem.predictions.totalScore / panem.predictions.scored).toFixed(1)} pts
+                            </p>
+                        ) : <p className="text-micro text-[var(--color-ink-500)] mt-1">Fill in a slip in the betting parlour before the gong.</p>}
+                    </div>
+                </div>
+            )}
+
             {panem.runs > 0 && (
                 <div className="flex justify-end -mt-4">
                     {confirmResetPanem ? (
@@ -337,6 +373,12 @@ export function HallOfFameScreen() {
                                                         <span className="text-[var(--red)] font-semibold">{entry.arenaName}</span></>
                                                     )}
                                                 </div>
+                                                {entry.prediction && (
+                                                    <div className="text-micro text-[var(--color-ink-500)] mt-1">
+                                                        Your prediction: {entry.prediction.score}/{entry.prediction.max} pts
+                                                        {entry.prediction.hits.length > 0 ? ` (${entry.prediction.hits.join(', ')})` : ''}
+                                                    </div>
+                                                )}
                                                 {entry.winnerTraits && entry.winnerTraits.length > 0 && (
                                                     <div className="flex flex-wrap gap-1 mt-2">
                                                         {entry.winnerTraits.map(t => <span key={t} className="chip">{t}</span>)}

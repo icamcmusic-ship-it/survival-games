@@ -36,6 +36,8 @@ export const STORAGE_KEYS = {
     prefs: 'survivalGamesPrefs',
     saveSlot2: 'survivalGamesSaveSlot2',
     saveSlot3: 'survivalGamesSaveSlot3',
+    /** AUDIT-11 §12: flavour templates seen in recent sessions, as hashes. */
+    recentLines: 'survivalGamesRecentLines',
 } as const;
 
 /**

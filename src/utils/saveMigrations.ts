@@ -749,6 +749,20 @@ function normalizeAlliances(raw: unknown): Record<string, Alliance> | undefined 
  * rejected rather than patched into something that would crash the first time
  * the simulator asked for a zone.
  */
+/** AUDIT-11 §12: a prediction slip, or absent. */
+function normalizePrediction(raw: unknown): GameState['prediction'] {
+    const p = asRecord(raw);
+    if (!p) return undefined;
+    const id = (v: unknown) => (typeof v === 'string' && v !== '' ? v : undefined);
+    const finalEight = Array.isArray(p.finalEight) ? asStrArray(p.finalEight).slice(0, 8) : undefined;
+    return {
+        winnerId: id(p.winnerId),
+        firstDeathId: id(p.firstDeathId),
+        topKillerId: id(p.topKillerId),
+        ...(finalEight && finalEight.length > 0 ? { finalEight } : {}),
+    };
+}
+
 export function normalizeGameState(raw: unknown): GameState | null {
     const r = asRecord(raw);
     if (!r) return null;
@@ -782,6 +796,11 @@ export function normalizeGameState(raw: unknown): GameState | null {
             : [],
         logCounter: asNum(r.logCounter, normalizeLog(r.log).length),
         lastPickedText: asObjMap<string>(r.lastPickedText),
+        // AUDIT-11 §12: the stale-line snapshot, the prediction slip and the
+        // legacy tributes. Absent on older saves, and absent stays absent.
+        staleLines: Array.isArray(r.staleLines) ? asStrArray(r.staleLines).slice(0, 2000) : undefined,
+        prediction: normalizePrediction(r.prediction),
+        legacyTributeIds: Array.isArray(r.legacyTributeIds) ? asStrArray(r.legacyTributeIds) : undefined,
         zoneDepletion: asNumMap(r.zoneDepletion),
         zoneEffects: asObjMap(r.zoneEffects),
         severedEdges: asStrArray(r.severedEdges),

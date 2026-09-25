@@ -150,7 +150,22 @@ export function normalizeEntry(raw: unknown): HallOfFameEntry | null {
             ? r.winnerTraits.filter((t): t is string => typeof t === 'string')
             : undefined,
         winnerEndHealth: typeof r.winnerEndHealth === 'number' ? r.winnerEndHealth : undefined,
-        tributeSummaries: summaries
+        tributeSummaries: summaries,
+        // AUDIT-11 §12: the scored prediction slip, when there was one.
+        prediction: normalizePredictionResult(r.prediction),
+    };
+}
+
+function normalizePredictionResult(raw: unknown): HallOfFameEntry['prediction'] {
+    if (typeof raw !== 'object' || raw === null) return undefined;
+    const r = raw as Record<string, unknown>;
+    const score = asNumber(r.score, NaN);
+    const max = asNumber(r.max, NaN);
+    if (!Number.isFinite(score) || !Number.isFinite(max) || max <= 0) return undefined;
+    return {
+        score: Math.max(0, score),
+        max,
+        hits: Array.isArray(r.hits) ? r.hits.filter((h): h is string => typeof h === 'string') : [],
     };
 }
 
