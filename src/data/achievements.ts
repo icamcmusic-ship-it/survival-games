@@ -437,6 +437,10 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'oddity',
         rarity: 'possible',
         test: state => dead(state).some(t => t.causeOfDeath !== undefined && AUDIT11_CAUSES.includes(t.causeOfDeath)),
+        nearMiss: state => (state.tributes.some(t => t.status === 'alive' && t.lastDamage !== undefined
+            && AUDIT11_CAUSES.includes(t.lastDamage.cause))
+            ? 'One of this year\'s new ways to die caught somebody, and they walked away from it'
+            : undefined),
     },
     {
         id: 'the-unlikely',
@@ -465,6 +469,10 @@ export const ACHIEVEMENTS: Achievement[] = [
         rarity: 'possible',
         test: state => state.tributes.some(a => state.tributes.some(b => a.id < b.id
             && timesSpared(a, b) > 0 && timesSpared(b, a) > 0)),
+        nearMiss: state => (state.tributes.some(a => state.tributes.some(b => a.id !== b.id
+            && timesSpared(a, b) > 0 && a.status === 'alive' && b.status === 'alive'))
+            ? 'Somebody was spared, and lived long enough that they could have returned it'
+            : undefined),
     },
     {
         id: 'seen-nothing',
