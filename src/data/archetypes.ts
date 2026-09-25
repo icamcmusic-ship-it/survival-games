@@ -991,8 +991,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'penitent',
         name: 'Penitent',
         description: 'Came here having already decided what they will not do. Tends the hurt, takes the hit, and does not open the fight.',
-        // AUDIT-11 §11: endurance 2 -> 3.
-        statBias: { endurance: 3, charisma: 1, willpower: 1 },
+        // AUDIT-11 §11: endurance 2 -> 3. Tuning pass: + agility 1 (still bottom third).
+        statBias: { endurance: 3, charisma: 1, willpower: 1, agility: 1 },
         preferredTraits: ['Pacifist', 'Merciful', 'Devout', 'Softhearted'],
         aggression: -0.3,
         allianceAffinity: 0.25,
@@ -1007,8 +1007,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         // Nothing is dulled for them. That is rather the point.
         fearScale: 1.3,
         tagline: 'Not by my hand.',
-        // AUDIT-11 §11: -2 -> -4.5, with the vow's truce as the payoff.
-        targetDraw: -4.5,
+        // AUDIT-11 §11: -2 -> -4.5, with the vow's truce as the payoff; tuning pass -> -5.5.
+        targetDraw: -5.5,
     },
 
     /**
@@ -1092,8 +1092,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
          * the field to notice. The endurance is what lets them survive being
          * owed money by somebody dangerous, and nobody hunts the banker first.
          */
-        // AUDIT-11 §11: endurance 1 -> 2 (bottom third at n=1,600).
-        statBias: { charisma: 2, intelligence: 1, endurance: 2 },
+        // AUDIT-11 §11: endurance 1 -> 2 (bottom third at n=1,600); tuning pass 2 -> 3, + agility 1.
+        statBias: { charisma: 2, intelligence: 1, endurance: 3, agility: 1 },
         preferredTraits: ['Barterer', 'Hard Bargain', 'Bookkeeper', 'Broker'],
         aggression: -0.05,
         allianceAffinity: 0.2,
@@ -1107,8 +1107,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         signature: 'brokerTerms',
         hatesArchetypes: ['zealot'],
         tagline: 'Everything is worth something to somebody.',
-        // AUDIT-11 §11: -0.5 -> -3. Nobody hunts the banker first.
-        targetDraw: -3,
+        // AUDIT-11 §11: -0.5 -> -3, tuning pass -> -4.5. Nobody hunts the banker first.
+        targetDraw: -4.5,
         fearScale: 1.1,
     },
 

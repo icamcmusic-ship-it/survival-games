@@ -4698,7 +4698,7 @@ export const STANCE = {
     churnDecayPerCycle: 0.25,
     churnMax: 4,
     /** Extra cycles of hold per unit of accumulated churn. */
-    churnHoldPerSwitch: 1,
+    churnHoldPerSwitch: 1.5,
     /** Health fractions that pull a tribute toward each stance. */
     evasiveHealth: 40,
     cautiousEvasiveHealth: 55,
@@ -10058,9 +10058,9 @@ export const ALLIANCE_BONDS = {
     /** Trust the sleepers take off a watcher who slept. */
     watchFailTrustLoss: 6,
     /** Chance per cycle a provider with the treachery for it takes the extra portion. */
-    greedBase: 0.04,
+    greedBase: 0.15,
     /** Per point of combined treachery (archetype + trait, x10). */
-    greedPerTreachery: 0.04,
+    greedPerTreachery: 0.08,
     /** Hunger a short-changed member goes without (0: the meal is a ledger, not a famine — test:intentions sits on its scavenge floor). */
     shortHunger: 0,
     /** Hunger the greedy provider saves. */
@@ -10070,9 +10070,9 @@ export const ALLIANCE_BONDS = {
     /** Regard the short-changed member loses for the provider. */
     grudgeRegard: 5,
     /** Grudge weight on picking the betrayer (per point of grudge). */
-    grudgeBetrayerWeight: 0.02,
+    grudgeBetrayerWeight: 0.08,
     /** Grudge weight on picking the mark (per point of grudge). */
-    grudgeTargetWeight: 0.03,
+    grudgeTargetWeight: 0.2,
     /** Grudge at which it is a schism grievance and a named motive. */
     grudgeMotive: 24,
     /** Regard at or below which two tributes read as rivals. */
@@ -10289,9 +10289,11 @@ export const ARENA_DEPTH = {
     planThirst: 55,
     planHurtBelow: 45,
     planChance: 0.35,
-    planMaxCycles: 8,
+    planMaxCycles: 12,
     planMaxInterruptions: 3,
     planMaxHops: 4,
+    /** Cycles a plan may stand, paused or not, before it is given up regardless. */
+    planMaxAge: 18,
 
     /** Deception. */
     decoyIntelligence: 7,
@@ -10311,4 +10313,20 @@ export const ARENA_DEPTH = {
     pacifistAggressionBelow: -0.2,
     pacifistBreakAt: 0.55,
     pacifistBreak: 0.45,
+} as const;
+
+/**
+ * AUDIT-11 (tuning pass): the lethal events `data/arenaEvents/group6.ts`
+ * authors — the §9 arena-specific and universal causes. Scales their pool
+ * weight and their damage; boons and non-lethal beats are left as written.
+ */
+export const AUDIT11_EVENTS = {
+    /** Weight multiplier on the arena-specific lethal events, inside their own arena's pool. */
+    arenaWeightScale: 8,
+    /** Weight multiplier on the universal lethal events, inside the shared universal pool. */
+    universalWeightScale: 7,
+    /** Damage multiplier on every lethal event in the file. */
+    damageScale: 5,
+    /** Added to each lethal event's dodge difficulty (or the default). */
+    dodgeDifficultyBonus: 3,
 } as const;

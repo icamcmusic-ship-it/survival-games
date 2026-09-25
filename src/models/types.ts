@@ -2544,6 +2544,8 @@ export interface TributePlan {
     interruptions: number;
     /** Last cycle an interruption was counted, so one cycle counts once. */
     lastInterrupted?: number;
+    /** Cycles spent set aside for something urgent; they do not count against the plan's clock. */
+    pausedCycles?: number;
 }
 
 /** AUDIT-11 §5/§7: run-local state for `engine/arenaDepth.ts`. All optional, so old saves load. */

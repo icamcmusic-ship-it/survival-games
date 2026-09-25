@@ -1,4 +1,5 @@
 import type { ArenaEventDef } from '../arenaFlavor';
+import { AUDIT11_EVENTS, ENCOUNTERS } from '../balance';
 
 /**
  * AUDIT-11 §7, §9 and §10: new ways to die, and new things to happen.
@@ -15,7 +16,7 @@ import type { ArenaEventDef } from '../arenaFlavor';
  * authored event should say what killed somebody rather than leave it to a
  * regex over the obituary.
  */
-export const EXTRA_ARENA_EVENTS_GROUP6: Record<string, ArenaEventDef[]> = {
+const AUTHORED_ARENA_EVENTS: Record<string, ArenaEventDef[]> = {
     labyrinth: [
         {
             text: 'The walls of {zone} move in the night, the way they do, and {tribute} is asleep against one of them when it meets the next.',
@@ -445,7 +446,7 @@ export const EXTRA_ARENA_EVENTS_GROUP6: Record<string, ArenaEventDef[]> = {
  * authored as the wound it leaves — an arena event has no attacker to name,
  * and a `tribute` code without one would break kill attribution.
  */
-export const UNIVERSAL_EVENTS_GROUP6: ArenaEventDef[] = [
+const AUTHORED_UNIVERSAL_EVENTS: ArenaEventDef[] = [
     // ---- §9: new universal causes ----------------------------------------
     {
         text: '{tribute} eats a handful of something from {zone} that looked like the berries at home. It is not the berries at home.',
@@ -654,6 +655,29 @@ export const UNIVERSAL_EVENTS_GROUP6: ArenaEventDef[] = [
         requires: { time: 'night', alone: false }, weight: 0.6,
     },
 ];
+
+/**
+ * AUDIT-11 tuning: the lethal half of this file, as authored, killed about one
+ * death in 3,000 — the weights were written against the arena pools they
+ * joined and the damage against a full-health tribute. Both are scaled here
+ * from `AUDIT11_EVENTS` so the new deaths are a visible share of the arena's
+ * vocabulary without editing a hundred literals. Boons and beats are untouched.
+ */
+function tuned(events: ArenaEventDef[], weightScale: number): ArenaEventDef[] {
+    return events.map(e => (e.damage ?? 0) > 0
+        ? {
+            ...e,
+            weight: (e.weight ?? 1) * weightScale,
+            damage: Math.round(e.damage! * AUDIT11_EVENTS.damageScale),
+            dodgeDifficulty: (e.dodgeDifficulty ?? ENCOUNTERS.defaultDodgeDifficulty) + AUDIT11_EVENTS.dodgeDifficultyBonus,
+        }
+        : e);
+}
+
+export const EXTRA_ARENA_EVENTS_GROUP6: Record<string, ArenaEventDef[]> = Object.fromEntries(
+    Object.entries(AUTHORED_ARENA_EVENTS).map(([id, events]) => [id, tuned(events, AUDIT11_EVENTS.arenaWeightScale)]));
+
+export const UNIVERSAL_EVENTS_GROUP6: ArenaEventDef[] = tuned(AUTHORED_UNIVERSAL_EVENTS, AUDIT11_EVENTS.universalWeightScale);
 
 /** Every lethal cause authored in this file — read by the `unrecorded-cause` achievement. */
 export const AUDIT11_CAUSES: string[] = [

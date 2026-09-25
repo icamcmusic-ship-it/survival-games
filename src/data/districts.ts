@@ -50,7 +50,8 @@ export const LEGACY_EFFECTS: Record<LegacyTier, {
     /** Description used in the roster and the victor's debrief. */
     blurb: string;
 }> = {
-    storied:   { reputation: 12, trainingMerit: 0.2,  targetDraw: 3,    blurb: 'a wall of past victors and a mentor who has stood on the podium' },
+    // Tuning pass: 12 / 0.2 / 3 -> 6 / 0.15 / 4.5 (largest single-district win share 16.3% -> ~15%).
+    storied:   { reputation: 6,  trainingMerit: 0.15, targetDraw: 4.5,  blurb: 'a wall of past victors and a mentor who has stood on the podium' },
     strong:    { reputation: 7,  trainingMerit: 0.12, targetDraw: 2,    blurb: 'a proud record and a mentor who knows exactly what the arena costs' },
     modest:    { reputation: 2,  trainingMerit: 0.05, targetDraw: 0,    blurb: 'a handful of victories and a mentor doing their best' },
     thin:      { reputation: -3, trainingMerit: 0,    targetDraw: -1.5, blurb: 'one or two names on the wall and very little else' },

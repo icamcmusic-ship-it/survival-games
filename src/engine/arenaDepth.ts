@@ -736,8 +736,17 @@ function makePlan(ctx: SimContext, t: Tribute, rng: RNG): TributePlan | undefine
 export function followPlan(ctx: SimContext, t: Tribute) {
     const cycle = cycleOf(ctx.state);
     let plan = planOf(ctx.state, t);
-    if (plan && (cycle - plan.madeCycle > ARENA_DEPTH.planMaxCycles || plan.interruptions > ARENA_DEPTH.planMaxInterruptions)) {
+    // AUDIT-11 (tuning): the clock only runs while the plan is being worked.
+    // A fight or a flight that sets it aside for three cycles is one
+    // interruption, not three, and those cycles are not the plan running late
+    // — measured, 1.3 of the 2.3 plans abandoned per run were a single long
+    // interruption counted cycle by cycle, and another 0.95 ran out of a clock
+    // that had kept ticking through it.
+    const late = (p: TributePlan) => cycle - p.madeCycle - (p.pausedCycles ?? 0) > ARENA_DEPTH.planMaxCycles
+        || cycle - p.madeCycle > ARENA_DEPTH.planMaxAge;
+    if (plan && (late(plan) || plan.interruptions > ARENA_DEPTH.planMaxInterruptions)) {
         bump(ctx, 'plansAbandoned');
+        bump(ctx, late(plan) ? 'plansAbandonedLate' : 'plansAbandonedInterrupted');
         setPlan(ctx, t, undefined);
         plan = undefined;
     }
@@ -761,9 +770,13 @@ export function followPlan(ctx: SimContext, t: Tribute) {
     const obj = t.objective;
     if (obj && URGENT.has(obj.kind)) {
         if (plan.lastInterrupted !== cycle) {
-            plan.interruptions++;
+            // A new interruption only if the last cycle was not already one.
+            if (plan.lastInterrupted !== cycle - 1) {
+                plan.interruptions++;
+                bump(ctx, 'planInterruptions');
+            }
+            plan.pausedCycles = (plan.pausedCycles ?? 0) + 1;
             plan.lastInterrupted = cycle;
-            bump(ctx, 'planInterruptions');
         }
         setPlan(ctx, t, { ...plan });
         return;

@@ -233,6 +233,93 @@ in under 10% of Games, e.g. expulsion 0.3%).
   product of leg prices), `meta-parlay`, and a bankroll leaderboard in the
   Hall of Fame.
 
+### Third pass: tuning the thin spots
+
+Before = this branch before the pass; after = the final state. Metrics rows are
+`METRICS_RUNS=1600 npm run test:metrics`; the cause, grudge and plan rows come
+from a probe over the same seeds, arenas and configs (400 runs before, 800
+after), since the metrics report does not print them.
+
+| indicator | before | after |
+|---|---|---|
+| AUDIT-11 causes, share of all deaths | 0.03% (2 of 7,245; ~1 in 3,500) | 0.91% (132 of 14,475) |
+| ...inside their own arena (labyrinth, Nooneplace, Story Wood, Kelvin-9, Warren, Salt Mirror, Clockwork, Menagerie, Carnival, Vault) | 0-0.7% | 0.9-2.8% (median ~2%) |
+| all arena-event deaths | 0.95% | 1.73% |
+| deaths caused by another tribute (guard >= 33%) | 64.4% | 64.7% |
+| deaths from mutts and hazards (guard 5-20%) | 13.8% | 14.1% |
+| runs with a grudge-betrayal | 0.75% | 3.75% |
+| unfair splits per run | 1.19 | 2.68 |
+| plans made / completed per run | 7.01 / 0.77 (11%) | 5.91 / 0.94 (16%) |
+| plans abandoned by plan logic (clock / interruptions) per run | 2.35 (0.95 / 1.32) | 0.30 (0.20 / 0.10) |
+| largest stance share (goal <= 35%) | 36.3% Evasive | **34.1%** Evasive (goal met) |
+| Aggressive stance share (guard >= 20%) | 23.4% | 24.2% |
+| soak worst stance change rate (threshold 60%) | 50% (first pass) | 54% |
+| largest single-district win share (goal <= 15%) | 16.3% | 15.2% (D1 15.2 / D2 ~15 / D4 ~14; goal not reliably met) |
+| Career victors (guard <= 55%) | 44.0% | 43.8% |
+| archetype spread / worst archetype | 2.99x / 2.90% | 2.63x / 2.94% |
+| penitent (n=760) rank from the bottom of 40 | 17th (4.74%) | 23rd (5.13%) |
+| broker (n=961) rank from the bottom of 40 | 24th (5.10%) | 33rd (6.35%) |
+| run length / zero-kill victors / wipeouts | 11.71 d / 3.1% / 0.3% | 11.47 d / 2.4% / 0.4% |
+
+Every guard passes.
+
+- **AUDIT-11 causes.** They were not rare because of their weights (8-12% of
+  each deepened arena's event weight) but because every arena event is
+  weak: `naturalDeathRate` 0.3 scales hazard damage, dodge rolls clear
+  most of them, and all arena events together killed under 1% of the field.
+  `group6.ts` now runs its lethal events through `AUDIT11_EVENTS` (new, in
+  `balance.ts`): arena-specific weight x8, universal weight x7, damage x5,
+  dodge difficulty +3. Boons and non-lethal beats are untouched, and
+  `AUDIT11_CAUSES` is unchanged. Tribute-kill share did not move: the arena
+  death budget (`arenaOverBudget`) takes the extra deaths from other arena
+  causes, not from tributes. Steps measured (400/300 runs, share of all
+  deaths): weight x3 alone 0.06%; x3 with damage x2.2 0.12%; x4, damage x4,
+  dodge +3 0.64%; x6, damage x5, dodge +3 1.09%.
+- **grudge-betrayal.** `ALLIANCE_BONDS.greedBase` 0.04 -> 0.15,
+  `greedPerTreachery` 0.04 -> 0.08, `grudgeBetrayerWeight` 0.02 -> 0.08,
+  `grudgeTargetWeight` 0.03 -> 0.2. Tried: weights alone (0.1 / 0.3) stayed at
+  0.7% — too few grudges reached `grudgeMotive`, since one split is half of it;
+  greed 0.1 / 0.06 with weights 0.05 / 0.1 stayed at 1.0%.
+- **Plans** (`arenaDepth.ts`, engine change). Instrumented first: of 7.0 plans
+  per run, 3.7 died with their holder (2.9 before reaching the first step),
+  1.3 were abandoned for "more than three interruptions" and 0.95 ran out of
+  clock. Both logic failures were one bug: a single long fight or flight was
+  counted as an interruption every cycle it lasted, and the plan's clock kept
+  running through it. An interruption is now an episode (a run of consecutive
+  interrupted cycles), paused cycles do not count against `planMaxCycles`, a
+  new `planMaxAge` 18 bounds a plan that is paused forever, and
+  `planMaxCycles` 8 -> 12 (a three-step errand of up to four hops a leg did not
+  fit in eight). Fewer plans are *made* because each one stands longer; a
+  tribute holds one at a time. What remains is death.
+  `TributePlan.pausedCycles` is optional, so old saves load.
+- **Stances.** Evasive `minHold` 2 -> 1 (`stances.ts`): 36.7 -> 33.0% in probes,
+  but the soak's worst tribute changed stance on 61% of cycles (threshold 60%).
+  `STANCE.churnHoldPerSwitch` 1 -> 1.5 holds a churning tribute longer and put
+  it back at 54%, Evasive 34.1%. Tried and reverted: `unarmedEvasive` 0.35 with
+  `dreadEvasive` 1.7 (36.4%), `cautiousEvasive` / `lowSanityEvasive` down
+  (36.5%), `outmatchedEvasive` / `woundedEvasive` down (36.2%),
+  `defensiveBase` 2.6 with `weaponAggression` 1.3 (36.7%) — the scorer is not
+  what holds Evasive.
+- **Districts.** Storied tier (D1, D2) `LEGACY_EFFECTS` reputation 12 -> 6,
+  trainingMerit 0.2 -> 0.15, targetDraw 3 -> 4.5. At 800 runs: targetDraw 4.5
+  alone 15.7%; reputation 6 with trainingMerit 0.12 16.3%; reputation 8 with
+  targetDraw 4 15.3%; the kept set 14.5%. targetDraw 5 measured 14.5% at
+  n=1,600 but made `test:rigged` fail (the nominated weakest tribute won 25 of
+  25, which the check reads as a guarantee), as did 5.5; reverted to 4.5.
+  Tried: `academyCombatFloor` 1 (16.6% at 800) and academy weapons 2-4
+  (16.9%). The largest district now sits at the 15% goal within one
+  sweep's noise (15.2% here, 15.6% in another sweep).
+- **Penitent / broker.** Penitent gains agility +1 and `targetDraw` -4.5 -> -5.5;
+  broker endurance 2 -> 3, agility +1, `targetDraw` -3 -> -4.5. Honest reading:
+  across four sweeps on this branch penitent ranked 7th, 19th, 7th and 23rd
+  from the bottom, and broker 10th, 6th, 24th and 33rd, including sweeps where
+  neither had changed. At n=760-961 one sweep moves them about +/-0.7 points,
+  which is the whole width of the middle third. The final sweep has both
+  clear of the bottom third.
+- Achievement rarity relabelled by `npm run fix:rarity` after the changes
+  (pure drift; `unrecorded-cause`, the AUDIT-11 death, moved from `possible`
+  to 16% of runs).
+
 ## AUDIT-8 fix pass (this branch)
 
 `AUDIT-8.md` is the eighth full audit. This is the answer to its §1 — every
