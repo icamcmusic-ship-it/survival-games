@@ -55,7 +55,9 @@ export function readStaleLines(): string[] {
 
 /** Folds a finished (or abandoned) run's used templates into the memory. */
 export function noteRunLines(state: GameState): void {
-    const used = state.usedText;
+    // The lines the player was shown, not the ones drawn: a stale substitution
+    // shows a different line than the rotation recorded.
+    const used = state.shownText ?? state.usedText;
     if (!used) return;
     const day = today();
     const seen = { ...(readStored(RECENT_LINES_SPEC)?.seen ?? {}) };

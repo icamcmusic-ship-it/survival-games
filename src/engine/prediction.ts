@@ -34,7 +34,7 @@ export function topKillersOf(tributes: Tribute[]): Tribute[] {
 
 /** True when a slip has at least one pick on it. */
 export function predictionFilled(p: Prediction | undefined): boolean {
-    return !!p && (!!p.winnerId || !!p.firstDeathId || !!p.topKillerId || (p.finalEight?.length ?? 0) > 0);
+    return !!p && (!!p.winnerId || !!p.firstDeathId || !!p.topKillerId || (p.finalEight ?? []).some(id => !!id));
 }
 
 /**
@@ -68,10 +68,13 @@ export function scorePrediction(state: GameState, p: Prediction | undefined): Pr
         max += PREDICTION.topKillerPoints;
         if (topKillersOf(tributes).some(t => t.id === p.topKillerId)) { score += PREDICTION.topKillerPoints; hits.push('top-killer'); }
     }
+    // The slip is a fixed eight-slot array; an empty slot ('') is skipped but
+    // keeps every later pick in its own place.
     const eight = (p.finalEight ?? []).slice(0, PREDICTION.finalSize);
-    if (eight.length > 0) {
+    if (eight.some(id => !!id)) {
         let eightScore = 0;
         eight.forEach((id, i) => {
+            if (!id) return;
             max += PREDICTION.finalEightPoints + PREDICTION.exactPlacePoints;
             if (lastEight.includes(id)) eightScore += PREDICTION.finalEightPoints;
             if (lastEight[i] === id) eightScore += PREDICTION.exactPlacePoints;

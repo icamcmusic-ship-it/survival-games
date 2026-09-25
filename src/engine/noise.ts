@@ -7,7 +7,7 @@ import { noteHeard } from './memory';
 import { encumbranceOf } from './items';
 import { injuryGrade } from './wounds';
 import { profOf } from './proficiency';
-import { effectiveAcoustics } from './arenaRules';
+import { arenaIsDark, effectiveAcoustics } from './arenaRules';
 
 /**
  * §16: a crossing makes a sound, and the sound reaches people.
@@ -44,10 +44,11 @@ export function crossingNoise(t: Tribute, partySize: number): number {
  * whose whole description is noticing things, so it is what moves this; sleep
  * is what moves it the other way.
  */
-function hearingThreshold(listener: Tribute, time: 'day' | 'night'): number {
+function hearingThreshold(state: GameState, listener: Tribute, time: 'day' | 'night'): number {
     return NOISE.hearThreshold
         - profOf(listener, 'vigilance') * NOISE.vigilanceBonus
-        + (time === 'night' ? NOISE.nightThresholdBonus : 0);
+        // Darkness, not the clock: a blackout is night, a lit arena is not.
+        + (arenaIsDark(state, time) ? NOISE.nightThresholdBonus : 0);
 }
 
 /**
@@ -89,7 +90,7 @@ export function announceCrossing(
         // Acoustics carry sound *out of* the zone it was made in — the half of
         // the documented behaviour that was never built.
         const heard = raw * NOISE.adjacentCarry * acoustics;
-        if (heard < hearingThreshold(listener, time)) return;
+        if (heard < hearingThreshold(state, listener, time)) return;
         const written = noteHeard(state, listener, to, movers.length,
             NOISE.heardConfidence * Math.min(1, heard));
         if (!written) return;

@@ -178,6 +178,7 @@ export function createContext(state: GameState, rng: RNG): SimContext {
                 const previous = memory[pool[0]];
                 options = previous !== undefined ? pool.filter(p => p !== previous) : pool;
                 used[pool[0]] = [];
+                if (state.shownText?.[pool[0]]) state.shownText[pool[0]] = [];
             }
             // AUDIT-9 B12: narration draws from its own stream, never from
             // `ctx.rng`. On the shared stream the *size of a prose pool* was a
@@ -208,7 +209,7 @@ export function createContext(state: GameState, rng: RNG): SimContext {
                     // every later draw sees the same pool state it would have.
                     const shape = slotShape(drawn);
                     const at = pool.indexOf(drawn);
-                    const seenThisRun = used[pool[0]] ?? [];
+                    const seenThisRun = state.shownText?.[pool[0]] ?? used[pool[0]] ?? [];
                     let fallback: string | undefined;
                     for (let k = 1; k < pool.length; k++) {
                         const next = pool[(at + k) % pool.length];
@@ -221,6 +222,13 @@ export function createContext(state: GameState, rng: RNG): SimContext {
             }
             memory[pool[0]] = drawn;
             used[pool[0]] = [...(used[pool[0]] ?? []), drawn];
+            // What the reader actually saw. Only kept when a stale set is in
+            // play — without one the shown line is always the drawn one, and
+            // `usedText` already says so (state stays byte-identical).
+            if (state.staleLines && state.staleLines.length > 0) {
+                const shown = state.shownText ?? (state.shownText = {});
+                shown[pool[0]] = [...(shown[pool[0]] ?? []), chosen];
+            }
             return chosen;
         },
         logEvent(text, tributesInvolved, options, zone) {

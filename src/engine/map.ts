@@ -10,7 +10,7 @@ import { SimContext, getAlive } from './context';
 import { profOf, trainProficiency } from './proficiency';
 import { resolveCombat } from './combat';
 import { allied } from './alliance';
-import { isPermanentCut, latentEdgeClosed, regrowthScale, ruleTransitCycles } from './arenaRules';
+import { isReopenable, latentEdgeClosed, regrowthScale, ruleTransitCycles } from './arenaRules';
 
 export function zoneNames(arena: Arena): string[] {
     return arena.zones.map(z => z.name);
@@ -385,7 +385,7 @@ export interface EdgeContext {
 function edgeAllowed(arena: Arena, a: string, b: string, time?: 'day' | 'night', who?: EdgeContext): boolean {
     const key = edgeKey(a, b);
     // Generic arena rule: a latent route stays shut until something opens it.
-    if (latentEdgeClosed(who?.state, arena.rules, a, b)) return false;
+    if (latentEdgeClosed(who?.state, arena.rules, a, b, arena)) return false;
     const rule = arena.edgeRules?.[key];
     // §5 `oneWayBorders`: an arena where the whole map is a current. Every
     // unruled edge runs one way, decided by the zone order so it is stable
@@ -456,7 +456,8 @@ export function severEdge(state: GameState, a: string, b: string) {
 /** Breadth-first search over the adjacency graph for the closest zone matching `safeNames`. */
 export function nearestSafeZone(arena: Arena, from: string, safeNames: string[], severed?: Set<string>): string {
     if (safeNames.includes(from)) return from;
-    const cut = (a: string, b: string) => !!severed && severed.has(edgeKey(a, b));
+    const cut = (a: string, b: string) => (!!severed && severed.has(edgeKey(a, b)))
+        || latentEdgeClosed(undefined, arena.rules, a, b, arena);
     const visited = new Set<string>([from]);
     let frontier = [from];
     while (frontier.length > 0) {
@@ -706,7 +707,7 @@ export function regenerateZones(ctx: SimContext): string[] {
 export function tickOpeningEdges(ctx: SimContext) {
     const state = ctx.state;
     // Generic arena rule: a permanent cut is never put back.
-    const severed = (state.severedEdges ?? []).filter(k => !isPermanentCut(state, k));
+    const severed = (state.severedEdges ?? []).filter(k => isReopenable(state, k));
     if (severed.length === 0) return;
     // Not while the arena is closing: the border's cuts are permanent by
     // design, and reopening them would undo the finale.

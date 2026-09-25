@@ -258,9 +258,19 @@ export function wardblockSignature(ctx: SimContext, cycle: number, rng: RNG) {
 const WINGS = ['The Tropical Wing', 'The Desert Wing', 'The Aquatic Wing', 'The Canopy Walk'];
 
 /** The wings in the order this run's glass gives, fixed from the seed. */
-function wingOrder(ctx: SimContext): string[] {
+export function wingOrder(ctx: SimContext): string[] {
     const rng = new RNG(`${ctx.state.seed}-glasshouse-order`);
     return rng.shuffle([...WINGS]);
+}
+
+/**
+ * The safe wing, given the index of the next wing scheduled to crack: a whole
+ * wing that is not that one (the last whole wing in the order). Undefined when
+ * the only whole wing left is the next to go — no roof is safe then.
+ */
+export function safeWing(order: string[], nextToCrack: number): string | undefined {
+    const later = order.slice(nextToCrack + 1);
+    return later.length > 0 ? later[later.length - 1] : undefined;
 }
 
 /**
@@ -323,8 +333,7 @@ export function glasshouseSignature(ctx: SimContext, cycle: number, rng: RNG) {
             checkDeath(ctx, t, cause);
         });
         // The next safe wing: whole, and not the next to go.
-        const whole = order.slice(given + 1);
-        rotateSafeShelter(ctx.state, whole.length > 1 ? whole[1] : whole[0]);
+        rotateSafeShelter(ctx.state, safeWing(order, given + 1));
         return;
     }
 
@@ -333,13 +342,13 @@ export function glasshouseSignature(ctx: SimContext, cycle: number, rng: RNG) {
         return;
     }
     // Before the first crack the designation is simply the last wing to go.
-    if (!safeShelter(ctx.state)) rotateSafeShelter(ctx.state, order[order.length - 1]);
+    if (given === 0 && !safeShelter(ctx.state)) rotateSafeShelter(ctx.state, order[order.length - 1]);
     if (cycle < knobs.firstCycle || (cycle - knobs.firstCycle) % knobs.everyNth !== 0) return;
     const next = order[given];
     setMark(ctx.state, 'glass:cracking', next);
-    const upcoming = order.slice(given + 1);
-    const safe = upcoming.length > 0 ? upcoming[upcoming.length > 1 ? 1 : 0] : undefined;
-    if (safe) rotateSafeShelter(ctx.state, safe);
+    // `next` is cracking; order[given + 1] is the one after it. Neither is safe.
+    const safe = safeWing(order, given + 1);
+    rotateSafeShelter(ctx.state, safe);
     ctx.logEvent(
         `THE GLASS CRACKS: a sound like ice on a pond goes across the roof of ${next}, and then another.${safe ? ` ${safe} is the only roof in the Glasshouse nobody is worried about tonight.` : ''}`,
         tributesIn(ctx, next).map(t => t.id),

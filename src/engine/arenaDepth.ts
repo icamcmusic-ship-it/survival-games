@@ -15,7 +15,7 @@ import { injure } from './wounds';
 import { profOf } from './proficiency';
 import { canAfford, spend } from './actionBudget';
 import { allied } from './alliance';
-import { fallenZones, setMark, getMark } from './arenaRules';
+import { currentSightline, fallenZones, setMark, getMark } from './arenaRules';
 import { ACTION_BUDGET } from '../data/balance';
 
 /**
@@ -112,7 +112,32 @@ const CLEARS: Record<WeatherKind, string> = {
 export function currentWeather(state: SimContext['state']): WeatherKind | undefined {
     const w = state.arenaDepth?.weather;
     if (!w || (state.cycle ?? 0) > w.untilCycle) return undefined;
+    // Fog does not stack on an arena-wide whiteout or blackout: nobody can
+    // see a stride already, and the sightline is what is hiding them.
+    if (w.kind === 'fog' && sightlineHides(state)) return undefined;
     return w.kind;
+}
+
+function sightlineHides(state: SimContext['state']): boolean {
+    const mode = currentSightline(state);
+    return mode === 'whiteout' || mode === 'blackout';
+}
+
+/**
+ * Arenas under a roof: the universal weather layer never rains or storms in
+ * them (fog and heat are still air, and can happen indoors). The Glasshouse
+ * counts only while every pane is whole — once a wing has given, the sky is in.
+ */
+const INDOOR_ARENAS = new Set([
+    'gallery', 'wardblock', 'malthouse', 'undercroft', 'glasshouse', 'kelvin', 'vault',
+    'warren', 'nooneplace', 'magmatube', 'karst', 'ashgrove', 'abattoir',
+]);
+
+export function arenaIsIndoor(state: SimContext['state']): boolean {
+    const id = state.arena.id;
+    if (!INDOOR_ARENAS.has(id)) return false;
+    if (id === 'glasshouse') return Number(getMark(state, 'glass:given') ?? 0) === 0;
+    return true;
 }
 
 /** Whether this tribute reads the sky a cycle out. */
@@ -166,13 +191,17 @@ function pickWeather(ctx: SimContext, rng: RNG): WeatherKind {
     if (typeof actPull === 'string' && (WEATHER_KINDS as string[]).includes(actPull)) {
         weights[actPull as WeatherKind] += ARENA_DEPTH.weatherActPull;
     }
+    // Opt-outs zero a weight rather than skip the draw: one roll either way.
+    if (arenaIsIndoor(ctx.state)) { weights.rain = 0; weights.storm = 0; }
+    if (sightlineHides(ctx.state)) weights.fog = 0;
     const total = WEATHER_KINDS.reduce((a, k) => a + weights[k], 0);
     let roll = rng.nextFloat() * total;
     for (const k of WEATHER_KINDS) {
+        if (weights[k] <= 0) continue;
         roll -= weights[k];
         if (roll <= 0) return k;
     }
-    return 'rain';
+    return WEATHER_KINDS.find(k => weights[k] > 0) ?? 'heat';
 }
 
 function shelterOf(state: SimContext['state'], zoneName: string): number {
@@ -202,6 +231,14 @@ function tickWeather(ctx: SimContext) {
     }
 
     // Arrive.
+    if (d.incoming && cycle >= d.incoming.startCycle) {
+        const kind = d.incoming.kind;
+        // The roof went on (or the sightline went) between the telegraph and
+        // the arrival: the front never reaches anybody.
+        const blocked = ((kind === 'rain' || kind === 'storm') && arenaIsIndoor(state))
+            || (kind === 'fog' && sightlineHides(state));
+        if (blocked) d.incoming = undefined;
+    }
     if (d.incoming && cycle >= d.incoming.startCycle) {
         const kind = d.incoming.kind;
         d.weather = {

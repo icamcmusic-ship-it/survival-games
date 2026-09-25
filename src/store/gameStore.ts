@@ -1311,7 +1311,10 @@ export const gameActions = {
         // traits they earned — under their given name only. Grafted like a
         // Grudge Match veteran, so the seed's own cast and rolls are untouched.
         let legacy: string[] = [];
-        if (veterans.length === 0 && legacyReapingDue(panemNow, safeSeed, !!gamesProfile.quell)) {
+        // A pinned (share-link / reproduce-this-run) replay never seats one: the
+        // pick reads *this* browser's Hall of Fame, which the sender's run did
+        // not, so it would put a stranger in the replayed field.
+        if (veterans.length === 0 && pinnedCampaign === undefined && legacyReapingDue(panemNow, safeSeed, !!gamesProfile.quell)) {
             const taken = new Set(tributes.map(t => t.name));
             const pool = readHallOfFame()
                 .filter(e => !e.noVictor && !e.winnerName.includes('&') && !taken.has(givenName(e.winnerName)))
@@ -1401,6 +1404,11 @@ export const gameActions = {
         const newState: GameState = {
             ...gameState, seed: newSeed, tributes, gamesProfile, config,
         };
+        // The old cast's seatings and the slip written against it do not
+        // carry to a new cast: those ids no longer name anybody.
+        delete newState.legacyTributeIds;
+        delete newState.veteransSeated;
+        delete newState.prediction;
 
         gameStore.setState({ gameState: newState, simulator: new Simulator(newState) });
         persistRun();

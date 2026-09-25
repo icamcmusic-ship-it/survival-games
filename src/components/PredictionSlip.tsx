@@ -29,10 +29,12 @@ export function PredictionSlip({ tributes }: { tributes: Tribute[] }) {
     };
     const eight = slip.finalEight ?? [];
     const setPlace = (i: number, id: string) => {
-        const next = [...eight];
-        while (next.length < PREDICTION.finalSize) next.push('');
+        // A fixed eight-slot array: empties stay in place (dropped only when
+        // scoring), and picking a tribute already placed moves them here.
+        const next = Array.from({ length: PREDICTION.finalSize }, (_, j) => eight[j] ?? '');
+        if (id !== '') next.forEach((x, j) => { if (x === id) next[j] = ''; });
         next[i] = id;
-        update({ finalEight: next.filter((x, j) => x !== '' && next.indexOf(x) === j) });
+        update({ finalEight: next.some(x => x !== '') ? next : undefined });
     };
 
     const picker = (label: string, value: string | undefined, onChange: (id: string | undefined) => void, testId: string) => (
@@ -68,7 +70,7 @@ export function PredictionSlip({ tributes }: { tributes: Tribute[] }) {
                 {picker('Top killer', slip.topKillerId, id => update({ topKillerId: id }), 'predict-top-killer')}
             </div>
             <details>
-                <summary className="text-xs cursor-pointer">Rank a final eight ({eight.length}/{PREDICTION.finalSize})</summary>
+                <summary className="text-xs cursor-pointer">Rank a final eight ({eight.filter(Boolean).length}/{PREDICTION.finalSize})</summary>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
                     {Array.from({ length: PREDICTION.finalSize }, (_, i) => (
                         <label key={i} className="flex items-center gap-2 text-micro">

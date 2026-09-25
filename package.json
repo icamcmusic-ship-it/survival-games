@@ -59,6 +59,7 @@
     "test:credibility": "tsx scripts/check-credibility.ts",
     "test:replayability": "tsx scripts/check-replayability.ts",
     "test:warnings": "tsx scripts/check-warnings.ts",
+    "test:review-fixes": "tsx scripts/check-review-fixes.ts",
     "funnel": "tsx scripts/funnel.ts",
     "cohorts": "tsx scripts/cohorts.ts",
     "catalog": "tsx scripts/catalog.ts",

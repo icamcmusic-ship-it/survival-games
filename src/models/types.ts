@@ -2629,6 +2629,12 @@ export interface SignatureRule {
 }
 
 export interface Arena {
+    /**
+     * Run-local: latent edges (`rules.latentEdges`) opened this run, as edge keys.
+     * Mirrors `arenaRuleState.openedEdges` on the run's arena clone so traversal
+     * callers that pass no `EdgeContext` still see an opened route as open.
+     */
+    openedLatentEdges?: string[];
     id: string;
     /**
      * Procedural arenas only: a per-map identity. `id` collapses every
@@ -3140,6 +3146,13 @@ export interface GameState {
      * `lastPickedText`, and serialised with the save for the same reason.
      */
     usedText?: Record<string, string[]>;
+    /**
+     * AUDIT-11 §12: the lines actually shown, per pool, when a stale set moved
+     * the choice off the drawn line. `usedText` keeps the drawn line so the
+     * rotation is identical with or without a stale set; this is what the
+     * cross-session memory records. Absent when `staleLines` is empty.
+     */
+    shownText?: Record<string, string[]>;
     /** Zone name -> fraction of its printed yield currently stripped out (0-1). */
     zoneDepletion?: Record<string, number>;
     /** Zone name -> whatever is currently happening to it beyond depletion. */

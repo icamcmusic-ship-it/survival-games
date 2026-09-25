@@ -679,8 +679,12 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                                 >
                                     The persona they held on Caesar's couch — which may not be the one they
                                     walked out with, and which the rest of the cast remembers.
-                                    {' '}The Capitol reads it as a {PERSONA_FAMILY_LABEL[PERSONA_FAMILY[tribute.interviewStrategy]]} story, and
-                                    that is the sponsor money it draws ({Object.keys(PERSONA_BLOC_AFFINITY[PERSONA_FAMILY[tribute.interviewStrategy]]).join(', ')}).
+                                    {PERSONA_FAMILY[tribute.interviewStrategy] && (
+                                        <>
+                                            {' '}The Capitol reads it as a {PERSONA_FAMILY_LABEL[PERSONA_FAMILY[tribute.interviewStrategy]]} story, and
+                                            that is the sponsor money it draws ({Object.keys(PERSONA_BLOC_AFFINITY[PERSONA_FAMILY[tribute.interviewStrategy]] ?? {}).join(', ')}).
+                                        </>
+                                    )}
                                 </Explainer>
                             </>
                         )}

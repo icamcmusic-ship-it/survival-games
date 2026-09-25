@@ -9,7 +9,7 @@ import { concealmentModifier, effectiveIntelligence } from './physique';
 import { encumbranceOf, hasTool } from './items';
 import { isAggressiveStance, isEvasiveStance } from '../data/stances';
 import { allied } from './alliance';
-import { acousticsConcealmentShift, sightlineAmbush, sightlineConcealment, sightlineDark } from './arenaRules';
+import { acousticsConcealmentShift, sightlineAmbush, sightlineConcealment, arenaIsDark } from './arenaRules';
 import { MUTATOR_TUNING, hasMutator } from '../data/mutators';
 
 /**
@@ -33,10 +33,8 @@ import { MUTATOR_TUNING, hasMutator } from '../data/mutators';
  */
 function isDark(ctx: SimContext): boolean {
     // Generic arena rule: an arena-wide sightline (lights up, blackout,
-    // whiteout) overrides the clock. See engine/arenaRules.ts.
-    const override = sightlineDark(ctx.state);
-    if (override !== undefined) return override;
-    return ctx.state.timeOfDay === 'night';
+    // whiteout) overrides the clock. Centralised in engine/arenaRules.ts.
+    return arenaIsDark(ctx.state);
 }
 
 /** Half-light: enough to move by, not enough to hide in. */

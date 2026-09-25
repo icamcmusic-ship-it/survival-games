@@ -87,6 +87,18 @@ export function sightlineDark(state: GameState): boolean | undefined {
     return k.dark;
 }
 
+/**
+ * Whether it is dark in the arena right now — the one answer every darkness
+ * consumer (stealth, noise, foraging by lamplight) reads. An arena-wide
+ * sightline (lights up, blackout, whiteout) overrides the clock; otherwise
+ * it is the night. `time` lets a caller that threads its own phase ask.
+ */
+export function arenaIsDark(state: GameState, time?: 'day' | 'night'): boolean {
+    const override = sightlineDark(state);
+    if (override !== undefined) return override;
+    return (time ?? state.timeOfDay) === 'night';
+}
+
 /** Multiplier on the chance to stay unseen. */
 export function sightlineConcealment(state: GameState): number {
     return sightlineKnobs(state)?.concealment ?? 1;
@@ -242,11 +254,12 @@ export function withFallen(state: GameState, collapsed: string[]): string[] {
 }
 
 /** Whether this edge is latent and not yet opened (closed to everybody). */
-export function latentEdgeClosed(state: GameState | undefined, arenaRules: GameState['arena']['rules'], a: string, b: string): boolean {
+export function latentEdgeClosed(state: GameState | undefined, arenaRules: GameState['arena']['rules'], a: string, b: string, arena?: GameState['arena']): boolean {
     const latent = arenaRules?.latentEdges;
     if (!latent || latent.length === 0) return false;
     const key = edgeKey(a, b);
     if (!latent.some(([x, y]) => edgeKey(x, y) === key)) return false;
+    if ((arena ?? state?.arena)?.openedLatentEdges?.includes(key)) return false;
     return !(state?.arenaRuleState?.openedEdges ?? []).includes(key);
 }
 
@@ -255,6 +268,8 @@ export function openLatentEdge(state: GameState, a: string, b: string): boolean 
     if (!latentEdgeClosed(state, state.arena.rules, a, b)) return false;
     const rs = ruleState(state);
     rs.openedEdges = [...(rs.openedEdges ?? []), edgeKey(a, b)];
+    // Mirror onto the run's arena clone so stateless traversal sees it too.
+    state.arena.openedLatentEdges = [...(state.arena.openedLatentEdges ?? []), edgeKey(a, b)];
     return true;
 }
 
@@ -277,6 +292,27 @@ export function cutPermanently(state: GameState, a: string, b: string) {
 /** Whether a severed edge is permanent — read by `tickOpeningEdges`. */
 export function isPermanentCut(state: GameState, key: string): boolean {
     return state.arenaRuleState?.marks?.[PERMANENT_CUT_MARK + key] !== undefined;
+}
+
+const PACK_CUT_MARK = 'packcut:';
+
+/** Marks a severed edge as owned by an event pack: the generic reopening tick leaves it alone. */
+export function markPackCut(state: GameState, a: string, b: string) {
+    const rs = ruleState(state);
+    rs.marks = { ...(rs.marks ?? {}), [PACK_CUT_MARK + edgeKey(a, b)]: 1 };
+}
+
+/**
+ * Whether `tickOpeningEdges` may put this severed edge back: not a permanent
+ * cut, not an event pack's cut, not a lockdown's cut, and not an edge into a
+ * zone that is sealed right now (the lockdown's release restores those).
+ */
+export function isReopenable(state: GameState, key: string): boolean {
+    if (isPermanentCut(state, key)) return false;
+    const marks = state.arenaRuleState?.marks ?? {};
+    if (marks[PACK_CUT_MARK + key] !== undefined || marks['lockcut:' + key] !== undefined) return false;
+    const [a, b] = key.split('|');
+    return !isZoneLocked(state, a) && !isZoneLocked(state, b);
 }
 
 // ---- Eviction ------------------------------------------------------------------------

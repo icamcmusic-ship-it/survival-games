@@ -750,16 +750,21 @@ function normalizeAlliances(raw: unknown): Record<string, Alliance> | undefined 
  * the simulator asked for a zone.
  */
 /** AUDIT-11 §12: a prediction slip, or absent. */
-function normalizePrediction(raw: unknown): GameState['prediction'] {
+export function normalizePrediction(raw: unknown): GameState['prediction'] {
     const p = asRecord(raw);
     if (!p) return undefined;
     const id = (v: unknown) => (typeof v === 'string' && v !== '' ? v : undefined);
-    const finalEight = Array.isArray(p.finalEight) ? asStrArray(p.finalEight).slice(0, 8) : undefined;
+    // Sparse by design: the slip is a fixed eight-slot array and '' is an
+    // empty place. A repeated tribute keeps its first place only.
+    const finalEight = Array.isArray(p.finalEight)
+        ? p.finalEight.slice(0, 8).map(v => (typeof v === 'string' ? v : ''))
+            .map((v, i, all) => (v !== '' && all.indexOf(v) !== i ? '' : v))
+        : undefined;
     return {
         winnerId: id(p.winnerId),
         firstDeathId: id(p.firstDeathId),
         topKillerId: id(p.topKillerId),
-        ...(finalEight && finalEight.length > 0 ? { finalEight } : {}),
+        ...(finalEight && finalEight.some(v => v !== '') ? { finalEight } : {}),
     };
 }
 

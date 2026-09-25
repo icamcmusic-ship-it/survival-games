@@ -1,4 +1,5 @@
 import { Terrain, Tribute, attr } from '../models/types';
+import { arenaIsDark } from './arenaRules';
 import { ITEMS } from '../data/constants';
 import { ACTION_BUDGET, HAZARD_CHAIN, BLEEDING, COMPOSURE, CRAFTING, DESPERATION, ENCOUNTERS, ENCOUNTER_BRANCH, ESCALATION, HUNTING, MEMORY, POISONING, PROFICIENCY, ROMANCE, SANITY_BANDS, TOOLS, VITALS, ZONES, STANCE_MODES } from '../data/balance';
 import { ALLIANCE_TEXTS, ENCOUNTER_TEXTS, SANITY_TEXTS } from '../data/flavorText';
@@ -880,7 +881,7 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
     const baseForageChance = ZONES.baseForageChance
         + (fishing ? ZONES.fishingBonus : 0)
         // §11.5: a light after dark turns groping into searching.
-        + (ctx.state.timeOfDay === 'night' && hasTool(t, 'light') ? TOOLS.lightNightForageBonus : 0)
+        + (arenaIsDark(ctx.state) && hasTool(t, 'light') ? TOOLS.lightNightForageBonus : 0)
         + available * ZONES.yieldForageWeight
         + (t.archetype === 'survivalist' ? ZONES.survivalistForageBonus : 0)
         + traitMod(t, 'forage')
