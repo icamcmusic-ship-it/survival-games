@@ -312,7 +312,7 @@ export const ARENAS: Arena[] = [
         lawZone: 'Scrub Hollow',
         name: 'The Salt Mirror',
         description: 'A dried inland sea of blinding white crust. There is nowhere to hide, the glare burns from below as well as above, and every horizon lies.',
-        mutts: ['Brine Wolves', 'Salt Locusts', 'Mirage Stalkers'],
+        mutts: ['Brine Wolves', 'Salt Locusts', 'Mirage Stalkers', 'Crust Borers'],
         events: ['Whiteout Glare', 'Crust Collapse', 'Brine Squall'],
         // Total visibility means the Capitol sees every gift land and every
         // desperate scramble for it — this arena's spectacle.
@@ -785,7 +785,7 @@ export const ARENAS: Arena[] = [
         lawZone: 'The Ice Chimney',
         name: 'The Alpine Archipelago',
         description: 'A chain of sharp mountain peaks thrust directly out of a deep, rough ocean — no coastlines, no beaches, no gradual slopes. Scale the ice or swim the swells; there is no third way between any two peaks.',
-        mutts: ['Undertow Serpents', 'Cliff Harriers', 'Deep Current Grapplers'],
+        mutts: ['Undertow Serpents', 'Cliff Harriers', 'Deep Current Grapplers', 'Cliff Skuas'],
         events: ['Rising Tide', 'Ice Shear', 'Rogue Swell'],
         // The chimney is a free climb up sea-slick ice; the sea takes the rest.
         // §11.6: nobody free-climbs the chimney without leaving gear in it.
@@ -807,7 +807,7 @@ export const ARENAS: Arena[] = [
         cornucopiaLayout: 'island',
         name: 'The Suspended Canopy Web',
         description: 'A forest of giant three-hundred-foot conifers, the ground floor buried under a sunless layer of toxic nitrogen fog nobody survives a minute in. Everything worth doing happens hundreds of feet up, on woven needle-bridges and swaying moss webs.',
-        mutts: ['Silk-Line Stalkers', 'Needle Wasps', 'The Understory Reach'],
+        mutts: ['Silk-Line Stalkers', 'Needle Wasps', 'The Understory Reach', 'Bridge Cutters'],
         // §5.1 (audit): the arena's own identity — it declared none of these.
         effectVocab: { fogbound: { label: 'the understory fog rising', severityMult: 1.3 }, swarming: { label: 'the needle wasps', severityMult: 1.2 } },
         restockBias: ['rope', 'net', 'waterskin'],
@@ -832,7 +832,7 @@ export const ARENAS: Arena[] = [
         cornucopiaLayout: 'plate',
         name: 'The Whispering Acoustic Forest',
         description: 'A lodgepole pine forest hollowed out by engineered wood-boring insects, the whole canopy one vast wind organ. The breeze through the hollow trunks sounds uncannily human — and drowns out anyone actually trying to sneak.',
-        mutts: ['Wind-Throat Owls', 'Resonance Moths', 'Hollow-Bore Beetles'],
+        mutts: ['Wind-Throat Owls', 'Resonance Moths', 'Hollow-Bore Beetles', 'Hollow Callers'],
         restockBias: ['blowgun', 'bandages', 'berries'],
         events: ['Resonant Shattering', 'The Chorus', 'Dry Grove Collapse'],
         // Acoustic confusion runs through the same primitive fog does —
@@ -861,7 +861,7 @@ export const ARENAS: Arena[] = [
         laws: ['fireImpossible', 'noForage'],
         name: 'The Post-Burn Scar & Fireweed Slope',
         description: 'A mountain forest three years burned: blackened snag trees, deep erosion gullies, and thorny fireweed grown up thick over ground that still runs hot. Deadfall drops silently. The mountain is not finished with fire.',
-        mutts: ['Cinder-Back Boars', 'Thornvine Jackals', 'The Standing Char'],
+        mutts: ['Cinder-Back Boars', 'Thornvine Jackals', 'The Standing Char', 'Ember Rats'],
         // §5.1 (audit): the arena's own identity — it declared none of these.
         effectVocab: { stripped: { label: 'ash to the horizon', severityMult: 1.2 }, quaking: { label: 'a burned root-mat giving way', severityMult: 1.1 } },
         restockBias: ['charcoal-filter', 'canteen', 'bandages'],
@@ -885,7 +885,7 @@ export const ARENAS: Arena[] = [
         cornucopiaLayout: 'plate',
         name: 'The Overgrown Ordnance Crater Field',
         description: 'A former military proving ground, pockmarked with deep overlapping craters flooded into stagnant ponds and choked by fast-growing vines. Unexploded ordnance sleeps under the root mats, and the vines have learned to grow something worse.',
-        mutts: ['Bog Adders', 'Root-Mat Crawlers', 'The Salvage Hound'],
+        mutts: ['Bog Adders', 'Root-Mat Crawlers', 'The Salvage Hound', 'Shell Crabs'],
         // §5.1 (audit): the arena's own identity — it declared none of these.
         effectVocab: { flooded: { label: 'the craters filling', severityMult: 1.3 }, contaminated: { label: 'old ordnance leaching', severityMult: 1.3 } },
         restockBias: ['helmet', 'vest', 'iodine'],

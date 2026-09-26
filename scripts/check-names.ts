@@ -181,6 +181,25 @@ mentorHomes.forEach((ds, name) => {
     if (clash.length) problems.push(`mentor '${name}' (district ${ds.join(', ')}) is also a reapable name in district ${clash.join(', ')}`);
 });
 
+// AUDIT-12 wave 2: the no-surnames rule is absolute and covers every pool a
+// person's name is drawn from — gendered, neutral and mentor alike. Mentors
+// shipped as 'Millet Ardan' for years because only the reaping pools were
+// checked for whitespace.
+{
+    const pools: Array<[string, string[]]> = [];
+    districts.forEach(d => {
+        pools.push([`district ${d} Male`, DISTRICT_NAMES[d].Male]);
+        pools.push([`district ${d} Female`, DISTRICT_NAMES[d].Female]);
+        pools.push([`district ${d} neutral`, NEUTRAL_NAMES[d] ?? []]);
+    });
+    Object.keys(DISTRICT_LEGACY).map(Number).forEach(d => pools.push([`district ${d} mentors`, DISTRICT_LEGACY[d].mentors]));
+    pools.forEach(([label, pool]) => {
+        const spaced = pool.filter(n => /\s/.test(n));
+        if (spaced.length) problems.push(`${label}: whitespace in a name (single given names only) — ${spaced.join(', ')}`);
+    });
+    if (!/\s/.test('Millet Ardan')) problems.push('whitespace rule misreads "Millet Ardan"');
+}
+
 /**
  * §11: themed collisions.
  *

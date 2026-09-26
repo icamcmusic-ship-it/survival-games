@@ -1,7 +1,7 @@
 import { Arena, ArenaLawId, EdgeRule, Injuries, Mutt, MuttRole, SignatureRule, Terrain, Zone, ZoneEffectKind, chokepointByName } from '../models/types';
 import { RNG, baseSeedOf } from '../utils/rng';
 import { MOOD_BY_BIOME, PROCEDURAL_EVENTS, FlavorTag } from '../data/proceduralFlavor';
-import { PROC_SIGNATURE, PROC_TERRAIN } from '../data/balance';
+import { AUDIT12_WAVE2_ARENA, PROC_SIGNATURE, PROC_TERRAIN } from '../data/balance';
 
 interface Biome {
     id: string;
@@ -872,7 +872,9 @@ export function generateArena(seed: string, biomeId?: string): Arena {
     // teeth. `muttRoster` is what the encounter system actually resolves
     // against; `mutts` (display names) is now derived from it directly, so
     // the arena summary never again names a mutt that can't actually appear.
-    const muttCount = rng.nextInt(2, 3);
+    // AUDIT-12 §8.7: the roster floor. The roll is still drawn, so the stream
+    // it sits in is consumed exactly as before.
+    const muttCount = Math.max(AUDIT12_WAVE2_ARENA.muttRosterFloor, rng.nextInt(2, 3));
     const muttRoster = generateMuttRoster(rng, biome, activeTags, muttCount, zones.map(z => z.name));
     const mutts = muttRoster.map(m => m.name);
 

@@ -679,7 +679,8 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     'Waterborn': {
         info: 'Earned in the current. Enough hard crossings and the water stops being an obstacle and starts being a road nobody else will take.',
         earned: true,
-        mods: { water: 1.5, concealment: 0.04, fatigueDay: -1 },
+        // AUDIT-12 §7: magnitude outlier (3.4 sd) — every mod x0.7.
+        mods: { water: 1.05, concealment: 0.028, fatigueDay: -0.7 },
     },
     'Silent Step': {
         info: 'Earned by simply never being found. Days of moving unseen have made quiet a habit rather than an effort.',
@@ -737,7 +738,8 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     },
     'Open Hand': {
         info: 'Gives things away. Warm to, easy to trust, and never carrying as much as they should be.',
-        mods: { rapport: 0.4, treachery: -0.3, capacity: -1 },
+        // AUDIT-12 §7: 2.9% win rate; the missing slot was most of that.
+        mods: { rapport: 0.5, treachery: -0.3 },
     },
     'Hard Bargain': {
         info: 'Drives a price. Gets more out of a standoff than anybody and less out of the Capitol.',
@@ -865,7 +867,8 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     },
     'Cinder-Handed': {
         info: 'Something about them and fire. What they hit tends to catch, and what catches does not catch them.',
-        mods: { burnOnHit: 0.1, burnResist: 0.2 },
+        // AUDIT-12 §7: 0.10 -> 0.07 (7.8% at n=1,600, top decile).
+        mods: { burnOnHit: 0.07, burnResist: 0.2 },
     },
     'Grudge-Fed': {
         info: 'Fights hardest against the one they swore about. It eats them the rest of the time.',
@@ -883,7 +886,8 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     // -- body and deprivation -------------------------------------------------
     'Thrifty': {
         info: 'Makes a day\'s food last two. Pays for it in the legs by the afternoon.',
-        mods: { hungerDrain: -3, fatigueDay: 0.5 },
+        // AUDIT-12 §7: -3 -> -2 (9.4%, the best reaping trait at n=1,600).
+        mods: { hungerDrain: -2, fatigueDay: 0.5 },
     },
     'Sun-Fed': {
         info: 'Comes alive in heat and shuts down in cold. Whichever arena they drew, they know by the first evening.',
@@ -891,7 +895,8 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     },
     'Slow Burn': {
         info: 'Sleeps properly and starts badly. Worth having on the fourth day and not the first.',
-        mods: { fatigueNight: -1.5, fatigueDay: 0.8 },
+        // AUDIT-12 §7: magnitude outlier (2.9 sd) — x0.7.
+        mods: { fatigueNight: -1.05, fatigueDay: 0.56 },
     },
     'Hollow Leg': {
         info: 'Can go a long time without water and will drink anything when they do.',
@@ -1124,31 +1129,31 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
      * existing axis, and the info line says only what the mods actually do.
      */
     'Night Owl': {
-        info: 'Comes alive after dark. Sharper and quicker at night, and pays for it in the daytime.',
+        info: 'Comes alive after dark. Sharper and quicker at night, hits harder in a night fight, rarely nods off on a night watch — and pays for it in the daytime.',
         mods: { awarenessNight: 2, nightMovement: 0.4, ambush: 0.03, fatigueDay: 3 },
     },
     'Salt-Tongued': {
-        info: 'Lies easily and is hard to catch at it — and is believed a little less even when telling the truth.',
+        info: 'Lies easily and is hard to catch at it: a rumour they plant is caught half as often, and they are believed a little less even when telling the truth.',
         mods: { suspicionResist: 0.25, rumourCredibility: -0.2 },
     },
     'Bone-Setter': {
-        info: 'Knows how a body goes back together. Field dressings and treatment take far more often.',
+        info: 'Knows how a body goes back together. Field dressings take far more often, and they can splint their own broken limb without a kit.',
         mods: { medicine: 0.25 },
     },
     'Heavy Sleeper': {
-        info: 'Sleeps like the dead and wakes rested. Recovers much more at night, and hears much less of it.',
+        info: 'Sleeps like the dead and wakes rested. Recovers much more at night, hears much less of it, and is far more likely to fall asleep on watch.',
         mods: { fatigueNight: -6, awarenessNight: -2 },
     },
     'Pack Rat': {
-        info: 'Keeps everything. Carries one more item than anybody else, and rattles when they walk.',
+        info: 'Keeps everything. Carries one more item than anybody else, takes an extra thing off every body they search, and rattles when they walk.',
         mods: { capacity: 1, concealment: -0.05 },
     },
     'Forgets Faces': {
-        info: 'Cannot hold on to a face, or a grudge. Regard moves faster in both directions, and old hatreds sharpen them less.',
+        info: 'Cannot hold on to a face, or a grudge. Regard moves faster in both directions, grudges fade twice as fast, and old hatreds sharpen them less.',
         mods: { trustGain: 0.3, vengeanceEdge: -1 },
     },
     'Oathkeeper': {
-        info: 'Their word is a fixed point. Almost never breaks a promise or an alliance, pays what they owe, and is trusted for it.',
+        info: 'Their word is a fixed point. Cannot break a promise or turn on an alliance — keeps it at their own cost, down to the last ration — pays what they owe, and is trusted for it.',
         mods: { treachery: -0.3, betrayalResist: 0.3, debtHonour: 0.4, trustGain: 0.1, charterHold: 0.3 },
     },
     'Glass Jaw': {
@@ -1164,15 +1169,15 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         mods: { scavenge: 0.1, forage: 0.04, targetDraw: 0.5 },
     },
     'Homebody': {
-        info: 'Makes a camp and defends it. Builds better shelter and fights harder with somebody beside them, and is slow to leave.',
+        info: 'Makes a camp and defends it. Builds better shelter, fights much harder on the ground where they first made camp, and is slow to leave.',
         mods: { campSkill: 0.15, defended: 0.1, retreat: -0.05 },
     },
     'Mimic': {
-        info: 'Can throw a voice or borrow one. Better at drawing people into an ambush, and at holding a room.',
+        info: 'Can throw a voice or borrow one. Lures people from the next sector into an ambush — and anybody who sees it done stops trusting them.',
         mods: { ambush: 0.06, persuasion: 0.05, excitement: 0.1 },
     },
     'Cannon-Counter': {
-        info: 'Counts every cannon and always knows the number. Steadier in the endgame, and harder to surprise.',
+        info: 'Counts every cannon and always knows the number. Each cannon steadies rather than frightens them, and a cannon next door tells them which way not to go.',
         mods: { awareness: 0.4, resolveDrift: 0.3, odds: 0.2 },
     },
     "Sponsor's Pet": {
@@ -1180,12 +1185,56 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         mods: { sponsorAppeal: 1.5, sponsorTrust: 0.5, trustGain: -0.15 },
     },
     'Twitchy Trigger': {
-        info: 'Swings first, every time. Quicker into a fight and quicker to strike from cover, and harder to stop once started.',
+        info: 'Swings first, every time. Quicker into a fight and quicker to strike from cover — and in a crowded fight, sometimes hits the ally beside them.',
         mods: { aggressionScore: 0.6, ambush: 0.05, retreat: -0.1, treachery: 0.05 },
     },
     'Weather-Nose': {
         info: 'Smells the weather coming. Takes less from cold and heat and notices the arena turning before it turns.',
         mods: { coldResist: 0.15, heatResist: 0.15, awareness: 0.3 },
+    },
+    /*
+     * AUDIT-12 §16: ten more. Six carry an engine hook of their own (named
+     * predicates below, read in engine/traitHooks.ts and at the sites it
+     * names); four are rows of existing keys.
+     */
+    'Plate-Sprinter': {
+        info: 'Off the plate like a shot and away from the horn. Much harder to run down at the gong, and much less interested in what is on the pile.',
+        mods: { retreat: 0.05, hornCommitment: -0.3 },
+    },
+    'Scar-Reader': {
+        info: 'Watches how people move when they are hurt. Knows exactly how badly anybody they have fought is injured, however long ago it was.',
+        mods: { awareness: 0.2 },
+    },
+    'Rationer': {
+        info: 'Eats half and saves half. A meal uses half an item, and as a group\'s provider they are never the one who takes two shares.',
+        mods: { hungerDrain: -1.5, rapport: 0.1 },
+    },
+    'Cornered Rat': {
+        info: 'Worst when there is nowhere left to run. Below 30 health, after a retreat that failed, they fight far harder than they should be able to.',
+    },
+    'Echo-Blind': {
+        info: 'Cannot place a sound in the dark. Sees less at night, and is quieter for never listening for anything.',
+        mods: { awarenessNight: -1, concealment: 0.05 },
+    },
+    'Rumour-Monger': {
+        info: 'Cannot keep anything to themselves. Believed more than they deserve, always has a story to pass on at a meeting, and is trusted a little slower.',
+        mods: { rumourCredibility: 0.3, trustGain: -0.1 },
+    },
+    'Long Memory': {
+        info: 'Remembers every face that ever hurt them. Hits harder against a sworn enemy, and grief lands heavier.',
+        mods: { vengeanceEdge: 1, griefResist: -0.1 },
+    },
+    'Last-Light': {
+        info: 'Does their best walking after dark, and pays for it at night.',
+        mods: { nightMovement: 0.6, fatigueNight: 2 },
+    },
+    'Knot-Tier': {
+        info: 'Ties a snare that holds. Their traps build more often and, left unsprung, catch something to eat.',
+        mods: { trapSkill: 0.08 },
+    },
+    'Crowd-Shy': {
+        info: 'Shrinks from a camera and from a crowd. Sponsors forget them, and so does the field.',
+        mods: { sponsorAppeal: -0.8, concealment: 0.08, targetDraw: -0.5 },
     },
 };
 
@@ -1308,3 +1357,26 @@ export function refusesCredit(t: { traits: string[] }): boolean {
 export function volunteersToCarry(t: { traits: string[] }): boolean {
     return t.traits.includes('Shared-Burden');
 }
+
+/*
+ * AUDIT-12 T15 / §16: named predicates for the traits whose effect is a
+ * choice or an event rather than a number. Read in `engine/traitHooks.ts` and
+ * at the sites that file names.
+ */
+export const isMimic = (t: { traits: string[] }) => t.traits.includes('Mimic');
+export const hasTwitchyTrigger = (t: { traits: string[] }) => t.traits.includes('Twitchy Trigger');
+export const isHomebody = (t: { traits: string[] }) => t.traits.includes('Homebody');
+export const forgetsFaces = (t: { traits: string[] }) => t.traits.includes('Forgets Faces');
+export const isOathkeeper = (t: { traits: string[] }) => t.traits.includes('Oathkeeper');
+export const isHeavySleeper = (t: { traits: string[] }) => t.traits.includes('Heavy Sleeper');
+export const isNightOwl = (t: { traits: string[] }) => t.traits.includes('Night Owl');
+export const isBoneSetter = (t: { traits: string[] }) => t.traits.includes('Bone-Setter');
+export const countsCannons = (t: { traits: string[] }) => t.traits.includes('Cannon-Counter');
+export const isSaltTongued = (t: { traits: string[] }) => t.traits.includes('Salt-Tongued');
+export const isPackRat = (t: { traits: string[] }) => t.traits.includes('Pack Rat');
+export const isPlateSprinter = (t: { traits: string[] }) => t.traits.includes('Plate-Sprinter');
+export const readsScars = (t: { traits: string[] }) => t.traits.includes('Scar-Reader');
+export const isRationer = (t: { traits: string[] }) => t.traits.includes('Rationer');
+export const isCorneredRat = (t: { traits: string[] }) => t.traits.includes('Cornered Rat');
+export const isRumourMonger = (t: { traits: string[] }) => t.traits.includes('Rumour-Monger');
+export const isKnotTier = (t: { traits: string[] }) => t.traits.includes('Knot-Tier');

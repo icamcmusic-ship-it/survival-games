@@ -10,6 +10,7 @@ import { NEW_ARENA_FLAVOR } from '../src/data/arenaFlavorNew';
 import { DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { ArenaLawId, GameState } from '../src/models/types';
 import { ARENA_MUTTS } from '../src/data/mutts';
+import { AUDIT12_WAVE2_ARENA } from '../src/data/balance';
 import { CLIMATE_LABELS } from '../src/data/arenaBriefing';
 import { usesUniversalPack } from '../src/data/arenaEventPacks';
 import { OFF_SEASON_SKINS } from '../src/data/offSeason';
@@ -133,6 +134,9 @@ ARENAS.forEach(arena => {
     // horror is a different game from one with five kinds of teeth. An arena
     // does still need at least one.
     if (arena.mutts.length < 1) problems.push(`${arena.id}: no mutts at all`);
+    // AUDIT-12 §8.7: the roster floor. Three creatures on a loop for nine days
+    // is not a roster.
+    if ((ARENA_MUTTS[arena.id] ?? []).length < AUDIT12_WAVE2_ARENA.muttRosterFloor) problems.push(`${arena.id}: ${(ARENA_MUTTS[arena.id] ?? []).length} mutts in ARENA_MUTTS, floor is ${AUDIT12_WAVE2_ARENA.muttRosterFloor}`);
     // §1.11: `Arena.mutts` is flavour the engine ignores — it resolves mutts
     // through ARENA_MUTTS — so it drifted with nothing to notice. Five arenas
     // carried a roster mutt their briefing never named. Both lists must agree.
@@ -349,6 +353,12 @@ if (GENERIC_ARENA_FLAVOR.events.length < 1) problems.push('generic flavour has n
             if (flavor.events.length < PROC_EVENT_FLOOR) problems.push(`${arena.id} (${tag}): generated arena receives ${flavor.events.length} authored events, under ${PROC_EVENT_FLOOR}`);
             if (once < PROC_ONCE_FLOOR) problems.push(`${arena.id} (${tag}): generated arena has ${once} once-per-run events, under ${PROC_ONCE_FLOOR}`);
             if (chains < 1) problems.push(`${arena.id} (${tag}): generated arena has no event chain`);
+            // AUDIT-12 §8.7: the generated roster and the shared biome roster
+            // both meet the floor.
+            const generatedRoster = arena.muttRoster ?? [];
+            if (generatedRoster.length < AUDIT12_WAVE2_ARENA.muttRosterFloor) problems.push(`${arena.id} (${tag}): generated mutt roster has ${generatedRoster.length}, floor is ${AUDIT12_WAVE2_ARENA.muttRosterFloor}`);
+            const biomeRoster = ARENA_MUTTS[biomeId.replace(/^procedural-/, '')];
+            if (biomeRoster && biomeRoster.length < AUDIT12_WAVE2_ARENA.muttRosterFloor) problems.push(`${biomeId}: biome mutt roster has ${biomeRoster.length}, floor is ${AUDIT12_WAVE2_ARENA.muttRosterFloor}`);
             if (flavor.ambient.length < PROC_AMBIENT_FLOOR) problems.push(`${arena.id} (${tag}): generated arena has ${flavor.ambient.length} ambient lines, under ${PROC_AMBIENT_FLOOR}`);
             const ids = flavor.events.filter(e => e.id).map(e => e.id!);
             if (new Set(ids).size !== ids.length) problems.push(`${arena.id} (${tag}): duplicate event ids in the composed pack`);
