@@ -18,7 +18,11 @@ page.on('pageerror', e => errors.push('pageerror: ' + e.message));
 
 const step = async (label, fn) => {
   try { await fn(); console.log('✓ ' + label); }
-  catch (e) { errors.push(`${label}: ${e.message}`); console.log('✗ ' + label + ' — ' + e.message); }
+  catch (e) {
+    errors.push(`${label}: ${e.message}`); console.log('✗ ' + label + ' — ' + e.message);
+    // AUDIT-12: a picture of the page as the step left it, for diagnosis.
+    await page.screenshot({ path: `${shots}/fail-${label.replace(/[^a-z0-9]+/gi, '-').slice(0, 40)}.png` }).catch(() => {});
+  }
 };
 
 await page.goto(BASE, { waitUntil: 'networkidle' });

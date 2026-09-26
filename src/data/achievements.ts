@@ -3978,7 +3978,7 @@ export const ACHIEVEMENTS: Achievement[] = [
          */
         hint: 'Crown a victor who became genuinely good at building things out of what the arena had.',
         category: 'survival',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (_s, v) => !!v && (v.proficiencies?.carpentry ?? 0) >= 4,
         nearMiss: (_s, v) => {
             const c = v?.proficiencies?.carpentry ?? 0;
