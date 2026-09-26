@@ -2,7 +2,7 @@ import { targetDrawOf } from './targeting';
 import { hiddenFromHunt } from './traitHooks';
 import { GameState, Objective, Tribute, Zone } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
-import { AUDIT12_TRIBUTES, ENDGAME, ESCALATION, PERCEPTION, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, MEMORY, MOVEMENT, OBJECTIVES, PLANNING, REPUTATION_TARGETING, RISK, STANDING_GOAL } from '../data/balance';
+import { AUDIT12_TRIBUTES, AUDIT13_CAREERS, ENDGAME, ESCALATION, PERCEPTION, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, MEMORY, MOVEMENT, OBJECTIVES, PLANNING, REPUTATION_TARGETING, RISK, STANDING_GOAL } from '../data/balance';
 import { SimContext } from './context';
 import { cycleOf, cyclesSinceContact, ensureMemory, hasVengeanceAgainst, impressionOf, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
 import { getZone, hopsTo, nextHopToward, severedEdgeSet, zoneFeatures } from './map';
@@ -662,7 +662,14 @@ function chooseObjective(
                 const trucedWithAnAlly = myAllies.some(ally =>
                     ally.id !== o.id && hasTruce(state, ally, o.id));
                 const thirdPartyCost = trucedWithAnAlly ? OBJECTIVES.thirdPartyTruceCost : 0;
-                return (winnable + loot + weakness + grudge - fearOf(t, o.id) + reputation - thirdPartyCost
+                // AUDIT-13 K6: a Career on their own is the chance the whole
+                // outer field has been waiting for. The horn no longer thins
+                // the pack, so the arena does it — once the pack has.
+                const strayCareer = !t.isCareer && o.isCareer
+                    && !state.tributes.some(p => p.id !== o.id && p.status === 'alive' && p.isCareer
+                        && allied(p, o))
+                    ? AUDIT13_CAREERS.strayCareerHuntBonus : 0;
+                return (winnable + strayCareer + loot + weakness + grudge - fearOf(t, o.id) + reputation - thirdPartyCost
                     + targetDrawOf(o)
                     + targetPreferenceScore(state, t, o, hops)
                     // §3.2 (audit): the outcome ledger. A mark that has got

@@ -9,8 +9,8 @@ import { Item, Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
 import { traitMod } from '../../data/traits';
 import { ARCHETYPES } from '../../data/archetypes';
-import { ALLIANCES, AUDIT12_TRIBUTES, BLOODBATH, ESCALATION, QUALITY_BIAS, TRAINING } from '../../data/balance';
-import { pruneDeadAlliances, registerAlliance } from '../alliance';
+import { ALLIANCES, AUDIT12_TRIBUTES, AUDIT13_CAREERS, BLOODBATH, ESCALATION, QUALITY_BIAS, TRAINING } from '../../data/balance';
+import { allied, pruneDeadAlliances, registerAlliance } from '../alliance';
 
 /**
  * REQUEST: how many tributes the Cornucopia is supposed to take.
@@ -456,7 +456,11 @@ function announceGongDecisions(ctx: SimContext, alive: Tribute[], fighters: Trib
     const isFighter = new Set(fighters.map(t => t.id));
     // Arrival order tells us who is going *into* the horn and who is working
     // its edge: the front of the charge gets the mouth, the back gets scraps.
-    const order = scrambleOrder(ctx, fighters);
+    // AUDIT-13 K2/T5: the pack goes in together, so it takes the front of
+    // the order; a Career read into the edge on arrival order alone was a
+    // Career fighting on their own.
+    const inPack = (t: Tribute) => t.isCareer && !!t.allianceId;
+    const order = scrambleOrder(ctx, fighters).sort((a, b) => Number(inPack(b)) - Number(inPack(a)));
     const deepIds = new Set(order.slice(0, Math.max(1, Math.ceil(order.length * BLOODBATH.gongDeepShare))).map(t => t.id));
 
     alive.forEach(t => {
@@ -471,18 +475,28 @@ function announceGongDecisions(ctx: SimContext, alive: Tribute[], fighters: Trib
         let other: Tribute | undefined;
         if (isFighter.has(t.id)) {
             if (sworn && ctx.rng.chance(BLOODBATH.gongHuntShare)) { kind = 'hunt'; other = sworn; }
-            else if (deepIds.has(t.id)) kind = 'horn';
-            else kind = 'edge';
-        } else if (partner && ctx.rng.chance(BLOODBATH.gongAllyShare)) {
+            // AUDIT-13 T5: the plan decides, not the order. A grab goes deep,
+            // a scatter works the edge; the pack goes in together (K2), and
+            // somebody here to prove something goes deep (T6). Only a fighter
+            // with no plan either way falls back to arrival order.
+            else if (inPack(t) || t.hornPlan === 'grab' || t.motive === 'prove') kind = 'horn';
+            else if (t.hornPlan === 'scatter') kind = 'edge';
+            else kind = deepIds.has(t.id) ? 'horn' : 'edge';
+        } else if (partner && ctx.rng.chance(Math.min(0.95, BLOODBATH.gongAllyShare
+            // AUDIT-13 T6: motive, read at last. Somebody who came here for a
+            // partner or a family looks for their person first...
+            * (t.motive === 'partner' || t.motive === 'family' ? 1.6 : 1)))) {
             kind = 'ally'; other = partner;
         } else if ((dreadOf(ctx, t) >= BLOODBATH.gongFreezeDread || t.age <= BLOODBATH.gongFreezeAge)
-            && ctx.rng.chance(BLOODBATH.gongFreezeShare)) {
+            // ...and somebody here to get out does not stand still.
+            && ctx.rng.chance(BLOODBATH.gongFreezeShare * (t.motive === 'escape' ? 0.5 : 1))) {
             // Sanity is full on the plates by construction, so freezing reads
             // off the two things that are actually true up there: how much of
             // the field this tribute is already afraid of, and how young they
             // are. A fourteen-year-old who has not moved is the shot.
             kind = 'freeze';
-        } else if (ARCHETYPES[t.archetype].caution > BLOODBATH.gongWaitCaution && ctx.rng.chance(BLOODBATH.gongWaitShare)) {
+        } else if (ARCHETYPES[t.archetype].caution > BLOODBATH.gongWaitCaution
+            && ctx.rng.chance(BLOODBATH.gongWaitShare * (t.motive === 'escape' ? 0.5 : 1))) {
             kind = 'wait';
         } else {
             kind = 'flee';
@@ -744,7 +758,14 @@ export function processBloodbath(ctx: SimContext) {
 
     // 2. The race itself. Arrival order decides who is inside the horn when the
     //    knot closes, and the front of the pack is the part that gets armed.
-    const arrivals = scrambleOrder(ctx, fighters);
+    // AUDIT-13 K2: the pack arrives together — at the front, where the steel
+    // is and where the gong line already said they went.
+    const packed = (t: Tribute) => t.isCareer && !!t.allianceId;
+    // The scrum's own queue keeps the raw arrival order: with the pack at its
+    // head, the three-way knot below drew three packmates into a fight with
+    // each other at the gong.
+    const scramble = scrambleOrder(ctx, fighters);
+    const arrivals = [...scramble].sort((a, b) => Number(packed(b)) - Number(packed(a)));
     const killingZone = new Set(arrivals.slice(0, Math.max(2, Math.ceil(arrivals.length * 0.6))).map(t => t.id));
 
     arrivals.forEach((t, index) => {
@@ -777,7 +798,7 @@ export function processBloodbath(ctx: SimContext) {
 
     // 3. The scrum. The pool is the arrival order, so the tributes who got there
     //    first meet each other rather than being paired off at random.
-    const pool = arrivals.filter(t => t.status === 'alive');
+    const pool = scramble.filter(t => t.status === 'alive');
     // §23: a Career inside the knot hits harder than anybody else inside it.
     /*
      * A bloodier bloodbath must not also be a more *Career* bloodbath.
@@ -848,10 +869,11 @@ export function processBloodbath(ctx: SimContext) {
         // the scrum they pick one target and go through them together, which is
         // the entire reason a Career pack is frightening.
         const packed = pool.filter(t => t.isCareer && t.allianceId);
+        // AUDIT-13 K2: likelier, and the whole pack (up to four) goes in.
         if (packed.length >= 2 && pool.length > packed.length && ctx.rng.chance(BLOODBATH.packGangUpChance)) {
             const prey = pool.filter(t => !packed.includes(t));
             const target = prey[pickOpponentIndex(ctx, packed[0], prey)];
-            const party = [...packed.slice(0, 3), target];
+            const party = [...packed.slice(0, AUDIT13_CAREERS.packGangUpMax), target];
             party.forEach(t => {
                 const idx = pool.indexOf(t);
                 if (idx >= 0) pool.splice(idx, 1);
@@ -1080,14 +1102,29 @@ function pickOpponentIndex(ctx: SimContext, attacker: Tribute, pool: Tribute[]):
     const weights = pool.map(target => {
         let weight = 1;
         weight += Math.max(0, -getRel(attacker, target.id)) * 0.03;
-        weight += personaThreat(target) * 2;
+        // AUDIT-13 K1: the persona pull is for outsider-on-outsider targeting.
+        // An outsider facing a Career has every reason to pick someone else —
+        // this term used to send every outsider in the knot at the pack.
+        const avoidPack = !attacker.isCareer && target.isCareer;
+        if (!avoidPack) weight += personaThreat(target) * 2;
         // §8: the trait that claims nobody is looking at them. The bloodbath
         // is a third of every run's deaths and it was reading everything about
         // a target except how little anybody wanted to pick them.
         weight += targetDrawOf(target) * BLOODBATH.targetDrawWeight;
         // Careers hunt the weak first; that is the whole strategy.
         if (attacker.isCareer) weight += (10 - target.attributes.strength) * 0.15;
+        if (avoidPack) {
+            // The strong outsider will still take a swing at one; a grudge
+            // makes it likelier.
+            const nerve = Math.max(AUDIT13_CAREERS.outsiderAvoidFloor,
+                AUDIT13_CAREERS.outsiderAvoidBase + AUDIT13_CAREERS.outsiderAvoidPerStrength * (attacker.attributes.strength - 5));
+            weight *= nerve * (1 + Math.max(0, -getRel(attacker, target.id)) / 50);
+        }
         weight *= Math.max(0.1, 1 - Math.max(0, getRel(attacker, target.id)) / 120);
+        // AUDIT-13 K2: the pack does not turn on itself in the first minute.
+        // Packmates in the same knot were picking each other off the pool
+        // like anybody else; now it is a last resort, when nobody else is left.
+        if (attacker.isCareer && target.isCareer && allied(attacker, target)) return AUDIT13_CAREERS.packmateTargetWeight;
         return Math.max(0.05, weight);
     });
     let roll = ctx.rng.nextFloat() * weights.reduce((a, b) => a + b, 0);

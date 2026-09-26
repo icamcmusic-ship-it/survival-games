@@ -6,7 +6,6 @@
   "src/engine/arenaGenerator.ts :: threshold :: shapeRoll < 0.2": 1,
   "src/engine/arenaGenerator.ts :: threshold :: shapeRoll < 0.85": 1,
   "src/engine/combat.ts :: accumulate :: chance += 0.15": 1,
-  "src/engine/combat.ts :: accumulate :: chance -= 0.1": 1,
   "src/engine/combat.ts :: accumulate :: chance -= 0.12": 1,
   "src/engine/combat.ts :: accumulate :: power += ARCHETYPES[t.archetype].aggression * 4": 1,
   "src/engine/combat.ts :: accumulate :: power -= 3": 1,
