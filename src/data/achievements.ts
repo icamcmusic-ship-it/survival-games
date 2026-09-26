@@ -466,7 +466,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Starved Out',
         hint: 'See three or more tributes starve to death in a single Games.',
         category: 'games',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: state => causeDeaths(state, 'starvation') >= 3,
         nearMiss: state => (causeDeaths(state, 'starvation') === 2 ? 'Two starved — one short' : undefined),
     },
@@ -885,7 +885,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // three times more foraging than the calendar allows.
         hint: 'Crown a victor who successfully foraged five or more times.',
         category: 'survival',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (_s, v) => !!v && (v.forageSuccesses ?? 0) >= 5,
         nearMiss: (_s, v) => { const n = v?.forageSuccesses ?? 0; return n >= 3 && n < 5 ? `${v!.name} foraged successfully ${n} times — ${5 - n} short` : undefined; },
     },
@@ -2464,7 +2464,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Borrowed Time',
         hint: 'Crown a victor whose will to keep going dropped under twenty and came back up.',
         category: 'survival',
-        rarity: 'possible',
+        rarity: 'legendary',
         // §1.3 (audit): resolve is sampled in every phase now; the trough that
         // counts is twenty, which is where breakdowns start being rolled.
         test: (_s, v) => !!v && (v.minResolve ?? 100) < 20 && (v.resolve ?? 0) >= 20,
@@ -2648,7 +2648,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Walking Wounded',
         hint: 'Crown a victor carrying five or more separate injuries.',
         category: 'survival',
-        rarity: 'possible',
+        rarity: 'legendary',
         // AUDIT-8 §1.4: this shared a byte-identical predicate with 'crown-limping'.
         // Two cards for one boolean, always flipping together. Re-gated to the
         // harder half of the same idea rather than deleted, so no id already in
@@ -2945,7 +2945,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // AUDIT-7: observed across 500 runs, so no longer 'possible?' — the label
         // means the simulation is believed able to do this and no measured run
         // ever has, and a measured run now has.
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (_s, v) => !!v && (v.visitedZones?.length ?? 0) === 1,
         nearMiss: (_s, v) => {
             const n = v?.visitedZones?.length ?? 0;
@@ -4692,7 +4692,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Whole Vocabulary',
         hint: 'See six or more different zone-effect kinds in one Games.',
         category: 'arena',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: state => {
             const kinds = new Set(Object.values(state.zoneEffects ?? {}).flat().map(e => e.kind));
             return kinds.size >= 6;
@@ -5951,7 +5951,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'a8-twelve-years-old',
         name: 'Twelve Years Old',
         hint: 'Crown a victor at the youngest age the bowl can draw.',
-        category: 'reaping', rarity: 'possible',
+        category: 'reaping', rarity: 'legendary',
         test: (_s, v) => !!v && v.age <= 12,
         nearMiss: (_s, v) => (v?.age === 13 ? 'thirteen; twelve is the bar' : undefined),
     },
@@ -5959,7 +5959,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'a8-put-their-hand-up',
         name: 'Put Their Hand Up',
         hint: 'Crown a volunteer in a year when almost nobody volunteered.',
-        category: 'reaping', rarity: 'possible',
+        category: 'reaping', rarity: 'legendary',
         test: (state, v) => !!v && v.volunteered === true
             && state.tributes.filter(t => t.volunteered).length <= 3,
         nearMiss: (state, v) => (v?.volunteered === true
@@ -6136,7 +6136,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Mind the Gap',
         hint: 'Win the Undercroft after being hit by the ghost train and living through it.',
         category: 'arena',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (state, v) => !!v && state.arena.id === 'undercroft'
             && (v.wounds ?? []).some(w => w.cause.startsWith('Hit by the train')),
         nearMiss: (state, v) => (v && state.arena.id === 'undercroft'
@@ -6166,7 +6166,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Whiteout Walker',
         hint: 'Win Cinder Peak after a whiteout, having walked the Ridge Line.',
         category: 'arena',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (state, v) => !!v && state.arena.id === 'cinderpeak'
             && state.log.some(e => e.text.startsWith('WHITEOUT:'))
             && (v.visitedZones ?? []).includes('The Ridge Line'),
@@ -6406,7 +6406,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Unmoved',
         hint: 'Crown a victor who never left the zone they started in.',
         category: 'oddity',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (state, v) => !!v && (v.visitedZones?.length ?? 0) === 1,
         nearMiss: (state, v) => v && (v.visitedZones?.length ?? 0) === 2 ? 'the victor only ever stood in two zones' : undefined,
     },

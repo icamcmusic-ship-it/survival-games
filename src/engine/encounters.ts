@@ -759,7 +759,12 @@ export function resolvePairEncounter(ctx: SimContext, t: Tribute, other: Tribute
         const listener = talker === t ? other : t;
         if (!tryParley(ctx, talker, listener)) {
             noteParleyFailed(ctx, talker, listener);
-            resolveCombat(ctx, t, other);
+            // Only a meeting that was going to be a fight anyway becomes one.
+            // Two wary strangers who could not agree terms still part.
+            if (isAggressiveStance(t.stance) || isAggressiveStance(other.stance)
+                || relationship < ENCOUNTER_BRANCH.hostileRegard || huntingEachOther) {
+                resolveCombat(ctx, t, other);
+            }
         }
     } else if (isDesperate(ctx, t, other)) {
         // Ordered ahead of the hostile-meeting branch on purpose: a tribute

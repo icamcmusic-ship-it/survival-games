@@ -721,7 +721,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         // built a working relationship with the fact. Fear lands; less of it stays.
         fearScale: 0.8,
         tagline: 'Waste is for people with sponsors.',
-        targetDraw: -0.5,
+        // AUDIT-12 §7: -0.5 -> -1.
+        targetDraw: -1,
     },
     captor: {
         id: 'captor',
@@ -822,7 +823,9 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         signature: 'martyrOffer',
         hatesArchetypes: ['captor', 'mercenary', 'understudy'],
         tagline: 'Not them.',
-        targetDraw: -1,
+        // AUDIT-12 §7: -1 -> -1.5 (3.5% at n=9,600).
+        targetDraw: -1.5,
+
         fearScale: 0.6,
     },
     opportunist: {
@@ -855,14 +858,15 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'tracker',
         name: 'Tracker',
         description: 'Reads the ground. Knows who went which way and how long ago, and is the only kind of tribute a hiding place does not save you from.',
-        statBias: { intelligence: 1, stealth: 2 },
+        // AUDIT-12 §7: stealth 2 -> 1 and hunt 0.5 -> 0.35.
+        statBias: { intelligence: 1, stealth: 1 },
         preferredTraits: ['Tracker', 'Eagle-Eyed', 'Sure-Footed', 'Trapwise'],
         aggression: 0.15,
         allianceAffinity: -0.1,
         treachery: 0.05,
         caution: 0.1,
         stanceBias: { Hunting: 1.0, Shadowing: 0.7, Patrolling: 0.5 },
-        objectiveBias: { hunt: 0.5, stalk: 0.4 },
+        objectiveBias: { hunt: 0.35, stalk: 0.4 },
         // §8.2: a Tracker follows the trail everyone is talking about, because
         // that is the one worth following.
         targetPreference: 'mostFamous',
@@ -894,8 +898,10 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
          */
         statBias: { charisma: 3, willpower: 2, endurance: 1 },
         preferredTraits: ['Pacifist', 'Softhearted', 'Peacemaker', 'Charismatic'],
-        // AUDIT-12 §7: -0.35 -> -0.2, Desperate 0.8 -> 0.3.
-        aggression: -0.2,
+        // AUDIT-12 §7 proposed -0.35 -> -0.2 and Desperate 0.8 -> 0.3; measured
+        // at n=9,600 that moved it 4.4% -> 3.4%, so only the targetDraw change
+        // below is kept.
+        aggression: -0.35,
         allianceAffinity: 0.45,
         treachery: -0.3,
         caution: 0.2,
@@ -911,7 +917,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
          * has run out of people to talk to is the most frightening version of
          * themselves, and that is a beat the archetype could never reach.
          */
-        stanceBias: { Defensive: 0.6, Aggressive: -0.4, Evasive: 0.2, Desperate: 0.3 },
+        stanceBias: { Defensive: 0.6, Aggressive: -0.4, Evasive: 0.2, Desperate: 0.8 },
         objectiveBias: { protect: 0.5, survive: 0.4 },
         targetPreference: 'nearest',
         // §8.1: as with the Underdog — the archetype's whole argument is that
@@ -920,7 +926,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         signature: 'confessorPlea',
         hatesArchetypes: ['zealot', 'beast', 'penitent'],
         tagline: 'Nobody wants to be the one who did it.',
-        targetDraw: -1.5,
+        // AUDIT-12 §7: -1.5 -> -2.
+        targetDraw: -2,
         fearScale: 0.8,
     },
 
@@ -1037,7 +1044,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'forager',
         name: 'Forager',
         description: 'Never went hungry at home either. Knows which half of a plant is dinner and which half is a funeral, and feeds whoever is standing nearby.',
-        statBias: { intelligence: 2, endurance: 1, strength: -1 },
+        // AUDIT-12 §7: strength -1 -> 0 (off the floor of the table).
+        statBias: { intelligence: 2, endurance: 1 },
         preferredTraits: ['Herbalist', 'Gut-Wise', 'Butcher', 'Deep-Rooted'],
         aggression: -0.2,
         allianceAffinity: 0.25,
@@ -1075,7 +1083,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
          */
         statBias: { agility: 1, charisma: 1, endurance: -1 },
         preferredTraits: ['Left-Handed', 'Reach', 'Marksman', 'Dead-Eyed'],
-        aggression: 0.3,
+        // AUDIT-12 §7: 0.3 -> 0.25.
+        aggression: 0.25,
         allianceAffinity: -0.35,
         treachery: -0.2,
         caution: -0.05,
@@ -1327,7 +1336,9 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         statBias: { endurance: 3, stealth: 1, charisma: -1 },
         preferredTraits: ['Homebody', 'Unremarkable', 'Quiet Room', 'Forgets Faces'],
         hornFight: -0.15,
-        aggression: -0.2,
+        // AUDIT-12 §7: -0.2 -> -0.1 — it outlasts and cannot close.
+        aggression: -0.1,
+
         allianceAffinity: -0.4,
         treachery: 0,
         caution: 0.35,
@@ -1377,10 +1388,11 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         hatesArchetypes: ['mercenary', 'captor'],
         targetPreference: 'weakest',
         riskCurve: 'flat',
-        // AUDIT-12 §7: full caution at the horn, and quicker out of a fight
-        // they have nothing to hold it with.
-        hornFight: -0.2,
+        // AUDIT-12 §7: quicker out of a fight they have nothing to hold it
+        // with. (The proposed "full caution at the horn" measured 4.1% ->
+        // 3.6% at n=9,600 — more of them caught running — and is not kept.)
         unarmedRetreat: 0.1,
+
 
         signature: 'medicTriage',
         tagline: 'Saves the enemy too.',
@@ -1473,7 +1485,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         riskCurve: 'flat',
         signature: 'guardianStand',
         tagline: 'Through me first.',
-        targetDraw: 0.5,
+        targetDraw: 1,
         fearScale: 0.85,
     },
     forger: {
@@ -1494,7 +1506,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         signature: 'forgeWeapon',
         hornFight: -0.15,
         tagline: 'Made, not found.',
-        targetDraw: -0.5,
+        targetDraw: 0,
         fearScale: 1,
     },
     gambler: {

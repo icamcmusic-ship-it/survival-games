@@ -144,7 +144,9 @@ export const VITALS = {
      */
     exhaustedDamage: 4,
     /** Relief drops fatigue to just under the threshold, as with the other vitals. */
-    starvingDamage: 3,
+    // AUDIT-12 wave 2 §7: 3 -> 5. Starvation sat at 0.9-1.0% of deaths
+    // against a 1-2% goal after the escalating bite alone was raised.
+    starvingDamage: 5,
     /** §7.7: 10 -> 8 — dehydration is meant to pressure tributes toward water, not out-kill the mutts. */
     dehydratedDamage: 5,
 
@@ -10845,8 +10847,8 @@ export const AUDIT12_WAVE2_TRIBUTES = {
     hidingConcealmentBonus: 0.12,
     hidingTrackedLevel: 3,
     /** Hiding: what lying still costs per cycle. */
-    hidingHunger: 2.5,
-    hidingThirst: 3,
+    hidingHunger: 1.5,
+    hidingThirst: 2,
     /** Parleying: the risk tolerance at or under which talking comes first. */
     parleyingRiskMax: -0.15,
     parleyingBase: 4.4,
