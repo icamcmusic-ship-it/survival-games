@@ -12,6 +12,7 @@ import { clampTribute } from './vitals';
 import { heatBurden, insulation, massOf } from './physique';
 import { traitMod } from '../data/traits';
 import { loseSanity } from './sanityBands';
+import { skinCause } from '../data/causeSkins';
 
 /**
  * One exposure system, used by both the arena's own climate and the
@@ -162,7 +163,16 @@ export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProf
     }
 
     if (profile.damage && (profile.damageChance === undefined || ctx.rng.chance(profile.damageChance * scale))) {
-        applyDamage(ctx, t, amount(profile.damage), { cause: profile.cause, code: profile.code, kind: 'climate' });
+        // AUDIT-13 W3: the standing climate's bare "Froze to death" (climate.ts)
+        // speaks in the arena's words; a named front or snap keeps its own.
+        const climateCause = profile.cause === 'Froze to death'
+            ? skinCause(ctx.state.arena.id, 'hypothermia', t.id, profile.cause)
+            : profile.cause;
+        applyDamage(ctx, t, amount(profile.damage), {
+            cause: climateCause,
+            code: profile.code ?? (climateCause !== profile.cause ? 'hypothermia' : undefined),
+            kind: 'climate',
+        });
     }
     // §7: heatstroke. A heat profile is one that works by taking water; a
     // tribute already parched and spent under it can collapse outright.

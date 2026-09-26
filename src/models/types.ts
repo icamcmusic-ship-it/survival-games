@@ -776,6 +776,11 @@ export type DeathCauseCode =
     | 'nightlock' | 'self-inflicted'
     // The arena itself.
     | 'drowning' | 'fall' | 'collapse' | 'border' | 'trap' | 'machinery' | 'hazard'
+    // AUDIT-13 W5: what used to fall through to the catch-all `hazard`. A
+    // crush is weight landing on you, an impact is being thrown into
+    // something (or something thrown into you), `exposure-pressure` is air or
+    // water pressure rather than temperature.
+    | 'crush' | 'impact' | 'electrocution' | 'sound' | 'animal' | 'exposure-pressure'
     // The things the Capitol put in it.
     | 'mutt' | 'gamemaker'
     /** Nothing claimed it. `check-cause-codes` fails the build on this. */

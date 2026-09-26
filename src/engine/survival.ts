@@ -22,6 +22,7 @@ import { fearOf } from './fear';
 import { hasCamp } from './fieldcraft';
 import { applySepsisDrain, isSeptic, tickInfection, treatInfection } from './infection';
 import { SURVIVAL_TEXTS } from '../data/flavorText';
+import { skinCause } from '../data/causeSkins';
 import { fill } from './encounters';
 import { craftOf } from '../data/districts';
 import { traitMod } from '../data/traits';
@@ -397,7 +398,7 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
             : undefined;
         const bleedCause = opener
             ? `Bled out from a wound ${opener.name} opened`
-            : 'Bled out from untreated wounds';
+            : skinCause(ctx.state.arena.id, 'bleeding', t.id, 'Bled out from untreated wounds');
         if (applyDamage(ctx, t, bleedDamage(t), {
             cause: bleedCause,
             kind: 'status', code: 'bleeding',
@@ -407,18 +408,18 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
         }
     }
     if (t.injuries.infected) {
-        if (applyDamage(ctx, t, INJURY_DAMAGE.infected * gradeDamageScale(t, 'infected'), { cause: 'Succumbed to an infected wound', kind: 'status', code: 'infection' })) {
+        if (applyDamage(ctx, t, INJURY_DAMAGE.infected * gradeDamageScale(t, 'infected'), { cause: skinCause(ctx.state.arena.id, 'infection', t.id, 'Succumbed to an infected wound'), kind: 'status', code: 'infection' })) {
             reliefFor(t, 'infected');
         }
     }
     if (t.injuries.poisoned) {
-        if (applyDamage(ctx, t, INJURY_DAMAGE.poisoned * gradeDamageScale(t, 'poisoned'), { cause: 'Succumbed to poison', kind: 'status', code: 'poison' })) {
+        if (applyDamage(ctx, t, INJURY_DAMAGE.poisoned * gradeDamageScale(t, 'poisoned'), { cause: skinCause(ctx.state.arena.id, 'poison', t.id, 'Succumbed to poison'), kind: 'status', code: 'poison' })) {
             reliefFor(t, 'poisoned');
         }
         loseSanity(t, INJURY_DAMAGE.poisonSanity);
     }
     if (t.injuries.burned) {
-        if (applyDamage(ctx, t, INJURY_DAMAGE.burned * gradeDamageScale(t, 'burned'), { cause: 'Died of untreated burns', kind: 'status', code: 'burns' })) {
+        if (applyDamage(ctx, t, INJURY_DAMAGE.burned * gradeDamageScale(t, 'burned'), { cause: skinCause(ctx.state.arena.id, 'burns', t.id, 'Died of untreated burns'), kind: 'status', code: 'burns' })) {
             reliefFor(t, 'burned');
         }
     }
@@ -436,7 +437,7 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
                 [t.id],
                 { category: 'survival' }
             );
-        } else if (applyDamage(ctx, t, INJURY_DAMAGE.frostbitten * gradeDamageScale(t, 'frostbitten'), { cause: 'Froze to death', kind: 'status', code: 'hypothermia' })) {
+        } else if (applyDamage(ctx, t, INJURY_DAMAGE.frostbitten * gradeDamageScale(t, 'frostbitten'), { cause: skinCause(ctx.state.arena.id, 'hypothermia', t.id, 'Froze to death'), kind: 'status', code: 'hypothermia' })) {
             reliefFor(t, 'frostbitten');
         }
     }

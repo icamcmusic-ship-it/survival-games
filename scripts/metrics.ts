@@ -74,6 +74,10 @@ function bucketOf(t: Tribute): string {
         case 'mutt': return 'mutts';
         case 'border': return 'border';
         case 'unknown': return 'unknown';
+        // AUDIT-13 W5: the hazard split keeps the table's families unchanged;
+        // the per-code distribution lives in `check-cause-codes`.
+        case 'crush': case 'impact': case 'electrocution': case 'sound':
+        case 'animal': case 'exposure-pressure': return 'arena/hazard';
         default: return 'arena/hazard';
     }
 }

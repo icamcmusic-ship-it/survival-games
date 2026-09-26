@@ -17,7 +17,7 @@ import { getZone, zoneFeatures } from './map';
 import { loadFromViolence } from './loadBearing';
 import { noteFightOpened } from './runRecords';
 import { readOf, addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound, rattle } from './memory';
-import { classifyCause } from './causes';
+import { classifyCause, refineHazardCode } from './causes';
 import { incurDebt } from './debts';
 import { adjustRel, adjustTrust, getRel, propagateDeathFallout } from './relationships';
 import { noteMilestone } from './milestones';
@@ -316,6 +316,8 @@ export function applyDamage(
     record: Omit<DamageRecord, 'cycle' | 'amount'>,
 ): boolean {
     if (amount <= 0) return false;
+    // AUDIT-13 W5: split the `hazard` catch-all at the one place damage lands.
+    if (record.code === 'hazard') record = { ...record, code: refineHazardCode(record.code, record.cause) };
     // You cannot wound a corpse. Without this, any caller that damages a
     // tribute killed earlier in the same pass silently overwrites the damage
     // record their obituary was built from.
