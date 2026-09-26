@@ -230,7 +230,12 @@ export function grudgeTotal(state: GameState, holder: Tribute): number {
 /** Whether a betrayal just chosen is the fairness ledger coming due; logs it if so. */
 export function noteGrudgeMotive(ctx: SimContext, betrayer: Tribute, victim: Tribute) {
     const g = grudgeAgainst(ctx.state, betrayer, victim.id);
-    if (g < ALLIANCE_BONDS.grudgeMotive) return;
+    // AUDIT-12 T13 made a camp meal need real food, so unfair splits are
+    // about a ninth as common as they were and the second one against the
+    // same provider almost never came. A single short-changed meal is enough
+    // for the knife to be *about* that; `grudgeMotive` stays the bar for a
+    // schism grievance, which is a group-level decision.
+    if (g < ALLIANCE_BONDS.grudgeBetrayalMotive) return;
     ctx.logEvent(
         `${betrayer.name} has been going hungry while ${victim.name} ate twice. That account is about to be settled.`,
         [betrayer.id, victim.id],

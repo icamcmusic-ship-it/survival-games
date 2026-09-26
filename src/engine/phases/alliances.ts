@@ -463,13 +463,19 @@ export function processAlliances(ctx: SimContext) {
         const first = preemptiveBetrayer(ctx, members);
         // AUDIT-12 T15: an Oathkeeper does not strike first, and pays for wanting to.
         if (first && !oathRefusesBetrayal(ctx, first[0])) {
+            noteGrudgeMotive(ctx, first[0], first[1]);
             resolveBetrayal(ctx, first[0], first[1], members, 'preempt');
             return;
         }
         // Betrayal chance increases as fewer tributes remain
         const betrayalThreshold = (alive.length <= ALLIANCES.betrayalEndgameFieldSize
             ? ALLIANCES.betrayalEndgame
-            : ALLIANCES.betrayalBase) * ctx.state.config.betrayalRate;
+            : ALLIANCES.betrayalBase) * ctx.state.config.betrayalRate
+            // A group with somebody going hungry while another eats twice is
+            // a group closer to a knife. Since AUDIT-12 T13 a meal needs real
+            // food, so these ledgers are rare and short-lived; without this
+            // they almost never lasted long enough to come due.
+            * (1 + Math.max(0, ...members.map(m => grudgeTotal(ctx.state, m))) * ALLIANCE_BONDS.grudgeBetrayalChanceWeight);
 
         if (ctx.rng.chance(betrayalThreshold)) {
             const betrayer = pickBetrayer(ctx, members);

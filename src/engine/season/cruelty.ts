@@ -75,6 +75,16 @@ export function noteGamemakerCruelty(state: GameState, type: string, scheduled: 
 export function extraDisruptionHeld(state: GameState): boolean {
     if (state.config.vanillaRules) return false;
     if (!fairnessAllows(state)) return true;
+    return handsOffBooth(state);
+}
+
+/**
+ * A hands-off director keeps the booth's own initiatives off the air too: the
+ * Head Gamemaker's signature turn and the grudge turn are exactly the kind of
+ * unprompted Capitol disruption the taste is about not making.
+ */
+export function handsOffBooth(state: GameState): boolean {
+    if (state.config.vanillaRules || !state.headGamemaker) return false;
     const taste = directorTaste(state.headGamemaker);
-    return !!state.headGamemaker && taste.id === 'hands-off' && taste !== NEUTRAL_TASTE;
+    return taste.id === 'hands-off' && taste !== NEUTRAL_TASTE;
 }

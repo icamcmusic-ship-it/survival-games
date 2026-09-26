@@ -242,6 +242,12 @@ const PLAYS: Record<DirectorTasteId, DirectorPlay[]> = {
                 return true;
             },
         },
+        {
+            id: 'let-it-run', day: D.earliestDay + 1, run: ctx => {
+                cancelNextBeat(ctx, 'The Head Gamemaker waves the next release away before it is loaded');
+                return true;
+            },
+        },
     ],
 };
 
