@@ -2424,6 +2424,14 @@ export const GONG_DECISIONS = {
         '{tribute} finds cover at the edge of the ring and waits for the horn to thin out.',
         '{tribute} does not run at {horn} or away from it. They get out of the open and watch.',
     ],
+    /** AUDIT-13 T5: beside the person they swore to, between them and the ring. */
+    shield: [
+        '{tribute} goes to {other} at the gong and stays a half-step in front of them the whole way out of the ring.',
+        '{tribute} ignores {horn}. The only job {tribute} has in the first minute is keeping anybody off {other}.',
+        '{tribute} puts themself between {other} and the charge, and takes the first shove meant for them.',
+        '{tribute} and {other} leave the ring together, {tribute} walking backwards, watching everything that moves.',
+        '{tribute} reaches {other} and does not let anybody closer than arm’s length until they are clear.',
+    ],
 } as const;
 
 export const BLOODBATH_TEXTS = {

@@ -451,7 +451,10 @@ export function guardianStand(ctx: SimContext, t: Tribute): boolean {
     widenRescueWindow(ward, W2.guardianWindow);
     adjustTrust(ward, t.id, W2.guardianTrust);
     adjustRel(ward, t.id, W2.guardianTrust);
-    const killer = ctx.state.tributes.find(o => o.id === ward.downed?.byId && o.status === 'alive' && o.zone === t.zone && isActive(o))
+    // AUDIT-13: never themself — a guardian who put the ward down (a knife
+    // that came from inside the group) was standing guard against their own
+    // hand and fighting themself.
+    const killer = ctx.state.tributes.find(o => o.id === ward.downed?.byId && o.id !== t.id && o.status === 'alive' && o.zone === t.zone && isActive(o))
         ?? (isDowned(ward) ? undefined : hostileHere(ward));
     ctx.logEvent(
         killer

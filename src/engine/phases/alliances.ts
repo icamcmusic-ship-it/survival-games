@@ -4,7 +4,7 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { GameState, Tribute } from '../../models/types';
 import { ARCHETYPES, archetypeCompatibility } from '../../data/archetypes';
-import { RESPECT, ALLIANCES, AUDIT13_CAREERS, PERCEPTION, BETRAYAL, OBJECTIVES, PROFICIENCY, PROTECTOR_BOND, QUELL_MECHANICS, RELATIONSHIPS, ROMANCE, SUSPICION } from '../../data/balance';
+import { RESPECT, ALLIANCES, AUDIT13_CAREERS, AUDIT13_RELATIONS, PERCEPTION, BETRAYAL, OBJECTIVES, PROFICIENCY, PROTECTOR_BOND, QUELL_MECHANICS, RELATIONSHIPS, ROMANCE, SUSPICION } from '../../data/balance';
 import { profOf, trainProficiency } from '../proficiency';
 import { applyDamage, checkDeath, resolveCombat } from '../combat';
 import { clampTribute } from '../vitals';
@@ -19,6 +19,7 @@ import { refreshTraitTiers } from '../earnedTraits';
 import { ALLIANCE_BONDS, AUDIT12_TRIBUTES } from '../../data/balance';
 import { allianceOf, areLovers, cacheValue, contributeToCache, isPerforming, maintainPerformance, membersOf, inCohesionFloor, mergeAllianceRecords, noteAllianceEnd, pickLeader, reconcileAlliances, registerAlliance, shownRegard } from '../alliance';
 import { resolveBetrayal, preemptiveBetrayer } from '../betrayal';
+import { betrayalIntent, tickRelationsArc } from '../relationsArc';
 import { resolveDuePacts } from '../alliancePact';
 import { runAlliancePolitics, wasExpelled } from '../alliancePolitics';
 import { betrayalReluctance } from '../debts';
@@ -26,6 +27,8 @@ import { addExcitement } from '../audience';
 import { traitMod } from '../../data/traits';
 import { effectiveAllianceMaxSize, wildcardIs } from '../gamesProfile';
 import { COLD_PERSONAS, PERSONA_THREAT, WARM_PERSONAS } from '../../data/personas';
+
+const names = (ts: Tribute[]) => ts.map(t => t.name).join(' and ');
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -446,6 +449,28 @@ export function processAlliances(ctx: SimContext) {
     // standing next to them.
     // A walkout happens in daylight, with the pack watching — once a day, not
     // twice, so it reads as a decision rather than as churn.
+    // AUDIT-13 K5: a reaped Career never asked to be in the pack. Before the
+    // pack's own fracture opens, one of them may slip away on their own — the
+    // rare `career-defections` beat that the reaped half of the pack feeds.
+    if (ctx.state.day < AUDIT13_CAREERS.packFractureFromDay && ctx.state.phase === 'day') {
+        alliances.forEach((members, id) => {
+            if (!id.startsWith('career-pack')) return;
+            const live = members.filter(m => m.status === 'alive' && m.allianceId === id);
+            if (live.length < 3) return;
+            const reaped = live.find(m => !m.volunteered && ctx.rng.chance(AUDIT13_RELATIONS.reapedEarlyBreakChance));
+            if (!reaped) return;
+            const others = live.filter(o => o.id !== reaped.id);
+            delete reaped.allianceId;
+            noteAllianceEnd(ctx.state, id, 'walkout', reaped.id);
+            others.forEach(o => adjustRel(o, reaped.id, -AUDIT13_CAREERS.packFractureRegard / 2));
+            ctx.logEvent(
+                `${reaped.name} never volunteered for any of this. While ${names(others)} argue over the watch in ${reaped.zone}, `
+                + `${reaped.name} takes a pack and a knife and is simply not there in the morning.`,
+                [reaped.id, ...others.map(o => o.id)],
+                { type: 'career-defections', important: true, category: 'alliance' }
+            );
+        });
+    }
     if (ctx.state.day >= AUDIT13_CAREERS.packFractureFromDay && ctx.state.phase === 'day') {
         alliances.forEach((members, id) => {
             if (!id.startsWith('career-pack')) return;
@@ -508,6 +533,8 @@ export function processAlliances(ctx: SimContext) {
     // 2. Betrayal Logic
     alliances.forEach((members) => {
         if (members.length < 2) return;
+        // AUDIT-13 R3: a knife that was seen coming comes first.
+        if (betrayalIntent(ctx, members)) return;
         // §3.2 (audit): before the ordinary roll, anybody who has decided an
         // ally is about to turn on them gets to turn first.
         const first = preemptiveBetrayer(ctx, members);
@@ -787,6 +814,9 @@ export function processAlliances(ctx: SimContext) {
     tickHollowVictories(ctx);
     tickLonerCamps(ctx);
     refreshTraitTiers(ctx);
+    // AUDIT-13 §6: reunions and feuds, the district partner, the slow burn,
+    // vengeance cooling, and wards.
+    if (!wildcardIs(ctx.state, 'rule-change-no-allies')) tickRelationsArc(ctx, (a, b) => declareLovers(ctx, a, b));
 }
 
 /**
@@ -945,6 +975,11 @@ function schismAlliances(ctx: SimContext, alliances: Map<string, Tribute[]>) {
         const splinterId = `alliance-${chosen[0].id}-splinter`;
         chosen.forEach(m => { m.allianceId = splinterId; });
         const splinterRecord = registerAlliance(ctx, splinterId, chosen);
+        // AUDIT-13 R1: both halves remember the split, for a reunion or a feud.
+        splinterRecord.splitFrom = id;
+        const parentRecord = allianceOf(ctx.state, id);
+        if (parentRecord) parentRecord.splitFrom = splinterId;
+        noteAllianceEnd(ctx.state, id, 'splinter');
         alliances.set(splinterId, chosen);
         alliances.set(id, remainder);
 

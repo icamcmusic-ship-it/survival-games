@@ -4636,8 +4636,10 @@ export const MEMORY = {
      * time, which makes an oath cheap talk. A tribute holds this many; a new
      * one displaces the oldest, because a grudge you have replaced twice over
      * was never the thing organising your run.
+     * AUDIT-13 R6: 3 -> 2. 2845 sworn against 68 paid in 160 runs; two
+     * names a tribute is actually going after, not a list.
      */
-    maxOaths: 3,
+    maxOaths: 2,
     /** Threat impression added to a zone by a death witnessed there. */
     deathThreat: 1.0,
     /** Threat added by a death only heard as a cannon (location known from the sky). */
@@ -11061,4 +11063,60 @@ export const AUDIT13_RELATIONS = {
     cohesionFloorCycles: 4,
     /** R1: hunger or thirst at which a young group counts as going short. */
     cohesionShortageVital: 80,
+    /**
+     * R1: two halves of a split who meet again (any of them in one zone,
+     * `reunionMinApart` cycles on) reunite when their cross-regard is at least this;
+     * otherwise they feud, at `feudRegardCost` regard both ways.
+     */
+    reunionRegard: 5,
+    /** R1: cycles apart before the halves of a split can settle it. */
+    reunionMinApart: 2,
+    feudRegardCost: 15,
+    /**
+     * R3: the betrayal-intent score, run from this field size down. Score =
+     * ambition x distrust x the ally's kit x (field size / alive). At
+     * `intentThreshold` the betrayer is seen counting the knives; a cycle
+     * later, if the pair are still allied, they strike.
+     */
+    intentFieldSize: 10,
+    intentThreshold: 0.15,
+    intentAmbitionFloor: 0.05,
+    intentKitNorm: 30,
+    intentKitCap: 1.5,
+    /** R4: regard for a district partner worth crossing the arena for. */
+    partnerSearchRegard: 15,
+    partnerSearchCycles: 3,
+    /** R4: resolve found by the last of a district, if they were this close to the partner. */
+    lastOfDistrictResolve: 15,
+    lastOfDistrictRegard: 40,
+    /** R4: the beat itself only once the field is this small. */
+    lastOfDistrictBeatField: 6,
+    /**
+     * R5: allies of an age (both >= `romanceMinAge`, within `romanceAgeGap`)
+     * sharing a camp build rapport, a cycle at a time with `romanceRampChance`;
+     * at `romanceRampCycles` shared cycles, with mutual regard at least
+     * `romanceRegard`, it is declared. The crowd pays extra for a slow burn.
+     */
+    romanceMinAge: 15,
+    romanceAgeGap: 2,
+    romanceRampChance: 0.12,
+    romanceRampCycles: 7,
+    romanceRegard: 55,
+    romanceSponsorBonus: 10,
+    /** R6: sworn targets unseen this many cycles are let go of. */
+    vengeanceCoolCycles: 6,
+    /**
+     * R7: an ally at least `wardElderAge` with one at most `wardYoungAge`
+     * takes them on. The elder teaches their best skill (`wardTeachShare` of
+     * a training step, per shared cycle).
+     */
+    wardElderAge: 17,
+    wardYoungAge: 14,
+    wardTeachShare: 0.5,
+    /** K5: per day phase before the pack fracture opens, a reaped Career's chance to break early. */
+    reapedEarlyBreakChance: 0.06,
+    /** T6: scrum-pick weight of a pact partner for a tribute here for honour. */
+    honourPactTargetWeight: 0.01,
+    /** T5: chance a guardian, protector or pact-bound tribute shields their partner at the gong. */
+    gongShieldChance: 0.5,
 } as const;

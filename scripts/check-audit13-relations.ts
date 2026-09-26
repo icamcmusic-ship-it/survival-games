@@ -32,7 +32,7 @@ let ended = 0, unexplained = 0, endedWithTwoAlive = 0;
 const beats: Record<string, number> = {};
 const BEAT_TYPES = [
     'alliance-reunion', 'alliance-feud', 'betrayal-warning', 'partner-search', 'last-of-district',
-    'partner-standoff', 'romance-slow-burn', 'vengeance-cooled', 'ward-bond', 'ward-guardian', 'ward-inheritance',
+    'partner-standoff', 'romance-slow-burn', 'vengeance-cooled', 'ward-bond', 'ward-inheritance',
     'career-defections', 'district-bonds',
 ];
 

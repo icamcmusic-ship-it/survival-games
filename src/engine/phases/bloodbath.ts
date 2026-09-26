@@ -9,7 +9,7 @@ import { Item, Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
 import { traitMod } from '../../data/traits';
 import { ARCHETYPES } from '../../data/archetypes';
-import { ALLIANCES, AUDIT12_TRIBUTES, AUDIT13_CAREERS, BLOODBATH, ESCALATION, QUALITY_BIAS, TRAINING } from '../../data/balance';
+import { ALLIANCES, AUDIT12_TRIBUTES, AUDIT13_CAREERS, AUDIT13_RELATIONS, BLOODBATH, ESCALATION, QUALITY_BIAS, TRAINING } from '../../data/balance';
 import { allied, pruneDeadAlliances, registerAlliance } from '../alliance';
 
 /**
@@ -473,7 +473,15 @@ function announceGongDecisions(ctx: SimContext, alive: Tribute[], fighters: Trib
 
         let kind: keyof typeof GONG_DECISIONS;
         let other: Tribute | undefined;
-        if (isFighter.has(t.id)) {
+        // AUDIT-13 T5: the shield. A guardian or protector, or a fighter with
+        // a pact partner (likelier for somebody here for a partner or a
+        // family, T6), stays next to that partner instead of going anywhere.
+        const shielder = !!partner && (t.archetype === 'guardian' || t.archetype === 'protector' || isFighter.has(t.id));
+        if (shielder && !sworn && ctx.rng.chance(AUDIT13_RELATIONS.gongShieldChance
+            * (t.motive === 'partner' || t.motive === 'family' ? 1.6 : 1)
+            * (t.archetype === 'guardian' || t.archetype === 'protector' ? 1.5 : 0.5))) {
+            kind = 'shield'; other = partner;
+        } else if (isFighter.has(t.id)) {
             if (sworn && ctx.rng.chance(BLOODBATH.gongHuntShare)) { kind = 'hunt'; other = sworn; }
             // AUDIT-13 T5: the plan decides, not the order. A grab goes deep,
             // a scatter works the edge; the pack goes in together (K2), and
@@ -509,7 +517,7 @@ function announceGongDecisions(ctx: SimContext, alive: Tribute[], fighters: Trib
                 .split('{other}').join(other?.name ?? '')
                 .split('{horn}').join(horn),
             other ? [t.id, other.id] : [t.id],
-            { category: kind === 'hunt' || kind === 'horn' ? 'combat' : 'travel' }
+            { category: kind === 'hunt' || kind === 'horn' || kind === 'shield' ? 'combat' : 'travel' }
         );
     });
 }
@@ -1125,6 +1133,9 @@ function pickOpponentIndex(ctx: SimContext, attacker: Tribute, pool: Tribute[]):
         // Packmates in the same knot were picking each other off the pool
         // like anybody else; now it is a last resort, when nobody else is left.
         if (attacker.isCareer && target.isCareer && allied(attacker, target)) return AUDIT13_CAREERS.packmateTargetWeight;
+        // AUDIT-13 T6: somebody here for honour does not strike the person
+        // they shook hands with on the training floor. Last resort only.
+        if (attacker.motive === 'honour' && (attacker.trainingPact ?? []).includes(target.id)) return AUDIT13_RELATIONS.honourPactTargetWeight;
         return Math.max(0.05, weight);
     });
     let roll = ctx.rng.nextFloat() * weights.reduce((a, b) => a + b, 0);

@@ -1288,6 +1288,25 @@ export interface Tribute {
      * Biases resolve and vengeance, and pays off in the epilogue interview.
      */
     motive?: 'family' | 'partner' | 'prove' | 'honour' | 'escape';
+    /**
+     * AUDIT-13 §6: per-tribute state for the relationship arcs (R3-R7). One
+     * optional bag rather than a field per arc; see `engine/relationsArc.ts`.
+     */
+    relationsArc?: {
+        /** R3: the ally this tribute has been seen counting the knives over. */
+        betrayalIntent?: { targetId: string; cycle: number };
+        /** R4: beats already given, so each lands once. */
+        partnerSearched?: boolean;
+        lastOfDistrict?: boolean;
+        standoff?: boolean;
+        /** R5: slow-burn rapport with each ally, in shared cycles. */
+        rapport?: Record<string, number>;
+        /** R6: vengeance targets already let go of. */
+        cooled?: string[];
+        /** R7: the elder ally this tribute is ward to, and whether they inherited. */
+        wardOf?: string;
+        inherited?: boolean;
+    };
     /** §3.5: they went all the way down once; some of it never comes back. */
     sanityScarred?: boolean;
     /**
@@ -2026,6 +2045,8 @@ export interface Alliance {
     formedCycle: number;
     /** AUDIT-13 R1: the group this one split from; both halves carry it. */
     splitFrom?: string;
+    /** AUDIT-13 R1: the two halves have met again and had it out (reunion or feud). */
+    splitSettled?: boolean;
     /** AUDIT-13 R2: set by the path that took the group below two members. */
     endReason?: AllianceEndReason;
     endedById?: string;
@@ -4247,6 +4268,17 @@ export type EventType =
     | 'vengeance-paid'
     | 'vengeance-soloed'
     | 'vengeance-stolen'
+    /* AUDIT-13 §6 (R1, R3-R7): relationship arcs. */
+    | 'alliance-reunion'
+    | 'alliance-feud'
+    | 'betrayal-warning'
+    | 'partner-search'
+    | 'last-of-district'
+    | 'partner-standoff'
+    | 'romance-slow-burn'
+    | 'vengeance-cooled'
+    | 'ward-bond'
+    | 'ward-inheritance'
     | 'watch-posted'
     | 'weapon-poisoned'
     | 'weather-fronts'
