@@ -247,7 +247,7 @@ export function traitTier(t: Tribute, trait: string): number {
 export function refreshTraitTiers(ctx: SimContext) {
     ctx.state.tributes.forEach(t => {
         if (t.status !== 'alive') return;
-        if (!t.traits.includes('Bloodied') && t.kills >= AUDIT12_TRIBUTES.bloodiedKills) earnTrait(ctx, t, 'Bloodied');
+        if (traitTier(t, 'Bloodied') === 0 && t.kills >= AUDIT12_TRIBUTES.bloodiedKills) earnTrait(ctx, t, 'Bloodied');
         Object.entries(TIERS).forEach(([trait, rule]) => {
             if (!t.traits.includes(trait)) return;
             const value = rule.measure(t);

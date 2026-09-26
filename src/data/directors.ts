@@ -77,7 +77,7 @@ const TASTES: Record<DirectorTasteId, DirectorTaste> = {
     'hands-off': {
         id: 'hands-off', label: 'hands-off',
         blurb: 'Intervenes as little as possible and lets the field do the work.',
-        mutts: 0.6, fire: 0.8, weather: 0.6, betrayal: 1, sponsor: 1,
+        mutts: 0.5, fire: 0.7, weather: 0.5, betrayal: 1, sponsor: 1,
     },
 };
 

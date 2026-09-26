@@ -1,6 +1,7 @@
 import type { DeathCauseCode, GameState, Tribute } from '../models/types';
 import type { ArenaEventDef } from '../data/arenaFlavor';
 import { arenaFlavor } from '../data/arenaFlavor';
+import { ARENA_MUTTS } from '../data/mutts';
 import { ARENA_DEATH_BUDGET, AUDIT12_WAVE2_ARENA as K, MEMORY } from '../data/balance';
 import { ITEMS } from '../data/constants';
 import { RNG } from '../utils/rng';
@@ -219,6 +220,8 @@ const INJURY_OF: Record<string, keyof Tribute['injuries']> = {
 export function diedOfArena(t: Tribute, state?: GameState): boolean {
     if (t.status !== 'dead' || t.causeCode === 'tribute') return false;
     if (t.lastDamage?.signature) return true;
+    // An arena's own mutt roster is its own cause: a Salt Hound is Saltworks.
+    if (state && t.causeCode === 'mutt' && (ARENA_MUTTS[state.arena.id] ?? []).some(m => t.causeOfDeath?.includes(m.name))) return true;
     const injury = INJURY_OF[t.causeCode ?? ''];
     if (state && injury && t.lastDamage?.kind === 'status' && getMark(state, `w2inj:${t.id}:${injury}`) === 1) return true;
     if (!FOLLOW_ON.has(t.causeCode ?? '')) return false;
