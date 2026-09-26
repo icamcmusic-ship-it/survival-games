@@ -128,7 +128,7 @@ function SetupReplayRows({ config, setConfig, arenaId, onPlayRules }: {
             <div className="flex flex-wrap items-center gap-2" data-testid="daily-history">
                 <span>Daily streak: <strong className="text-[var(--ink)]">{streak}</strong> day{streak === 1 ? '' : 's'}</span>
                 {history.slice(0, 5).map(d => (
-                    <span key={d.date} className="chip" title={d.seed}>
+                    <span key={d.date} className="chip" role="group" aria-label={`Daily ${d.date}`} title={d.seed}>
                         {d.date.slice(5)} · {d.victorName ? `${d.victorName} (D${d.victorDistrict})` : 'no victor'}
                         {d.pickRight === undefined ? '' : d.pickRight ? ' · called it' : ' · missed'}
                     </span>
@@ -169,7 +169,7 @@ function SetupReplayRows({ config, setConfig, arenaId, onPlayRules }: {
                         {COMMENTATORS.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                     </select>
                 </label>
-                <label className="flex items-center gap-1.5 cursor-pointer" title="Your own most recent Hall of Fame victors are reaped again, traits and all. For the next Games only.">
+                <label className="flex items-center gap-1.5 cursor-pointer" aria-label="Victor-return Quell" title="Your own most recent Hall of Fame victors are reaped again, traits and all. For the next Games only.">
                     <input type="checkbox" className="w-3.5 h-3.5 accent-[var(--red)]" data-testid="victor-return"
                         checked={victorReturn} onChange={e => gameActions.setVictorReturnQuell(e.target.checked)} />
                     Victor-return Quell
@@ -196,7 +196,7 @@ export function ArenaMasteryBadge({ arenaId, arenaName }: { arenaId: string; are
     const colour = tier === 'gold' ? 'var(--gold)' : tier === 'silver' ? 'var(--color-ink-400)' : 'var(--color-ink-500)';
     return (
         <span className="flex-none font-mono text-nano font-extrabold uppercase tracking-wider px-1 border" style={{ color: colour, borderColor: colour }}
-            title={`${m.runs} Games here, ${m.crowns} crowned. Gold at ${AUDIT13_SIDE.masteryTiers[2]}.`} data-testid="mastery-tier">
+            role="group" aria-label={`${tier} mastery`} title={`${m.runs} Games here, ${m.crowns} crowned. Gold at ${AUDIT13_SIDE.masteryTiers[2]}.`} data-testid="mastery-tier">
             {tier}
         </span>
     );
