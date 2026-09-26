@@ -107,6 +107,7 @@ import { getRel, setRel } from '../relationships';
 import { noteContact, noteSighting, ensureMemory } from '../memory';
 import { addFear } from '../fear';
 import { wildcardIs, arenaHasLaw } from '../gamesProfile';
+import { MUTATOR_TUNING, hasMutator } from '../../data/mutators';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -329,12 +330,17 @@ const HORN_WEAPONS = ITEMS.filter(i => i.type === 'weapon');
  * of the unfiltered `ITEMS`/`HORN_WEAPONS` when the Quell is standing.
  */
 function lootPool(ctx: SimContext): Item[] {
+    // AUDIT-11 §12 `no-cornucopia`: scraps only.
+    if (hasMutator(ctx.state.config, 'no-cornucopia')) {
+        const scraps = ITEMS.filter(i => i.type !== 'weapon' && i.value <= MUTATOR_TUNING.noCornucopiaMaxValue);
+        if (scraps.length > 0) return scraps;
+    }
     const base = wildcardIs(ctx.state, 'quell-cornucopia-forfeit') ? ITEMS.filter(i => i.type === 'food') : ITEMS;
     // §5 `noWeapons` composes with the Quell rather than overriding it.
     return itemPoolFor(ctx.state, base);
 }
 function hornWeaponsPool(ctx: SimContext): Item[] {
-    if (arenaHasLaw(ctx.state, 'noWeapons')) return lootPool(ctx);
+    if (arenaHasLaw(ctx.state, 'noWeapons') || hasMutator(ctx.state.config, 'no-cornucopia')) return lootPool(ctx);
     return wildcardIs(ctx.state, 'quell-cornucopia-forfeit') ? lootPool(ctx) : HORN_WEAPONS;
 }
 

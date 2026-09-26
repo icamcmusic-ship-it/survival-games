@@ -12,6 +12,8 @@ import { Hint } from '../components/Hint';
 import { ConfirmButton } from '../components/ConfirmButton';
 import { resumeWithRecap } from '../ui/uiStore';
 import { gamesProfileFor, profileHeadline } from '../engine/gamesProfile';
+import { rebellionCallsQuell, rebellionLabel, rebellionOf } from '../engine/campaign';
+import { campaignSnapshotOf } from '../utils/panemStorage';
 // PERF: imported from the data module directly, not via `engine/arenaSignature`
 // — the setup screen is the app's cold-start path and must not drag the
 // simulation engine (and its ~5k lines of flavour/balance tables) in with it.
@@ -21,9 +23,10 @@ import { canSeeArena, disclosureFor } from '../ui/disclosure';
 import { CLIMATE_LABELS, LAW_LABELS, lawsOf, lengthEstimate, terrainMix } from '../data/arenaBriefing';
 import { packFor } from '../data/arenaEventPacks';
 import { ARENA_MUTTS } from '../data/mutts';
-import { ARENA_DEATH_BUDGET, BLOODBATH, COIN_ECONOMY } from '../data/balance';
+import { ARENA_DEATH_BUDGET, BLOODBATH, CAMPAIGN_ARC, COIN_ECONOMY } from '../data/balance';
 import { RNG } from '../utils/rng';
 import { QUELLS } from '../data/gamesProfile';
+import { MUTATORS as MUTATOR_DECK, MUTATORS_PER_GAMES, drawMutators } from '../data/mutators';
 
 /** §9 (audit): how many standing patronages the Capitol will sell one player. */
 const PATRON_MAX_DISTRICTS = COIN_ECONOMY.patronMaxDistricts;
@@ -199,6 +202,8 @@ function randomConfig(current: GameConfig): GameConfig {
         singleVictor: Math.random() < 0.3,
         ageMean: withAges ? pick(12, 18, 0.5) : undefined,
         ageSpread: withAges ? pick(0.5, 4, 0.1) : undefined,
+        // AUDIT-11 §12: half of randomised years draw two mutator cards.
+        mutators: Math.random() < 0.5 ? drawMutators(`${Date.now()}-${Math.random()}`) : undefined,
     };
 }
 
@@ -631,13 +636,45 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                 </div>
                             )}
                         </div>
-                        <button
-                            onClick={() => { setSeed(todaySeed); setArenaId(dailyArenaId(todaySeed)); setConfig(dailyConfig()); }}
-                            className="btn btn-ghost text-mini flex-none"
-                        >
-                            {isDaily ? 'Reload daily' : 'Play the daily'}
-                        </button>
+                        <div className="flex gap-2 flex-none">
+                            <button
+                                onClick={() => { setSeed(todaySeed); setArenaId(dailyArenaId(todaySeed)); setConfig(dailyConfig()); }}
+                                className="btn btn-ghost text-mini"
+                            >
+                                {isDaily ? 'Reload daily' : 'Load the daily'}
+                            </button>
+                            {/* AUDIT-11 §12: the daily in one tap — seed, arena
+                                and config are all derived from the date. */}
+                            <button
+                                data-testid="start-daily"
+                                onClick={() => {
+                                    if (savedRun && !window.confirm('A Games is already in progress. Starting a new one abandons that run — continue?')) return;
+                                    onStart(todaySeed, dailyArenaId(todaySeed), gamemakerMode, dailyConfig(), false, null);
+                                }}
+                                className="btn btn-primary text-mini"
+                            >
+                                Start the daily
+                            </button>
+                        </div>
                     </div>
+                    {/* AUDIT-11 §8/§12: the campaign arc, a season ahead. */}
+                    {panem.runs > 0 && (() => {
+                        const r = rebellionOf(campaignSnapshotOf(panem));
+                        const feuds = panem.feuds ?? [];
+                        return (
+                            <div className="panel-flush p-3 mt-2 text-micro text-[var(--color-ink-500)]" data-testid="campaign-arc">
+                                <div className="text-xs font-bold text-[var(--ink)]">
+                                    The districts are {rebellionLabel(r)} &mdash; rebellion {Math.round(r)}/100
+                                </div>
+                                {rebellionCallsQuell(campaignSnapshotOf(panem))
+                                    ? <div className="mt-0.5 text-[var(--red)]">The Capitol has announced it: the next Games will be a Quarter Quell.</div>
+                                    : <div className="mt-0.5">At {CAMPAIGN_ARC.quellAt} the Capitol calls a Quell. Unrest makes the arena crueller and the sponsors warier.</div>}
+                                {feuds.length > 0 && (
+                                    <div className="mt-0.5">Feuds: {feuds.map(f => `${f.aName} (D${f.aDistrict}) vs ${f.bName} (D${f.bDistrict})`).join('; ')}.</div>
+                                )}
+                            </div>
+                        );
+                    })()}
                     {(() => {
                         // The Games profile is a pure function of the seed, so the
                         // temperament the player is committing to can be shown live.
@@ -1333,6 +1370,51 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                 ) : (
                                     <p className="text-micro text-[var(--color-ink-500)] -mt-1">
                                         The bowl decides: one slip per year of age, plus a slip for every tessera taken. The field skews older, and oldest in the poorest districts.
+                                    </p>
+                                )}
+                            </div>
+                            {/* AUDIT-11 §12: the mutators deck. Two cards at most, picked or drawn. */}
+                            <div className="space-y-2 pt-1" data-testid="mutators-deck">
+                                <div className="flex items-center justify-between gap-2">
+                                    <span className="text-xs font-semibold text-[var(--color-ink-300)]">
+                                        Mutator deck <span className="font-normal text-[var(--color-ink-500)]">({(config.mutators ?? []).length}/{MUTATORS_PER_GAMES})</span>
+                                    </span>
+                                    <span className="flex gap-2">
+                                        <button type="button" className="btn btn-sm btn-ghost"
+                                            onClick={() => setConfig(c => ({ ...c, mutators: drawMutators(`${Date.now()}-${Math.random()}`) }))}>
+                                            Draw {MUTATORS_PER_GAMES}
+                                        </button>
+                                        <button type="button" className="btn btn-sm btn-ghost" disabled={!(config.mutators?.length)}
+                                            onClick={() => setConfig(c => ({ ...c, mutators: undefined }))}>
+                                            Clear
+                                        </button>
+                                    </span>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {MUTATOR_DECK.map(m => {
+                                        const on = config.mutators?.includes(m.id) ?? false;
+                                        const full = (config.mutators?.length ?? 0) >= MUTATORS_PER_GAMES;
+                                        return (
+                                            <button
+                                                key={m.id}
+                                                type="button"
+                                                className="seg-item text-left"
+                                                aria-pressed={on}
+                                                disabled={!on && full}
+                                                onClick={() => setConfig(c => {
+                                                    const cur = c.mutators ?? [];
+                                                    const next = on ? cur.filter(x => x !== m.id) : [...cur, m.id];
+                                                    return { ...c, mutators: next.length > 0 ? next : undefined };
+                                                })}
+                                            >
+                                                {m.name}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                {(config.mutators?.length ?? 0) > 0 && (
+                                    <p className="text-micro text-[var(--color-ink-500)]">
+                                        {config.mutators!.map(id => MUTATOR_DECK.find(m => m.id === id)?.blurb).join(' ')}
                                     </p>
                                 )}
                             </div>

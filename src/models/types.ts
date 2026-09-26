@@ -1730,6 +1730,15 @@ export interface Tribute {
      * can weigh a cloak in the cold and a canteen in the dry.
      */
     kitPriorities?: { warmth?: boolean; water?: boolean; purifier?: boolean };
+    /**
+     * AUDIT-11 §6: a grief day. Losing somebody close enough can cost a day to
+     * recklessness (forced Aggressive) or shutdown (forced Fortified).
+     */
+    griefDay?: { kind: 'reckless' | 'shutdown'; untilCycle: number; forId: string };
+    /** AUDIT-11 §6: whether a grief day has already been spent this run. */
+    griefDayHad?: boolean;
+    /** AUDIT-11 §6: training days spent at the same station, per other tribute (cross-district only). */
+    stationMates?: Record<string, number>;
 }
 
 /** A §1: one weighed reason behind a stance score. */
@@ -2037,6 +2046,17 @@ export interface Alliance {
      * check above unsatisfiable, and the line fire every single night.
      */
     lastWatch?: { zone: string; watcherId: string };
+    /**
+     * AUDIT-11 §6: role duty. How often each member did, or neglected, the job
+     * the group gave them (leader, scout, medic, provider, watch).
+     */
+    roleLedger?: Record<string, { kept: number; neglected: number }>;
+    /**
+     * AUDIT-11 §6: the fairness ledger — portions each member has eaten from
+     * the shared meal, and the grudge each short-changed member holds against
+     * whoever took the extra. A grudge is a visible betrayal motive.
+     */
+    fairness?: { ate: Record<string, number>; grudges: Record<string, { againstId: string; amount: number }> };
 }
 
 /**
@@ -2482,6 +2502,80 @@ export type ArenaLawId =
     | 'theBell';           // every morning the Gamemakers name a zone; whoever stands in it at nightfall is resupplied
 
 /** A traversal rule layered on top of plain adjacency for one edge. Keyed by `edgeKey(a,b)` on `Arena.edgeRules`. */
+/**
+ * Generic arena-wide rule flags, read by engine/arenaRules.ts. Every field is
+ * optional and inert when absent, so any arena (authored or generated) can
+ * opt into any of them without a bespoke code path.
+ */
+export interface ArenaRules {
+    /** No zone is ever quieter than this: carries sound even out of cover. */
+    acousticsFloor?: number;
+    /** Each zone, each cycle, either masks (x(1-flux)) or betrays (x(1+flux)) sound. */
+    acousticsFlux?: number;
+    /** Zones that disorient: fighting in them is blunted and leaving them takes longer. */
+    disorientZones?: string[];
+    /** Forage regrowth multiplier per terrain (1 = normal, 0.4 = grows back at 40%). */
+    regrowthByTerrain?: Partial<Record<Terrain, number>>;
+    /** A fire lit on exposed ground (elevated and cover <= maxCover, or a listed zone) is seen by the whole field. */
+    fireBeacon?: { maxCover: number; zones?: string[] };
+    /** Edges present in the graph but closed until `openLatentEdge` opens them mid-run. */
+    latentEdges?: Array<[string, string]>;
+    /** Enclosed rooms whose air takes a flame: a fire lit in one may ignite it and every listed zone touching it. */
+    enclosedIgnition?: { zones: string[]; chance: number };
+    /** The first `lockZone` of the run also starts a communications blackout (no cannons, no sky). */
+    lockdownBlackout?: boolean;
+}
+
+/** An arena-wide sightline state: `lit`/`clear` expose, `blackout`/`whiteout` hide. */
+export type ArenaSightline = 'lit' | 'blackout' | 'clear' | 'whiteout';
+
+/** Run-local state for `ArenaRules` and the signatures that drive them. */
+/** AUDIT-11 §7: the universal weather layer's four kinds. */
+export type WeatherKind = 'fog' | 'heat' | 'storm' | 'rain';
+/** AUDIT-11 §7: what a zone remembers having happened to it. */
+export type ZoneScarKind = 'burnt' | 'flooded' | 'collapsed' | 'trampled';
+
+/** AUDIT-11 §5: a two-or-three-step errand that survives interruption. */
+export interface TributePlan {
+    label: string;
+    steps: Array<{ zone: string; reason: ObjectiveReason }>;
+    step: number;
+    madeCycle: number;
+    interruptions: number;
+    /** Last cycle an interruption was counted, so one cycle counts once. */
+    lastInterrupted?: number;
+    /** Cycles spent set aside for something urgent; they do not count against the plan's clock. */
+    pausedCycles?: number;
+}
+
+/** AUDIT-11 §5/§7: run-local state for `engine/arenaDepth.ts`. All optional, so old saves load. */
+export interface ArenaDepthState {
+    weather?: { kind: WeatherKind; untilCycle: number; braced?: string[] };
+    incoming?: { kind: WeatherKind; startCycle: number; braced: string[] };
+    scars?: Record<string, { kind: ZoneScarKind; untilCycle: number }>;
+    hiddenCache?: { zone: string; knownBy: string[]; foundBy?: string; foundCycle?: number };
+    act?: number;
+    actCuts?: string[];
+    plans?: Record<string, TributePlan>;
+    feints?: Record<string, number>;
+    decoys?: Record<string, { zone: string; untilCycle: number }>;
+    turned?: string[];
+    broken?: string[];
+    /** Counters for measurement and achievements. */
+    stats?: Record<string, number>;
+}
+
+export interface ArenaRuleState {
+    /** The arena-wide sightline currently in force, and the last cycle it holds for. */
+    sightline?: { mode: ArenaSightline; untilCycle: number };
+    /** Zones permanently lost (never restored by the border or the reopening tick). */
+    fallen?: string[];
+    /** Latent edges (`ArenaRules.latentEdges`) that have been opened, as edge keys. */
+    openedEdges?: string[];
+    /** Free-form per-signature timers and marks, keyed by the signature. */
+    marks?: Record<string, number | string>;
+}
+
 export interface EdgeRule {
     /**
      * §5.5: three kinds were not enough to express what a route can be. A
@@ -2535,6 +2629,12 @@ export interface SignatureRule {
 }
 
 export interface Arena {
+    /**
+     * Run-local: latent edges (`rules.latentEdges`) opened this run, as edge keys.
+     * Mirrors `arenaRuleState.openedEdges` on the run's arena clone so traversal
+     * callers that pass no `EdgeContext` still see an opened route as open.
+     */
+    openedLatentEdges?: string[];
     id: string;
     /**
      * Procedural arenas only: a per-map identity. `id` collapses every
@@ -2615,6 +2715,8 @@ export interface Arena {
     terrainVariant?: Partial<Record<Terrain, { danger: [number, number]; resources: [number, number] }>>;
     /** Procedural arenas only: the real mutt kit generated for this specific arena. Takes priority over `ARENA_MUTTS` in `rosterFor`. */
     muttRoster?: Mutt[];
+    /** Generic, reusable arena-wide rule flags — see `ArenaRules` and engine/arenaRules.ts. */
+    rules?: ArenaRules;
 }
 
 /**
@@ -2815,12 +2917,23 @@ export interface GameConfig {
      * for the run, so the Games cannot end with two people standing.
      */
     singleVictor?: boolean;
+    /**
+     * AUDIT-11 §12: the mutator cards for this Games (ids from
+     * `data/mutators.ts`). Part of the config so saves, share links and
+     * replays carry them; absent on older configs, which is no mutators.
+     */
+    mutators?: string[];
 }
 
 import type { GamesProfile } from '../engine/gamesProfile';
 import type { WeatherFront } from '../engine/weatherFront';
 
 export interface GameState {
+    /**
+     * AUDIT-11 §6: every romance declared, and — hidden until the Games end —
+     * which side of it meant it. Absent on saves that predate it.
+     */
+    romances?: Array<{ aId: string; bId: string; sincere: Record<string, boolean> }>;
     seed: string;
     arena: Arena;
     tributes: Tribute[];
@@ -2847,6 +2960,8 @@ export interface GameState {
      */
     eventChains?: Record<string, string>;
     epilogueInterview?: EpilogueQA[];
+    /** AUDIT-11 §8: how the Capitol received the victor's interview, -1..+2. */
+    interviewReception?: number;
     /** Day the next Gamemaker feast is scheduled for (undefined = none scheduled). Cleared once the feast resolves. */
     feastDay?: number;
     /**
@@ -2958,6 +3073,8 @@ export interface GameState {
     victorIds?: string[];
     /** §9.4: remaining purse per sponsor bloc, seeded lazily from generosity. */
     sponsorBlocBudgets?: Record<string, number>;
+    /** AUDIT-11 §8: audience segments (see engine/audienceSegments.ts). Absent on older saves. */
+    audience?: { bloodthirsty: number; romantic: number; underdog: number; logMark: number };
     /** Day the most recent feast actually convened — guards against two feasts landing on the same day. */
     lastFeastDay?: number;
     /** Feasts already held this run, used to space them out. */
@@ -3029,6 +3146,13 @@ export interface GameState {
      * `lastPickedText`, and serialised with the save for the same reason.
      */
     usedText?: Record<string, string[]>;
+    /**
+     * AUDIT-11 §12: the lines actually shown, per pool, when a stale set moved
+     * the choice off the drawn line. `usedText` keeps the drawn line so the
+     * rotation is identical with or without a stale set; this is what the
+     * cross-session memory records. Absent when `staleLines` is empty.
+     */
+    shownText?: Record<string, string[]>;
     /** Zone name -> fraction of its printed yield currently stripped out (0-1). */
     zoneDepletion?: Record<string, number>;
     /** Zone name -> whatever is currently happening to it beyond depletion. */
@@ -3051,6 +3175,10 @@ export interface GameState {
      * this is the run-local exception list layered on top of it.
      */
     severedEdges?: string[];
+    /** Run-local bookkeeping for the generic arena rules (engine/arenaRules.ts). */
+    arenaRuleState?: ArenaRuleState;
+    /** AUDIT-11 §5/§7: weather layer, zone scars, hidden cache, acts, plans, deception. */
+    arenaDepth?: ArenaDepthState;
     /**
      * AUDIT-9 B06: the record book this run was played under, snapshotted at
      * creation.
@@ -3067,6 +3195,19 @@ export interface GameState {
      * every first run gets. See `engine/campaign.ts`.
      */
     campaign?: CampaignSnapshot;
+    /**
+     * AUDIT-11 §12: the player's prediction slip, filled in before the
+     * bloodbath and scored when the Games end. Read by nothing in the engine.
+     */
+    prediction?: Prediction;
+    /**
+     * AUDIT-11 §12: hashes of flavour templates this player has seen in recent
+     * sessions, snapshotted at creation so a save resumes with the same wording.
+     * `pickText` prefers a line not in this set after its draw; no extra draws.
+     */
+    staleLines?: string[];
+    /** AUDIT-11 §12: ids of Hall of Fame victors reaped again as legacy tributes. */
+    legacyTributeIds?: string[];
     /**
      * AUDIT-9 §5: how many structures have come down this Games.
      *
@@ -3373,6 +3514,8 @@ export interface GameState {
      * creation by a Grudge Match; read by the reaping copy.
      */
     veteransSeated?: string[];
+    /** AUDIT-11 §8: veterans whose arena moment has played. */
+    veteranMoments?: string[];
     /** §13.3: the Undermere — cycle the bioluminescence comes back on. */
     mossDimUntilCycle?: number;
     /** §10.1: the longest single fire chain this run produced, in zones. */
@@ -3738,6 +3881,12 @@ export interface EventLog {
      * counts and which therefore do not need one.
      */
     type?: EventType;
+    /**
+     * AUDIT-11 §4: "why did they do that?" — a compact (<= 90 chars) reading of
+     * the actor's decision trace for the cycle, stamped only on headline beats
+     * whose actor had one. Optional; older saves simply have none.
+     */
+    why?: string;
 }
 
 export interface LogOptions {
@@ -3880,6 +4029,9 @@ export type EventType =
     | 'rumour-dead-end'
     | 'rumour-planted'
     | 'schism'
+    // AUDIT-11 §6: relationships and alliances.
+    | 'role-kept' | 'role-neglected' | 'watch-failure' | 'unfair-split' | 'grudge-betrayal'
+    | 'rival-thaw' | 'theft-witnessed' | 'romance-reveal' | 'grief-day' | 'station-bond'
     | 'sepsis-deepened'
     | 'sepsis-treated'
     | 'shelter-built'
@@ -3953,6 +4105,8 @@ export type EventType =
 export interface EpilogueQA {
     question: string;
     answer: string;
+    /** AUDIT-11 §8: the register the victor answered in, when set by their traits. */
+    tone?: 'defiant' | 'tender' | 'cold' | 'humble' | 'showman';
 }
 
 export interface TributeHoFSummary {
@@ -4008,6 +4162,8 @@ export interface HallOfFameEntry {
     winnerTraits?: string[];
     winnerEndHealth?: number;
     tributeSummaries?: TributeHoFSummary[];
+    /** AUDIT-11 §12: the player's scored prediction slip for this Games. */
+    prediction?: PredictionResult;
 }
 
 /**
@@ -4037,4 +4193,37 @@ export interface CampaignSnapshot {
     victorMentors?: Record<number, { name: string; archetype: string; run: number }>;
     /** §10.4: a keepsake an earlier tribute of that district did not bring home. */
     heirlooms?: Record<number, { token: string; quirk?: string; fromName: string; run: number }>;
+    /** AUDIT-11 §12: 0-100 unrest carried across a campaign. See `engine/campaign.ts`. */
+    rebellion?: number;
+    /** AUDIT-11 §8: each district's standing with the Capitol audience, -50..+50. */
+    districtReputation?: Record<number, number>;
+    /** AUDIT-11 §8: victors who carry a grudge against another district's victor. */
+    feuds?: CampaignFeud[];
+}
+
+/** AUDIT-11 §8: a feud between two victors, carried into the districts they mentor. */
+export interface CampaignFeud {
+    aName: string;
+    aDistrict: number;
+    bName: string;
+    bDistrict: number;
+    /** The run the feud started in. */
+    run: number;
+}
+
+/** AUDIT-11 §12: a prediction slip. Every field optional; each is scored on its own. */
+export interface Prediction {
+    winnerId?: string;
+    firstDeathId?: string;
+    topKillerId?: string;
+    /** Up to eight tribute ids, ranked: index 0 is the predicted victor. */
+    finalEight?: string[];
+}
+
+/** AUDIT-11 §12: a scored prediction slip, as archived. */
+export interface PredictionResult {
+    score: number;
+    max: number;
+    /** Which picks came in: 'winner', 'first-death', 'top-killer', 'final-eight'. */
+    hits: string[];
 }

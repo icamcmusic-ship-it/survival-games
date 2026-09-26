@@ -1,3 +1,5 @@
+import { directorTaste } from '../data/directors';
+import { campaignSponsorMultiplier } from './campaign';
 import { dropParachute } from './parachutes';
 import { giftRefusal } from './arenaPolicy';
 import { SimContext, getAlive } from './context';
@@ -163,6 +165,10 @@ export function processSponsors(ctx: SimContext) {
             && (ctx.state.cycle ?? 0) - playerGiftAt < SPONSOR_MARKET.coveredCycles) {
             generosity *= SPONSOR_MARKET.coveredGiftMultiplier;
         }
+        // AUDIT-11 §8/§12: the Head Gamemaker's taste, and the campaign — a
+        // restless Panem makes sponsors wary; a district's standing warms them.
+        generosity *= directorTaste(ctx.state.headGamemaker).sponsor
+            * campaignSponsorMultiplier(ctx.state.campaign, t.district);
         if (!ctx.rng.chance(giftChance(t, generosity, ctx.state.day))) return;
 
         const tier = rollGiftTier(ctx, t);

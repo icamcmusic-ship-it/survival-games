@@ -1,4 +1,6 @@
 import { SimContext, getAlive } from '../context';
+import { noteStationMates, stationBondOf } from '../allianceBonds';
+import { ALLIANCE_BONDS } from '../../data/balance';
 import { RNG } from '../../utils/rng';
 import { Attributes, Proficiency, TrainingPact, Tribute, trainingPhaseFor } from '../../models/types';
 import {
@@ -593,6 +595,8 @@ function runNegativeBeat(ctx: SimContext, a: Tribute, b: Tribute, station: strin
  */
 function pactWillingness(a: Tribute, b: Tribute): number {
     let weight = a.district === b.district ? TRAINING.pactPartnerMultiplier : 1;
+    // AUDIT-11 §6: days at the same station are a reason to shake on it.
+    weight *= 1 + stationBondOf(a, b) * ALLIANCE_BONDS.stationPactWeight;
     [a, b].forEach(t => {
         weight *= 1 + ARCHETYPES[t.archetype].allianceAffinity;
         weight *= 1 + traitMod(t, 'allianceAffinity');
@@ -1735,6 +1739,8 @@ export function processTrainingDay(ctx: SimContext, dayNumber: number) {
             groups.set(attr, [...(groups.get(attr) ?? []), t]);
         });
 
+        // AUDIT-11 §6: who keeps ending up at the same drill.
+        noteStationMates(ctx, groups.values());
         const outcomes = new Map<string, StationOutcome>();
         cast.forEach(t => {
             const attr = stationsToday.get(t.id)!;

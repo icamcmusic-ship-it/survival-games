@@ -44,6 +44,10 @@ interface Row {
     truce?: string;
     lovers: boolean;
     streak: number;
+    /** AUDIT-11 §6: training days at the same station. */
+    stations: number;
+    /** AUDIT-11 §6: revealed only once the Games are over. */
+    performed?: boolean;
 }
 
 export function RelationshipGraph({ tribute, gameState }: { tribute: Tribute; gameState: GameState }) {
@@ -63,6 +67,10 @@ export function RelationshipGraph({ tribute, gameState }: { tribute: Tribute; ga
                         ? (tribute.truceReason?.[other.id] ?? 'truce standing')
                         : undefined,
                     lovers: areLovers(tribute, other),
+                    stations: tribute.stationMates?.[other.id] ?? 0,
+                    performed: gameState.phase === 'ended'
+                        ? gameState.romances?.find(x => (x.aId === tribute.id && x.bId === other.id) || (x.bId === tribute.id && x.aId === other.id))?.sincere[tribute.id] === false
+                        : undefined,
                     // The streak is only stored on one side of each pair, so read both.
                     streak: Math.max(
                         tribute.memory?.contactStreak?.[other.id] ?? 0,
@@ -71,7 +79,7 @@ export function RelationshipGraph({ tribute, gameState }: { tribute: Tribute; ga
                 };
             })
             .sort((a, b) => a.other.district - b.other.district || a.other.name.localeCompare(b.other.name));
-    }, [tribute, gameState.tributes]);
+    }, [tribute, gameState.tributes, gameState.phase, gameState.romances]);
 
     const fallen = gameState.tributes.filter(t => t.id !== tribute.id && t.status === 'dead').length;
 
@@ -119,6 +127,8 @@ export function RelationshipGraph({ tribute, gameState }: { tribute: Tribute; ga
                                 <span className="flex flex-wrap gap-1">
                                     {r.ally && <span className="chip chip-sm" style={{ borderColor: 'var(--cat-alliance)', color: 'var(--cat-alliance)' }}>ally</span>}
                                     {r.lovers && <span className="chip chip-sm" style={{ borderColor: 'var(--cat-romance, var(--red))', color: 'var(--cat-romance, var(--red))' }}>lovers</span>}
+                                    {r.performed && <span className="chip chip-sm text-[var(--color-ink-400)]">was performing</span>}
+                                    {r.stations >= 2 && <span className="chip chip-sm text-[var(--color-ink-400)]">{r.stations} days at one station</span>}
                                     {r.sworn && <span className="chip chip-sm" style={{ borderColor: 'var(--cat-death)', color: 'var(--cat-death)' }}>⚔ sworn to kill</span>}
                                     {r.truce && <span className="chip chip-sm" style={{ borderColor: 'var(--cat-alliance)', color: 'var(--color-ink-300)' }}>truce · {r.truce}</span>}
                                     {r.streak >= ROMANCE.sustainedCycles && (

@@ -1,3 +1,4 @@
+import { HIPPODROME_SET_BLURBS } from './arenaExtrasSetHippodrome';
 /** One-line description of the arena's own rule, for the setup and game screens. */
 export const SIGNATURE_BLURBS: Record<string, string> = {
     tidewrack: 'The turn of the tide: the water draws back by day and comes over the low ground every night, and anyone still on the flats is in it.',
@@ -5,6 +6,11 @@ export const SIGNATURE_BLURBS: Record<string, string> = {
     vigil: 'The bell: it rings at the dead hour every night, once per tribute standing. Nobody sleeps through the count, and the unsheltered pay most.',
     saltworks: 'The pan cracks: once the border closes in, the emptiest pan gives way — and what lives under the crust comes up through it.',
     kiln: 'The second sun: each morning the chimneys name a sector; by afternoon it is at firing heat, and it is usually the one that looked safest.',
+    gallery: 'Open Mic: a whine picks out one room — usually the one with a fight in it — and the next cycle the house plays it to every seat. No room is ever quiet here.',
+    malthouse: 'Vapour rises, vapour ignites: the boiler room and the cellar fill with fumes, the arena warns when one is full, and the next cycle it goes up and takes every enclosed room touching it.',
+    circuit: 'The pace car: it laps the oval one sector a cycle in the direction the track runs, and hits whoever is on the sector it passes. The only way back is across the infield.',
+    wardblock: 'Lockdown: every few cycles one block seals on a timer with whoever is inside. The first one kills the speakers — no cannons, no faces in the sky, for the rest of the run.',
+    glasshouse: 'The glass gives: one wing at a time the roof cracks, then shatters on whoever is under it and stays open to the sky. The wing that has not given yet is the only safe shelter, and that moves.',
     clockwork: 'The clock: one sector is struck every cycle, in strict rotation, telegraphed a cycle ahead.',
     vault: 'The schedule: every third cycle every light in the complex fails at once.',
     cabin: 'The hearth: the stove in the interior rooms holds the cold off — as long as somebody is working the Woodshed to feed it.',
@@ -46,3 +52,5 @@ export const SIGNATURE_BLURBS: Record<string, string> = {
     menagerie: 'The schedule: the enclosures open on a posted timetable, in order, and the park gets one hunter louder every other cycle.',
     storywood: 'The bargain: every cottage door opens and pays out exactly what it promises — health, sanity, a full belly — for a price the wood never negotiates.',
 };
+
+Object.assign(SIGNATURE_BLURBS, HIPPODROME_SET_BLURBS);

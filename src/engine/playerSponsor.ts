@@ -2,7 +2,8 @@ import { giftRefusal } from './arenaPolicy';
 import { GameState, Item, Tribute } from '../models/types';
 import { ITEMS } from '../data/constants';
 import { SPONSOR_MARKET, QUALITY_BIAS } from '../data/balance';
-import { SPONSOR_BLOCS } from './sponsorBlocs';
+import { SPONSOR_BLOCS, blocWeight } from './sponsorBlocs';
+import { audiencePriceFactor } from './audienceSegments';
 import { RNG } from '../utils/rng';
 import { giveItem, itemPhrase, mintItem } from './items';
 import { cycleOf, ensureMemory } from './memory';
@@ -58,7 +59,7 @@ export function blocDemandFor(state: GameState, t: Tribute, itemValue: number): 
     const budgets = state.sponsorBlocBudgets;
     const live = SPONSOR_BLOCS.filter(b => (budgets?.[b.id] ?? b.budget) >= itemValue * 0.5);
     if (live.length === 0) return 0;
-    return Math.max(0, ...live.map(b => b.prefer(state, t)));
+    return Math.max(0, ...live.map(b => blocWeight(state, t, b)));
 }
 
 export function sponsorCost(state: GameState, t: Tribute, item: Item): number {
@@ -71,7 +72,9 @@ export function sponsorCost(state: GameState, t: Tribute, item: Item): number {
     // tribute the syndicates are already eyeing costs more to reach first.
     const blocPressure = 1 + Math.min(SPONSOR_MARKET.blocDemandCap,
         blocDemandFor(state, t, item.value) * SPONSOR_MARKET.blocDemandPressure);
-    const raw = item.value * SPONSOR_MARKET.valueMultiplier * dayScale * repeat * Math.max(0.6, demand) * blocPressure;
+    // AUDIT-11 §8: the loudest part of the crowd prices in who it loves.
+    const raw = item.value * SPONSOR_MARKET.valueMultiplier * dayScale * repeat * Math.max(0.6, demand) * blocPressure
+        * audiencePriceFactor(state, t);
     return Math.max(SPONSOR_MARKET.minCost, Math.round(raw / 5) * 5);
 }
 

@@ -8,6 +8,7 @@ import { traitMod } from '../data/traits';
 import { cycleOf } from './memory';
 import { clampTribute } from './vitals';
 import { earnTrait } from './earnedTraits';
+import { watchFails } from './allianceBonds';
 
 /**
  * A §6: the night's watch.
@@ -60,7 +61,9 @@ export function postWatches(ctx: SimContext) {
             const sleepers = camp.filter(m => m.id !== watcher.id);
 
             const sentry = nightEyes(watcher) >= WATCH_ROTATION.sentryAwareness;
-            sleepers.forEach(m => {
+            // AUDIT-11 §6: a watcher who nods off gives the sleepers nothing.
+            const slept = watchFails(ctx, record, watcher, sleepers, zone);
+            if (!slept) sleepers.forEach(m => {
                 m.health = Math.min(100, m.health + WATCH_ROTATION.recoveryBonus
                     + (sentry ? WATCH_ROTATION.lightSleeperBonus : 0));
                 m.sleepDebt = Math.max(0, (m.sleepDebt ?? 0) - WATCH_ROTATION.debtRepaid);
@@ -69,7 +72,7 @@ export function postWatches(ctx: SimContext) {
             watcher.vitals.fatigue += WATCH_ROTATION.watcherFatigue;
             clampTribute(watcher);
             // A night's watch is a kindness the sleepers can see in the morning.
-            sleepers.forEach(m => witnessKindness(ctx, watcher, m, 0.5));
+            if (!slept) sleepers.forEach(m => witnessKindness(ctx, watcher, m, 0.5));
 
             // Against `lastWatch`, which survives the sweep at the bottom of
             // this function. `watch` does not: it is cleared every cycle, so

@@ -19,6 +19,7 @@ import { isAggressiveStance, isEvasiveStance } from '../data/stances';
 import { sanityBandOf } from './sanityBands';
 import { offerApprenticeship } from './apprenticeship';
 import { noteMilestone } from './milestones';
+import { fireBeacon, igniteFromFlame } from './arenaRules';
 
 /**
  * Fieldcraft: traps, fire, shelter, camouflage and poison.
@@ -58,7 +59,7 @@ function trapsOwnedBy(ctx: SimContext, ownerId: string): Trap[] {
 export function wantsToSetTrap(ctx: SimContext, t: Tribute): boolean {
     if (trapsOwnedBy(ctx, t.id).length >= TRAPS.maxPerTribute) return false;
     // Needs something to build with, or the wit to manage without.
-    const hasMaterial = t.inventory.some(i => i.id === 'rope' || i.id === 'wire');
+    const hasMaterial = t.inventory.some(i => i.id === 'rope' || i.id === 'wire' || i.id === 'snare-kit');
     if (!hasMaterial && t.attributes.intelligence < 6) return false;
     if (t.injuries.bleeding) return false;
     // §3.3: a tribute who has concluded they lose a straight fight turns to
@@ -89,7 +90,8 @@ const TRAP_SPRING_LINES: Record<Trap['kind'], (name: string, zone: string) => st
 
 /** Spends the turn setting a snare or a deadfall in the tribute's current zone. */
 export function setTrap(ctx: SimContext, t: Tribute) {
-    const materialIdx = t.inventory.findIndex(i => i.id === 'rope' || i.id === 'wire');
+    // AUDIT-11 §13: a crafted snare kit is carried cordage too, spent a line at a time.
+    const materialIdx = t.inventory.findIndex(i => i.id === 'rope' || i.id === 'wire' || i.id === 'snare-kit');
     // Audit 3 §1.2: a stake wanted a mutt venom gland *and* looted cordage, a
     // conjunction of two rare draws on top of the trap roll itself — zero were
     // built across 132 runs. Any of the four things that can coat a blade can
@@ -237,7 +239,11 @@ export function setTrap(ctx: SimContext, t: Tribute) {
     if (treated) t.inventory.splice(venomIdx, 1);
     // Only a stake spends the venom, and a stake never also spends a line, so
     // `materialIdx` is never shifted by the splice above.
-    if (spendsLine) t.inventory.splice(materialIdx, 1);
+    if (spendsLine) {
+        const line = t.inventory[materialIdx];
+        if (line.id === 'snare-kit' && (line.durability ?? 0) > 1) line.durability = (line.durability ?? 0) - 1;
+        else t.inventory.splice(materialIdx, 1);
+    }
     ctx.state.traps = ctx.state.traps ?? [];
     /*
      * AUDIT-8 §6.1: a trapline goes on the approaches, not under your feet.
@@ -660,6 +666,10 @@ export function lightFire(ctx: SimContext, t: Tribute): boolean {
         [t.id],
         { type: 'fire-lit', important: true, category: 'survival' }
     );
+    // Generic arena rule: on exposed ground the fire is a flare (arenaRules.ts).
+    fireBeacon(ctx, t);
+    // Generic arena rule: indoors, in the wrong room, the air takes it too (arenaRules.ts).
+    igniteFromFlame(ctx, t);
     return true;
 }
 

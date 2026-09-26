@@ -4698,7 +4698,7 @@ export const STANCE = {
     churnDecayPerCycle: 0.25,
     churnMax: 4,
     /** Extra cycles of hold per unit of accumulated churn. */
-    churnHoldPerSwitch: 1,
+    churnHoldPerSwitch: 1.5,
     /** Health fractions that pull a tribute toward each stance. */
     evasiveHealth: 40,
     cautiousEvasiveHealth: 55,
@@ -4872,7 +4872,7 @@ export const STANCE_MODES = {
      * already done the work, and it trades concealment for traffic.
      */
     baiting: {
-        base: 4.6,
+        base: 5.2,
         /** Per trap of the tribute's own in this sector. */
         perOwnTrap: 1.5,
         /**
@@ -4897,10 +4897,17 @@ export const STANCE_MODES = {
         /** Added to the chance somebody else walks into this sector. */
         trafficDraw: 0.2,
         /** AUDIT-11 §5: live traps anywhere in the arena that make Baiting available. */
-        liveTrapsTrigger: 2,
+        liveTrapsTrigger: 1,
         /** AUDIT-11 §5: pull per live trap owned anywhere, up to the cap. */
-        perLiveTrap: 0.3,
+        perLiveTrap: 0.6,
         liveTrapsCap: 4,
+        /**
+         * AUDIT-11 §5 (second pass): the payoff. A tribute who has drawn the
+         * fight onto ground they prepared fights it on their terms.
+         */
+        powerBonus: 1.5,
+        /** AUDIT-11 §5: armed on high ground is prepared ground (trigger and pull). */
+        elevationBonus: 1.2,
     },
     /** How much of the archetype's temperament a conditional stance inherits. */
     conditionalArchetypeWeight: 0.5,
@@ -6352,6 +6359,22 @@ export const RIVALRY = {
  * meaningful slice of a wager's winnings, and every subsequent one to the same
  * tribute costs half again as much.
  */
+/** AUDIT-11 §8: audience segments. See `engine/audienceSegments.ts`. */
+export const AUDIENCE_SEGMENTS = {
+    /** Share of each segment's heat kept from one phase to the next. */
+    decay: 0.85,
+    perKill: 6,
+    perFight: 1,
+    perRomance: 5,
+    perAlliance: 1.5,
+    /** A kill by a tribute trained at or under this is an upset. */
+    underdogTrainingMax: 5,
+    perUpset: 8,
+    /** Quote pressure per unit of (segment heat x appeal), and its cap. */
+    pricePressure: 0.25,
+    priceCap: 0.3,
+};
+
 export const SPONSOR_MARKET = {
     /** Coins per point of an item's arena value. */
     valueMultiplier: 4,
@@ -8972,6 +8995,11 @@ export const ARCHETYPE_HOOKS = {
     penitentRegard: 10,
     /** And it costs something to have said it where it can be held against you. */
     penitentSanity: 6,
+    /**
+     * AUDIT-11 §11: the vow's personal payoff. Everybody who heard it stands
+     * down for a few cycles — "not by my hand" is answered in kind.
+     */
+    penitentTruceCycles: 8,
     /** Forager: no table without something to put on it. */
     foragerMinHunger: 20,
     foragerFeed: 25,
@@ -9000,6 +9028,9 @@ export const ARCHETYPE_HOOKS = {
     forecasterRelief: 8,
     understudyResolve: 12,
     understudySanity: 6,
+    /** AUDIT-11 §11: saying the reason out loud is a second wind. */
+    understudyHeal: 10,
+    understudyFatigueRelief: 15,
     /** Names to read before a roll-call is a roll-call rather than a remark. */
     archivistMinFallen: 3,
     archivistSanityCost: 4,
@@ -9057,6 +9088,26 @@ export const ARENA_SIGNATURES = {
     panCracks: { earlyEveryNth: 5, emptiestChance: 0.65, holdBase: 0.45, holdPerAgility: 0.04, damage: 12, muttChance: 0.5 },
     /** Audit 5 §5.7: the Kiln's second sun, telegraphed a day ahead. */
     secondSun: { safestChance: 0.7, thirst: 14, fatigue: 8, burnChance: 0.45, burnDamage: 9 },
+    /** The Hippodrome: the power comes on at a random hour, then fails. */
+    hippodromeLights: { firstMinCycle: 3, firstMaxCycle: 7, litCycles: 2, blackoutCycles: 2, restCycles: 4, stumbleChance: 0.12, stumbleDamage: 8, animatronicChance: 0.35, animatronicDamage: 14, blackoutSanity: 4 },
+    /** The Undercroft: the ghost train on the main line. */
+    trainDue: { everyNth: 3, dodgeBase: 0.3, dodgePerAgility: 0.05, damage: 20, railDamage: 10, fatigue: 10 },
+    /** The Long Vintage: the harvest bell, then the frost. */
+    vintageFrost: { terraces: 2, shelteredAt: 0.6, damage: 10, fatigue: 12, frostbiteChance: 0.3, bloomChance: 0.5 },
+    /** Cinder Peak: clear sky, then whiteout. */
+    cinderSky: { clearCycles: 2, whiteoutCycles: 2, calmCycles: 2, exposedDamage: 8, exposedFatigue: 10, frostbiteChance: 0.2 },
+    /** The Open Cut: the ground gives. */
+    groundGive: { firstCycle: 5, everyNth: 5, maxFalls: 2, holdBase: 0.35, holdPerAgility: 0.05, damage: 22, muttChance: 0.3 },
+    /** The Gallery: the house picks one room and plays it to everybody. */
+    openMic: { pickChance: 0.6, sanity: 5, rigChance: 0.35, dodgeBase: 0.4, dodgePerAgility: 0.05, rigDamage: 18, rigBleedChance: 0.5 },
+    /** The Malt House: vapour builds in the enclosed rooms, then goes. */
+    vapour: { risePerDay: 0.2, risePerNight: 0.35, fumeFatigue: 6, fumeSanity: 3, igniteChance: 0.7 },
+    /** Circuit Row: the pace car laps the oval, one sector per cycle. */
+    paceCar: { dodgeBase: 0.35, dodgePerAgility: 0.05, damage: 20, fatigue: 8, bleedChance: 0.4 },
+    /** The Ward Block: the cell doors seal on a timer. */
+    lockdown: { firstCycle: 3, everyNth: 4, lockCycles: 2, busiestChance: 0.65, doorChance: 0.2, doorDamage: 16, trappedSanity: 6, trappedFatigue: 5, muttChance: 0.3 },
+    /** The Glasshouse: one wing at a time, the glass gives. */
+    glassGives: { firstCycle: 3, everyNth: 3, dodgeBase: 0.3, dodgePerAgility: 0.05, damage: 18, coverKept: 0.6, rooflessShelter: 0.05, acousticsGain: 0.3, exposureFatigue: 6, exposureThirst: 4, safeRelief: 5 },
 
     /** The Clockwork Island: the hour turns and one sector pays for it. */
     clock: {
@@ -9517,6 +9568,8 @@ export const REUNION = {
     trust: 5,
     /** A relief, not a heal. The arena has not got any safer. */
     sanityRelief: 8,
+    /** AUDIT-11 §8: what a rookie's first sight of a working veteran is worth in regard. */
+    veteranRegard: 4,
 };
 
 export const APPRENTICESHIP = {
@@ -9926,4 +9979,354 @@ export const WHAT_IF = {
     branches: 8,
     /** Hard stop on one branch, in phase advances, so a debrief always ends. */
     maxAdvances: 400,
+} as const;
+
+
+/**
+ * The generic arena rules (engine/arenaRules.ts): numbers for the mechanics
+ * any arena can opt into through `Arena.rules` or drive from its signature.
+ */
+export const ARENA_RULES = {
+    /** Cover below which a lit zone counts as open ground (Hippodrome lights). */
+    litOpenCoverBelow: 0.35,
+    /** Cover below which high ground counts as exposed (Cinder Peak clear sky). */
+    exposedRidgeCoverBelow: 0.3,
+    /** Per-cycle chance the Undercroft third rail catches somebody standing on it. */
+    thirdRailTouchChance: 0.2,
+    /**
+     * An arena-wide sightline. `acoustics` multiplies every zone's carry,
+     * `concealment` multiplies the chance to stay unseen, `ambush` shifts the
+     * ambush chance, `ranged` is combat power for bows and thrown weapons,
+     * `transit` is extra cycles on every crossing, and `dark` overrides the
+     * clock's notion of night (null leaves it alone).
+     */
+    sightline: {
+        lit: { acoustics: 1.45, concealment: 0.6, ambush: -0.12, ranged: 2, transit: 0, dark: false },
+        blackout: { acoustics: 1.2, concealment: 1.3, ambush: 0.12, ranged: -2, transit: 0, dark: true },
+        clear: { acoustics: 1.1, concealment: 0.7, ambush: -0.1, ranged: 3, transit: 0, dark: null },
+        whiteout: { acoustics: 0.6, concealment: 1.35, ambush: 0.1, ranged: -3, transit: 1, dark: true },
+    },
+    /** Combat power lost fighting inside a disorienting zone. */
+    disorientCombatPenalty: 2,
+    /** Extra cycles to find the way out of a disorienting zone. */
+    disorientTransit: 1,
+    /** Hard ceiling on a zone's effective acoustics after every modifier. */
+    acousticsCeiling: 2.2,
+} as const;
+
+/**
+ * The structural arena rules (engine/arenaRules.ts, second half): lockdown,
+ * enclosed ignition, remap and the rotating shelter.
+ */
+export const ARENA_RULE_MECHANICS = {
+    /** Added to an enclosed-ignition roll per unit (0-1) of recorded vapour. */
+    vapourIgnitionBonus: 0.5,
+    /** The floor a designated safe shelter is lifted to. */
+    safeShelterQuality: 0.9,
+    /** Damage a lit flame does to everybody in each zone of the chain it sets off. */
+    ignitionDamage: 18,
+    /** The lighter's own share, on top: they were holding it. */
+    ignitionLighterDamage: 10,
+} as const;
+
+/**
+ * AUDIT-11 §6: relationships and alliances — role duty, the fairness ledger,
+ * relationship arcs, grief days and training-station bonds. See
+ * `engine/allianceBonds.ts`.
+ */
+export const ALLIANCE_BONDS = {
+    /** Base chance a role-holder does their job in a cycle, before attributes. */
+    roleBaseSuccess: 0.45,
+    /** Per point of the role's governing attribute. */
+    rolePerAttribute: 0.05,
+    /** Trust each other member gives a role-holder who did the job. */
+    roleTrustGain: 2,
+    /** ...and takes away from one who neglected it. */
+    roleTrustLoss: 4,
+    /** Health below which a member counts as needing the medic. */
+    medicHurtHealth: 60,
+    /** Health the medic restores on a kept duty. */
+    medicHeal: 4,
+    /** Chance a watch-keeper nods off, before sleep debt and fatigue. */
+    watchFailBase: 0.04,
+    /** Per point of the watcher's sleep debt. */
+    watchFailPerDebt: 0.02,
+    /** Per point of fatigue above the fatigue line. */
+    watchFailPerFatigue: 0.004,
+    /** Fatigue above which the watcher is flagging. */
+    watchFailFatigueLine: 50,
+    /** Trust the sleepers take off a watcher who slept. */
+    watchFailTrustLoss: 6,
+    /** Chance per cycle a provider with the treachery for it takes the extra portion. */
+    greedBase: 0.15,
+    /** Per point of combined treachery (archetype + trait, x10). */
+    greedPerTreachery: 0.08,
+    /** Hunger a short-changed member goes without (0: the meal is a ledger, not a famine — test:intentions sits on its scavenge floor). */
+    shortHunger: 0,
+    /** Hunger the greedy provider saves. */
+    greedyHunger: 3,
+    /** Grudge per unfair split. */
+    grudgePerSplit: 12,
+    /** Regard the short-changed member loses for the provider. */
+    grudgeRegard: 5,
+    /** Grudge weight on picking the betrayer (per point of grudge). */
+    grudgeBetrayerWeight: 0.08,
+    /** Grudge weight on picking the mark (per point of grudge). */
+    grudgeTargetWeight: 0.2,
+    /** Grudge at which it is a schism grievance and a named motive. */
+    grudgeMotive: 24,
+    /** Regard at or below which two tributes read as rivals. */
+    rivalRegard: -15,
+    /** Regard a thawed rival is lifted to (at least). */
+    thawRegard: 30,
+    /** Chance each other member is awake to see an ally empty the stash. */
+    theftWitnessChance: 0.35,
+    /** Regard a witness to an ally's theft is dropped to (at most). */
+    theftRivalRegard: -35,
+    /** Bond (regard) at which a death can cost a grief day. */
+    griefDayBond: 70,
+    /** Chance of a grief day at full bond strength. */
+    griefDayChance: 0.15,
+    /** Cycles a grief day holds. */
+    griefDayCycles: 2,
+    /** Extra hatred toward a killer per point of bond above zero. */
+    vengeancePerBond: 0.25,
+    /** Warmth per shared station day between cross-district tributes. */
+    stationWarmth: 2,
+    /** Formation-chance weight per shared station day. */
+    stationFormWeight: 0.015,
+    /** Pact-willingness multiplier per shared station day. */
+    stationPactWeight: 0.1,
+    /** Shared station days at which the bond is named in the chronicle. */
+    stationNamedAt: 3,
+} as const;
+
+/**
+ * AUDIT-11 §12: prediction mode. Points per pick on the pre-bloodbath slip.
+ */
+export const PREDICTION = {
+    /** How many places the ranked final list holds. */
+    finalSize: 8,
+    winnerPoints: 5,
+    firstDeathPoints: 3,
+    topKillerPoints: 3,
+    /** Per named tribute who did make the last eight. */
+    finalEightPoints: 1,
+    /** Extra per tribute named in exactly the right place. */
+    exactPlacePoints: 1,
+    /** Share of the maximum at which a slip counts as a "sharp" call for the meta achievements. */
+    sharpShare: 0.5,
+} as const;
+
+/**
+ * AUDIT-11 §8/§12: the campaign arc — rebellion, district reputation, feuds,
+ * legacy tributes. Read through `engine/campaign.ts` and `utils/panemStorage.ts`.
+ */
+export const CAMPAIGN_ARC = {
+    /** Where a fresh campaign's rebellion meter starts. */
+    rebellionStart: 10,
+    rebellionMax: 100,
+    /** An outlying (District 7+) non-Career victor. */
+    rebellionOutlierVictor: 8,
+    /** A Career victor: the Capitol's order, restored. */
+    rebellionCareerVictor: -6,
+    /** The first district counted as outlying. */
+    outlierDistrictMin: 7,
+    /** Oldest age counted as a young death. */
+    youngDeathAge: 13,
+    /** A victor whose interview answers went down badly with the Capitol. */
+    rebellionDefiantInterview: 6,
+    /** A Games nobody survived. */
+    rebellionNoVictor: 4,
+    /** Per tribute aged 12-13 who died. */
+    rebellionYoungDeath: 1,
+    /** Rebellion at or above which the next Games is a Quarter Quell. */
+    quellAt: 70,
+    /** Rebellion bands below the Quell: restless, and murmuring (named in the briefing). */
+    restlessAt: 45,
+    murmurAt: 20,
+    /** District reputation at which the briefing names it. */
+    reputationNamedAt: 15,
+    /** Hazard and mutt multiplier gained at full rebellion (Capitol cruelty). */
+    crueltyMax: 0.2,
+    /** Share of sponsor generosity lost at full rebellion (sponsors grow wary). */
+    sponsorWarinessMax: 0.2,
+    /** Reputation per crown, per interview-reception point, and per kill by a district's tributes. */
+    reputationPerCrown: 10,
+    reputationPerReception: 3,
+    reputationPerKill: 1,
+    /** Share of reputation kept from one Games to the next. */
+    reputationKeep: 0.8,
+    reputationMax: 50,
+    /** Opening sponsor trust per point of district reputation. */
+    reputationTrustPerPoint: 0.2,
+    /** Sponsor generosity per point of district reputation. */
+    reputationGenerosityPerPoint: 0.004,
+    /** Feuds carried at once. */
+    feudMax: 3,
+    /** Regard two feuding districts' tributes start at toward each other. */
+    feudRegard: -20,
+    /** Legacy tributes: campaign runs before one can be reaped outside a Quell, and the chance per Games. */
+    legacyMinRuns: 3,
+    legacyChance: 0.2,
+} as const;
+
+/**
+ * AUDIT-11 §12: text anti-staleness across sessions.
+ */
+export const STALE_LINES = {
+    /** Days a seen template counts as stale. */
+    windowDays: 3,
+    /** Most template hashes remembered. */
+    cap: 800,
+} as const;
+
+/**
+ * AUDIT-11 §8: parlays across Games and the bankroll leaderboard.
+ */
+export const PARLAY = {
+    minLegs: 2,
+    maxLegs: 4,
+    minStake: 25,
+    /** A leg's multiplier is capped so a long-shot chain cannot print coins. */
+    legMultCap: 12,
+    /** Entries kept on the bankroll leaderboard. */
+    leaderboardSize: 10,
+} as const;
+
+/**
+ * AUDIT-11 §5/§7/§13: arena depth — the universal weather layer, zone scars,
+ * the hidden second cache, arena acts, crafted kit with wear, tribute plans,
+ * deception and the late-game risk curve. See `engine/arenaDepth.ts`.
+ */
+export const ARENA_DEPTH = {
+    /** Chance per cycle, with no weather in force or on the way, that some is telegraphed. */
+    weatherStartChance: 0.2,
+    /** Earliest day any weather arrives (the bloodbath is not rained on). */
+    weatherEarliestDay: 2,
+    /** How long a spell of weather lasts, in cycles. */
+    weatherMinCycles: 2,
+    weatherMaxCycles: 3,
+    /** Base weights for which kind comes, before the arena's own terrain and act bias it. */
+    weatherWeights: { fog: 1, heat: 1, storm: 0.8, rain: 1.2 },
+    /** Extra weight per share of the arena's zones on a matching terrain. */
+    weatherTerrainPull: 2,
+    /** Weight an arena act adds to the kind it favours. */
+    weatherActPull: 3,
+    /** Intelligence at which anyone reads the sky a cycle out, trait or none. */
+    telegraphIntelligence: 9,
+    /** Zone threat a braced tribute puts on exposed ground before a storm or heat. */
+    telegraphThreat: 18,
+    /** Shelter quality under which ground counts as exposed to storm and heat. */
+    exposedShelterBelow: 0.35,
+    /** Thirst added per cycle of heat, before traits and shelter. */
+    heatThirst: 7,
+    heatFatigue: 4,
+    /** Multipliers on the heat load by trait / preparation. */
+    heatBredScale: 0.3,
+    frostBornHeatScale: 1.5,
+    bracedScale: 0.5,
+    /** Storm: chip damage on exposed ground, scaled down by shelter. */
+    stormDamage: 3,
+    stormFatigue: 6,
+    stormSanity: 3,
+    frostBornStormScale: 0.4,
+    /** Rain: thirst relief for anybody out in it. */
+    rainQuench: 6,
+    /** Fog: nerves, for anyone who cannot see through it. */
+    fogSanity: 2,
+    /** Concealment shift a hider gets from each kind (seeker-side traits cancel fog). */
+    concealment: { fog: 0.12, heat: -0.03, storm: 0.08, rain: 0.05 },
+    /** Night-Sighted / Weather-Nose seekers lose this share of the fog's cover. */
+    fogSeerCancel: 0.75,
+    /** Multiplier on how far a crossing carries. */
+    noise: { fog: 1.1, heat: 1, storm: 0.55, rain: 0.75 },
+    /** Multiplier on forage yield. */
+    forage: { fog: 1, heat: 0.85, storm: 0.8, rain: 1.1 },
+    /** Combat power a ranged or thrown weapon loses. */
+    rangedPenalty: { fog: 1.5, heat: 0, storm: 2, rain: 0.75 },
+    /** Chance per cycle that rain or a storm puts out a burning zone. */
+    rainDousesFire: 0.5,
+
+    /** Zone scars: how long each persists after the thing that caused it ends. */
+    scarCycles: { burnt: 10, flooded: 6, collapsed: 30, trampled: 4 },
+    /** Resource multiplier while scarred. */
+    scarResources: { burnt: 0.45, flooded: 0.8, collapsed: 0.7, trampled: 0.85 },
+    /** Regrowth multiplier while scarred. */
+    scarRegrowth: { burnt: 0.4, flooded: 0.7, collapsed: 0.5, trampled: 1 },
+    /** Concealment shift for anyone hiding on scarred ground. */
+    scarCover: { burnt: -0.12, flooded: -0.05, collapsed: 0.08, trampled: -0.06 },
+    /** Traffic through a zone (sum of its edges) that tramples it. */
+    trampleTraffic: 9,
+    /** Share of a scarred zone's depletion forgiven when burnt ground greens over. */
+    ashBloomRestore: 0.5,
+
+    /** Hidden cache: day it becomes findable, and per-cycle find chances. */
+    cacheFromDay: 2,
+    cacheFinderChance: 0.4,
+    cacheOtherChance: 0.02,
+    /** Day a Cartographer/Tracker reads the supply trail and learns where it is. */
+    cacheHintDay: 3,
+    /** Items in it. */
+    cacheItems: 3,
+    cacheQualityBias: 0.2,
+
+    /** Arena acts: [act II, act III] trigger days and alive-counts (either triggers). */
+    actDays: [4, 7],
+    actAliveShare: [0.6, 0.3],
+    /** Most zones an act transforms at once. */
+    actMaxZones: 3,
+
+    /** Crafted kit: chance per cycle and skill floor to make a snare kit or a bivouac. */
+    snareKitChance: 0.2,
+    snareKitSkill: 1.2,
+    bivouacChance: 0.25,
+    /** Weapon failure: chance a breaking weapon hurts its holder, and how much. */
+    weaponFailInjuryChance: 0.45,
+    weaponFailDamage: 9,
+
+    /** Plans: triggers, lifetime and patience. */
+    planThirst: 55,
+    planHurtBelow: 45,
+    planChance: 0.35,
+    planMaxCycles: 12,
+    planMaxInterruptions: 3,
+    planMaxHops: 4,
+    /** Cycles a plan may stand, paused or not, before it is given up regardless. */
+    planMaxAge: 18,
+
+    /** Deception. */
+    decoyIntelligence: 7,
+    decoyChance: 0.2,
+    decoySeeThrough: 9,
+    decoyCycles: 3,
+    feignChance: 0.08,
+    feignHealthScale: 0.45,
+    feignCycles: 2,
+    feignCombatEdge: 2,
+
+    /** Late-game risk curve. */
+    riskLateField: 8,
+    riskDesperationWeight: 0.25,
+    hoarderKit: 90,
+    hoarderTurn: 0.35,
+    pacifistAggressionBelow: -0.2,
+    pacifistBreakAt: 0.55,
+    pacifistBreak: 0.45,
+} as const;
+
+/**
+ * AUDIT-11 (tuning pass): the lethal events `data/arenaEvents/group6.ts`
+ * authors — the §9 arena-specific and universal causes. Scales their pool
+ * weight and their damage; boons and non-lethal beats are left as written.
+ */
+export const AUDIT11_EVENTS = {
+    /** Weight multiplier on the arena-specific lethal events, inside their own arena's pool. */
+    arenaWeightScale: 8,
+    /** Weight multiplier on the universal lethal events, inside the shared universal pool. */
+    universalWeightScale: 7,
+    /** Damage multiplier on every lethal event in the file. */
+    damageScale: 5,
+    /** Added to each lethal event's dodge difficulty (or the default). */
+    dodgeDifficultyBonus: 3,
 } as const;

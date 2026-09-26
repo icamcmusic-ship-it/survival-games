@@ -1,3 +1,4 @@
+import { riskShift } from './arenaDepth';
 import { Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { RISK } from '../data/balance';
@@ -38,6 +39,9 @@ export function riskTolerance(ctx: SimContext, t: Tribute): number {
 
     const field = getAlive(ctx.state).length;
     risk += Math.min(RISK.fieldMaxBonus, Math.max(0, RISK.fieldPivot - field) * RISK.fieldWeightPerTribute);
+
+    // AUDIT-11 §5: the late-game curve — desperation, turned hoarders, broken pacifists.
+    risk += riskShift(ctx.state, t);
 
     return Math.max(-1, Math.min(1, risk));
 }

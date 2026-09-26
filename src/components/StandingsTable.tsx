@@ -38,15 +38,16 @@ export const StandingsTable = React.memo(function StandingsTable({
     onSelectTribute,
     allianceAccent,
     arenaSealed,
-    followedId,
+    pinnedIds,
     onFollow,
 }: {
     gameState: GameState;
     onSelectTribute: (id: string) => void;
     allianceAccent: (allianceId?: string) => string | undefined;
     arenaSealed: boolean;
-    followedId: string | null;
-    onFollow: (id: string | null) => void;
+    /** AUDIT-11 follow-cam: up to three pinned tributes. */
+    pinnedIds: string[];
+    onFollow: (id: string) => void;
 }) {
     const [sort, setSort] = useState<{ column: Column; desc: boolean }>({ column: 'odds', desc: true });
     const [aliveOnly, setAliveOnly] = useState(false);
@@ -173,13 +174,13 @@ export const StandingsTable = React.memo(function StandingsTable({
                                 >
                                     <td className="p-1">
                                         <button
-                                            onClick={() => onFollow(followedId === t.id ? null : t.id)}
-                                            aria-pressed={followedId === t.id}
-                                            aria-label={followedId === t.id ? `Stop following ${t.name}` : `Follow ${t.name}`}
+                                            onClick={() => onFollow(t.id)}
+                                            aria-pressed={pinnedIds.includes(t.id)}
+                                            aria-label={pinnedIds.includes(t.id) ? `Stop following ${t.name}` : `Follow ${t.name}`}
                                             // AUDIT-7 §2.1: 11x16 at 380px, one
                                             // of 24 in a column, next to another
                                             // 24 name buttons. See `.tap-target-cell`.
-                                            className={`tap-target-cell justify-center ${followedId === t.id ? 'text-[var(--red)]' : 'text-[var(--color-ink-600)]'}`}
+                                            className={`tap-target-cell justify-center ${pinnedIds.includes(t.id) ? 'text-[var(--red)]' : 'text-[var(--color-ink-600)]'}`}
                                             disabled={dead}
                                         >
                                             ★

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Alliance, CharterRule, GameState } from '../models/types';
 import { ruleText } from '../engine/allianceCharter';
+import { ALLIANCE_BONDS } from '../data/balance';
 
 /**
  * AUDIT-10 B3-02: the alliance ledger.
@@ -46,7 +47,18 @@ export function AllianceLedger({ alliance, gameState }: { alliance: Alliance; ga
     const expelled = alliance.expelledIds ?? [];
     const hearings = (gameState.allianceDisputes ?? []).filter(d => d.allianceId === alliance.id);
 
-    if (contributions.length === 0 && breaches.length === 0 && expelled.length === 0 && hearings.length === 0) {
+    // AUDIT-11 §6: who did their job, who ate, and who is owed for it.
+    const duties = Object.entries(alliance.roleLedger ?? {})
+        .filter(([id]) => alliance.memberIds.includes(id))
+        .sort((a, b) => (b[1].kept + b[1].neglected) - (a[1].kept + a[1].neglected));
+    const ate = Object.entries(alliance.fairness?.ate ?? {})
+        .filter(([id]) => alliance.memberIds.includes(id))
+        .sort((a, b) => b[1] - a[1]);
+    const grudges = Object.entries(alliance.fairness?.grudges ?? {})
+        .filter(([id]) => alliance.memberIds.includes(id));
+
+    if (contributions.length === 0 && breaches.length === 0 && expelled.length === 0 && hearings.length === 0
+        && duties.length === 0 && ate.length === 0) {
         return (
             <p className="text-[var(--color-ink-500)] text-mini mt-2">
                 Nothing on the ledger yet — nobody has put anything in, broken anything or been thrown out.
@@ -75,6 +87,45 @@ export function AllianceLedger({ alliance, gameState }: { alliance: Alliance; ga
                             </li>
                         )}
                     </ul>
+                </div>
+            )}
+
+            {duties.length > 0 && (
+                <div>
+                    <div className="panel-title mb-1">Doing the job</div>
+                    <ul className="font-mono text-mini leading-relaxed space-y-0.5">
+                        {duties.map(([id, d]) => (
+                            <li key={id} className="flex justify-between gap-3">
+                                <span className="text-[var(--color-ink-300)]">{nameOf(id)}</span>
+                                <span className={d.neglected > d.kept ? 'text-[var(--red)]' : 'text-[var(--color-ink-500)]'}>
+                                    {d.kept} kept · {d.neglected} neglected
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+            )}
+
+            {ate.length > 0 && (
+                <div>
+                    <div className="panel-title mb-1">Who ate</div>
+                    <ul className="font-mono text-mini leading-relaxed space-y-0.5">
+                        {ate.map(([id, n]) => (
+                            <li key={id} className="flex justify-between gap-3">
+                                <span className="text-[var(--color-ink-300)]">{nameOf(id)}</span>
+                                <span className="text-[var(--color-ink-500)]">{n} portions</span>
+                            </li>
+                        ))}
+                    </ul>
+                    {grudges.map(([id, g]) => (
+                        <p key={id} className="text-mini leading-snug mt-1">
+                            <span className="text-[var(--color-ink-200)] font-bold">{nameOf(id)}</span>
+                            <span className={g.amount >= ALLIANCE_BONDS.grudgeMotive ? 'text-[var(--red)]' : 'text-[var(--color-ink-500)]'}>
+                                {' '}has gone short while {nameOf(g.againstId)} ate twice
+                                {g.amount >= ALLIANCE_BONDS.grudgeMotive ? ' — a motive, if it comes to a knife.' : '.'}
+                            </span>
+                        </p>
+                    ))}
                 </div>
             )}
 

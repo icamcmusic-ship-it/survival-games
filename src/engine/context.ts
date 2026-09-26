@@ -1,5 +1,6 @@
 import { STORY_PACING } from '../data/balance';
 import { GameState, LogOptions, Phase, Tribute } from '../models/types';
+import { lineHash } from '../utils/lineHash';
 import { RNG } from '../utils/rng';
 
 /**
@@ -129,6 +130,7 @@ export function getAlive(state: GameState): Tribute[] {
 }
 
 export function createContext(state: GameState, rng: RNG): SimContext {
+    let staleSet: Set<string> | undefined;
     const ctx: SimContext = {
         state,
         rng,
@@ -176,6 +178,7 @@ export function createContext(state: GameState, rng: RNG): SimContext {
                 const previous = memory[pool[0]];
                 options = previous !== undefined ? pool.filter(p => p !== previous) : pool;
                 used[pool[0]] = [];
+                if (state.shownText?.[pool[0]]) state.shownText[pool[0]] = [];
             }
             // AUDIT-9 B12: narration draws from its own stream, never from
             // `ctx.rng`. On the shared stream the *size of a prose pool* was a
@@ -187,9 +190,45 @@ export function createContext(state: GameState, rng: RNG): SimContext {
             // mechanical stream blind to how much prose was written.
             const draw = state.proseDraws ?? 0;
             state.proseDraws = draw + 1;
-            const chosen = new RNG(`${state.seed}-prose-${draw}`).pick(options.length > 0 ? options : pool);
-            memory[pool[0]] = chosen;
-            used[pool[0]] = [...(used[pool[0]] ?? []), chosen];
+            const candidates = options.length > 0 ? options : pool;
+            const drawn = new RNG(`${state.seed}-prose-${draw}`).pick(candidates);
+            let chosen = drawn;
+            // AUDIT-11 §12: lines this player saw in recent sessions are
+            // passed over for the next unseen one in the pool, walking from
+            // the drawn index. Selection only — no extra draw — and the stale
+            // set is snapshotted onto the state, so a save rewords identically.
+            if (state.staleLines && state.staleLines.length > 0) {
+                const stale = staleSet ?? (staleSet = new Set(state.staleLines));
+                if (stale.has(lineHash(chosen))) {
+                    // Only a line with exactly the same `{token}` slots may
+                    // stand in: some callers branch on a template's tokens
+                    // (a `{watcher}` line names and draws a witness), so a
+                    // swap across slot shapes would change the Games, not
+                    // just its wording — and a share link carries no stale set.
+                    // The rotation below still records the *drawn* line, so
+                    // every later draw sees the same pool state it would have.
+                    const shape = slotShape(drawn);
+                    const at = pool.indexOf(drawn);
+                    const seenThisRun = state.shownText?.[pool[0]] ?? used[pool[0]] ?? [];
+                    let fallback: string | undefined;
+                    for (let k = 1; k < pool.length; k++) {
+                        const next = pool[(at + k) % pool.length];
+                        if (stale.has(lineHash(next)) || slotShape(next) !== shape) continue;
+                        if (!seenThisRun.includes(next)) { chosen = next; fallback = undefined; break; }
+                        fallback = fallback ?? next;
+                    }
+                    if (fallback !== undefined && chosen === drawn) chosen = fallback;
+                }
+            }
+            memory[pool[0]] = drawn;
+            used[pool[0]] = [...(used[pool[0]] ?? []), drawn];
+            // What the reader actually saw. Only kept when a stale set is in
+            // play — without one the shown line is always the drawn one, and
+            // `usedText` already says so (state stays byte-identical).
+            if (state.staleLines && state.staleLines.length > 0) {
+                const shown = state.shownText ?? (state.shownText = {});
+                shown[pool[0]] = [...(shown[pool[0]] ?? []), chosen];
+            }
             return chosen;
         },
         logEvent(text, tributesInvolved, options, zone) {
@@ -268,8 +307,45 @@ export function createContext(state: GameState, rng: RNG): SimContext {
                 // AUDIT-9: the structured kind, where the beat is one
                 // something measures. See `EventType`.
                 type: opts.type,
+                // The actor, where the caller named one; otherwise only where
+                // the first-listed tribute is unambiguously acting (a solo
+                // beat, or a kill, which lists the killer first).
+                why: important
+                    ? compactWhy(ctx.state, opts.actorId
+                        ?? (tributesInvolved.length === 1 || category === 'kill' ? tributesInvolved[0] : undefined))
+                    : undefined,
             });
         }
     };
     return ctx;
+}
+
+/**
+ * AUDIT-11 §4: the reasoning chip's text, read from a decision trace the
+ * stance scorer already wrote this cycle. Headline beats only, capped at 90
+ * characters, so a save grows by a few KB at most.
+ */
+export function compactWhy(state: GameState, actorId: string | undefined): string | undefined {
+    if (!actorId) return undefined;
+    const t = state.tributes.find(x => x.id === actorId);
+    const trace = t?.decisionTrace;
+    if (!t || !trace || trace.cycle !== (state.cycle ?? 0)) return undefined;
+    let out: string;
+    if (trace.forced) out = `Not choosing: ${trace.forced}`;
+    else if (trace.held) out = `${trace.held.stance}, held: ${trace.held.because}`;
+    else {
+        const top = trace.stances[0];
+        if (!top) return undefined;
+        const reasons = top.reasons.slice(0, 2).map(r => r.label).join(', ');
+        out = reasons ? `${top.stance}: ${reasons}` : top.stance;
+    }
+    const goal = trace.objectives?.[0]?.label;
+    if (goal) out += ` · ${goal.toLowerCase()}`;
+    return out.length > 90 ? `${out.slice(0, 89)}…` : out;
+}
+
+
+/** AUDIT-11 §12: a template's `{token}` slots, sorted — its mechanical shape. */
+function slotShape(line: string): string {
+    return [...new Set(line.match(/\{[a-zA-Z0-9_]+\}/g) ?? [])].sort().join('');
 }

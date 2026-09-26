@@ -71,6 +71,7 @@ import { useStore } from './store/createStore';
 import { prefsStore } from './store/prefsStore';
 import { DEFAULT_GAME_CONFIG } from './data/constants';
 import { ARENA_DEATH_BUDGET, BLOODBATH } from './data/balance';
+import { parseMutators } from './data/mutators';
 
 /** Routes kept inline on the phone header while a run exists. */
 const RUN_ROUTES: ViewName[] = ['roster', 'game', 'chronicle'];
@@ -223,6 +224,8 @@ export default function App() {
         sanityStart: numParam('sanityStart', DEFAULT_GAME_CONFIG.sanityStart ?? 100, 40, 100),
         enableHallucinations: boolParam('enableHallucinations', DEFAULT_GAME_CONFIG.enableHallucinations ?? true),
         enableBreakdowns: boolParam('enableBreakdowns', DEFAULT_GAME_CONFIG.enableBreakdowns ?? true),
+        // AUDIT-11 §12: the mutator cards. Absent on older links: none.
+        mutators: parseMutators(params.get('mutators')),
       };
       // A shared link pins the run's exact Quarter Quell (or explicit lack of
       // one) so it replays the same Games it was copied from — the same

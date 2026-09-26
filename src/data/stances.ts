@@ -58,7 +58,8 @@ export const STANCE_PROFILES: Record<Stance, StanceProfile> = {
         id: 'Evasive', label: 'Evasive', family: 'evasive',
         // AUDIT-11 §5: 3 -> 2. 63% of Evasive cycles were the hold, not the
         // scorer; going to ground is not the commitment Fortified is.
-        conditional: false, minHold: 2,
+        // Tuning pass: 2 -> 1 (largest stance share 36.3% -> ~33%).
+        conditional: false, minHold: 1,
         blurb: 'Outmatched or hurt. Hides, and heals if nobody finds them.',
     },
     Hunting: {

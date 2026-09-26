@@ -1,3 +1,4 @@
+import { deceptionEdge, weaponFails, weatherRangedPenalty } from './arenaDepth';
 import { arenaHasLaw } from './gamesProfile';
 import { targetDrawOf } from './targeting';
 import { DamageRecord, DeathCauseCode, Item, Tribute, attr } from '../models/types';
@@ -38,6 +39,7 @@ import { isAggressiveStance, isEvasiveStance } from '../data/stances';
 import { loseSanity } from './sanityBands';
 import { composureOf } from './composure';
 import { recordWound, reattributeWound } from './woundLedger';
+import { disorientCombatPenalty, sightlineRanged } from './arenaRules';
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -656,6 +658,10 @@ function packCohesion(ctx: SimContext, t: Tribute): number {
  */
 function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opponent?: Tribute): number {
     let power = effectiveStrength(t) + effectiveAgility(t);
+    // Generic arena rule: a disorienting zone blunts everybody's aim.
+    power -= disorientCombatPenalty(ctx.state, t);
+    // AUDIT-11 §5: whoever came in believing a feigned limp meets the real thing.
+    power += deceptionEdge(ctx.state, t, opponent);
 
     if (weapon) {
         power += weapon.damage !== undefined ? effectiveDamage(weapon) : weapon.value / 10;
@@ -664,6 +670,9 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
         // all, so Throwing Knives and the Spear — the one weapon a tribute can
         // craft mid-run — were the only weapons in the game with no stat
         // scaling behind them, which made crafting a downgrade.
+        // Generic arena rule: an arena-wide sightline favours or blinds the
+        // bow and the thrown blade (arenaRules.ts; 0 when none is in force).
+        if (weapon.weaponClass === 'ranged' || weapon.weaponClass === 'thrown') power += sightlineRanged(ctx.state) - weatherRangedPenalty(ctx.state);
         if (weapon.weaponClass === 'ranged') {
             power += Math.floor(effectiveAgility(t) / COMBAT.rangedAgilityDivisor) + traitMod(t, 'rangedPower');
         } else if (weapon.weaponClass === 'melee') {
@@ -772,6 +781,8 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
     // is somebody who did not want this fight and is not equipped for it.
     if (t.stance === 'Desperate') power += STANCE_MODES.desperate.powerBonus;
     if (t.stance === 'Scavenging') power -= STANCE_MODES.scavenging.combatPenalty;
+    // AUDIT-11 §5: the fight Baiting drew in is on ground the baiter chose.
+    if (t.stance === 'Baiting') power += STANCE_MODES.baiting.powerBonus;
 
     // What they have learned from losing to this person before.
     power += rematchEdge(t, opponent);
@@ -945,8 +956,13 @@ function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, round
     return ctx.rng.chance(Math.max(0.02, Math.min(0.9, chance)));
 }
 
-function wearWeapon(weapon: Item | undefined) {
-    if (weapon && weapon.durability !== undefined) weapon.durability -= COMBAT.weaponWearPerRound;
+function wearWeapon(weapon: Item | undefined, ctx?: SimContext, holder?: Tribute) {
+    if (weapon && weapon.durability !== undefined) {
+        const before = weapon.durability;
+        weapon.durability -= COMBAT.weaponWearPerRound;
+        // AUDIT-11 §13: the moment it gives out, it can take the hand with it.
+        if (ctx && holder && before > 0 && weapon.durability <= 0) weaponFails(ctx, holder, weapon);
+    }
 }
 
 function dropBrokenWeapons(t: Tribute) {
@@ -1024,7 +1040,7 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
     // value, which is `finalistSave` on the success path and therefore false
     // for almost every ordinary landed hit. Keying the riders on it halved the
     // run's bleeding rate; `test:metrics` is what noticed.
-    if (isDowned(defender) || defender.status !== 'alive') { wearWeapon(weapon); return 0; }
+    if (isDowned(defender) || defender.status !== 'alive') { wearWeapon(weapon, ctx, attacker); return 0; }
 
     if (ctx.rng.chance(COMBAT.bleedChance)) openWound(defender, BLEEDING.combatSeverity, attacker.id);
     if (ctx.rng.chance(COMBAT.woundChance)) {
@@ -1062,7 +1078,7 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
             { important: true, category: 'injury' }
         );
     }
-    wearWeapon(weapon);
+    wearWeapon(weapon, ctx, attacker);
     noteWound(attacker, defender);
     adjustRel(defender, attacker.id, -COMBAT.grudgeOnWound);
     // Losing an exchange to someone is how you learn to be afraid of them

@@ -1,4 +1,5 @@
 import { GameState, Tribute } from '../models/types';
+import { personaBlocAffinity } from '../data/personas';
 import { SimContext } from './context';
 
 /**
@@ -69,6 +70,14 @@ export const SPONSOR_BLOCS: SponsorBloc[] = [
     },
 ];
 
+/**
+ * AUDIT-11 §8: a bloc's pull toward a tribute is its own preference plus what
+ * the tribute's interview persona family says to that bloc's money.
+ */
+export function blocWeight(state: GameState, t: Tribute, b: SponsorBloc): number {
+    return b.prefer(state, t) + personaBlocAffinity(t.interviewStrategy, b.id);
+}
+
 function budgets(ctx: SimContext): Record<string, number> {
     if (!ctx.state.sponsorBlocBudgets) {
         const generosity = Math.max(0.25, ctx.state.config.sponsorGenerosity);
@@ -87,7 +96,7 @@ export function drawFromBloc(ctx: SimContext, t: Tribute, cost: number): Sponsor
     const purse = budgets(ctx);
     const scored = SPONSOR_BLOCS
         .filter(b => (purse[b.id] ?? 0) >= cost * 0.5)
-        .map(b => ({ b, weight: b.prefer(ctx.state, t) }));
+        .map(b => ({ b, weight: blocWeight(ctx.state, t, b) }));
     if (scored.length === 0) return undefined;
     let roll = ctx.rng.nextFloat() * scored.reduce((sum, s) => sum + s.weight, 0);
     for (const s of scored) {

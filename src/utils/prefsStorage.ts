@@ -10,6 +10,7 @@ import {
     LEGACY_KEYS, STORAGE_KEYS, StorageSpec, asBool, asNum, asRecord, asStr, asStrArray,
     readStored, writeStored,
 } from './storage';
+import { parseMutators } from '../data/mutators';
 
 export const STARTING_COINS = 1000;
 
@@ -152,6 +153,8 @@ export const CONFIG_SPEC: StorageSpec<GameConfig> = {
                 ? Math.min(18, Math.max(12, r.ageMean)) : undefined,
             ageSpread: typeof r.ageSpread === 'number' && Number.isFinite(r.ageSpread)
                 ? Math.min(4, Math.max(0.5, r.ageSpread)) : undefined,
+            // AUDIT-11 §12: the mutator cards the player last chose.
+            mutators: Array.isArray(r.mutators) ? parseMutators(r.mutators.join(',')) : undefined,
         };
     },
 };

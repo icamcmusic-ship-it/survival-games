@@ -1,3 +1,4 @@
+import { scarCoverShift, weatherConcealment } from './arenaDepth';
 import { profOf, trainProficiency } from './proficiency';
 import { Tribute, Zone } from '../models/types';
 import { zoneFeatures } from './map';
@@ -8,6 +9,8 @@ import { concealmentModifier, effectiveIntelligence } from './physique';
 import { encumbranceOf, hasTool } from './items';
 import { isAggressiveStance, isEvasiveStance } from '../data/stances';
 import { allied } from './alliance';
+import { acousticsConcealmentShift, sightlineAmbush, sightlineConcealment, arenaIsDark } from './arenaRules';
+import { MUTATOR_TUNING, hasMutator } from '../data/mutators';
 
 /**
  * Concealment and awareness — the two halves of whether one tribute ever finds
@@ -29,7 +32,9 @@ import { allied } from './alliance';
  * what that trait is for.
  */
 function isDark(ctx: SimContext): boolean {
-    return ctx.state.timeOfDay === 'night';
+    // Generic arena rule: an arena-wide sightline (lights up, blackout,
+    // whiteout) overrides the clock. Centralised in engine/arenaRules.ts.
+    return arenaIsDark(ctx.state);
 }
 
 /** Half-light: enough to move by, not enough to hide in. */
@@ -186,6 +191,14 @@ export function isNoticed(ctx: SimContext, hider: Tribute, seeker: Tribute, zone
     }, dark);
     // Half-light: some of the night's cover, none of its safety.
     if (isTwilight(ctx) && !hasTool(hider, 'light')) hidden0 += STEALTH.duskConcealment;
+    // AUDIT-11 §12 `blind-night`: the dark is total, torch or not.
+    if (dark && hasMutator(ctx.state.config, 'blind-night')) hidden0 += MUTATOR_TUNING.blindNightConcealment;
+    // Generic arena rules: the soundscape and sightline move how much the
+    // ground gives a hider away (arenaRules.ts; neutral when unset).
+    hidden0 += acousticsConcealmentShift(ctx.state, zone);
+    // AUDIT-11 §7: the weather layer and the ground's scars (arenaDepth.ts).
+    hidden0 += weatherConcealment(ctx.state, seeker) + scarCoverShift(ctx.state, hider.zone);
+    hidden0 *= sightlineConcealment(ctx.state);
     let hidden = Math.min(
         STEALTH.maxConcealment,
         Math.max(0, hidden0 + advantage * STEALTH.perPointAdvantage)
@@ -250,10 +263,12 @@ export function rollAmbush(ctx: SimContext, attacker: Tribute, defender: Tribute
     // Night is when an ambush is an ambush. This is the whole reason a hunter
     // waits for dark rather than forcing a fight at noon.
     if (dark && !hasTool(defender, 'light')) chance += STEALTH.nightAmbushBonus;
+    if (dark && hasMutator(ctx.state.config, 'blind-night')) chance += MUTATOR_TUNING.blindNightAmbush;
     // Dusk is the hunter's window, and the best one they get: their quarry is
     // on the move and there is still enough light to line them up. Full dark
     // favours the hider; half-light favours whoever is already watching.
     if (isTwilight(ctx)) chance += STEALTH.duskAmbushBonus;
+    chance += sightlineAmbush(ctx.state);
 
     if (zone) {
         const f = zoneFeatures(zone);

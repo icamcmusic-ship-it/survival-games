@@ -14,6 +14,7 @@ import { fearOf } from './fear';
 import { OBJECTIVES } from '../data/balance';
 import { loseSanity } from './sanityBands';
 import { allied } from './alliance';
+import { directorTaste, weightedIndex } from '../data/directors';
 
 /**
  * REPLAY-01: the one scheduled disruption a run gets.
@@ -84,7 +85,14 @@ function fireExtraDisruption(ctx: SimContext) {
     const chance = WILDCARD.extraDisruptionBaseChance * Math.pow(WILDCARD.extraDisruptionDecay, extras);
     if (!rng.chance(chance)) return;
 
-    const pick = rng.pick(EXTRA_DISRUPTIONS);
+    // AUDIT-11 §12: the Head Gamemaker's taste weights which beat lands —
+    // one draw, exactly as the uniform pick it replaces.
+    const taste = directorTaste(state.headGamemaker);
+    const weightOf = (kind: Wildcard['kind']) => kind === 'supply-drop' ? taste.sponsor
+        : kind === 'mutt-release' ? taste.mutts
+            : kind === 'weather-front' ? Math.max(taste.weather, taste.fire)
+                : taste.betrayal;
+    const pick = EXTRA_DISRUPTIONS[weightedIndex(rng.nextFloat(), EXTRA_DISRUPTIONS.map(d => weightOf(d.kind)))];
     state.extraWildcardsFired = extras + 1;
     state.lastWildcardCycle = cycle;
     ctx.rng = rng;

@@ -1,4 +1,5 @@
 import { deathCodeOf } from '../causes';
+import { revealRomances } from '../allianceBonds';
 import { SimContext, getAlive } from '../context';
 import { EpilogueQA, EventLog, Tribute } from '../../models/types';
 import { ensureMemory } from '../memory';
@@ -129,6 +130,8 @@ export function processEpilogue(ctx: SimContext) {
     // §1.4: close every truce still standing before the couch — the ledger
     // has to add up, and a promise the victor kept to the end deserves a line.
     closeTrucesAtEnd(ctx);
+    // AUDIT-11 §6: and every romance says, now, whether it was real.
+    revealRomances(ctx);
     const rng = ctx.rng;
     const alive = getAlive(ctx.state);
     const winner = alive[0];
@@ -453,5 +456,48 @@ export function processEpilogue(ctx: SimContext) {
         if (qa) qas.push({ question: qa.q, answer: qa.a });
     }
 
+    // AUDIT-11 §8: first blood, read off the victor's own log, answered in
+    // the victor's own register — and the register is scored as reception.
+    const tone = interviewTone(winner);
+    if (facts.firstKill && facts.firstKill.id !== facts.finalKill?.id) {
+        qas.splice(Math.min(2, qas.length), 0, {
+            question: `Caesar Flickerman: 'Day ${facts.firstKill.day}. "${quoteLine(facts.firstKill.text)}" The first one. Do you think about it?'`,
+            answer: `${winner.name}: '${TONE_FIRST_BLOOD[tone]}'`,
+            tone,
+        });
+    }
+    qas.forEach(qa => {
+        if (qa.tone || !qa.answer.startsWith(`${winner.name}:`)) return;
+        qa.tone = tone;
+    });
+    ctx.state.interviewReception = TONE_RECEPTION[tone];
     ctx.state.epilogueInterview = qas;
 }
+
+/**
+ * AUDIT-11 §8: the register a victor answers in, set by who they are. Pure —
+ * no roll — so the same run always gives the same interview.
+ */
+export type InterviewTone = 'defiant' | 'tender' | 'cold' | 'humble' | 'showman';
+
+export function interviewTone(t: Tribute): InterviewTone {
+    const has = (x: string) => t.traits.includes(x as Tribute['traits'][number]);
+    if (has('Showman') || has('Charismatic') || has('Crowd-Pleaser')) return 'showman';
+    if (has('Bloodthirsty') || has('Ruthless') || has('Cold-Blooded') || has('Butcher')) return 'cold';
+    if (has('Pacifist') || has('Merciful') || has('Softhearted') || has('Devout')) return 'tender';
+    if (has('Contrarian') || has('Prickly') || has('Vengeful') || has('Grudge-Keeper')) return 'defiant';
+    return 'humble';
+}
+
+const TONE_FIRST_BLOOD: Record<InterviewTone, string> = {
+    defiant: 'Every day. And I will keep thinking about it where your cameras cannot see, Caesar.',
+    tender: 'I say their name before I sleep. That is the least of what I owe them.',
+    cold: 'It was the first. It was not the hardest. The arena gets easier, which is the worst thing I can tell you about it.',
+    humble: 'I try not to. I do not always manage.',
+    showman: 'Caesar, you know I do. But look at this crowd — I would rather think about them tonight.',
+};
+
+/** How the Capitol took it: -1 cool, 0 polite, +1 warm, +2 adored. */
+const TONE_RECEPTION: Record<InterviewTone, number> = {
+    defiant: -1, tender: 1, cold: 0, humble: 1, showman: 2,
+};

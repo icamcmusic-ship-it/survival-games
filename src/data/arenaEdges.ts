@@ -243,6 +243,45 @@ export const EXTRA_EDGE_RULES: Record<string, EdgeMap> = {
         'Clay Banks|The Slip Cellar': { kind: 'contested' },
         'Kilnhead|The Flue Tunnels': { kind: 'timeGated', gatedTime: 'night' },
     },
+    // ---- the five building arenas -------------------------------------------
+    gallery: {
+        // The box stair: one way up to the sightlines, and whoever holds it decides.
+        'Box Seats|The Stalls': { kind: 'contested' },
+        // What is left of the balcony walkway. It will not carry many more.
+        'Box Seats|The Collapsed Balcony': { kind: 'collapsing', crossings: ROTTEN },
+        // The green room door is behind a flat nobody has moved in years.
+        'Backstage Corridors|The Green Room': { kind: 'hidden' },
+    },
+    malthouse: {
+        // The cellar stair: the only water and the best shelter, behind one door.
+        'Mash Tun Hall|The Cellar Vaults': { kind: 'contested' },
+        // The spirit store's back way, through a cask rack that swings.
+        'The Cellar Vaults|The Spirit Store': { kind: 'hidden' },
+        'The Grain Silos|The Loading Dock': { kind: 'tolled', toll: { fatigue: 6 } },
+    },
+    circuit: {
+        // The track runs one way. The infield and the tunnel are the only way back.
+        'The Cornucopia (Start/Finish Straight)|Turn One': { kind: 'oneWay', from: 'The Cornucopia (Start/Finish Straight)', to: 'Turn One' },
+        'Turn One|Turn Two': { kind: 'oneWay', from: 'Turn One', to: 'Turn Two' },
+        'Turn Three|Turn Two': { kind: 'oneWay', from: 'Turn Two', to: 'Turn Three' },
+        'Turn Four|Turn Three': { kind: 'oneWay', from: 'Turn Three', to: 'Turn Four' },
+        'The Cornucopia (Start/Finish Straight)|Turn Four': { kind: 'oneWay', from: 'Turn Four', to: 'The Cornucopia (Start/Finish Straight)' },
+        // The tunnel under the track: the one crossing between infield and outside.
+        'The Infield|Tunnel Access': { kind: 'contested' },
+    },
+    wardblock: {
+        // The sally port gate: every route between the yard and the blocks.
+        'The Cornucopia (The Yard)|The Sally Port': { kind: 'contested' },
+        // The escape tunnel: found from solitary, and good for one crossing.
+        'The Solitary Wing|The Tunnel': { kind: 'hidden' },
+        'The Laundry|The Tunnel': { kind: 'collapsing', crossings: 1 },
+    },
+    glasshouse: {
+        // The grotto passage into the orchid vault, and the boiler-house door nobody knows.
+        'The Fern Grotto|The Orchid Vault': { kind: 'contested' },
+        'The Boiler House|The Orchid Vault': { kind: 'hidden' },
+        'The Potting Sheds|The Shattered Atrium': { kind: 'tolled', toll: { fatigue: 4, woundChance: 0.15 } },
+    },
 };
 
 /**

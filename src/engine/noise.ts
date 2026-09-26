@@ -1,3 +1,4 @@
+import { weatherNoise } from './arenaDepth';
 import { GameState, Tribute } from '../models/types';
 import { SimContext } from './context';
 import { NOISE } from '../data/balance';
@@ -6,6 +7,7 @@ import { noteHeard } from './memory';
 import { encumbranceOf } from './items';
 import { injuryGrade } from './wounds';
 import { profOf } from './proficiency';
+import { arenaIsDark, effectiveAcoustics } from './arenaRules';
 
 /**
  * §16: a crossing makes a sound, and the sound reaches people.
@@ -42,10 +44,11 @@ export function crossingNoise(t: Tribute, partySize: number): number {
  * whose whole description is noticing things, so it is what moves this; sleep
  * is what moves it the other way.
  */
-function hearingThreshold(listener: Tribute, time: 'day' | 'night'): number {
+function hearingThreshold(state: GameState, listener: Tribute, time: 'day' | 'night'): number {
     return NOISE.hearThreshold
         - profOf(listener, 'vigilance') * NOISE.vigilanceBonus
-        + (time === 'night' ? NOISE.nightThresholdBonus : 0);
+        // Darkness, not the clock: a blackout is night, a lit arena is not.
+        + (arenaIsDark(state, time) ? NOISE.nightThresholdBonus : 0);
 }
 
 /**
@@ -71,7 +74,9 @@ export function announceCrossing(
     const loudest = movers.reduce((worst, m) =>
         crossingNoise(m, movers.length) > crossingNoise(worst, movers.length) ? m : worst);
     const raw = crossingNoise(loudest, movers.length);
-    const acoustics = zoneFeatures(dest).acoustics ?? 1;
+    // Generic arena rules: soundscape floor/flux and sightline (arenaRules.ts).
+    // AUDIT-11 §7: a storm or rain drowns footsteps; fog carries them.
+    const acoustics = effectiveAcoustics(state, dest) * weatherNoise(state);
     const moverIds = new Set(movers.map(m => m.id));
 
     state.tributes.forEach(listener => {
@@ -85,7 +90,7 @@ export function announceCrossing(
         // Acoustics carry sound *out of* the zone it was made in — the half of
         // the documented behaviour that was never built.
         const heard = raw * NOISE.adjacentCarry * acoustics;
-        if (heard < hearingThreshold(listener, time)) return;
+        if (heard < hearingThreshold(state, listener, time)) return;
         const written = noteHeard(state, listener, to, movers.length,
             NOISE.heardConfidence * Math.min(1, heard));
         if (!written) return;

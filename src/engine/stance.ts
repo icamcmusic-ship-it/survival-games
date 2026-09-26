@@ -1,4 +1,5 @@
 import { GameState, Stance, TraceReason, Tribute, ArchetypeId } from '../models/types';
+import { griefStance } from './allianceBonds';
 import { ARCHETYPES } from '../data/archetypes';
 import { DECISION_TRACE, FEAR, RISK, RIVAL_READ, STANCE, STANCE_HOLD, STANCE_MODES, STEALTH, VITALS } from '../data/balance';
 import { STANCES, STANCE_PROFILES } from '../data/stances';
@@ -474,7 +475,10 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
         return sig.ownTrapsHere > 0 || sig.ownTrapsAdjacent > 0 || sig.chokepoint
             // AUDIT-11 §5: trap stock. A tribute with lines laid across the
             // arena has a reason to draw people toward them from anywhere.
-            || sig.ownTrapsLive >= STANCE_MODES.baiting.liveTrapsTrigger;
+            || sig.ownTrapsLive >= STANCE_MODES.baiting.liveTrapsTrigger
+            // AUDIT-11 §5 (second pass): high ground and a weapon is prepared
+            // ground too — somebody to draw up the slope, and a reason to.
+            || (sig.elevation && sig.hasWeapon && sig.hostile > 0);
     },
 };
 
@@ -704,6 +708,7 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
         // ...and a line with nobody walking toward it is a line, not a plan.
         if (sig.hostile > 0 || sig.cannonNearby) s += STANCE_MODES.baiting.quarryBonus;
         if (sig.chokepoint) s += STANCE_MODES.baiting.chokepointBonus;
+        if (sig.elevation && sig.hasWeapon) s += STANCE_MODES.baiting.elevationBonus;
         if (sig.wounded) s -= STANCE_MODES.baiting.woundedPenalty;
         s += sig.arch.aggression * STANCE.archetypeWeight * STANCE_MODES.conditionalArchetypeWeight;
         s += sig.arch.stanceBias?.Baiting ?? 0;
@@ -850,6 +855,13 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
         t.decisionTrace = { cycle: ctx.state.cycle ?? 0, stances: [], forced: `in shock — ${t.shock?.cause ?? 'a near miss'}` };
         return;
     }
+    // AUDIT-11 §6: a grief day — reckless or shut down — is not a choice either.
+    const grief = griefStance(ctx.state, t);
+    if (grief) {
+        forceStance(t, grief);
+        t.decisionTrace = { cycle: ctx.state.cycle ?? 0, stances: [], forced: `grief (${t.griefDay?.kind ?? 'grief'})` };
+        return;
+    }
 
     const sig = buildSignals(ctx, t, occupants);
     // Churn decays every cycle a tribute is scored, so the widened margin is a
@@ -858,6 +870,14 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
 
     const cycle = ctx.state.cycle ?? 0;
     const ready = { ...(t.stanceReady ?? {}) };
+    // AUDIT-11: vacating one situation is not the same as walking into the
+    // next. A tribute whose conditional stance lapsed a cycle after they took
+    // it was chaining straight into another (Baiting -> Scavenging -> Tending,
+    // one a cycle), each entry skipping the hold because the incumbent had
+    // become invalid. The other conditional stances sit out that cycle.
+    const incumbentPre = STANCE_PRECONDITIONS[t.stance];
+    const chainBreak = !!STANCE_PROFILES[t.stance]?.conditional && t.stanceHeld <= 1
+        && !!incumbentPre && !incumbentPre(ctx, t, sig);
     const available = STANCES.filter(s => {
         const pre = STANCE_PRECONDITIONS[s];
         if (!pre) return true;
@@ -873,6 +893,7 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
         // emergency: it is never delayed and never locked out.
         if (s === t.stance || s === 'Desperate') return true;
         if (!heldLastCycle) return false;
+        if (chainBreak && STANCE_PROFILES[s]?.conditional) return false;
         return (t.stanceCooldown?.[s] ?? -Infinity) <= cycle;
     });
     t.stanceReady = ready;
@@ -1010,7 +1031,9 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
         t.stanceCooldown = { ...(t.stanceCooldown ?? {}), [t.stance]: cycle + STANCE.conditionalCooldown };
     }
     t.stance = bestStance;
-    t.stanceHeld = 0;
+    // A chain-break fallback is a pause, not a commitment: it carries no hold,
+    // so the next real situation can be taken as soon as it is ready.
+    t.stanceHeld = chainBreak ? STANCE.minHold : 0;
     t.stanceChurn = Math.min(STANCE.churnMax, (t.stanceChurn ?? 0) + 1);
     if (bestStance !== 'Fortified') { t.fortifiedCycles = 0; t.fortifiedBeatShown = undefined; }
     settleShadowing();

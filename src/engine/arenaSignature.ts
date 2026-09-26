@@ -15,6 +15,9 @@ import { isUnlitZone } from './map';
 import { ARENA_SIGNATURES, BLEEDING, ESCALATION, MEMORY, PROC_SIGNATURE, SIGNATURE_RULES } from '../data/balance';
 import { loseSanity } from './sanityBands';
 import { allied } from './alliance';
+import { gallerySignature, malthouseSignature, circuitSignature, wardblockSignature, glasshouseSignature } from './arenaSignaturesBuildings';
+import { tickLockdowns } from './arenaRules';
+import { HIPPODROME_SET_SIGNATURES } from './arenaSignatureSetHippodrome';
 
 /**
  * Arena signature mechanics.
@@ -2357,6 +2360,13 @@ const SIGNATURES: Record<string, Signature> = {
     vigil: vigilSignature,
     saltworks: saltworksSignature,
     kiln: kilnSignature,
+    gallery: gallerySignature,
+    malthouse: malthouseSignature,
+    circuit: circuitSignature,
+    wardblock: wardblockSignature,
+    glasshouse: glasshouseSignature,
+    // The Hippodrome set: see arenaSignatureSetHippodrome.ts.
+    ...HIPPODROME_SET_SIGNATURES,
 };
 
 /** True when this arena has a rule of its own — used by the UI to explain it. */
@@ -2391,6 +2401,11 @@ export { SIGNATURE_BLURBS } from '../data/signatureBlurbs';
  * tributes actually ended up.
  */
 export function runArenaSignature(ctx: SimContext) {
+    // Generic arena rule: a sealed zone's timer runs whatever else happens —
+    // before the finalist guard below, so a lockdown can never outlive it.
+    tickLockdowns(ctx.state).forEach(zone => ctx.logEvent(
+        `The doors in ${zone} run back open on their tracks. Whoever was sealed in there can leave.`,
+        [], { zone, category: 'arena' }));
     // The Gamemakers want a victor, not an empty arena. Once the field is down
     // to the finalists the arena stops taking swings of its own and lets them
     // settle it — the same principle the border collapse follows.

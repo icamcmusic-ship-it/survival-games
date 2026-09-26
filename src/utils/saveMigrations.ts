@@ -53,6 +53,7 @@ export interface Bet {
  * catalogue rather than a hardcoded list.
  */
 import { SIDE_BET_KINDS, SideBetKind } from '../engine/sideMarkets';
+import { MUTATORS, MUTATORS_PER_GAMES } from '../data/mutators';
 export type { SideBetKind };
 export interface SideBet {
     kind: SideBetKind;
@@ -637,6 +638,11 @@ const CONFIG_RULES: ConfigRules = {
     enableBreakdowns: r => asBool(r.enableBreakdowns, DEFAULT_GAME_CONFIG.enableBreakdowns ?? true),
     sanityStart: r => clamp(asNum(r.sanityStart, DEFAULT_GAME_CONFIG.sanityStart ?? 100), 40, 100),
     plainNames: r => asBool(r.plainNames, DEFAULT_GAME_CONFIG.plainNames ?? false),
+    // AUDIT-11 §12: the mutator cards. Absent on older saves (no mutators);
+    // unknown ids are dropped rather than trusted.
+    mutators: r => Array.isArray(r.mutators)
+        ? r.mutators.filter((m): m is string => typeof m === 'string' && MUTATORS.some(x => x.id === m)).slice(0, MUTATORS_PER_GAMES)
+        : undefined,
     // AUDIT-7 §1.2: the four that were being dropped.
     vanillaRules: r => asBool(r.vanillaRules, DEFAULT_GAME_CONFIG.vanillaRules ?? false),
     singleVictor: r => asBool(r.singleVictor, DEFAULT_GAME_CONFIG.singleVictor ?? false),
@@ -743,6 +749,25 @@ function normalizeAlliances(raw: unknown): Record<string, Alliance> | undefined 
  * rejected rather than patched into something that would crash the first time
  * the simulator asked for a zone.
  */
+/** AUDIT-11 §12: a prediction slip, or absent. */
+export function normalizePrediction(raw: unknown): GameState['prediction'] {
+    const p = asRecord(raw);
+    if (!p) return undefined;
+    const id = (v: unknown) => (typeof v === 'string' && v !== '' ? v : undefined);
+    // Sparse by design: the slip is a fixed eight-slot array and '' is an
+    // empty place. A repeated tribute keeps its first place only.
+    const finalEight = Array.isArray(p.finalEight)
+        ? p.finalEight.slice(0, 8).map(v => (typeof v === 'string' ? v : ''))
+            .map((v, i, all) => (v !== '' && all.indexOf(v) !== i ? '' : v))
+        : undefined;
+    return {
+        winnerId: id(p.winnerId),
+        firstDeathId: id(p.firstDeathId),
+        topKillerId: id(p.topKillerId),
+        ...(finalEight && finalEight.some(v => v !== '') ? { finalEight } : {}),
+    };
+}
+
 export function normalizeGameState(raw: unknown): GameState | null {
     const r = asRecord(raw);
     if (!r) return null;
@@ -776,6 +801,11 @@ export function normalizeGameState(raw: unknown): GameState | null {
             : [],
         logCounter: asNum(r.logCounter, normalizeLog(r.log).length),
         lastPickedText: asObjMap<string>(r.lastPickedText),
+        // AUDIT-11 §12: the stale-line snapshot, the prediction slip and the
+        // legacy tributes. Absent on older saves, and absent stays absent.
+        staleLines: Array.isArray(r.staleLines) ? asStrArray(r.staleLines).slice(0, 2000) : undefined,
+        prediction: normalizePrediction(r.prediction),
+        legacyTributeIds: Array.isArray(r.legacyTributeIds) ? asStrArray(r.legacyTributeIds) : undefined,
         zoneDepletion: asNumMap(r.zoneDepletion),
         zoneEffects: asObjMap(r.zoneEffects),
         severedEdges: asStrArray(r.severedEdges),

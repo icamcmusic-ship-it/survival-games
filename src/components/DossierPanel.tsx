@@ -12,7 +12,7 @@ import { oddsFactors, tributeOdds } from '../engine/odds';
 import { ordinal } from '../engine/gamesProfile';
 import { Explainer } from './Explainer';
 import { OddsSparkline } from './OddsSparkline';
-import { chronicleStore, setChronicle, toggleSection } from '../store/chronicleStore';
+import { chronicleStore, togglePin, toggleSection } from '../store/chronicleStore';
 import { prefsStore } from '../store/prefsStore';
 import { gameActions, gameStore } from '../store/gameStore';
 import { useStore } from '../store/createStore';
@@ -75,6 +75,7 @@ export const DossierPanel = React.memo(function DossierPanel({
     onGamemakerEvent: (type: GamemakerEventType, targetId?: string) => void;
 }) {
     const followedId = useStore(chronicleStore, s => s.followedId);
+    const pinnedIds = useStore(chronicleStore, s => s.pinnedIds);
     const spoilerSafe = useStore(prefsStore, p => p.spoilerSafe);
     const coins = useStore(gameStore, s => s.coins);
     const bets = useStore(gameStore, s => s.bets);
@@ -307,11 +308,11 @@ export const DossierPanel = React.memo(function DossierPanel({
                                             where a reader is already looking at tributes. */}
                                         {!dead && (
                                             <button
-                                                aria-pressed={followedId === t.id}
-                                                aria-label={followedId === t.id ? `Stop following ${t.name}` : `Follow ${t.name}`}
-                                                onClick={() => setChronicle({ followedId: followedId === t.id ? null : t.id })}
+                                                aria-pressed={pinnedIds.includes(t.id)}
+                                                aria-label={pinnedIds.includes(t.id) ? `Stop following ${t.name}` : `Follow ${t.name}`}
+                                                onClick={() => togglePin(t.id)}
                                             >
-                                                <Star className={`w-3.5 h-3.5 ${followedId === t.id ? 'text-[var(--red)] fill-[var(--red)]' : 'text-[var(--color-ink-600)]'}`} />
+                                                <Star className={`w-3.5 h-3.5 ${pinnedIds.includes(t.id) ? 'text-[var(--red)] fill-[var(--red)]' : 'text-[var(--color-ink-600)]'}`} />
                                             </button>
                                         )}
                                         {dead && <Skull className="w-4 h-4 text-[var(--color-ink-600)]" />}

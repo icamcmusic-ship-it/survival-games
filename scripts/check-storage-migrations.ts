@@ -22,6 +22,7 @@ import { normalizeEntry } from '../src/utils/hofStorage';
 import { DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { GameConfig } from '../src/models/types';
 import { SHARE_OMITS, shareParams } from '../src/components/ShareButton';
+import { parseMutators } from '../src/data/mutators';
 import { ARCHETYPES as ARCHETYPE_DEFS } from '../src/data/archetypes';
 import { STANCES } from '../src/data/stances';
 import {
@@ -462,6 +463,7 @@ const FULL_CONFIG: Required<GameConfig> = {
     singleVictor: true,
     ageMean: 15,
     ageSpread: 2.5,
+    mutators: ['blind-night', 'hazard-storm'],
 };
 
 test('CONFIG_KEYS covers every field on GameConfig', () => {
@@ -486,9 +488,9 @@ test('a save slot round-trips every config field it was written with', () => {
     const out = SAVED_RUN_SPEC.migrate!(saved, 0) as { gameState: { config: GameConfig; baseConfig: GameConfig } } | null;
     assert.ok(out, 'a well-formed save was rejected');
     (Object.keys(FULL_CONFIG) as Array<keyof GameConfig>).forEach(key => {
-        assert.equal(out!.gameState.baseConfig[key], FULL_CONFIG[key],
+        assert.deepEqual(out!.gameState.baseConfig[key], FULL_CONFIG[key],
             `baseConfig.${key} did not survive a save-slot read`);
-        assert.equal(out!.gameState.config[key], FULL_CONFIG[key],
+        assert.deepEqual(out!.gameState.config[key], FULL_CONFIG[key],
             `config.${key} did not survive a save-slot read`);
     });
 });
@@ -501,7 +503,7 @@ test('a Hall of Fame entry round-trips every config field it was archived with',
     });
     assert.ok(entry?.config, 'an archived config was dropped entirely');
     (Object.keys(FULL_CONFIG) as Array<keyof GameConfig>).forEach(key => {
-        assert.equal(entry!.config![key], FULL_CONFIG[key],
+        assert.deepEqual(entry!.config![key], FULL_CONFIG[key],
             `config.${key} did not survive a Hall of Fame read`);
     });
     // The replay fields themselves, which the same normaliser used to guard.
@@ -568,6 +570,7 @@ test('a shared link round-trips every config field through the parser', () => {
     assert.equal(num('sanityStart'), FULL_CONFIG.sanityStart);
     assert.equal(bool('enableHallucinations'), FULL_CONFIG.enableHallucinations);
     assert.equal(bool('enableBreakdowns'), FULL_CONFIG.enableBreakdowns);
+    assert.deepEqual(parseMutators(params.get('mutators')), FULL_CONFIG.mutators);
     // The absent age pair encodes as 'bowl', not as a number.
     const bowl = shareParams({
         seed: 'S', arenaId: 'frozen', gamemakerMode: false,

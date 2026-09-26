@@ -13,6 +13,8 @@ import { cycleOf, cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, 
 import { fearOf } from '../fear';
 import { respectOf } from '../relationships';
 import { careerSocialFactor, sniffPerformances, isStarCrossed, cacheDivisionLine, distributeCache } from '../alliance';
+import { grudgeAgainst, grudgeTotal, noteGrudgeMotive, performsForCameras, stationBondOf, tickAllianceBonds } from '../allianceBonds';
+import { ALLIANCE_BONDS } from '../../data/balance';
 import { allianceOf, areLovers, cacheValue, contributeToCache, isPerforming, maintainPerformance, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance, shownRegard } from '../alliance';
 import { resolveBetrayal, preemptiveBetrayer } from '../betrayal';
 import { resolveDuePacts } from '../alliancePact';
@@ -80,6 +82,8 @@ function pickBetrayalTarget(ctx: SimContext, betrayer: Tribute, members: Tribute
         // exactly what a flat memberIds list could never give a betrayal.
         const record = allianceOf(ctx.state, betrayer.allianceId);
         if (record?.roles?.quartermaster === m.id) weight *= ALLIANCES.betrayalQuartermasterWeight;
+        // AUDIT-11 §6: and the one who has been eating your share.
+        weight *= 1 + grudgeAgainst(ctx.state, betrayer, m.id) * ALLIANCE_BONDS.grudgeTargetWeight;
         // Someone who already burned you goes to the top of the list.
         if (ensureMemory(betrayer).betrayedBy.includes(m.id)) weight *= ALLIANCES.betrayedFirstStrikeWeight;
         // Someone who never stops watching is a much worse mark.
@@ -121,7 +125,9 @@ function pickBetrayer(ctx: SimContext, members: Tribute[]): Tribute {
         m,
         weight: Math.max(0.2, (1 + (ARCHETYPES[m.archetype].treachery + traitMod(m, 'treachery')) * 10)
             * distrustFactor(m)
-            * (m.vitals.sanity < 40 ? 1.4 : 1)),
+            * (m.vitals.sanity < 40 ? 1.4 : 1)
+            // AUDIT-11 §6: going hungry while somebody else eats twice.
+            * (1 + grudgeTotal(ctx.state, m) * ALLIANCE_BONDS.grudgeBetrayerWeight)),
     }));
     let roll = ctx.rng.nextFloat() * scored.reduce((sum, s) => sum + s.weight, 0);
     for (const s of scored) {
@@ -458,6 +464,7 @@ export function processAlliances(ctx: SimContext) {
             const victim = pickBetrayalTarget(ctx, betrayer, members);
 
             if (victim) {
+                noteGrudgeMotive(ctx, betrayer, victim);
                 // Which shape the betrayal takes is chosen from what is actually
                 // available to this pair right now — see `engine/betrayal.ts`.
                 resolveBetrayal(ctx, betrayer, victim, members);
@@ -505,7 +512,9 @@ export function processAlliances(ctx: SimContext) {
                     // again more readily — unless one of them is the reason it
                     // ended, which `sharedHistoryOf` zeroes.
                     const history = (sharedHistoryOf(t1, t2.id) + sharedHistoryOf(t2, t1.id)) / 2
-                        * RELATIONSHIPS.sharedHistoryFormWeight;
+                        * RELATIONSHIPS.sharedHistoryFormWeight
+                        // AUDIT-11 §6: days at the same training station.
+                        + stationBondOf(t1, t2) * ALLIANCE_BONDS.stationFormWeight;
 
                     // §3.2 (audit): dread is a reason to want company. This
                     // is the first thing outside the stance scorer to read it.
@@ -703,6 +712,8 @@ export function processAlliances(ctx: SimContext) {
         // A group that has moved on adopts wherever its leader now stands as camp.
         if (atCamp.length < 2) record.campZone = pickLeader(members).zone;
     });
+    // 5c. AUDIT-11 §6: who did their job, and who ate.
+    tickAllianceBonds(ctx);
 }
 
 /**
@@ -764,7 +775,8 @@ function findFaction(members: Tribute[]): Tribute[] | undefined {
  * build, and it is the "smarter about splitting off" half of the request: the
  * pack now has to have a reason, not merely an opportunity.
  */
-function hasGrievanceAcross(faction: Tribute[], remainder: Tribute[]): boolean {
+function hasGrievanceAcross(ctx: SimContext, faction: Tribute[], remainder: Tribute[]): boolean {
+    const grudgeAgainstIn = (a: Tribute, b: Tribute) => grudgeAgainst(ctx.state, a, b.id);
     return faction.some(f => remainder.some(r =>
         hasVengeanceAgainst(f, r.id)
         || hasVengeanceAgainst(r, f.id)
@@ -773,6 +785,8 @@ function hasGrievanceAcross(faction: Tribute[], remainder: Tribute[]): boolean {
         || suspicionOf(f, r.id) >= ALLIANCES.schismGrievanceSuspicion
         || suspicionOf(r, f.id) >= ALLIANCES.schismGrievanceSuspicion
         || fearOf(f, r.id) >= ALLIANCES.schismGrievanceFear
+        // AUDIT-11 §6: the fairness ledger. Somebody has been eating twice.
+        || Math.max(grudgeAgainstIn(f, r), grudgeAgainstIn(r, f)) >= ALLIANCE_BONDS.grudgeMotive
         // Two people who have come to actively dislike each other need no
         // separate incident: the falling-out is the grievance.
         || Math.min(getRel(f, r.id), getRel(r, f.id)) <= ALLIANCES.schismGrievanceRegard));
@@ -810,7 +824,7 @@ function schismAlliances(ctx: SimContext, alliances: Map<string, Tribute[]>) {
         if (!faction) return;
         const remainder = members.filter(m => !faction.some(f => f.id === m.id));
         // ...and something to split over.
-        if (!hasGrievanceAcross(faction, remainder)) return;
+        if (!hasGrievanceAcross(ctx, faction, remainder)) return;
 
         // The splinter becomes a standing alliance of its own rather than a
         // handful of loners — that is the whole point of modelling it as a
@@ -1069,7 +1083,7 @@ function growRomance(ctx: SimContext) {
                     }
                     // Playing it well is a charisma job, and the crowd is the
                     // only audience that matters.
-                    if (performer.attributes.charisma >= ROMANCE.performerCharisma) {
+                    if (performer.attributes.charisma >= ROMANCE.performerCharisma || performsForCameras(performer)) {
                         declareLovers(ctx, smitten, performer, performer);
                         if (++declared >= ROMANCE.maxPerCycle) return;
                         continue;
@@ -1299,6 +1313,8 @@ function declareLovers(ctx: SimContext, t1: Tribute, t2: Tribute, performer?: Tr
     t1.allianceId = bondId;
     t2.allianceId = bondId;
     registerAlliance(ctx, bondId, [t1, t2]);
+    // AUDIT-11 §6: hidden until the end — which of them meant it.
+    (ctx.state.romances ??= []).push({ aId: t1.id, bId: t2.id, sincere: { [t1.id]: performer !== t1, [t2.id]: performer !== t2 } });
 
     t1.sponsorTrust = Math.min(100, t1.sponsorTrust + 40);
     t2.sponsorTrust = Math.min(100, t2.sponsorTrust + 40);

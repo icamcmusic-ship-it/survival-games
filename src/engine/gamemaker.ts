@@ -1,5 +1,6 @@
 import { SimContext, getAlive } from './context';
 import { RNG } from '../utils/rng';
+import { directorTaste, weightedIndex } from '../data/directors';
 import { ExposureProfile, applyExposure } from './exposure';
 import { depleteZone, getZone } from './map';
 import { clampTribute } from './vitals';
@@ -311,7 +312,13 @@ function runGamemakerEvent(
             });
         }
     } else if (type === 'weather') {
-        const weather = ctx.rng.pick(WEATHER_EFFECTS);
+        // AUDIT-11 §12: a fire-lover reaches for heat, a weather-obsessive for
+        // everything else. One draw, as the uniform pick it replaces.
+        const taste = directorTaste(ctx.state.headGamemaker);
+        const weather = WEATHER_EFFECTS[weightedIndex(
+            ctx.rng.nextFloat(),
+            WEATHER_EFFECTS.map(w => /heat|fire|scorch/i.test(w.name) ? taste.fire : taste.weather),
+        )];
         ctx.logEvent(
             `GAMEMAKER: The weather shifts drastically. ${weather.name.charAt(0).toUpperCase() + weather.name.slice(1)} sweeps the arena!`,
             [],

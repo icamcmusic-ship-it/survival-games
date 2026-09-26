@@ -1,3 +1,6 @@
+import { craftKit, followPlan, tickArenaDepth } from '../arenaDepth';
+import { directorTaste } from '../../data/directors';
+import { capitolCruelty } from '../campaign';
 import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { Tribute } from '../../models/types';
@@ -71,6 +74,7 @@ import { mintItem } from '../items';
 import { QUALITY_BIAS } from '../../data/balance';
 import { isAggressiveStance, isEvasiveStance } from '../../data/stances';
 import { loseSanity } from '../sanityBands';
+import { withFallen } from '../arenaRules';
 
 /**
  * The day/night cycle: the orchestrator, not the implementation.
@@ -225,6 +229,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         resetBudget(t);
 
         craft(ctx, t);
+        // AUDIT-11 §13: snare kits and bivouac sheets (arenaDepth.ts).
+        craftKit(ctx, t);
 
         // What they can see from where they stand, before they decide anything.
         // §5.1: two tributes on different levels of the same shaft are not in
@@ -261,6 +267,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
         // Stance first, then intention: what they mean to do this cycle depends
         // on how threatened they have just decided they are.
         updateObjective(ctx, t, here);
+        // AUDIT-11 §5: a held multi-step plan outranks an unambitious re-roll.
+        followPlan(ctx, t);
 
         if (isBreakingDown(ctx, t)) {
             handleInsanity(ctx, t);
@@ -426,6 +434,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // Fire spreads, floods drown stragglers, and whatever else is happening to
     // the ground itself lands after this cycle's movement has resolved.
     tickWeatherFront(ctx);
+    // AUDIT-11 §7: weather layer, scars, hidden cache, acts, deception, risk curve.
+    tickArenaDepth(ctx);
     tickZoneControl(ctx);
     tickSharedGrief(ctx);
     rollAmbientZoneEffects(ctx);
@@ -1327,6 +1337,8 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
         const stage = ctx.state.finaleZone!;
         collapsedList = allZoneNames.filter(z => z !== stage);
     }
+    // Generic arena rule: ground lost for good stays lost when the border recomputes.
+    collapsedList = withFallen(ctx.state, collapsedList);
     ctx.state.collapsedZones = collapsedList;
 
     getAlive(ctx.state).forEach(t => {
@@ -1841,8 +1853,14 @@ function resolveEncounters(
             const gm = gamemakerProfile(ctx.state.headGamemaker);
             const multiplier = (1 + (ctx.state.day - escalatedSince) * ESCALATION.hazardMultiplierPerDay) * gm.hazardMultiplier;
             eventChance = Math.min(ESCALATION.hazardCeiling, eventChance * multiplier);
-            muttChance = Math.min(ESCALATION.hazardCeiling, muttChance * multiplier);
+            // AUDIT-11 §12: a mutt-loving director's closing arena is hungrier.
+            muttChance = Math.min(ESCALATION.hazardCeiling, muttChance * multiplier * directorTaste(ctx.state.headGamemaker).mutts);
         }
+        // AUDIT-11 §12: the campaign's rebellion meter — the Capitol answers
+        // unrest with a crueller arena. 1 with no campaign behind the run.
+        const cruelty = capitolCruelty(ctx.state.campaign);
+        eventChance *= cruelty;
+        muttChance *= cruelty;
         eventChance = Math.min(ENCOUNTERS.hazardCeiling, eventChance * ctx.state.config.hazardRate);
         muttChance = Math.min(ENCOUNTERS.hazardCeiling, muttChance * ctx.state.config.hazardRate);
 

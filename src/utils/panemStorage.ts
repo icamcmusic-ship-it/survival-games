@@ -1,4 +1,7 @@
-import { CampaignSnapshot } from '../models/types';
+import { CampaignFeud, CampaignSnapshot } from '../models/types';
+import { foldCampaignArc } from '../engine/campaign';
+import { scorePrediction } from '../engine/prediction';
+import { PARLAY, PREDICTION } from '../data/balance';
 import { GameState, Tribute } from '../models/types';
 import { HEAD_GAMEMAKERS } from '../data/gamemakers';
 import { QUELLS } from '../data/gamesProfile';
@@ -94,6 +97,20 @@ export interface PanemRecords {
      * answer the phone.
      */
     victorMentors?: Record<number, { name: string; archetype: string; run: number }>;
+    /** AUDIT-11 §12: the campaign's rebellion meter, 0-100. */
+    rebellion?: number;
+    /** AUDIT-11 §8: each district's standing with the audience. */
+    districtReputation?: Record<number, number>;
+    /** AUDIT-11 §8: rival victor feuds. */
+    feuds?: CampaignFeud[];
+    /** AUDIT-11 §12: the prediction-slip career. */
+    predictions?: PredictionCareer;
+    /** AUDIT-11 §8: parlays that paid out. */
+    parlaysLanded?: number;
+    /** AUDIT-11 §8: the open parlay ticket, carried across Games. */
+    parlay?: ParlayTicket;
+    /** AUDIT-11 §8: the best bankrolls the player has closed a Games on. */
+    bankrollBoard?: BankrollEntry[];
     /** One entry per tracked record, keyed by record id. */
     bests: Record<string, RecordHolder>;
     /** S-3: distinct arenas a victor has been crowned in, for the career meta-achievements. */
@@ -522,9 +539,81 @@ export const PANEM_SPEC: StorageSpec<PanemRecords> = {
             recentRuns: Array.isArray(r.recentRuns)
                 ? (r.recentRuns as PanemRecords['recentRuns'])
                 : undefined,
+            heirlooms: r.heirlooms !== undefined
+                ? asObjMap<{ token: string; quirk?: string; fromName: string; run: number }>(r.heirlooms)
+                : undefined,
+            // AUDIT-11 §8/§12: the campaign arc, predictions, parlays and
+            // bankrolls. All optional; a store from before them reads as none.
+            rebellion: Number.isFinite(asNum(r.rebellion, NaN)) ? Math.max(0, Math.min(100, asNum(r.rebellion, 0))) : undefined,
+            districtReputation: r.districtReputation !== undefined ? asNumRecord(r.districtReputation) : undefined,
+            feuds: Array.isArray(r.feuds) ? (r.feuds as unknown[]).flatMap(normalizeFeud) : undefined,
+            predictions: normalizePredictionCareer(r.predictions),
+            parlay: normalizeParlay(r.parlay),
+            parlaysLanded: r.parlaysLanded !== undefined ? Math.max(0, asNum(r.parlaysLanded, 0)) : undefined,
+            bankrollBoard: Array.isArray(r.bankrollBoard)
+                ? (r.bankrollBoard as unknown[]).flatMap(e => {
+                    const x = asRecord(e);
+                    if (!x) return [];
+                    const coins = asNum(x.coins, NaN);
+                    if (!Number.isFinite(coins)) return [];
+                    return [{ coins, run: asNum(x.run, 0), seed: typeof x.seed === 'string' ? x.seed : '', date: typeof x.date === 'string' ? x.date : '' }];
+                }).slice(0, PARLAY.leaderboardSize)
+                : undefined,
         };
     },
 };
+
+function asNumRecord(raw: unknown): Record<number, number> {
+    const out: Record<number, number> = {};
+    Object.entries(asRecord(raw) ?? {}).forEach(([k, v]) => {
+        if (typeof v === 'number' && Number.isFinite(v) && Number.isFinite(Number(k))) out[Number(k)] = v;
+    });
+    return out;
+}
+
+function normalizeFeud(raw: unknown): CampaignFeud[] {
+    const f = asRecord(raw);
+    if (!f || typeof f.aName !== 'string' || typeof f.bName !== 'string') return [];
+    const aDistrict = asNum(f.aDistrict, NaN);
+    const bDistrict = asNum(f.bDistrict, NaN);
+    if (!Number.isFinite(aDistrict) || !Number.isFinite(bDistrict)) return [];
+    return [{ aName: f.aName, aDistrict, bName: f.bName, bDistrict, run: asNum(f.run, 0) }];
+}
+
+function normalizePredictionCareer(raw: unknown): PredictionCareer | undefined {
+    const p = asRecord(raw);
+    if (!p) return undefined;
+    return {
+        scored: Math.max(0, asNum(p.scored, 0)),
+        totalScore: Math.max(0, asNum(p.totalScore, 0)),
+        best: Math.max(0, asNum(p.best, 0)),
+        winnersCalled: Math.max(0, asNum(p.winnersCalled, 0)),
+        sharpCalls: Math.max(0, asNum(p.sharpCalls, 0)),
+    };
+}
+
+function normalizeLeg(raw: unknown): ParlayLeg | undefined {
+    const l = asRecord(raw);
+    if (!l || typeof l.seed !== 'string' || typeof l.tributeId !== 'string') return undefined;
+    const mult = asNum(l.mult, NaN);
+    if (!Number.isFinite(mult) || mult <= 0) return undefined;
+    return { seed: l.seed, tributeId: l.tributeId, name: typeof l.name === 'string' ? l.name : '?', district: asNum(l.district, 0), mult };
+}
+
+function normalizeParlay(raw: unknown): ParlayTicket | undefined {
+    const p = asRecord(raw);
+    if (!p) return undefined;
+    const stake = asNum(p.stake, NaN);
+    const legs = asNum(p.legs, NaN);
+    if (!Number.isFinite(stake) || stake <= 0 || !Number.isFinite(legs)) return undefined;
+    const won = Array.isArray(p.won) ? (p.won as unknown[]).map(normalizeLeg).filter((l): l is ParlayLeg => !!l) : [];
+    return {
+        stake: Math.floor(stake),
+        legs: Math.max(PARLAY.minLegs, Math.min(PARLAY.maxLegs, Math.floor(legs))),
+        won,
+        pending: normalizeLeg(p.pending),
+    };
+}
 
 export function readPanem(): PanemRecords {
     return readStored(PANEM_SPEC) ?? { ...EMPTY_PANEM, bests: {}, gamemakerRecords: {}, districtCrowns: {} };
@@ -532,6 +621,42 @@ export function readPanem(): PanemRecords {
 
 function writePanem(records: PanemRecords): void {
     writeStored(PANEM_SPEC, records);
+}
+
+/** AUDIT-11 §12: what the player's prediction slips have added up to. */
+export interface PredictionCareer {
+    scored: number;
+    totalScore: number;
+    best: number;
+    /** Slips that named the victor. */
+    winnersCalled: number;
+    /** Slips that scored at least `PREDICTION.sharpShare` of their maximum. */
+    sharpCalls: number;
+}
+
+/** AUDIT-11 §8: one Games' leg of a parlay. */
+export interface ParlayLeg {
+    seed: string;
+    tributeId: string;
+    name: string;
+    district: number;
+    mult: number;
+}
+
+/** AUDIT-11 §8: a parlay — one victor pick per Games, all of which must come home. */
+export interface ParlayTicket {
+    stake: number;
+    legs: number;
+    won: ParlayLeg[];
+    pending?: ParlayLeg;
+}
+
+/** AUDIT-11 §8: a bankroll leaderboard row. */
+export interface BankrollEntry {
+    coins: number;
+    run: number;
+    seed: string;
+    date: string;
 }
 
 /** §10.7: how many finished runs the end-screen delta compares against. */
@@ -617,6 +742,10 @@ export function careerTotals(records: PanemRecords): CareerTotals {
         causeCodeTotal: DEATH_CAUSE_CODE_COUNT,
         seedsCompleted: records.seedsCompleted?.length ?? 0,
         nonCareerStreak: records.nonCareerStreak ?? 0,
+        predictionsScored: records.predictions?.scored ?? 0,
+        victorsCalled: records.predictions?.winnersCalled ?? 0,
+        sharpCalls: records.predictions?.sharpCalls ?? 0,
+        parlaysLanded: records.parlaysLanded ?? 0,
     };
     return totals;
 }
@@ -642,6 +771,7 @@ export function commitRun(state: GameState): RunOutcome {
     const victor = winners[0];
     const hasVictor = winners.length > 0;
 
+    const priorMentors = { ...(records.victorMentors ?? {}) };
     records.runs += 1;
     // Games that produced a victor, not people crowned — a dual win is one
     // Games with a winner, and `careerTotals` reads this as a run count.
@@ -875,6 +1005,31 @@ export function commitRun(state: GameState): RunOutcome {
         if (!records.quellsSeen.includes(state.gamesProfile.quell.id)) records.quellsSeen.push(state.gamesProfile.quell.id);
     }
 
+    // AUDIT-11 §8/§12: the campaign arc moves on by one Games. The mentors
+    // read are the ones from *before* this run's crowns were seated, which is
+    // what makes a feud a rivalry between two victors rather than one.
+    const arc = foldCampaignArc({
+        rebellion: records.rebellion,
+        districtReputation: records.districtReputation,
+        feuds: records.feuds,
+        victorMentors: priorMentors,
+    }, state, records.runs);
+    records.rebellion = arc.rebellion;
+    records.districtReputation = arc.districtReputation;
+    records.feuds = arc.feuds;
+
+    // AUDIT-11 §12: the prediction slip, scored.
+    const slip = scorePrediction(state, state.prediction);
+    if (slip) {
+        const p = records.predictions ?? { scored: 0, totalScore: 0, best: 0, winnersCalled: 0, sharpCalls: 0 };
+        p.scored += 1;
+        p.totalScore += slip.score;
+        p.best = Math.max(p.best, slip.score);
+        if (slip.hits.includes('winner')) p.winnersCalled += 1;
+        if (slip.max > 0 && slip.score / slip.max >= PREDICTION.sharpShare) p.sharpCalls += 1;
+        records.predictions = p;
+    }
+
     // S-3: career-wide achievements read the updated records, so cumulative
     // counts and per-district completion unlock the moment they become true.
     const totals = careerTotals(records);
@@ -1009,5 +1164,68 @@ export function campaignSnapshotOf(records: PanemRecords): CampaignSnapshot {
         headGamemakerTerm: records.headGamemakerTerm,
         victorMentors: records.victorMentors,
         heirlooms: records.heirlooms,
+        rebellion: records.rebellion,
+        districtReputation: records.districtReputation,
+        feuds: records.feuds,
     };
+}
+
+/** AUDIT-11 §8: open a parlay ticket. The caller has already taken the stake. */
+export function openParlay(stake: number, legs: number): PanemRecords {
+    const records = readPanem();
+    records.parlay = { stake, legs: Math.max(PARLAY.minLegs, Math.min(PARLAY.maxLegs, legs)), won: [] };
+    writePanem(records);
+    return records;
+}
+
+/** AUDIT-11 §8: name this Games' leg of the open parlay (or clear it). */
+export function setParlayLeg(leg: ParlayLeg | undefined): PanemRecords {
+    const records = readPanem();
+    if (records.parlay) {
+        records.parlay = { ...records.parlay, pending: leg };
+        writePanem(records);
+    }
+    return records;
+}
+
+/**
+ * AUDIT-11 §8: settle the parlay's leg for a finished Games. Returns the payout
+ * (0 unless the final leg just came in) and a line for the end screen. A
+ * ticket with no leg on this run's seed is untouched — a Games sat out does
+ * not break the chain.
+ */
+export function settleParlay(state: GameState): { records: PanemRecords; payout: number; line?: string } {
+    const records = readPanem();
+    const ticket = records.parlay;
+    if (!ticket?.pending || ticket.pending.seed !== state.seed) return { records, payout: 0 };
+    const leg = ticket.pending;
+    const home = state.tributes.some(t => t.id === leg.tributeId && t.status === 'alive');
+    if (!home) {
+        records.parlay = undefined;
+        writePanem(records);
+        return { records, payout: 0, line: `Your parlay dies with ${leg.name}: ${ticket.won.length} of ${ticket.legs} legs came in, and the ${ticket.stake}-coin stake is gone.` };
+    }
+    const won = [...ticket.won, leg];
+    if (won.length >= ticket.legs) {
+        const mult = won.reduce((m, l) => m * Math.min(PARLAY.legMultCap, l.mult), 1);
+        const payout = Math.floor(ticket.stake * mult);
+        records.parlay = undefined;
+        records.parlaysLanded = (records.parlaysLanded ?? 0) + 1;
+        writePanem(records);
+        return { records, payout, line: `Your ${ticket.legs}-leg parlay lands — ${won.map(l => l.name).join(', ')} all came home. ${ticket.stake} coins pay ${payout}.` };
+    }
+    records.parlay = { ...ticket, won, pending: undefined };
+    writePanem(records);
+    return { records, payout: 0, line: `Parlay leg ${won.length} of ${ticket.legs} comes in: ${leg.name} came home. Name the next leg before the next bloodbath.` };
+}
+
+/** AUDIT-11 §8: record the bankroll a Games closed on, for the leaderboard. */
+export function noteBankroll(coins: number, seed: string): PanemRecords {
+    const records = readPanem();
+    const board = [...(records.bankrollBoard ?? []), { coins, run: records.runs, seed, date: new Date().toISOString() }]
+        .sort((a, b) => b.coins - a.coins)
+        .slice(0, PARLAY.leaderboardSize);
+    records.bankrollBoard = board;
+    writePanem(records);
+    return records;
 }

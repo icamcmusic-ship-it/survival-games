@@ -2,12 +2,13 @@ import { SimContext, getAlive } from './context';
 import { Tribute } from '../models/types';
 import { ARENA_EVENT_PACKS, ArenaSetPiece, CONVERGENCE, packFor } from '../data/arenaEventPacks';
 import { LAW_LABELS } from '../data/arenaBriefing';
-import { arenaLaws } from './gamesProfile';
+import { arenaIsSilent, arenaLaws } from './gamesProfile';
 import { applyDamage, checkDeath } from './combat';
 import { clampTribute } from './vitals';
 import { startZoneEffect } from './zoneEffects';
 import { dropSupplies } from './zoneEffects';
 import { severEdge, getZone, zoneFeatures } from './map';
+import { markPackCut } from './arenaRules';
 import { engageMutt, rosterFor } from './mutts';
 import { noteSighting, cycleOf } from './memory';
 import { ARENA_EVENTS, CONVERGENCE_RECAP, ESCALATION, NOTORIETY } from '../data/balance';
@@ -275,6 +276,7 @@ function runSetPiece(ctx: SimContext, event: ArenaSetPiece) {
                 if (open.length <= 1) return;
                 const target = rng.pick(open);
                 severEdge(ctx.state, name, target);
+                markPackCut(ctx.state, name, target);
                 cut.push(`${name} to ${target}`);
             });
             announce(ctx, event, cut);
@@ -324,6 +326,10 @@ function runSetPiece(ctx: SimContext, event: ArenaSetPiece) {
             break;
         }
         case 'revealAll': {
+            // A position report is a broadcast. Under a communications
+            // blackout (the Ward Block's lockdown, a silent arena) there is
+            // nothing to broadcast it on: the count does not go out.
+            if (arenaIsSilent(ctx.state)) break;
             announce(ctx, event, []);
             const living = getAlive(ctx.state);
             living.forEach(watcher => {

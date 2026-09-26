@@ -1,6 +1,15 @@
 import React from 'react';
 import { GameState } from '../models/types';
 import { ordinal } from '../engine/gamesProfile';
+import { mutatorName } from '../data/mutators';
+import { directorTaste } from '../data/directors';
+import { CAMPAIGN_ARC } from '../data/balance';
+import { isFreshCampaign, rebellionLabel, rebellionOf } from '../engine/campaign';
+
+/** AUDIT-11 §12: a date-derived daily seed (`daily-YYYY-MM-DD`). */
+function isDailySeed(seed: string): boolean {
+    return /^daily-\d{4}-\d{2}-\d{2}$/.test(seed);
+}
 
 /**
  * §2.10: this year's Games, on one card.
@@ -33,6 +42,13 @@ export function RunProfileCard({ gameState }: { gameState: GameState }) {
         ['Sponsors', multiplier(config.sponsorGenerosity), off(config.sponsorGenerosity)],
         ['Feast', config.enableFeast ? 'will be called' : 'none this year', !config.enableFeast],
         ['Sanity', config.enableSanity ? 'tracked' : 'not tracked', !config.enableSanity],
+        // AUDIT-11 §12: the mutator cards drawn for this Games.
+        ['Mutators', config.mutators?.length ? config.mutators.map(mutatorName).join(' + ') : 'none', !!config.mutators?.length],
+        // AUDIT-11 §12: the daily, the director's taste and the campaign arc.
+        ...(isDailySeed(gameState.seed) ? [['Daily seed', gameState.seed.slice('daily-'.length), true] as [string, React.ReactNode, boolean]] : []),
+        ...(gameState.headGamemaker ? [['Director', directorTaste(gameState.headGamemaker).label, false] as [string, React.ReactNode, boolean]] : []),
+        ...(!isFreshCampaign(gameState.campaign) ? [['Rebellion', `${Math.round(rebellionOf(gameState.campaign))} — ${rebellionLabel(rebellionOf(gameState.campaign))}`, rebellionOf(gameState.campaign) >= CAMPAIGN_ARC.restlessAt] as [string, React.ReactNode, boolean]] : []),
+        ...(gameState.legacyTributeIds?.length ? [['Legacy tribute', gameState.tributes.filter(t => gameState.legacyTributeIds!.includes(t.id)).map(t => `${t.name} (D${t.district})`).join(', '), true] as [string, React.ReactNode, boolean]] : []),
     ];
 
     return (

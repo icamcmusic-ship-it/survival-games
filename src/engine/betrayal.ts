@@ -3,6 +3,8 @@ import { ARCHETYPES } from '../data/archetypes';
 import { ALLIANCE_TEXTS } from '../data/flavorText';
 import { BETRAYAL, BLEEDING, MEMORY, RELATIONSHIPS, SUSPICION } from '../data/balance';
 import { SimContext } from './context';
+import { witnessTheft } from './allianceBonds';
+import { ALLIANCE_BONDS } from '../data/balance';
 import { resolveCombat } from './combat';
 import { allianceOf, cacheValue, emptyCache } from './alliance';
 import { trainProficiency } from './proficiency';
@@ -116,12 +118,15 @@ export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Trib
             const dropped = giveItem(betrayer, ...spoils);
             applyBetrayalFallout(ctx, betrayer, victim, members);
             delete betrayer.allianceId;
+            // AUDIT-11 §6: an ally caught at it becomes a rival.
+            const awake = members.filter(m => m.id !== victim.id && m.id !== betrayer.id && ctx.rng.chance(ALLIANCE_BONDS.theftWitnessChance));
             ctx.logEvent(
                 `${betrayer.name} waits until the others are asleep, empties the group's stash in ${betrayer.zone}, and walks. ` +
                 `${victim.name} wakes to find ${spoils.length > 0 ? `the ${spoils.map(i => i.name).join(', ')} gone` : 'nothing but the shape of where they had been lying'}.`,
                 [betrayer.id, victim.id],
                 { type: 'exotic-betrayals', important: true, category: 'betrayal' }
             );
+            witnessTheft(ctx, betrayer, awake);
             if (dropped.length > 0) {
                 ctx.logEvent(
                     `${betrayer.name} cannot carry all of it and leaves ${dropped.map(i => i.name).join(', ')} scattered behind them.`,

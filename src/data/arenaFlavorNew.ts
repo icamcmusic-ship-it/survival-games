@@ -1,4 +1,5 @@
 import type { ArenaFlavor } from './arenaFlavor';
+import { BUILDING_ARENA_FLAVOR } from './arenaFlavorBuildings';
 
 /**
  * §1/§12 (requests): flavour packs for the five new hand-authored arenas.
@@ -1664,3 +1665,8 @@ export const NEW_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
         ],
     },
 };
+
+// The five building arenas (the Gallery, the Malt House, Circuit Row, the Ward
+// Block, the Glasshouse), authored in their own module and folded in here so
+// every reader of `NEW_ARENA_FLAVOR` sees them.
+Object.assign(NEW_ARENA_FLAVOR, BUILDING_ARENA_FLAVOR);

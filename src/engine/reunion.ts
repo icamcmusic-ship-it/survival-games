@@ -5,6 +5,7 @@ import { adjustRel, adjustTrust } from './relationships';
 import { REUNION } from '../data/balance';
 import { noteMilestone } from './milestones';
 import { allied } from './alliance';
+import { isVeteran } from './veterans';
 
 /**
  * AUDIT-10 B5-01: real reunions.
@@ -62,5 +63,30 @@ export function tickReunions(ctx: SimContext) {
                 { important: true, category: 'alliance', zone: t.zone },
             );
         });
+    });
+}
+
+/**
+ * AUDIT-11 §8: the veteran's arena moment. A past victor reaped again gets one
+ * beat, the first time they share ground with somebody who has never been in
+ * an arena before: the difference is visible, and the other tribute knows it.
+ * Once per veteran, no roll.
+ */
+export function tickVeteranMoments(ctx: SimContext) {
+    const seated = ctx.state.veteransSeated;
+    if (!seated || seated.length === 0) return;
+    const done = ctx.state.veteranMoments ?? [];
+    const alive = getAlive(ctx.state);
+    alive.filter(v => isVeteran(seated, v) && !done.includes(v.id)).forEach(vet => {
+        const rookie = alive.find(o => o.id !== vet.id && !isVeteran(seated, o) && samePlace(ctx.state.arena, vet, o));
+        if (!rookie) return;
+        ctx.state.veteranMoments = [...(ctx.state.veteranMoments ?? []), vet.id];
+        adjustRel(rookie, vet.id, REUNION.veteranRegard);
+        ctx.logEvent(
+            `${rookie.name} watches ${vet.name} check the wind, the ground and the tree line in the order the ${vet.veteranOf ?? 'last'} Games taught them, `
+            + `and understands for the first time that ${vet.name} has done this before and is not frightened of it.`,
+            [vet.id, rookie.id],
+            { important: true, category: 'arena', zone: vet.zone, actorId: vet.id, fact: `${rookie.name} met the veteran ${vet.name}.` },
+        );
     });
 }

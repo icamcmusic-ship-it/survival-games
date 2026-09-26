@@ -14,6 +14,7 @@ import type { WhatIfResult } from '../engine/whatIf';
  */
 export function WhatIfPanel({ gameState }: { gameState: GameState }) {
     const checkpoints = useMemo(() => gameActions.whatIfCheckpoints(), []);
+    const limit = useMemo(() => gameActions.whatIfLimit(), []);
     const [picked, setPicked] = useState<number | null>(checkpoints[0]?.index ?? null);
     const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
     const [result, setResult] = useState<WhatIfResult | null>(null);
@@ -69,6 +70,10 @@ export function WhatIfPanel({ gameState }: { gameState: GameState }) {
             <p className="text-xs text-[var(--color-ink-400)]">
                 Re-roll one phase and play the rest of the Games out again. Everything before it stays as it happened.
             </p>
+            <p className="text-xs text-[var(--color-ink-500)]" data-testid="whatif-limit">
+                Branches reach back {limit.cap} phases{limit.oldestDay !== null ? `, to Day ${limit.oldestDay} at the earliest` : ''}.
+                {limit.truncated ? ' Earlier days of this Games have fallen off the rewind ring.' : ''}
+            </p>
             <div className="flex flex-wrap items-center gap-2">
                 <label className="text-xs text-[var(--color-ink-400)]" htmlFor="whatif-from">Re-roll</label>
                 <select
@@ -91,6 +96,11 @@ export function WhatIfPanel({ gameState }: { gameState: GameState }) {
                     <div className="text-sm text-[var(--ink)]">
                         <span className="font-bold">{nameOf(result.actualVictorIds)}</span> still wins in{' '}
                         <span className="font-bold">{result.sameOutcome} of {total}</span>. {verdict}
+                    </div>
+                    <div className="text-xs text-[var(--color-ink-500)]" data-testid="whatif-replayed">
+                        {result.replayedInterventions > 0
+                            ? `Your ${result.replayedInterventions} intervention${result.replayedInterventions === 1 ? '' : 's'} after that phase (parachutes, Gamemaker commands) were replayed into every branch.`
+                            : 'You made no interventions after that phase; every branch ran on its own.'}
                     </div>
                     <div className="space-y-1.5">
                         {tally.map(([key, n]) => (

@@ -1,4 +1,8 @@
-import { InterviewPersona, GameState, GameConfig, HallOfFameEntry, CampaignSnapshot, InterventionRecord } from '../models/types';
+import { InterviewPersona, GameState, GameConfig, HallOfFameEntry, CampaignSnapshot, InterventionRecord, Prediction } from '../models/types';
+import { givenName, legacyReapingDue, rebellionCallsQuell } from '../engine/campaign';
+import { scorePrediction } from '../engine/prediction';
+import { noteRunLines, readStaleLines } from '../utils/staleLines';
+import { PARLAY } from '../data/balance';
 import { balanceFingerprint, balanceMatches } from '../engine/balanceFingerprint';
 import { Bet, REWIND_PERSIST, SAVED_RUN_SPEC, SAVE_SLOT_SPECS, SavedRun, SideBet, SideBetKind, packRewind } from '../utils/saveMigrations';
 import { SIDE_BETS } from '../data/balance';
@@ -14,7 +18,7 @@ import { RNG } from '../utils/rng';
 import type { Simulator } from '../engine/simulator';
 import type { GamemakerEventType } from '../engine/gamemaker';
 import { createStore } from './createStore';
-import { PanemRecords, campaignSnapshotOf, RunOutcome, addPatronDistrict, buyArena, clearPanem, commitRun, dropPatronDistrict, noteStipendTaken, readPanem } from '../utils/panemStorage';
+import { PanemRecords, campaignSnapshotOf, RunOutcome, addPatronDistrict, buyArena, clearPanem, commitRun, dropPatronDistrict, noteBankroll, noteStipendTaken, openParlay, readPanem, setParlayLeg, settleParlay } from '../utils/panemStorage';
 import type { SponsorResult } from '../engine/playerSponsor';
 import { readPrefs } from './prefsStore';
 import { seatVeterans } from '../engine/veterans';
@@ -415,6 +419,8 @@ function saveHallOfFame(state: GameState): WriteResult {
         date: new Date().toISOString(),
         winnerTraits: winner?.traits ?? [],
         winnerEndHealth: winner?.health ?? 0,
+        // AUDIT-11 §12: the player's slip, scored.
+        prediction: scorePrediction(state, state.prediction),
         tributeSummaries: state.tributes.map(t => ({
             name: t.name,
             district: t.district,
@@ -460,6 +466,8 @@ function commitVictory(state: GameState) {
     // REPLAY-03/04: the record book and the discovery layer both fold in a
     // finished run here, behind the same double-commit guard the archive uses.
     const outcome = commitRun(state);
+    // AUDIT-11 §12: the lines this run printed are stale for the next few days.
+    noteRunLines(state);
     gameStore.setState({
         hofSaved: true,
         hofWriteFailed: archived !== 'ok' ? archived : null,
@@ -492,10 +500,24 @@ function settleSideBets(state: GameState, sideBets: SideBet[]): { winnings: numb
     return { winnings, lines };
 }
 
+/** AUDIT-11 §8: settle the book, then post the closing bankroll to the leaderboard once. */
 function resolveBets(state: GameState) {
+    const already = gameStore.getState().betsResolved;
+    settleBook(state);
+    if (!already && gameStore.getState().betsResolved) {
+        gameStore.setState({ panem: noteBankroll(gameStore.getState().coins, state.seed) });
+    }
+}
+
+function settleBook(state: GameState) {
     const { bets, sideBets, coins: coinsAtStart, betsResolved, lastRunOutcome } = gameStore.getState();
     if (betsResolved) return;
     const side = settleSideBets(state, sideBets);
+    // AUDIT-11 §8: this Games' parlay leg. The payout joins the side winnings.
+    const parlay = settleParlay(state);
+    if (parlay.line) side.lines.push(parlay.line);
+    side.winnings += parlay.payout;
+    gameStore.setState({ panem: parlay.records });
     // §20 (requests): what the run's first-time achievements are worth. Paid
     // here rather than in `commitRun` because this is where the wallet lives,
     // and behind the same `betsResolved` guard as everything else on this path
@@ -723,6 +745,46 @@ export const gameActions = {
         else if (live.tributes.some(t => t.id === tributeId)) live.riggedVictorId = tributeId;
         else return false;
         gameActions.syncFromSimulator();
+        return true;
+    },
+
+    /**
+     * AUDIT-11 §12: fill in (or clear) the prediction slip. Open while the book
+     * is — before the gong — and read by nothing in the simulation.
+     */
+    setPrediction(prediction: Prediction | null): boolean {
+        const { gameState, simulator } = gameStore.getState();
+        if (!gameState || !simulator || !sideBettingOpen(gameState.phase)) return false;
+        const live = simulator.getState();
+        if (prediction === null) delete live.prediction;
+        else live.prediction = prediction;
+        gameActions.syncFromSimulator();
+        persistRun();
+        return true;
+    },
+
+    /** AUDIT-11 §8: open a parlay spanning the next `legs` Games. */
+    startParlay(stake: number, legs: number): boolean {
+        const { coins, panem } = gameStore.getState();
+        if (panem.parlay || stake < PARLAY.minStake || coins < stake) return false;
+        if (legs < PARLAY.minLegs || legs > PARLAY.maxLegs) return false;
+        gameActions.setCoins(coins - stake);
+        gameStore.setState({ panem: openParlay(Math.floor(stake), legs) });
+        return true;
+    },
+
+    /** AUDIT-11 §8: name this Games' parlay leg, priced at the live odds. */
+    setParlayLeg(tributeId: string | null): boolean {
+        const { gameState, panem } = gameStore.getState();
+        if (!gameState || !panem.parlay || !engine || !sideBettingOpen(gameState.phase)) return false;
+        if (tributeId === null) {
+            gameStore.setState({ panem: setParlayLeg(undefined) });
+            return true;
+        }
+        const t = gameState.tributes.find(x => x.id === tributeId);
+        if (!t) return false;
+        const mult = Math.min(PARLAY.legMultCap, engine.tributeOdds(t, gameState.tributes).mult);
+        gameStore.setState({ panem: setParlayLeg({ seed: gameState.seed, tributeId: t.id, name: t.name, district: t.district, mult }) });
         return true;
     },
 
@@ -1146,7 +1208,11 @@ export const gameActions = {
         // HallOfFameEntry.quellId. `undefined` (no replay, or an entry that
         // predates Quells) falls through to the ordinary seeded draw.
         const pinnedQuell = pinnedQuellId === undefined ? undefined : (pinnedQuellId === null ? null : QUELLS.find(q => q.id === pinnedQuellId) ?? null);
-        const gamesProfile = gamesProfileFor(safeSeed, forceQuell, pinnedQuell, config.vanillaRules === true);
+        // AUDIT-11 §12: a campaign in open unrest gets a Quell — announced on
+        // the setup screen a season ahead, since it is read from the same book.
+        const campaignNow = pinnedCampaign ?? campaignSnapshotOf(gameStore.getState().panem);
+        const rebellionQuell = pinnedQuell === undefined && config.vanillaRules !== true && rebellionCallsQuell(campaignNow);
+        const gamesProfile = gamesProfileFor(safeSeed, forceQuell || rebellionQuell, pinnedQuell, config.vanillaRules === true);
         // 'random-hidden': a real arena, still resolved deterministically from
         // the seed (a shared seed reproduces the same Games) — the pick just
         // isn't the player's to make, and its identity stays out of the UI
@@ -1196,7 +1262,7 @@ export const gameActions = {
          * book came with it, so the run replays under that history rather than
          * under the receiver's career.
          */
-        const panemNow = pinnedCampaign ?? campaignSnapshotOf(gameStore.getState().panem);
+        const panemNow = campaignNow;
         // §6.2: standing district patronage — a persistent sink for Capitol
         // Coins. The patron's tributes arrive with sponsors already warm.
         // §9 (audit): patronage is a list now, not a single district.
@@ -1240,6 +1306,26 @@ export const gameActions = {
         // persist, so the same two victors were reaped again every run after.
         if (grudge.length > 0) gameStore.setState({ grudgeMatchIds: [] });
 
+        // AUDIT-11 §12: legacy tributes. In a Quell (or, now and then, deep in
+        // a campaign) one Hall of Fame victor is reaped again carrying the
+        // traits they earned — under their given name only. Grafted like a
+        // Grudge Match veteran, so the seed's own cast and rolls are untouched.
+        let legacy: string[] = [];
+        // A pinned (share-link / reproduce-this-run) replay never seats one: the
+        // pick reads *this* browser's Hall of Fame, which the sender's run did
+        // not, so it would put a stranger in the replayed field.
+        if (veterans.length === 0 && pinnedCampaign === undefined && legacyReapingDue(panemNow, safeSeed, !!gamesProfile.quell)) {
+            const taken = new Set(tributes.map(t => t.name));
+            const pool = readHallOfFame()
+                .filter(e => !e.noVictor && !e.winnerName.includes('&') && !taken.has(givenName(e.winnerName)))
+                .sort((a, b) => a.id.localeCompare(b.id));
+            if (pool.length > 0) {
+                const pick = pool[new RNG(`${safeSeed}-legacy-pick`).nextInt(0, pool.length - 1)];
+                legacy = seatVeterans(safeSeed, tributes, [{ ...pick, winnerName: givenName(pick.winnerName) }]);
+                veterans = [...veterans, ...legacy];
+            }
+        }
+
         const initialState: GameState = {
             // AUDIT-10 B3-01: a replay link's recorded Gamemaker commands, which
             // fire on the cycles they fired on in the run being replayed. An
@@ -1264,6 +1350,10 @@ export const gameActions = {
             logCounter: 0,
             feastsHeld: 0,
             veteransSeated: veterans.length > 0 ? veterans : undefined,
+            ...(legacy.length > 0 ? { legacyTributeIds: legacy } : {}),
+            // AUDIT-11 §12: recently seen flavour lines, snapshotted here so the
+            // engine never reads storage and a save rewords identically.
+            ...(() => { const stale = readStaleLines(); return stale.length > 0 ? { staleLines: stale } : {}; })(),
             // AUDIT-9 B06: the record book this run is played under, carried
             // by the state so the engine never reaches for storage and a save
             // resumes under the history it started with.
@@ -1314,6 +1404,11 @@ export const gameActions = {
         const newState: GameState = {
             ...gameState, seed: newSeed, tributes, gamesProfile, config,
         };
+        // The old cast's seatings and the slip written against it do not
+        // carry to a new cast: those ids no longer name anybody.
+        delete newState.legacyTributeIds;
+        delete newState.veteransSeated;
+        delete newState.prediction;
 
         gameStore.setState({ gameState: newState, simulator: new Simulator(newState) });
         persistRun();

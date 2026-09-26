@@ -5,6 +5,7 @@ import {
     Quell, QUELLS, Wildcard, WildcardDef, WILDCARDS, WildcardKind,
 } from '../data/gamesProfile';
 import { GAMES_PROFILE, QUELL_MECHANICS } from '../data/balance';
+import { MUTATOR_TUNING, hasMutator } from '../data/mutators';
 
 /**
  * REPLAY-01: rolling a run's identity, once, from its seed.
@@ -261,6 +262,20 @@ export function gamesProfileFor(
  * by this year's temperament and by any standing wildcard condition.
  */
 export function configForProfile(base: GameConfig, profile: GamesProfile): GameConfig {
+    return applyMutators(configForProfileInner(base, profile));
+}
+
+/** AUDIT-11 §12: the mutators that are config multipliers. The player chose them, so vanilla keeps them. */
+function applyMutators(c: GameConfig): GameConfig {
+    if (!c.mutators || c.mutators.length === 0) return c;
+    let { sponsorGenerosity, hazardRate } = c;
+    if (hasMutator(c, 'sponsor-drought')) sponsorGenerosity *= MUTATOR_TUNING.sponsorDrought;
+    if (hasMutator(c, 'hazard-storm')) hazardRate *= MUTATOR_TUNING.hazardStorm;
+    const enableFeast = hasMutator(c, 'double-feasts') ? true : c.enableFeast;
+    return { ...c, sponsorGenerosity, hazardRate, enableFeast };
+}
+
+function configForProfileInner(base: GameConfig, profile: GamesProfile): GameConfig {
     // §Special requests: "Vanilla Games" — the player's sliders, verbatim.
     if (base.vanillaRules) return { ...base };
     const t = { ...profile.temperament, ...profile.quell?.temperamentOverride };
@@ -329,7 +344,11 @@ export function arenaLaws(state: GameState): ArenaLawId[] {
  * share one check instead of every call site growing a second guard.
  */
 export function arenaIsSilent(state: GameState): boolean {
-    return wildcardIs(state, 'silent-arena') || arenaHasLaw(state, 'noCannons');
+    return wildcardIs(state, 'silent-arena') || arenaHasLaw(state, 'noCannons')
+        // arenaRules `lockdownBlackout`: once the first lockdown starts, the
+        // arena is dark to its own announcements (read inline rather than via
+        // `commsBlackout` so this module does not import the engine rules).
+        || state.arenaRuleState?.marks?.['blackout'] !== undefined;
 }
 
 /** 'No Alliances': the alliance-size cap this run is playing under. */

@@ -118,6 +118,208 @@ to 55%. Nine achievement rarity labels were relabelled to what
 `test:achievements` measured after the stance changes: `the-scavenger`
 legendary -> rare (20.6%), and eight `possible` -> `legendary` (0.4-0.6%).
 
+### Second pass: the remaining items
+
+**Balance (§11/§5), `METRICS_RUNS=1600`.** Before = the first pass's final
+sweep above; after = two sweeps on this branch (b, c) because a single sweep
+moves a ~700-entrant row by about ±1.3 points, and the two disagree by that
+much. Other arenas were being added on the branch between sweeps, which also
+reshuffles every seed.
+
+| indicator (n=1,600) | before | after (b / c) |
+|---|---|---|
+| understudy (n=462) | 3.46% | 5.84 / 6.06% (rank 13 / 12 of 40) |
+| saboteur (n=683) | 3.81% | 4.69 / 4.98% (rank 22 / 21) |
+| broker (n=961) | 3.75% | 4.68 / 3.75% (rank 24 / 31) |
+| penitent (n=760) | 3.95% | 4.34 / 4.21% (rank 29 / 27) |
+| Baiting stance share | 2.6% | 4.5 / 4.5% |
+| largest stance share (guard <= 40%) | 35.8% Evasive | 36.7 / 36.6% Evasive |
+| Career victors (guard <= 55%) | 45.9% | 47.5 / 47.0% |
+| largest single-district share (guard <= 20%) | 16.8% | 17.0 / 16.8% |
+| worst archetype, n >= 500 (guard >= 2.6%) | 3.75% | 3.45 / 2.80% (forecaster) |
+| archetype spread (guard <= 3.4x) | 2.14x | 2.39 / 3.03x |
+| run length / zero-kill / wipeouts | 11.85 d / 3.4% / 0.1% | 11.52 / 11.48 d, 4.0 / 3.7%, 0.3% |
+
+Every guard passes in both sweeps. Understudy and saboteur are clear of the
+bottom third in both; penitent and broker are at its edge and inside noise of
+it. Honest reading: they are no longer the bottom four, but a single further
+data edit will not reliably hold them in the top two thirds.
+
+Changes: Understudy's signature (`understudyReason`) is a second wind — heals
+`understudyHeal` 10 and relieves `understudyFatigueRelief` 15 fatigue. The
+Penitent's vow grants every witness a truce for `penitentTruceCycles` 8, and
+`targetDraw` -2 -> -4.5, endurance 2 -> 3. Broker endurance 1 -> 2 and
+`targetDraw` -0.5 -> -3. Saboteur +1 endurance, `targetDraw` 0.5 -> -1.5.
+Forecaster endurance 1 -> 2 (it had dropped to 2.62% against the 2.6% guard in
+an intermediate sweep). **Baiting** gets real triggers and a payoff: one live
+trap is enough (`liveTrapsTrigger` 2 -> 1), armed on high ground with somebody
+there is a new trigger and a pull (`elevationBonus` 1.2), `base` 4.6 -> 5.2,
+`perLiveTrap` 0.3 -> 0.6, and a baiter fights on ground they chose
+(`STANCE_MODES.baiting.powerBonus` 1.5 in `combat.ts`).
+
+**Follow-cam (§4).** Up to three pinned tributes (`chronicleStore.pinnedIds`,
+`togglePin`; `followedId` stays in step as the first pin so every existing
+reader works; transient, nothing in a save). "Only their beats" narrows the
+game feed and the chronicle page, and a "their day" card summarises the latest
+phase for each pin (`components/FollowCam.tsx`).
+
+**Reasoning chip (§4).** `EventLog.why` (optional, <= 90 chars) is stamped on
+headline beats whose actor has a decision trace for the current cycle
+(`compactWhy` in `engine/context.ts`): stance, top two reasons or the hold
+reason, and the top objective. About 8.5 KB per ~950 KB save. The feed shows
+a one-tap "why?" chip on those lines.
+
+**What-if (§8/E6/E12).** The panel now states `whatIfLimit()` (16-phase cap,
+earliest reachable day, whether earlier days fell off) and how many of the
+player's interventions were replayed into each branch.
+
+**Side features (§8).**
+- *Audience segments* (`engine/audienceSegments.ts`, `AUDIENCE_SEGMENTS`):
+  bloodthirsty / romantic / underdog heat, decayed x0.85 per turn and fed from
+  the turn's log; the player's sponsor quote rises by up to 30% for a tribute
+  the loud segments love. Shown on the sponsor booth. `GameState.audience` is
+  optional; older saves start neutral.
+- *Victor interview:* a first-blood question quoted from the victor's own
+  log, every victor answer tagged with a trait-set tone (defiant / tender /
+  cold / humble / showman), and `GameState.interviewReception` shown as the
+  Capitol's verdict.
+- *Personas:* the 18 interview personas map to seven families
+  (`PERSONA_FAMILY`) with sponsor-bloc affinities that add to each bloc's pull
+  (`blocWeight`) in both the AI blocs and the player's demand pricing. The
+  tribute sheet names the family and its blocs.
+- *Apprenticeship* is now a headline with a plain fact; *veterans* get a
+  one-time arena moment the first time they share ground with a rookie
+  (`tickVeteranMoments`, `REUNION.veteranRegard`); *reunions* already had
+  their headline.
+
+**Replayability (§12).** A mutators deck (`data/mutators.ts`): no Cornucopia,
+double feasts, blind night, all-volunteer, sponsor drought, hazard storm. Pick
+two or draw two in setup (randomised setups draw two half the time); stored
+on `GameConfig.mutators`, so saves, the Hall of Fame, share links and replays
+carry them (all normalisers updated; `test:storage` round-trips it), and shown
+on the run profile card. Rare-beat badges read `data/beatRarity.ts`, generated
+by `npm run fix:beat-rarity` (300 default runs; 14 structured beat types seen
+in under 10% of Games, e.g. expulsion 0.3%).
+
+**Replayability, second half (§8/§12).**
+- *Daily seed:* "Start the daily" launches today's date-derived seed, arena
+  and config in one tap; the run profile shows the daily's date.
+- *Prediction mode* (`engine/prediction.ts`, `PREDICTION`): a free slip in the
+  betting parlour (victor, first to fall, top killer, ranked final eight),
+  scored on the elimination order at the end, archived on the Hall of Fame
+  entry (`prediction`), totalled in `PanemRecords.predictions`, and feeding
+  `meta-oracle` / `meta-sharp-book`. The engine never reads it.
+- *Director personalities* (`data/directors.ts`): every Head Gamemaker has a
+  taste (mutt-lover, fire-lover, alliance-breaker, weather-obsessed,
+  sponsor-friendly, showrunner, hands-off) weighting the unscheduled
+  disruption pick and the Gamemaker weather pick (one draw each, as before),
+  escalated mutt odds, sponsor generosity and the run's betrayal rate; named
+  in the pregame briefing and on the run profile.
+- *Campaign arc* (`engine/campaign.ts`, `CAMPAIGN_ARC`): a rebellion meter
+  folded after every Games (outlying/Career victors, defiant interviews, young
+  deaths, wipeouts) that raises hazard/mutt odds, makes sponsors warier and at
+  70 calls a Quell (announced on setup a season ahead); district reputation
+  (crowns, kills, interview reception) moving opening sponsor trust and
+  generosity; rival victor feuds that make two districts' tributes start
+  hostile. All on `CampaignSnapshot`, so saves and campaign links carry them.
+- *Legacy tributes:* in a Quell (or 20% of Games after three campaign runs) a
+  Hall of Fame victor is reaped again, given name only, carrying their traits.
+- *Anti-staleness:* templates shown in the last three days are remembered as
+  hashes (`survivalGamesRecentLines`) and snapshotted onto `GameState.staleLines`;
+  `pickText` swaps a stale drawn line for the next unseen one with the same
+  `{token}` slots, while its rotation still records the drawn line, so draws
+  and outcomes are unchanged (`test:replayability` asserts this).
+- *Betting:* parlays across Games (`PARLAY`, one victor leg per Games, stake x
+  product of leg prices), `meta-parlay`, and a bankroll leaderboard in the
+  Hall of Fame.
+
+### Third pass: tuning the thin spots
+
+Before = this branch before the pass; after = the final state. Metrics rows are
+`METRICS_RUNS=1600 npm run test:metrics`; the cause, grudge and plan rows come
+from a probe over the same seeds, arenas and configs (400 runs before, 800
+after), since the metrics report does not print them.
+
+| indicator | before | after |
+|---|---|---|
+| AUDIT-11 causes, share of all deaths | 0.03% (2 of 7,245; ~1 in 3,500) | 0.91% (132 of 14,475) |
+| ...inside their own arena (labyrinth, Nooneplace, Story Wood, Kelvin-9, Warren, Salt Mirror, Clockwork, Menagerie, Carnival, Vault) | 0-0.7% | 0.9-2.8% (median ~2%) |
+| all arena-event deaths | 0.95% | 1.73% |
+| deaths caused by another tribute (guard >= 33%) | 64.4% | 64.7% |
+| deaths from mutts and hazards (guard 5-20%) | 13.8% | 14.1% |
+| runs with a grudge-betrayal | 0.75% | 3.75% |
+| unfair splits per run | 1.19 | 2.68 |
+| plans made / completed per run | 7.01 / 0.77 (11%) | 5.91 / 0.94 (16%) |
+| plans abandoned by plan logic (clock / interruptions) per run | 2.35 (0.95 / 1.32) | 0.30 (0.20 / 0.10) |
+| largest stance share (goal <= 35%) | 36.3% Evasive | **34.1%** Evasive (goal met) |
+| Aggressive stance share (guard >= 20%) | 23.4% | 24.2% |
+| soak worst stance change rate (threshold 60%) | 50% (first pass) | 54% |
+| largest single-district win share (goal <= 15%) | 16.3% | 15.2% (D1 15.2 / D2 ~15 / D4 ~14; goal not reliably met) |
+| Career victors (guard <= 55%) | 44.0% | 43.8% |
+| archetype spread / worst archetype | 2.99x / 2.90% | 2.63x / 2.94% |
+| penitent (n=760) rank from the bottom of 40 | 17th (4.74%) | 23rd (5.13%) |
+| broker (n=961) rank from the bottom of 40 | 24th (5.10%) | 33rd (6.35%) |
+| run length / zero-kill victors / wipeouts | 11.71 d / 3.1% / 0.3% | 11.47 d / 2.4% / 0.4% |
+
+Every guard passes.
+
+- **AUDIT-11 causes.** They were not rare because of their weights (8-12% of
+  each deepened arena's event weight) but because every arena event is
+  weak: `naturalDeathRate` 0.3 scales hazard damage, dodge rolls clear
+  most of them, and all arena events together killed under 1% of the field.
+  `group6.ts` now runs its lethal events through `AUDIT11_EVENTS` (new, in
+  `balance.ts`): arena-specific weight x8, universal weight x7, damage x5,
+  dodge difficulty +3. Boons and non-lethal beats are untouched, and
+  `AUDIT11_CAUSES` is unchanged. Tribute-kill share did not move: the arena
+  death budget (`arenaOverBudget`) takes the extra deaths from other arena
+  causes, not from tributes. Steps measured (400/300 runs, share of all
+  deaths): weight x3 alone 0.06%; x3 with damage x2.2 0.12%; x4, damage x4,
+  dodge +3 0.64%; x6, damage x5, dodge +3 1.09%.
+- **grudge-betrayal.** `ALLIANCE_BONDS.greedBase` 0.04 -> 0.15,
+  `greedPerTreachery` 0.04 -> 0.08, `grudgeBetrayerWeight` 0.02 -> 0.08,
+  `grudgeTargetWeight` 0.03 -> 0.2. Tried: weights alone (0.1 / 0.3) stayed at
+  0.7% — too few grudges reached `grudgeMotive`, since one split is half of it;
+  greed 0.1 / 0.06 with weights 0.05 / 0.1 stayed at 1.0%.
+- **Plans** (`arenaDepth.ts`, engine change). Instrumented first: of 7.0 plans
+  per run, 3.7 died with their holder (2.9 before reaching the first step),
+  1.3 were abandoned for "more than three interruptions" and 0.95 ran out of
+  clock. Both logic failures were one bug: a single long fight or flight was
+  counted as an interruption every cycle it lasted, and the plan's clock kept
+  running through it. An interruption is now an episode (a run of consecutive
+  interrupted cycles), paused cycles do not count against `planMaxCycles`, a
+  new `planMaxAge` 18 bounds a plan that is paused forever, and
+  `planMaxCycles` 8 -> 12 (a three-step errand of up to four hops a leg did not
+  fit in eight). Fewer plans are *made* because each one stands longer; a
+  tribute holds one at a time. What remains is death.
+  `TributePlan.pausedCycles` is optional, so old saves load.
+- **Stances.** Evasive `minHold` 2 -> 1 (`stances.ts`): 36.7 -> 33.0% in probes,
+  but the soak's worst tribute changed stance on 61% of cycles (threshold 60%).
+  `STANCE.churnHoldPerSwitch` 1 -> 1.5 holds a churning tribute longer and put
+  it back at 54%, Evasive 34.1%. Tried and reverted: `unarmedEvasive` 0.35 with
+  `dreadEvasive` 1.7 (36.4%), `cautiousEvasive` / `lowSanityEvasive` down
+  (36.5%), `outmatchedEvasive` / `woundedEvasive` down (36.2%),
+  `defensiveBase` 2.6 with `weaponAggression` 1.3 (36.7%) — the scorer is not
+  what holds Evasive.
+- **Districts.** Storied tier (D1, D2) `LEGACY_EFFECTS` reputation 12 -> 6,
+  trainingMerit 0.2 -> 0.15, targetDraw 3 -> 4.5. At 800 runs: targetDraw 4.5
+  alone 15.7%; reputation 6 with trainingMerit 0.12 16.3%; reputation 8 with
+  targetDraw 4 15.3%; the kept set 14.5%. targetDraw 5 measured 14.5% at
+  n=1,600 but made `test:rigged` fail (the nominated weakest tribute won 25 of
+  25, which the check reads as a guarantee), as did 5.5; reverted to 4.5.
+  Tried: `academyCombatFloor` 1 (16.6% at 800) and academy weapons 2-4
+  (16.9%). The largest district now sits at the 15% goal within one
+  sweep's noise (15.2% here, 15.6% in another sweep).
+- **Penitent / broker.** Penitent gains agility +1 and `targetDraw` -4.5 -> -5.5;
+  broker endurance 2 -> 3, agility +1, `targetDraw` -3 -> -4.5. Honest reading:
+  across four sweeps on this branch penitent ranked 7th, 19th, 7th and 23rd
+  from the bottom, and broker 10th, 6th, 24th and 33rd, including sweeps where
+  neither had changed. At n=760-961 one sweep moves them about +/-0.7 points,
+  which is the whole width of the middle third. The final sweep has both
+  clear of the bottom third.
+- Achievement rarity relabelled by `npm run fix:rarity` after the changes
+  (pure drift; `unrecorded-cause`, the AUDIT-11 death, moved from `possible`
+  to 16% of runs).
+
 ## AUDIT-8 fix pass (this branch)
 
 `AUDIT-8.md` is the eighth full audit. This is the answer to its §1 — every
