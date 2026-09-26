@@ -3753,7 +3753,7 @@ export const DEBT_TEXTS = {
         "The {item} is the best thing {debtor} owns, which is why it is the only acceptable payment. {creditor} receives it in {zone} with the gravity it deserves.",
         "\"For the river,\" {debtor} says in {zone} — or the fire, or the night watch, whichever it was — and the {item} settles the account with {creditor}.",
         "{creditor} tries to wave it off. {debtor} sets the {item} down between them in {zone} and does not pick it back up. Some ledgers insist on closing.",
-        "What {creditor} did was worth more than an {item}. The {item} is what {debtor} has, in {zone}, and both of them let it stand for the rest.",
+        "What {creditor} did was worth more than anything in a pack. {debtor} hands over the {item} in {zone} anyway, and both of them let it stand for the rest.",
         "{debtor} has carried the debt longer than the {item}. In {zone}, finally, they get to put both down.",
     ],
     repayWatch: [
