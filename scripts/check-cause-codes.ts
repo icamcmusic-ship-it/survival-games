@@ -19,7 +19,8 @@
 import { Simulator } from '../src/engine/simulator';
 import { ARENAS, DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { GameConfig, DeathCauseCode } from '../src/models/types';
-import { classifyCause, deathCodeOf, CAUSE_FAMILY } from '../src/engine/causes';
+import { classifyCause, deathCodeOf, CAUSE_FAMILY, refineHazardCode } from '../src/engine/causes';
+import { arenaFlavor } from '../src/data/arenaFlavor';
 import { coverageCells, coverageReport, initialRunState } from './runInit';
 import { readdirSync, readFileSync, statSync } from 'fs';
 import { join } from 'path';
@@ -67,6 +68,23 @@ for (const file of engineFiles('src/engine')) {
         // `code: 'fall'` or the shorthand `code` where a variable carries it.
         if (!/\bcode\s*[:,}]/.test(chunk.join(' '))) uncoded.push(`${file}:${i + 1}`);
     });
+}
+
+/*
+ * AUDIT-13 W5: the static half for authored arena events. `hazard` used to be
+ * where every unrecognised arena death went; it is now split into crush,
+ * impact, electrocution, sound, animal and exposure-pressure (plus existing
+ * codes the prose names), and this is what keeps the leftover bucket from
+ * quietly growing back. A new lethal event that lands in `hazard` must either
+ * carry a `code` or say what it is in words `classifyCause` can read.
+ */
+const HAZARD_CATCHALL_CEILING = 337;
+const catchAll = new Set<string>();
+for (const a of ARENAS) {
+    for (const e of arenaFlavor(a.id, a).events) {
+        if (!e.damage) continue;
+        if ((refineHazardCode(e.code, e.cause) ?? classifyCause(e.cause, 'hazard')) === 'hazard') catchAll.add(e.cause);
+    }
 }
 
 const arenaIds = [...ARENAS.map(a => a.id), 'procedural'];
@@ -162,6 +180,11 @@ if (uncoded.length > 0) {
     console.log(`\nFAIL: ${uncoded.length} applyDamage site(s) do not declare a cause code:`);
     uncoded.slice(0, 25).forEach(site => console.log(`  ${site}`));
     console.log("  (add `code: '<DeathCauseCode>'` to the damage record — the site knows, the words only imply)");
+}
+console.log(`\n${catchAll.size} distinct authored lethal causes still resolve to the catch-all \`hazard\` (ceiling ${HAZARD_CATCHALL_CEILING}).`);
+if (catchAll.size > HAZARD_CATCHALL_CEILING) {
+    failed++;
+    console.log(`\nFAIL: the \`hazard\` catch-all grew past ${HAZARD_CATCHALL_CEILING}; give the new events a \`code\`.`);
 }
 if (missingFamilies.length > 0) {
     failed++;

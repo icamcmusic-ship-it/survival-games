@@ -2,6 +2,7 @@ import { Arena, ArenaLawId, Attributes, Condition, DeathCauseCode, Item, Stance,
 import type { SanityBand } from '../engine/sanityBands';
 import { proceduralArenaFlavor } from './proceduralFlavor';
 import { EXTRA_ARENA_EVENTS, UNIVERSAL_EVENTS_GROUP6, UNIVERSAL_EVENTS_GROUP7 } from './arenaEvents';
+import { UNIVERSAL_EVENTS_AUDIT13 } from './arenaEvents/universal13';
 import { NEW_ARENA_FLAVOR } from './arenaFlavorNew';
 import { HIPPODROME_SET_FLAVOR } from './arenaFlavorSetHippodrome';
 
@@ -14902,6 +14903,8 @@ stampEventIds('generic', GENERIC_ARENA_FLAVOR.events);
 UNIVERSAL_EVENTS.push(...UNIVERSAL_EVENTS_GROUP6);
 // AUDIT-12 §9/§10.
 UNIVERSAL_EVENTS.push(...UNIVERSAL_EVENTS_GROUP7);
+// AUDIT-13 §9.1/§10.1: D1–D32 and V1–V32.
+UNIVERSAL_EVENTS.push(...UNIVERSAL_EVENTS_AUDIT13);
 stampEventIds('universal', UNIVERSAL_EVENTS);
 
 export function arenaFlavor(arenaId: string, arena?: Arena): ArenaFlavor {

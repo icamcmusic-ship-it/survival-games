@@ -57,6 +57,13 @@ const WOUND_TEXT: Partial<Record<DeathCauseCode, string>> = {
     'trap': 'A trap',
     'machinery': 'The arena\'s machinery',
     'hazard': 'The ground turning on them',
+    // AUDIT-13 W5
+    'crush': 'Something heavy landing on them',
+    'impact': 'Being thrown, or struck',
+    'electrocution': 'Current',
+    'sound': 'The noise itself',
+    'animal': 'An animal',
+    'exposure-pressure': 'The air, or the water, pressing',
     'mutt': 'A mutt',
     'gamemaker': 'The Gamemakers',
     'nightlock': 'Nightlock',

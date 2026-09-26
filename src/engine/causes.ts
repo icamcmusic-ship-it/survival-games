@@ -82,6 +82,55 @@ const RULES: Array<[DeathCauseCode, RegExp]> = [
 ];
 
 /**
+ * AUDIT-13 W5: the arena-sourced wording that used to reach the `hazard`
+ * catch-all. 134 authored lethal entries (652 distinct strings with the
+ * universal pool) resolved there, so the death table could not tell a falling
+ * serac from a lightning strike from a boar.
+ *
+ * Consulted only after every rule above has failed *and* only for arena-kind
+ * damage: "Crushed" in a tribute's obituary is still the tribute, and nothing
+ * already coded moves. That makes this strictly a split of the old `hazard`
+ * bucket, never a re-reading of anything else.
+ */
+const HAZARD_RULES: Array<[DeathCauseCode, RegExp]> = [
+    ['electrocution', /electrocut|lightning|live (wire|rail)|substation|^struck$|arc(ed)? (flash|through)|third rail/i],
+    ['exposure-pressure', /pressure|decompress|vacuum|air-?lock|the bends|nitrogen|cold shock|depth/i],
+    ['sound', /resonan|deafen|the note|shriek|the (bells?|organ)\b|bell-?toll|sound|scream(ed|ing)? (them|until)|deep organ/i],
+    ['animal', /mauled|gored|bitten|trampled by|stampede|snake|adder|viper|\bbear\b|\bboar\b|\bherd\b|shark|vultures?|\bowls\b|\bbats\b|harriers|wasps?|hornets?|jellyfish|stonefish|\beels?\b|crocodile|big cat|\blions?\b|tiger|wolves|wolf\b|swarm/i],
+    ['crush', /crush|trampled|pinned|squeezed|between (the )?(ice )?plates|under (a|the) (serac|wheel|big top|snow load|counterweight)|falling (bell|limb|pine|serac|snag|cable car|big top|star|trunk)|fallen (star|giant)|collapsing cap|failing support|blast door|rafting ice|moving ice|wedged/i],
+    // Existing codes the prose names in words the main rules never learned.
+    ['burns', /scald|cooked|boiled|steam/i],
+    ['mutt', /jabberjay|tracker jacker/i],
+    ['fall', /^fell$|walked off an edge|rope parted|off (a|the) (ledge|edge|lip|cliff)/i],
+    ['trap', /own trap|arena's own trap|rigged/i],
+    ['hypothermia', /whiteout|blizzard|frostbit/i],
+    ['infection', /fever|old wound|wound they would not/i],
+    ['exhaustion', /heart gave out|body simply stopped|died in their sleep|seizure/i],
+    ['poison', /allergic|standing water|too much of the cure|stung to death/i],
+    ['starvation', /starved/i],
+    ['asphyxiation', /\bgas\b|fumes|overcome|smothered|buried alive/i],
+    ['drowning', /(taken|swept|pulled) (by|under|off|out)( by)? the (tide|wave|surge|rip|king tide|storm surge|great wave|rogue wave)|swallowed by|taken under|swept (away|off|out)/i],
+    ['collapse', /\bburied\b|avalanche|collapse|(rock|scree|mud|snow)[ -]?slide|landslip|cave-?in/i],
+    ['dehydration', /thirst/i],
+    ['impact', /struck by|blown (off|from|out)|thrown (from|when|off)|knocked (off|out)|flying (timber|debris|glass)|ricochet|hail|explo|detonat|blast|shatter|shards|flayed|shot\b|eruption|when the .+ (burst|went|woke)|swung|scheduled blast|dump went/i],
+];
+
+/**
+ * AUDIT-13 W5: an explicit `code: 'hazard'` is the same catch-all written down.
+ * ~780 authored entries across the arena packs carry it verbatim; rather than
+ * hand-edit every one of them (and conflict with every other pass touching
+ * those files), the one place damage lands refines it through the same table.
+ * Anything the table cannot place stays `hazard`.
+ */
+export function refineHazardCode(code: DeathCauseCode | undefined, cause: string | undefined): DeathCauseCode | undefined {
+    if (code !== 'hazard') return code;
+    for (const [c, pattern] of HAZARD_RULES) {
+        if (pattern.test(cause ?? '')) return c;
+    }
+    return code;
+}
+
+/**
  * The code for a cause string, falling back on the damage `kind` where the
  * prose says nothing specific. Never returns `unknown` for a kind that names
  * a source, because "some tribute did it" is itself a classification.
@@ -100,7 +149,11 @@ export function classifyCause(cause: string | undefined, kind?: DamageRecord['ki
         case 'gamemaker': return 'gamemaker';
         case 'climate': return 'exposure';
         case 'hazard':
-        case 'arena': return 'hazard';
+        case 'arena':
+            for (const [code, pattern] of HAZARD_RULES) {
+                if (pattern.test(text)) return code;
+            }
+            return 'hazard';
         case 'status': return 'status';
         default: return 'unknown';
     }
@@ -152,6 +205,14 @@ export const CAUSE_FAMILY: Record<DeathCauseCode, 'tribute' | 'body' | 'arena' |
     trap: 'arena',
     machinery: 'arena',
     hazard: 'arena',
+    // AUDIT-13 W5: the split-out hazard codes. `animal` is not a mutt — nothing
+    // the Capitol made — so it sits with the arena.
+    crush: 'arena',
+    impact: 'arena',
+    electrocution: 'arena',
+    sound: 'arena',
+    animal: 'arena',
+    'exposure-pressure': 'arena',
     mutt: 'mutt',
     gamemaker: 'gamemaker',
     unknown: 'unknown',
