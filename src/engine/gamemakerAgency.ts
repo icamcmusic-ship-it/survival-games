@@ -1,5 +1,5 @@
 import { announceFeastTheme } from './phases/feast';
-import { addCruelty, fairnessAllows } from './season/cruelty';
+import { addCruelty, fairnessAllows, handsOffBooth } from './season/cruelty';
 import { answerLoudestSegment, crowdIsBored } from './season/crowd';
 import { ITEMS } from '../data/constants';
 import { GAMEMAKER_AGENCY, QUALITY_BIAS } from '../data/balance';
@@ -124,8 +124,10 @@ export function runGamemakerSignature(ctx: SimContext) {
     // Called from the same per-cycle hook, and deliberately ahead of the
     // once-per-run guard below: the grudge is a separate turn with its own
     // guard, not a variant of the signature.
-    runGrudgeIntervention(ctx);
     runBloodlessHunt(ctx);
+    // A hands-off director does not take the booth's own turns.
+    if (handsOffBooth(ctx.state)) return;
+    runGrudgeIntervention(ctx);
     if (ctx.state.gamemakerSignatureFired) return;
     const alive = getAlive(ctx.state);
     // Not while the cast is still enormous, and not once it is down to the

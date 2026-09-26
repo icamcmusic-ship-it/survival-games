@@ -837,7 +837,8 @@ export function processBloodbath(ctx: SimContext) {
     }, 0);
     const runnerReserve = Math.min(Math.round(deathTarget * AUDIT12_TRIBUTES.runDownTargetShare),
         Math.round(expectedCaught * AUDIT12_TRIBUTES.runDownReservePerRunner));
-    const scrumTarget = Math.max(1, deathTarget - runnerReserve);
+    // Asked for nobody: the scrum is not owed a first death either.
+    const scrumTarget = deathTarget <= 0 ? 0 : Math.max(1, deathTarget - runnerReserve);
     let rounds = Math.max(pool.length * 6 + 12, deathTarget * BLOODBATH.scrumRoundsPerTribute);
     while (pool.length > 1 && rounds-- > 0) {
         // Met the ask: whoever is still standing in the knot breaks off. The

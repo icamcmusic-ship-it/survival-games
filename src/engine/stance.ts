@@ -812,7 +812,7 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
  * being whipsawed is left where they are. Somebody who has flipped three times
  * in four cycles is not going to be talked into a fourth by the same fight.
  */
-export function forceStance(t: Tribute, stance: Stance, reason = 'imposed by an event'): boolean {
+export function forceStance(t: Tribute, stance: Stance, reason = 'imposed by an event', reaction = false): boolean {
     /*
      * AUDIT-7 §3.1: a forced stance is not a choice, and the decision-quality
      * check was scoring it as one.
@@ -838,7 +838,15 @@ export function forceStance(t: Tribute, stance: Stance, reason = 'imposed by an 
     if ((t.stanceChurn ?? 0) >= STANCE.churnMax) return false;
     t.stance = stance;
     t.stanceHeld = 0;
-    t.stanceChurn = Math.min(STANCE.churnMax, (t.stanceChurn ?? 0) + 1);
+    // `reaction`: a posture the moment imposed (breaking off a fight is
+    // getting clear, not deciding to run) is not the tribute changing their
+    // mind, so it adds no churn. Churn is read as revealed indecision and
+    // lengthens the minimum hold — charged for every break-off, it kept a
+    // tribute Evasive for two or three cycles after the fight was over while
+    // the scorer ranked it fourth or worse (AUDIT-12 raised the break-off
+    // rate per cycle by about a quarter, which is what pushed
+    // `test:decisions` over its guard).
+    if (!reaction) t.stanceChurn = Math.min(STANCE.churnMax, (t.stanceChurn ?? 0) + 1);
     if (t.decisionTrace) t.decisionTrace = { ...t.decisionTrace, forced: reason };
     return true;
 }

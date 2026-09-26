@@ -3720,7 +3720,7 @@ export const OBJECTIVES = {
     /** Cycles since the last sighting of anybody, above which their map has gone cold. */
     scoutBlindFor: 5,
     /** Share of the living field they may still have a fresh sighting of and still count as blind. */
-    scoutKnownShare: 0.25,
+    scoutKnownShare: 0.3,
     /** Zones out from the vantage a successful climb refreshes rival memory in. */
     scoutSweepHops: 2,
 } as const;

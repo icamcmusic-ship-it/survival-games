@@ -463,6 +463,7 @@ export function processAlliances(ctx: SimContext) {
         const first = preemptiveBetrayer(ctx, members);
         // AUDIT-12 T15: an Oathkeeper does not strike first, and pays for wanting to.
         if (first && !oathRefusesBetrayal(ctx, first[0])) {
+            noteGrudgeMotive(ctx, first[0], first[1]);
             resolveBetrayal(ctx, first[0], first[1], members, 'preempt');
             return;
         }
