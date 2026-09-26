@@ -13,6 +13,7 @@ import { runDirectorPlays } from './directorPlays';
 import { notePatronRegret } from './sponsorWars';
 import { holdTruces } from './eventMechanics';
 import { tickStoryChain } from './storyChains';
+import { tickArenaScars } from './arenaScars';
 import { tickMentorNotes } from './carry';
 import { enforceBarredAlliance } from './barredAlliance';
 import { seasonOf, sideRng } from './runState';
@@ -35,6 +36,7 @@ export function tickSeason(ctx: SimContext): void {
     holdTruces(ctx);
     tickMentorNotes(ctx);
     tickStoryChain(ctx);
+    tickArenaScars(ctx); // AUDIT-13 P8
     runDirectorPlays(ctx);
     decayCruelty(ctx.state);
     decayExcitement(ctx.state.tributes, AUDIT12_WAVE3.audience.excitementKeep);

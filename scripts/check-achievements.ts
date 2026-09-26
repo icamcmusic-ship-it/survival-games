@@ -24,6 +24,10 @@ import { GameConfig, GameState } from '../src/models/types';
 import { configForProfile, gamesProfileFor } from '../src/engine/gamesProfile';
 import { ACHIEVEMENTS, ACHIEVEMENT_CATEGORIES, AchievementCategory } from '../src/data/achievements';
 import { readFileSync, writeFileSync } from 'node:fs';
+import { RNG } from '../src/utils/rng';
+import { oddsScore } from '../src/engine/odds';
+import { sendPlayerParachute, sponsorCost, sponsorableItems } from '../src/engine/playerSponsor';
+import { SCENARIO_CARDS } from '../src/data/replayCards';
 
 /**
  * Audit 3 §1.6: 500 rather than 200.
@@ -135,20 +139,73 @@ const seeFields = (into: Record<string, number>, o: Record<string, unknown> | un
     }
 };
 
+/*
+ * AUDIT-13 H4: a scripted player.
+ *
+ * The harness never filled a slip, sent a gift or drafted anybody, so every
+ * achievement about the player's own hand (a12-called-it, a12-long-shot, the
+ * slip and bankroll ones) measured 0% and was labelled 'possible?' for want of
+ * a player rather than for want of the simulation. Half the runs now carry one:
+ * a random slip and draft before the gong, a purse, and the odd random
+ * parachute. Its picks are drawn from a stream salted off the seed, so the
+ * sweep is as reproducible as before; every tenth run also plays a scenario
+ * card, so each card's own achievement is measured.
+ */
+const SCRIPTED = process.env.ACHIEVEMENT_SCRIPTED !== '0';
+const SCRIPTED_PURSE = 400;
+const CAUSES = ['tribute', 'body', 'arena', 'mutt', 'gamemaker'] as const;
+
+function fillSlip(state: GameState, rng: RNG) {
+    const ids = state.tributes.map(t => t.id);
+    // Half the time the scripted player backs the board's favourites, as a
+    // real one mostly does; otherwise it picks at random.
+    const byOdds = [...state.tributes].sort((a, b) => oddsScore(b) - oddsScore(a)).map(t => t.id);
+    const pick = () => (rng.chance(0.5) ? byOdds[rng.nextInt(0, Math.min(3, byOdds.length - 1))] : rng.pick(ids));
+    const eight = [...ids].sort(() => rng.nextFloat() - 0.5).slice(0, 8);
+    state.prediction = {
+        winnerId: pick(), firstDeathId: pick(), topKillerId: pick(),
+        ...(rng.chance(0.5) ? { finalEight: eight } : {}),
+        firstDeathCause: rng.pick([...CAUSES]),
+        endDayPick: rng.chance(0.5) ? 'over' : 'under', endDayLine: rng.nextInt(9, 14),
+    };
+    state.draft = [...ids].sort(() => rng.nextFloat() - 0.5).slice(0, 4);
+}
+
 for (let i = 0; i < RUNS; i++) {
     const seed = `ACH${i}`;
+    const scripted = SCRIPTED && i % 2 === 1;
+    const init = start(seed, arenaIds[i % arenaIds.length], configs[i % configs.length], i % 4 === 3);
+    if (scripted && i % 10 === 5) {
+        const card = SCENARIO_CARDS[Math.floor(i / 10) % SCENARIO_CARDS.length].id;
+        init.config = { ...init.config, scenario: card };
+        init.baseConfig = { ...init.baseConfig!, scenario: card };
+    }
+    if (scripted) init.playerPurseAtStart = SCRIPTED_PURSE;
     // §11 (audit): a quarter of runs in Gamemaker mode, so the booth's own
     // achievements are measured rather than listed as never-unlocked.
-    const sim = new Simulator(start(seed, arenaIds[i % arenaIds.length], configs[i % configs.length], i % 4 === 3));
+    const sim = new Simulator(init);
+    const player = new RNG(`${seed}-scripted-player`);
+    let purse = SCRIPTED_PURSE;
     let guard = 3000;
     let state = sim.getState();
     while (state.phase !== 'ended' && guard-- > 0) {
         if (state.phase === 'setup') sim.processTraining();
         else if (state.phase === 'training' || state.phase === 'scores') sim.processInterviews();
-        else if (state.phase === 'interviews') sim.startGames();
+        else if (state.phase === 'interviews') { if (scripted) fillSlip(state, player); sim.startGames(); }
         else if (state.phase === 'bloodbath') sim.processBloodbath();
         else if (state.phase === 'epilogue') { state.phase = 'ended'; }
-        else if (!sim.processTurn()) break;
+        else {
+            if (scripted && (state.phase === 'day' || state.phase === 'night') && player.chance(0.08)) {
+                const alive = state.tributes.filter(t => t.status === 'alive');
+                const item = player.pick(sponsorableItems());
+                const t = alive.length > 0 ? player.pick(alive) : undefined;
+                if (t && item && sponsorCost(state, t, item) <= purse) {
+                    const r = sendPlayerParachute(state, t.id, item.id);
+                    if (r.ok) purse -= r.cost;
+                }
+            }
+            if (!sim.processTurn()) break;
+        }
         state = sim.getState();
     }
     if (state.phase !== 'ended') continue;
@@ -520,8 +577,14 @@ if (process.env.ACHIEVEMENT_EMIT_RARITY === '1') {
     // Mirrors `bandOf` and the fail condition above, including the
     // one-observation tolerance on 'possible?' — the writer and the check have
     // to agree about the boundary or `fix:rarity` writes labels that fail.
-    const label = (id: string, r: number) =>
-        r >= 0.25 ? 'common' : r >= 0.03 ? 'rare' : (unlocks[id] ?? 0) > 1 ? 'legendary' : 'possible';
+    // AUDIT-13 H1: a hand-set 'legendary' is kept at zero or one observation.
+    // One hit in 500 is exactly the noise the check tolerates, and an entry the
+    // simulation demonstrably reaches once should not flip back to 'possible?'
+    // on the next sweep that happened not to draw its seed.
+    const label = (id: string, r: number) => {
+        const want = r >= 0.25 ? 'common' : r >= 0.03 ? 'rare' : (unlocks[id] ?? 0) > 1 ? 'legendary' : 'possible';
+        return want === 'possible' && ACHIEVEMENTS.find(a => a.id === id)?.rarity === 'legendary' ? 'legendary' : want;
+    };
     const path = 'src/data/achievements.ts';
     let src = readFileSync(path, 'utf8');
     let rewritten = 0;

@@ -104,6 +104,41 @@ export function allianceNeverFormed(reaping: GameState, actual: GameState, membe
     return summarise('no-alliance', label, actual, ends);
 }
 
+/**
+ * AUDIT-13 P2: the counterfactual challenge. Given a finished Games, the
+ * player adds one intervention of their own — a parachute or a Gamemaker
+ * command, at a cycle and a tribute — and the Games is played again from the
+ * reaping on the same seed with it replayed alongside everything they really
+ * did. The challenge is won when the crown changes hands. One branch, the
+ * unsalted one, so the answer is a fact about this seed rather than a sample.
+ */
+export interface ChallengeResult {
+    actualVictorIds: string[];
+    victorIds: string[];
+    victorNames: string[];
+    endDay: number;
+    changed: boolean;
+}
+
+export function counterfactualChallenge(reaping: GameState, actual: GameState, pick: InterventionRecord): ChallengeResult | undefined {
+    if (reaping.phase !== 'reaping' && reaping.phase !== 'setup') return undefined;
+    if (!reaping.tributes.some(t => t.id === pick.targetId)) return undefined;
+    const planned = [...playerInterventionsAfter(reaping, actual), { cycle: Math.max(0, Math.round(pick.cycle)), type: pick.type, targetId: pick.targetId, itemId: pick.itemId }]
+        .sort((a, b) => a.cycle - b.cycle);
+    const start = snapshotState(reaping);
+    start.plannedInterventions = planned.map(p => ({ ...p }));
+    const end = runToEnd(start);
+    const actualIds = victorsOf(actual).map(t => t.id).sort();
+    const ids = victorsOf(end).map(t => t.id).sort();
+    return {
+        actualVictorIds: actualIds,
+        victorIds: ids,
+        victorNames: victorsOf(end).map(t => t.name),
+        endDay: end.day,
+        changed: ids.join(',') !== actualIds.join(','),
+    };
+}
+
 function snapshotTribute(t: Tribute): Tribute {
     return JSON.parse(JSON.stringify(t)) as Tribute;
 }

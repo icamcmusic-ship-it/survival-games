@@ -5,7 +5,7 @@ import { foldSeasonLedger } from '../engine/season/fold';
 import { gauntletScoreOf } from '../engine/season/gauntlet';
 import { foldCampaignArc } from '../engine/campaign';
 import { scorePrediction } from '../engine/prediction';
-import { PARLAY, PREDICTION } from '../data/balance';
+import { AUDIT12_WAVE3, AUDIT13_SIDE, PARLAY, PREDICTION } from '../data/balance';
 import { GameState, Tribute } from '../models/types';
 import { HEAD_GAMEMAKERS } from '../data/gamemakers';
 import { QUELLS } from '../data/gamesProfile';
@@ -14,7 +14,8 @@ import { COIN_ECONOMY } from '../data/balance';
 import { arenaLaws } from '../engine/gamesProfile';
 import { Notable, runDelta, runNotables, victorsOf } from './notables';
 import { ARENAS } from '../data/constants';
-import { dailySeed } from '../data/replayHooks';
+import { dailyDateOf, dailySeed, weeklyRules } from '../data/replayHooks';
+import { scenarioCard } from '../data/replayCards';
 import { ARENA_MUTTS } from '../data/mutts';
 import { deathCausesInRun } from '../engine/encounters';
 import { deathCodeOf } from '../engine/causes';
@@ -718,6 +719,48 @@ export interface RunOutcome {
  * book, so the record-book screen can draw progress bars from the same
  * numbers `commitRun` unlocks against.
  */
+/**
+ * AUDIT-13 S5: consecutive calendar days, ending at the newest daily played,
+ * with a daily in the history. Dates are the daily seed's own UTC date.
+ */
+export function dailyStreakOf(history: SeasonLedger['dailyHistory']): number {
+    const days = [...new Set((history ?? []).map(d => d.date))].sort().reverse();
+    if (days.length === 0) return 0;
+    let streak = 1;
+    for (let i = 1; i < days.length; i++) {
+        const gap = (Date.parse(days[i - 1]) - Date.parse(days[i])) / 86_400_000;
+        if (gap !== 1) break;
+        streak++;
+    }
+    return streak;
+}
+
+/**
+ * AUDIT-13 S5/P5: the daily history (date, seed, victor, whether the slip
+ * called it; one row per date, the latest run of that daily wins) and the
+ * week's best slip under this week's rules.
+ */
+export function foldDailyAndWeekly(ledger: SeasonLedger | undefined, state: GameState): SeasonLedger | undefined {
+    const date = dailyDateOf(state.seed);
+    const weekly = weeklyRules();
+    if (!date && state.seed !== weekly.seed) return ledger;
+    const next: SeasonLedger = { ...(ledger ?? {}) };
+    const victor = victorsOf(state)[0];
+    const slip = scorePrediction(state, state.prediction);
+    if (date) {
+        const row = {
+            date, seed: state.seed, victorName: victor?.name, victorDistrict: victor?.district,
+            ...(state.prediction?.winnerId ? { pickRight: !!victor && state.prediction.winnerId === victor.id } : {}),
+        };
+        next.dailyHistory = [row, ...(next.dailyHistory ?? []).filter(d => d.date !== date)]
+            .sort((a, b) => b.date.localeCompare(a.date)).slice(0, AUDIT13_SIDE.dailyHistoryCap);
+    }
+    if (state.seed === weekly.seed && slip && (!next.weeklyBest || next.weeklyBest.key !== weekly.key || slip.score > next.weeklyBest.score)) {
+        next.weeklyBest = { key: weekly.key, score: slip.score, max: slip.max };
+    }
+    return next;
+}
+
 export function careerTotals(records: PanemRecords): CareerTotals {
     // §10.1: the hand-authored shelf and the canonical bestiary, measured
     // against what actually exists rather than a hardcoded count.
@@ -763,6 +806,13 @@ export function careerTotals(records: PanemRecords): CareerTotals {
         sharpCalls: records.predictions?.sharpCalls ?? 0,
         victorCallStreak: records.predictions?.victorCallStreak ?? 0,
         parlaysLanded: records.parlaysLanded ?? 0,
+        // AUDIT-13 §14: the ledger's meta shelves.
+        maxMuseumWing: Math.max(0, ...Object.values(records.ledger?.museum ?? {}).map(p => p.length)),
+        maxArenaRuns: Math.max(0, ...Object.values(records.ledger?.arenaMastery ?? {}).map(m => m.runs)),
+        dailyStreak: dailyStreakOf(records.ledger?.dailyHistory),
+        bestSeasonCrowns: records.ledger?.bestSeasonCrowns ?? 0,
+        slipBankroll: records.ledger?.predictionBank?.bankroll,
+        slipBankrollStart: AUDIT12_WAVE3.prediction.bankrollStart,
     };
     return totals;
 }
@@ -789,6 +839,7 @@ export function commitRun(state: GameState): RunOutcome {
     const hasVictor = winners.length > 0;
 
     const priorMentors = { ...(records.victorMentors ?? {}) };
+    const priorCrowned = new Set(Object.keys(records.districtCrowns ?? {}).map(Number));
     records.runs += 1;
     // Games that produced a victor, not people crowned — a dual win is one
     // Games with a winner, and `careerTotals` reads this as a run count.
@@ -1047,6 +1098,9 @@ export function commitRun(state: GameState): RunOutcome {
         });
     }
 
+    // AUDIT-13 S5/P5: the daily's history and streak, and the week's best slip.
+    records.ledger = foldDailyAndWeekly(records.ledger, state);
+
     // AUDIT-11 §12: the prediction slip, scored.
     const slip = scorePrediction(state, state.prediction);
     if (slip) {
@@ -1063,6 +1117,8 @@ export function commitRun(state: GameState): RunOutcome {
     // S-3: career-wide achievements read the updated records, so cumulative
     // counts and per-district completion unlock the moment they become true.
     const totals = careerTotals(records);
+    // AUDIT-13 §14 (Never Before): a district the book had never crowned.
+    totals.newDistrictCrowned = winners.some(w => !priorCrowned.has(w.district));
 
     const earned = [...evaluateAchievements(state), ...evaluateMetaAchievements(totals)];
     const newAchievements = earned.filter(id => !records.unlocked.includes(id));
@@ -1070,6 +1126,11 @@ export function commitRun(state: GameState): RunOutcome {
     records.unlockedAt = records.unlockedAt ?? {};
     const stamp = { run: records.runs, date: new Date().toISOString() };
     newAchievements.forEach(id => { records.unlockedAt![id] = stamp; });
+    // AUDIT-13 P1: a scenario card whose own achievement this run earned.
+    const card = scenarioCard(state.config.scenario);
+    if (card && earned.includes(card.achievement)) {
+        records.ledger = { ...(records.ledger ?? {}), scenariosWon: [...new Set([...(records.ledger?.scenariosWon ?? []), card.id])] };
+    }
 
     const brokenRecords: string[] = [];
     RECORD_DEFS.forEach(def => {

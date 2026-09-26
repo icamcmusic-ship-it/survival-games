@@ -142,6 +142,9 @@ export function shareParams(
         mutators: (config.mutators ?? []).join(','),
         // AUDIT-12 wave 3: a gauntlet stack is a different run.
         gauntlet: config.gauntlet ? '1' : '0',
+        // AUDIT-13 P1/P4: a scenario card changes the cast; a commentator only the wording.
+        scenario: config.scenario ?? '',
+        commentator: config.commentator ?? '',
     });
     // AUDIT-9 B06: opaque and optional, so a seed link stays as short as it
     // has always been and a run link is complete.

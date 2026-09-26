@@ -72,6 +72,7 @@ import { prefsStore } from './store/prefsStore';
 import { DEFAULT_GAME_CONFIG } from './data/constants';
 import { ARENA_DEATH_BUDGET, BLOODBATH } from './data/balance';
 import { parseMutators, GAUNTLET_MAX_MUTATORS } from './data/mutators';
+import { COMMENTATOR_IDS, SCENARIO_CARDS } from './data/replayCards';
 
 /** Routes kept inline on the phone header while a run exists. */
 const RUN_ROUTES: ViewName[] = ['roster', 'game', 'debrief', 'chronicle'];
@@ -231,6 +232,9 @@ export default function App() {
         mutators: parseMutators(params.get('mutators'), params.get('gauntlet') === '1' ? GAUNTLET_MAX_MUTATORS : undefined),
         // AUDIT-12 wave 3: a gauntlet link carries its stack.
         ...(params.get('gauntlet') === '1' ? { gauntlet: true } : {}),
+        // AUDIT-13 P1/P4: validated against the card lists; unknown ids are dropped.
+        ...(SCENARIO_CARDS.some(c => c.id === params.get('scenario')) ? { scenario: params.get('scenario')! } : {}),
+        ...(COMMENTATOR_IDS.includes(params.get('commentator') ?? '') ? { commentator: params.get('commentator')! } : {}),
       };
       // A shared link pins the run's exact Quarter Quell (or explicit lack of
       // one) so it replays the same Games it was copied from — the same
