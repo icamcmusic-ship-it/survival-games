@@ -438,7 +438,8 @@ export function lockedZones(state: GameState): string[] {
  * AUDIT-12 E1 / §8.9, the strand invariant: live zones with no open edge to
  * another live zone. A zone sealed by a lockdown right now is exempt — that is
  * deliberate, and it lifts. A zone whose every neighbour has collapsed is the
- * closing border's endgame, not a strand. Asserted by `test:sim` and `test:arenas`.
+ * closing border's endgame, not a strand; nor is an empty zone closed only by
+ * pack or permanent cuts (deliberately sealed, nobody inside). Asserted by `test:sim` and `test:arenas`.
  */
 export function strandedZones(state: GameState): string[] {
     const collapsed = new Set(state.collapsedZones ?? []);
@@ -450,7 +451,15 @@ export function strandedZones(state: GameState): string[] {
             // Neighbours lost to the closing border (or sealed right now) are
             // not a cut: only a zone with open neighbours it cannot reach counts.
             const liveNeighbours = z.adjacent.filter(n => !collapsed.has(n) && !sealed.has(n));
-            return liveNeighbours.length > 0 && liveNeighbours.every(n => cut.has(edgeKey(z.name, n)));
+            if (liveNeighbours.length === 0 || !liveNeighbours.every(n => cut.has(edgeKey(z.name, n)))) return false;
+            // Sealed on purpose with nobody inside — every cut a pack's or
+            // permanent — is a closed room, not a strand: nobody can walk in.
+            const empty = !state.tributes.some(t => t.status === 'alive' && t.zone === z.name);
+            const deliberate = liveNeighbours.every(n => {
+                const k = edgeKey(z.name, n);
+                return isPermanentCut(state, k) || state.arenaRuleState?.marks?.[PACK_CUT_MARK + k] !== undefined;
+            });
+            return !(empty && deliberate);
         })
         .map(z => z.name);
 }
@@ -470,7 +479,7 @@ function sealedZones(state: GameState): Set<string> {
  * act, a hazard that took a route, a crossing that gave way, a border that
  * closed over the last open neighbour — a live zone left with no way out gets
  * one back. The edge chosen is the least deliberate cut: an act's first, then
- * anything the generic reopening tick could put back, then a pack's, and a
+ * anything the generic reopening tick could put back, and a pack's or a
  * permanent cut only when somebody is standing inside. Lockdown cuts and the
  * sealed horn are never touched. Returns the edges reopened.
  */
@@ -486,7 +495,9 @@ export function unstrandZones(state: GameState): string[] {
         const keys = z.adjacent.filter(n => !collapsed.includes(n) && !sealed.has(n)).map(n => edgeKey(zone, n));
         const rank = (k: string) => isActCut(state, k) ? 0
             : isReopenable(state, k) ? 1
-            : marks()[PACK_CUT_MARK + k] !== undefined ? 2
+            // A pack's or a permanent cut is somebody's deliberate design:
+            // reopened only when a living tribute is actually boxed in.
+            : marks()[PACK_CUT_MARK + k] !== undefined ? (occupied ? 2 : 9)
             : isPermanentCut(state, k) && occupied ? 3 : 9;
         const pick = keys.filter(k => rank(k) < 9).sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))[0];
         if (!pick) return;

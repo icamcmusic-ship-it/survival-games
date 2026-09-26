@@ -284,7 +284,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Loner\'s Handshake',
         hint: 'See two tributes who never joined an alliance strike a truce after the convergence.',
         category: 'social',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: state => state.convergenceDay !== undefined && state.log.some(e => e.type === 'truce'
             && e.day >= state.convergenceDay!
             && e.tributesInvolved.length > 1
@@ -455,7 +455,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'No Beast Touched Them',
         hint: 'Crown a victor never wounded by a mutt in a Games where the mutts killed five or more.',
         category: 'survival',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (state, v) => !!v && muttDeaths(state) >= 5 && !(v.wounds ?? []).some(w => w.kind === 'mutt'),
         nearMiss: (state, v) => (v && muttDeaths(state) >= 3 && muttDeaths(state) < 5
             ? `The mutts took ${muttDeaths(state)} — five is the bar`
@@ -1441,7 +1441,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // AUDIT-7: observed across 500 runs, so no longer 'possible?' — the label
         // means the simulation is believed able to do this and no measured run
         // ever has, and a measured run now has.
-        rarity: 'possible',
+        rarity: 'legendary',
         test: state => alive(state).length === 0,
         /*
          * REQUEST (run length): this became genuinely rare and needed to start
@@ -2327,7 +2327,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'social',
         // AUDIT-7: the §4.1 trust wiring and the §4.2 keeper role between them
         // made the arena economy busy enough for this to land. 0.4% of 500 runs.
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (_s, v) => !!v
             && [(v.extortedIds?.length ?? 0) > 0,
                 (v.extortedByIds?.length ?? 0) > 0,
@@ -5669,7 +5669,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'a8-every-site',
         name: 'Every Site',
         hint: 'Crown a victor who was hurt at three or more separate body sites over the run.',
-        category: 'survival', rarity: 'possible',
+        category: 'survival', rarity: 'legendary',
         // AUDIT-8: all four sites never happened in 500 runs. Three does.
         test: (_s, v) => !!v && (['head', 'torso', 'arms', 'legs'] as const).filter(site =>
             v.injuries[site] || (v.injurySeverity?.[site] ?? 0) > 0 || !!v.scars?.[site]).length >= 3,
@@ -6389,6 +6389,9 @@ export const ACHIEVEMENTS: Achievement[] = [
         category: 'social',
         rarity: 'possible',
         test: (state, v) => !!v && saidOf(state, v, [G7_BURIAL.text]),
+        nearMiss: (state, v) => !(v && saidOf(state, v, [G7_BURIAL.text]))
+            && state.tributes.some(t => saidOf(state, t, [G7_BURIAL.text]))
+            ? 'somebody stopped to bury an ally, and did not win' : undefined,
     },
     {
         id: 'a12-unmoved',
