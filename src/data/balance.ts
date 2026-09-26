@@ -10073,10 +10073,14 @@ export const ALLIANCE_BONDS = {
     grudgeRegard: 5,
     /** Grudge weight on picking the betrayer (per point of grudge). */
     grudgeBetrayerWeight: 0.08,
+    /** Grudge weight on the group's betrayal chance (per point of the largest grudge held in it). */
+    grudgeBetrayalChanceWeight: 0.15,
     /** Grudge weight on picking the mark (per point of grudge). */
     grudgeTargetWeight: 0.2,
     /** Grudge at which it is a schism grievance and a named motive. */
     grudgeMotive: 24,
+    /** Grudge at which a betrayal of the provider is logged as the ledger coming due (one unfair split). */
+    grudgeBetrayalMotive: 12,
     /** Regard at or below which two tributes read as rivals. */
     rivalRegard: -15,
     /** Regard a thawed rival is lifted to (at least). */
