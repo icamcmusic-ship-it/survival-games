@@ -56,8 +56,10 @@ import { GameConfig, GameState, Item, Stance, Tribute } from '../src/models/type
 import { giveItem } from '../src/engine/items';
 import { deathCodeOf } from '../src/engine/causes';
 import { configForProfile, gamesProfileFor } from '../src/engine/gamesProfile';
+import { strandedZones } from '../src/engine/arenaRules';
 
 const problems: string[] = [];
+
 const note = (m: string) => { if (!problems.includes(m)) problems.push(m); };
 
 /*
@@ -425,6 +427,8 @@ for (let i = 0; i < 400; i++) {
   const startingOdds = new Map<string, number>();
   const gongPct = new Map<string, number>();
 
+  let killLogMark = 0;
+  let deadAtLastSample = new Set<string>();
   const sample = () => {
     /**
      * Audit 4 §1.10: only once the Games are actually running.
@@ -441,6 +445,20 @@ for (let i = 0; i < 400; i++) {
      * The bloodbath and the feast are in. The pre-arena phases are out.
      */
     if (!ARENA_PHASES.has(state.phase)) return;
+    // AUDIT-12 E1 / §8.9: the strand invariant. Every live zone keeps at
+    // least one open edge to another live zone, unless it is sealed by a
+    // lockdown right now (that is the lockdown's job, and it lifts).
+    strandedZones(state).forEach(z => note(`stranded zone: ${z} (${state.arena.id})`));
+    // AUDIT-12 E5: no posthumous kill lines. A kill line credited to somebody
+    // who was already dead at the previous sample is a corpse killing.
+    for (let li = killLogMark; li < state.log.length; li++) {
+      const l = state.log[li];
+      if (l.category === 'kill' && l.actorId && deadAtLastSample.has(l.actorId)) {
+        note(`posthumous kill line credited to a dead tribute: ${l.text.slice(0, 80)}`);
+      }
+    }
+    killLogMark = state.log.length;
+    deadAtLastSample = new Set(state.tributes.filter(t => t.status === 'dead').map(t => t.id));
     Object.keys(state.eventLastFired ?? {}).forEach(id => eventIdsFired.add(id));
     if (Object.keys(state.garrisonedEdges ?? {}).length > 0) { garrisonCycles++; sawGarrison = true; }
     Object.values(state.zoneEffects ?? {}).forEach(list =>

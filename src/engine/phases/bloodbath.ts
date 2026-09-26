@@ -1,4 +1,5 @@
 import { ARENA_REVEALS } from '../../data/arenaReveals';
+import { noteRetreatFailed, runDownCatchScale } from '../traitHooks';
 import { dreadOf } from '../intent';
 import { targetDrawOf } from '../targeting';
 import { SimContext, getAlive } from '../context';
@@ -8,8 +9,8 @@ import { Item, Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
 import { traitMod } from '../../data/traits';
 import { ARCHETYPES } from '../../data/archetypes';
-import { ALLIANCES, BLOODBATH, ESCALATION, QUALITY_BIAS, TRAINING } from '../../data/balance';
-import { registerAlliance } from '../alliance';
+import { ALLIANCES, AUDIT12_TRIBUTES, BLOODBATH, ESCALATION, QUALITY_BIAS, TRAINING } from '../../data/balance';
+import { pruneDeadAlliances, registerAlliance } from '../alliance';
 
 /**
  * REQUEST: how many tributes the Cornucopia is supposed to take.
@@ -330,12 +331,14 @@ const HORN_WEAPONS = ITEMS.filter(i => i.type === 'weapon');
  * of the unfiltered `ITEMS`/`HORN_WEAPONS` when the Quell is standing.
  */
 function lootPool(ctx: SimContext): Item[] {
-    // AUDIT-11 §12 `no-cornucopia`: scraps only.
+    const base = wildcardIs(ctx.state, 'quell-cornucopia-forfeit') ? ITEMS.filter(i => i.type === 'food') : ITEMS;
+    // AUDIT-11 §12 `no-cornucopia`: scraps only. AUDIT-12 E13: the scraps
+    // come out of the same pool — the forfeit Quell and the arena's item laws
+    // still hold.
     if (hasMutator(ctx.state.config, 'no-cornucopia')) {
-        const scraps = ITEMS.filter(i => i.type !== 'weapon' && i.value <= MUTATOR_TUNING.noCornucopiaMaxValue);
+        const scraps = itemPoolFor(ctx.state, base.filter(i => i.type !== 'weapon' && i.value <= MUTATOR_TUNING.noCornucopiaMaxValue));
         if (scraps.length > 0) return scraps;
     }
-    const base = wildcardIs(ctx.state, 'quell-cornucopia-forfeit') ? ITEMS.filter(i => i.type === 'food') : ITEMS;
     // §5 `noWeapons` composes with the Quell rather than overriding it.
     return itemPoolFor(ctx.state, base);
 }
@@ -428,6 +431,26 @@ function pedestalMinute(ctx: SimContext, alive: Tribute[]) {
  * rather than for supplies is a hunt; a runner who has somebody to meet is an
  * ally; a runner with a very low read of their own chances freezes.
  */
+/**
+ * AUDIT-12 §5: the plan a tribute settles on while standing on the plate.
+ * Grab-and-go (dash in for a bag), edge scatter (work the outer ring) or a
+ * straight run. Scored on plate distance, archetype caution and whether a
+ * pact partner is waiting somewhere other than the horn.
+ */
+function chooseHornPlan(ctx: SimContext, t: Tribute, proximity: number): 'grab' | 'scatter' | 'run' {
+    const arch = ARCHETYPES[t.archetype];
+    const partner = (t.trainingPact ?? []).length > 0;
+    const grab = proximity * 1.2 + arch.aggression - arch.caution * 0.5 + (t.isCareer ? 0.6 : 0);
+    const run = (1 - proximity) * 1.1 + arch.caution + (partner ? AUDIT12_TRIBUTES.hornPlanPartnerRun : 0);
+    const scatter = 0.55 + (t.attributes.agility - 5) * 0.05;
+    const noise = () => (ctx.rng.nextFloat() - 0.5) * AUDIT12_TRIBUTES.hornPlanNoise;
+    const scores: Array<['grab' | 'scatter' | 'run', number]> = [
+        ['grab', grab + noise()], ['scatter', scatter + noise()], ['run', run + noise()],
+    ];
+    scores.sort((x, y) => y[1] - x[1]);
+    return scores[0][0];
+}
+
 function announceGongDecisions(ctx: SimContext, alive: Tribute[], fighters: Tribute[], _runners: Tribute[]) {
     const horn = ctx.state.arena.zones[0]?.name ?? 'the Cornucopia';
     const isFighter = new Set(fighters.map(t => t.id));
@@ -465,6 +488,7 @@ function announceGongDecisions(ctx: SimContext, alive: Tribute[], fighters: Trib
             kind = 'flee';
         }
 
+        t.gongDecision = kind;
         ctx.logEvent(
             ctx.pickText([...GONG_DECISIONS[kind]])
                 .split('{tribute}').join(t.name)
@@ -638,9 +662,15 @@ export function processBloodbath(ctx: SimContext) {
         const arch = ARCHETYPES[t.archetype];
         const eagerness = arch.disengage === 'unworthy' ? 0 : arch.aggression;
         fightChance += eagerness - arch.caution * 0.5;
+        // AUDIT-12 §7: an archetype's own reading of the horn, where it has one.
+        fightChance += arch.hornFight ?? 0;
         // The persona sold on the interview couch is a promise the crowd — and
         // everyone else on the plates — remembers.
         fightChance += personaThreat(t) * 0.6;
+        // AUDIT-12 §5: the horn plan made on the plate, before the gong.
+        t.hornPlan = chooseHornPlan(ctx, t, proximity);
+        fightChance += t.hornPlan === 'grab' ? AUDIT12_TRIBUTES.hornPlanGrabFight
+            : t.hornPlan === 'run' ? -AUDIT12_TRIBUTES.hornPlanRunFight : 0;
 
         if (ctx.rng.chance(fightChance)) fighters.push(t);
         else runners.push(t);
@@ -738,87 +768,6 @@ export function processBloodbath(ctx: SimContext) {
         );
     });
 
-    // 2b. The tributes who turned and ran are not automatically clear of it.
-    //     A plate near the mouth of the horn means several seconds inside the
-    //     reach of people who came to the Cornucopia to kill, and the bloodbath
-    //     of the source material is full of tributes cut down from behind.
-    const hunters = arrivals.filter(t => t.status === 'alive' && t.inventory.some(i => i.type === 'weapon'));
-    runners.forEach(t => {
-        if (t.status !== 'alive' || hunters.length === 0) return;
-        const proximity = 1 - (t.platePosition ?? 0.5);
-        /*
-         * REQUEST: while the Cornucopia is short of what it was asked for, the
-         * people who turned for the treeline are the rest of the ask.
-         *
-         * Without this the target saturated at about ten of twenty-four
-         * however high it was set: only the tributes who committed to the horn
-         * were ever in the scrum, so a bloodbath asked for twenty-three had
-         * nobody left to take them from. Whoever runs is still only caught if
-         * somebody armed is behind them and they are slow enough and close
-         * enough to the ring — the shortfall raises the odds, it does not
-         * suspend the conditions.
-         */
-        // Met the ask already: nobody bothers chasing the ones who ran.
-        if (fallenSoFar(ctx, castAtGong) >= deathTarget) return;
-        const shortfall = Math.max(0, deathTarget - fallenSoFar(ctx, castAtGong)) / Math.max(1, deathTarget);
-        /*
-         * Two terms, and the floor is the one that matters at a high ask.
-         *
-         * The product term is the ordinary case: how close to the ring they
-         * started and how fast they are. Both can be small, and multiplying a
-         * shortfall through them still leaves a slow tribute on the far edge of
-         * the plates mostly getting away — so a Cornucopia asked for
-         * twenty-three of twenty-four came up three or four short no matter how
-         * the multiplier was tuned. The floor says that when the horn is the
-         * whole story, the field does not get to leave it.
-         */
-        const caught = Math.min(0.97, Math.max(
-            BLOODBATH.runDownChance * (1 + shortfall * BLOODBATH.runDownCatchUp)
-                * proximity * Math.max(0.3, 1 - t.attributes.agility / 12),
-            shortfall * BLOODBATH.runDownFloor,
-        ));
-        if (!ctx.rng.chance(caught)) return;
-        const hunter = ctx.rng.pickOrUndefined(hunters.filter(h => h.status === 'alive' && h.id !== t.id));
-        if (!hunter) return;
-        /*
-         * §(requests): say what they were caught *with*.
-         *
-         * "runs them down" named the pursuit and nothing else, and the
-         * exchange that follows may or may not produce its own line, so a
-         * share of bloodbath deaths read as somebody being generically killed
-         * by a named tribute with no method attached. The hunter is selected
-         * out of `hunters`, which is by definition everybody who came up from
-         * the horn holding something, so the weapon is always known here —
-         * it simply was not being said.
-         */
-        const held = hunter.inventory.find(i => i.type === 'weapon');
-        ctx.logEvent(
-            `${t.name} turns for the treeline and does not get there. ${hunter.name} runs them down before they clear `
-            + `the ring of plates, ${held ? `${itemPhrase(held)} already in hand` : 'with nothing but their hands'}.`,
-            [hunter.id, t.id],
-            { important: true, category: 'combat' }
-        );
-        // Being caught from behind is an ambush by any definition, and nobody
-        // is thinking clearly enough to break off in the first seconds.
-        resolveCombat(ctx, hunter, t, true, true, BLOODBATH.noRetreatRounds,
-            BLOODBATH.killingZoneDamage * lethalityOf(ctx, fallenSoFar(ctx, castAtGong), deathTarget));
-    });
-
-    runners.forEach(t => {
-        if (t.status !== 'alive') return;
-        if (ctx.rng.chance(0.8)) {
-            ctx.logEvent(fill(ctx.pickText(BLOODBATH_TEXTS.flee), { tribute: t.name }), [t.id], { category: 'survival' });
-        } else {
-            const item = mintItem(ctx.rng, ctx.rng.pick(lootPool(ctx)), QUALITY_BIAS.hornScatter);
-            giveItem(t, item);
-            ctx.logEvent(
-                fill(ctx.pickText(BLOODBATH_TEXTS.fleeWithItem), { tribute: t.name, item: itemPhrase(item) }),
-                [t.id],
-                { category: 'loot' }
-            );
-        }
-    });
-
     // Everyone in the scrum can see everyone else — that is what the Cornucopia
     // is. The sighting seeds every survivor's memory of the place.
     const cornucopia = ctx.state.arena.zones[0]?.name ?? 'The Cornucopia';
@@ -873,11 +822,27 @@ export function processBloodbath(ctx: SimContext) {
     const groupReengage = () => Math.min(0.995, BLOODBATH.groupReengageChance
         * (1 + shortfallOf(ctx, castAtGong, deathTarget)));
 
+    /*
+     * AUDIT-12 T1: the scrum stops short of the full ask by the share the
+     * run-down is allowed to take, in proportion to how many turned and ran —
+     * the runners are the *rest* of the ask, never the whole of it.
+     */
+    const expectedCaught = runners.reduce((sum, t) => {
+        const exposure = t.hornPlan === 'grab' ? AUDIT12_TRIBUTES.hornPlanGrabExposure
+            : t.hornPlan === 'run' ? AUDIT12_TRIBUTES.hornPlanRunExposure : 1;
+        const p = BLOODBATH.runDownChance * AUDIT12_TRIBUTES.runDownChaseScale
+            * (1 + AUDIT12_TRIBUTES.runDownTargetShare * BLOODBATH.runDownCatchUp)
+            * (1 - (t.platePosition ?? 0.5)) * exposure * Math.max(0.3, 1 - t.attributes.agility / 12);
+        return sum + Math.min(0.97, p);
+    }, 0);
+    const runnerReserve = Math.min(Math.round(deathTarget * AUDIT12_TRIBUTES.runDownTargetShare),
+        Math.round(expectedCaught * AUDIT12_TRIBUTES.runDownReservePerRunner));
+    const scrumTarget = Math.max(1, deathTarget - runnerReserve);
     let rounds = Math.max(pool.length * 6 + 12, deathTarget * BLOODBATH.scrumRoundsPerTribute);
     while (pool.length > 1 && rounds-- > 0) {
         // Met the ask: whoever is still standing in the knot breaks off. The
         // Gamemakers wanted a number and they have it.
-        if (fallenSoFar(ctx, castAtGong) >= deathTarget) break;
+        if (fallenSoFar(ctx, castAtGong) >= scrumTarget) break;
         // The pack does not queue up for duels. If enough of them are still in
         // the scrum they pick one target and go through them together, which is
         // the entire reason a Career pack is frightening.
@@ -941,7 +906,7 @@ export function processBloodbath(ctx: SimContext) {
         // Staying in the scrum is most of how many the opening takes, so it is
         // the first thing the target drives: while the Cornucopia is behind
         // what it was asked for, nobody is minded to walk away from it.
-        const behind = fallenSoFar(ctx, castAtGong) < deathTarget;
+        const behind = fallenSoFar(ctx, castAtGong) < scrumTarget;
         const reengage = behind
             ? Math.min(0.995, BLOODBATH.reengageChance * commitmentFactor(ctx)
                 * (1 + (deathTarget - fallenSoFar(ctx, castAtGong)) / Math.max(1, deathTarget)))
@@ -974,6 +939,98 @@ export function processBloodbath(ctx: SimContext) {
             { important: true, category: 'loot' }
         );
     }
+
+    // 2b. The tributes who turned and ran are not automatically clear of it.
+    //     A plate near the mouth of the horn means several seconds inside the
+    //     reach of people who came to the Cornucopia to kill, and the bloodbath
+    //     of the source material is full of tributes cut down from behind.
+    //     AUDIT-12 T1: this now runs *after* the scrum, so the shortfall is
+    //     what the scrum actually left unmet rather than the whole ask, and
+    //     the chase takes at most a capped share of the target.
+    const hunters = arrivals.filter(t => t.status === 'alive' && t.inventory.some(i => i.type === 'weapon'));
+    const runDownCap = Math.max(1, Math.ceil(deathTarget * AUDIT12_TRIBUTES.runDownTargetShare));
+    let runDownTaken = 0;
+    ctx.rng.shuffle([...runners]).forEach(t => {
+        if (t.status !== 'alive' || hunters.length === 0) return;
+        if (runDownTaken >= runDownCap) return;
+        const planExposure = t.hornPlan === 'grab' ? AUDIT12_TRIBUTES.hornPlanGrabExposure
+            : t.hornPlan === 'run' ? AUDIT12_TRIBUTES.hornPlanRunExposure : 1;
+        const proximity = (1 - (t.platePosition ?? 0.5)) * planExposure;
+        /*
+         * REQUEST: while the Cornucopia is short of what it was asked for, the
+         * people who turned for the treeline are the rest of the ask.
+         *
+         * Without this the target saturated at about ten of twenty-four
+         * however high it was set: only the tributes who committed to the horn
+         * were ever in the scrum, so a bloodbath asked for twenty-three had
+         * nobody left to take them from. Whoever runs is still only caught if
+         * somebody armed is behind them and they are slow enough and close
+         * enough to the ring — the shortfall raises the odds, it does not
+         * suspend the conditions.
+         */
+        // Met the ask already: nobody bothers chasing the ones who ran.
+        if (fallenSoFar(ctx, castAtGong) >= deathTarget) return;
+        const shortfall = Math.max(0, deathTarget - fallenSoFar(ctx, castAtGong)) / Math.max(1, deathTarget);
+        /*
+         * Two terms, and the floor is the one that matters at a high ask.
+         *
+         * The product term is the ordinary case: how close to the ring they
+         * started and how fast they are. Both can be small, and multiplying a
+         * shortfall through them still leaves a slow tribute on the far edge of
+         * the plates mostly getting away — so a Cornucopia asked for
+         * twenty-three of twenty-four came up three or four short no matter how
+         * the multiplier was tuned. The floor says that when the horn is the
+         * whole story, the field does not get to leave it.
+         */
+        const caught = Math.min(0.97, Math.max(
+            BLOODBATH.runDownChance * AUDIT12_TRIBUTES.runDownChaseScale * (1 + shortfall * BLOODBATH.runDownCatchUp)
+                * proximity * Math.max(0.3, 1 - t.attributes.agility / 12),
+            shortfall * shortfall * proximity * AUDIT12_TRIBUTES.runDownFloor,
+        )) * runDownCatchScale(t);
+        // AUDIT-12 §16: Plate-Sprinter and the Evasion skill are both "not caught".
+        if (!ctx.rng.chance(caught)) return;
+        noteRetreatFailed(ctx, t);
+        const hunter = ctx.rng.pickOrUndefined(hunters.filter(h => h.status === 'alive' && h.id !== t.id));
+        if (!hunter) return;
+        /*
+         * §(requests): say what they were caught *with*.
+         *
+         * "runs them down" named the pursuit and nothing else, and the
+         * exchange that follows may or may not produce its own line, so a
+         * share of bloodbath deaths read as somebody being generically killed
+         * by a named tribute with no method attached. The hunter is selected
+         * out of `hunters`, which is by definition everybody who came up from
+         * the horn holding something, so the weapon is always known here —
+         * it simply was not being said.
+         */
+        const held = hunter.inventory.find(i => i.type === 'weapon');
+        ctx.logEvent(
+            `${t.name} turns for the treeline and does not get there. ${hunter.name} runs them down before they clear `
+            + `the ring of plates, ${held ? `${itemPhrase(held)} already in hand` : 'with nothing but their hands'}.`,
+            [hunter.id, t.id],
+            { important: true, category: 'combat' }
+        );
+        // Being caught from behind is an ambush by any definition, and nobody
+        // is thinking clearly enough to break off in the first seconds.
+        resolveCombat(ctx, hunter, t, true, true, BLOODBATH.noRetreatRounds,
+            BLOODBATH.killingZoneDamage * lethalityOf(ctx, fallenSoFar(ctx, castAtGong), deathTarget));
+        if ((t.status as string) === 'dead') runDownTaken++;
+    });
+
+    runners.forEach(t => {
+        if (t.status !== 'alive') return;
+        if (!ctx.rng.chance(t.hornPlan === 'grab' ? AUDIT12_TRIBUTES.hornPlanGrabItem : 0.2)) {
+            ctx.logEvent(fill(ctx.pickText(BLOODBATH_TEXTS.flee), { tribute: t.name }), [t.id], { category: 'survival' });
+        } else {
+            const item = mintItem(ctx.rng, ctx.rng.pick(lootPool(ctx)), QUALITY_BIAS.hornScatter);
+            giveItem(t, item);
+            ctx.logEvent(
+                fill(ctx.pickText(BLOODBATH_TEXTS.fleeWithItem), { tribute: t.name, item: itemPhrase(item) }),
+                [t.id],
+                { category: 'loot' }
+            );
+        }
+    });
 
     // §12: mark the Cornucopia dead as Cornucopia dead. `dayOfDeath` cannot
     // distinguish them from anyone who dies later on day 1, which is why
@@ -1008,6 +1065,9 @@ export function processBloodbath(ctx: SimContext) {
      * armfuls bigger.
      */
     ctx.state.tributes.forEach(t => enforceCapacity(t));
+    // AUDIT-12 E4/E16: the horn is where most leaders and role holders die.
+    // Re-deal before the first day rather than waiting for a caller to prune.
+    pruneDeadAlliances(ctx);
 }
 
 /**

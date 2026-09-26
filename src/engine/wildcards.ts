@@ -1,4 +1,5 @@
 import { SimContext, getAlive } from './context';
+import { extraDisruptionHeld } from './season/cruelty';
 import { ITEMS } from '../data/constants';
 import { QUALITY_BIAS, WILDCARD } from '../data/balance';
 import { giveItem, itemPhrase, mintItem } from './items';
@@ -80,6 +81,8 @@ function fireExtraDisruption(ctx: SimContext) {
     if (state.day < WILDCARD.extraDisruptionEarliestDay) return;
     const cycle = cycleOf(state);
     if (cycle - (state.lastWildcardCycle ?? -99) < WILDCARD.extraDisruptionSpacingCycles) return;
+    // AUDIT-12 wave 3: the fairness guard, and a hands-off director, hold the unscheduled beats back.
+    if (extraDisruptionHeld(state)) return;
 
     const rng = new RNG(`${state.seed}-extra-wildcard-${cycle}`);
     const chance = WILDCARD.extraDisruptionBaseChance * Math.pow(WILDCARD.extraDisruptionDecay, extras);

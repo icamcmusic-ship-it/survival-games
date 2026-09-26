@@ -1,4 +1,5 @@
 import { Tribute, Zone } from '../models/types';
+import { cannonAvoidance, signallingPull } from './traitHooks';
 import { ARCHETYPES } from '../data/archetypes';
 import { CONFUSION, FEAR, MEMORY, MOVEMENT, NOTORIETY, DECISION_TRACE, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, RISK } from '../data/balance';
 import { confusionOf } from './confusion';
@@ -107,6 +108,9 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
         // Ground a tribute is personally good at. A Climber goes up, a Swimmer
         // crosses, and a Night-Sighted tribute is not pinned down after dark.
         if (z.terrain === 'highland') score += traitMod(t, 'highland');
+        // AUDIT-12 T15 / §16: a Cannon-Counter keeps off the ground a cannon
+        // just came from; Signalling pulls a scattered group back together.
+        score += cannonAvoidance(state, t, z.name) + signallingPull(state, t, z.name);
         if (z.terrain === 'water' || z.terrain === 'wetland') score += traitMod(t, 'water');
 
         if (isEvasiveStance(t.stance)) score -= z.danger * 2;

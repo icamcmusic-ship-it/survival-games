@@ -1,7 +1,8 @@
 import { dreadOf } from '../intent';
+import { oathRefusesBetrayal } from '../traitHooks';
 import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
-import { Tribute } from '../../models/types';
+import { GameState, Tribute } from '../../models/types';
 import { ARCHETYPES, archetypeCompatibility } from '../../data/archetypes';
 import { RESPECT, ALLIANCES, PERCEPTION, BETRAYAL, OBJECTIVES, PROFICIENCY, PROTECTOR_BOND, QUELL_MECHANICS, RELATIONSHIPS, ROMANCE, SUSPICION } from '../../data/balance';
 import { profOf, trainProficiency } from '../proficiency';
@@ -13,8 +14,9 @@ import { cycleOf, cyclesSinceContact, distrustFactor, ensureMemory, hasStoodBy, 
 import { fearOf } from '../fear';
 import { respectOf } from '../relationships';
 import { careerSocialFactor, sniffPerformances, isStarCrossed, cacheDivisionLine, distributeCache } from '../alliance';
-import { grudgeAgainst, grudgeTotal, noteGrudgeMotive, performsForCameras, stationBondOf, tickAllianceBonds } from '../allianceBonds';
-import { ALLIANCE_BONDS } from '../../data/balance';
+import { grudgeAgainst, grudgeTotal, noteGrudgeMotive, performsForCameras, stationBondOf, tickAllianceBonds, tickHollowVictories, tickLonerCamps } from '../allianceBonds';
+import { refreshTraitTiers } from '../earnedTraits';
+import { ALLIANCE_BONDS, AUDIT12_TRIBUTES } from '../../data/balance';
 import { allianceOf, areLovers, cacheValue, contributeToCache, isPerforming, maintainPerformance, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance, shownRegard } from '../alliance';
 import { resolveBetrayal, preemptiveBetrayer } from '../betrayal';
 import { resolveDuePacts } from '../alliancePact';
@@ -147,26 +149,35 @@ function pickBetrayer(ctx: SimContext, members: Tribute[]): Tribute {
  * wants whoever is carrying food. Both are readable off the inventories that
  * are already there.
  */
-function needBasedPull(candidate: Tribute, present: Tribute[]): number {
+/*
+ * AUDIT-12 T14: need-based pull reads what each side can *see* of the other
+ * — health, a bleeding wound, how laden a pack looks — and each side's own
+ * inventory, never the other side's full contents.
+ */
+function needBasedPull(state: GameState, candidate: Tribute, present: Tribute[]): number {
     let pull = 0;
+    const looksLaden = (viewer: Tribute, other: Tribute) =>
+        impressionOf(state, viewer, other).loot >= AUDIT12_TRIBUTES.ladenLootImpression;
     const hurt = candidate.health < ALLIANCES.needyHealth
         || candidate.injuries.bleeding || candidate.injuries.infected;
-    if (hurt && present.some(m => m.inventory.some(i => i.type === 'medical'))) {
+    // The candidate cannot see a medkit in somebody else's pack; they can see
+    // a group that looks equipped.
+    if (hurt && present.some(m => looksLaden(candidate, m))) {
         pull += ALLIANCES.needMedicPull;
     }
     const starving = candidate.vitals.hunger > ALLIANCES.needyHunger
         || candidate.vitals.thirst > ALLIANCES.needyHunger;
-    if (starving && present.some(m => m.inventory.some(i => i.type === 'food' || i.type === 'water'))) {
+    if (starving && present.some(m => looksLaden(candidate, m))) {
         pull += ALLIANCES.needSuppliesPull;
     }
-    // ...and the other direction: a group short of everything wants whoever
-    // walked up carrying a full pack.
+    // ...and the other direction: a group short of everything (they know
+    // their own packs) wants whoever walked up looking laden.
     const groupThin = present.every(m => !m.inventory.some(i => i.type === 'food' || i.type === 'water'));
-    if (groupThin && candidate.inventory.some(i => i.type === 'food' || i.type === 'water')) {
+    const seenLaden = present.some(m => looksLaden(m, candidate));
+    if (groupThin && seenLaden) {
         pull += ALLIANCES.needProviderPull;
     }
-    if (candidate.inventory.some(i => i.type === 'medical')
-        && present.some(m => m.health < ALLIANCES.needyHealth)) {
+    if (seenLaden && present.some(m => m.health < ALLIANCES.needyHealth)) {
         pull += ALLIANCES.needProviderPull;
     }
     return pull;
@@ -450,7 +461,8 @@ export function processAlliances(ctx: SimContext) {
         // §3.2 (audit): before the ordinary roll, anybody who has decided an
         // ally is about to turn on them gets to turn first.
         const first = preemptiveBetrayer(ctx, members);
-        if (first) {
+        // AUDIT-12 T15: an Oathkeeper does not strike first, and pays for wanting to.
+        if (first && !oathRefusesBetrayal(ctx, first[0])) {
             resolveBetrayal(ctx, first[0], first[1], members, 'preempt');
             return;
         }
@@ -461,6 +473,7 @@ export function processAlliances(ctx: SimContext) {
 
         if (ctx.rng.chance(betrayalThreshold)) {
             const betrayer = pickBetrayer(ctx, members);
+            if (oathRefusesBetrayal(ctx, betrayer)) return;
             const victim = pickBetrayalTarget(ctx, betrayer, members);
 
             if (victim) {
@@ -659,7 +672,7 @@ export function processAlliances(ctx: SimContext) {
                 // can patch them up; a group short of supplies wants whoever
                 // is carrying them. Both were invisible to a scorer that read
                 // only temperament and regard.
-                + needBasedPull(candidate, present);
+                + needBasedPull(ctx.state, candidate, present);
             // §9 (requests): the pack's own appetite for this candidate, taken
             // as the least willing member's — one Career objecting is enough.
             const careerAppetite = Math.min(1, ...present.map(m => careerSocialFactor(m, candidate)));
@@ -714,6 +727,10 @@ export function processAlliances(ctx: SimContext) {
     });
     // 5c. AUDIT-11 §6: who did their job, and who ate.
     tickAllianceBonds(ctx);
+    // AUDIT-12 §6 / §5: hollow victories, loner camps and truce chains, earned-trait tiers.
+    tickHollowVictories(ctx);
+    tickLonerCamps(ctx);
+    refreshTraitTiers(ctx);
 }
 
 /**
@@ -761,6 +778,38 @@ function findFaction(members: Tribute[]): Tribute[] | undefined {
     if (crossRegard(faction, remainder) > ALLIANCES.schismCrossRegard) return undefined;
     if (crossRegard(remainder, faction) > ALLIANCES.schismCrossRegard) return undefined;
 
+    return faction;
+}
+
+/**
+ * AUDIT-12 §6: a faction drawn by trust rather than regard. The member the
+ * rest trust least anchors it; whoever trusts them more than they trust the
+ * others goes with them. Needs two a side and a real gap across the line.
+ */
+function trustFaction(members: Tribute[]): Tribute[] | undefined {
+    if (members.length < AUDIT12_TRIBUTES.splinterMinSize) return undefined;
+    const trustIn = (m: Tribute, group: Tribute[]) => {
+        const rest = group.filter(o => o.id !== m.id);
+        return rest.length === 0 ? 0 : rest.reduce((sum, o) => sum + trustOf(o, m), 0) / rest.length;
+    };
+    const seed = members.reduce((low, m) => (trustIn(m, members) < trustIn(low, members) ? m : low));
+    const faction = [seed];
+    members.forEach(m => {
+        if (m.id === seed.id) return;
+        const others = members.filter(o => o.id !== m.id && o.id !== seed.id);
+        const toRest = others.length ? others.reduce((sum, o) => sum + trustOf(m, o), 0) / others.length : 0;
+        if (trustOf(m, seed) > toRest + AUDIT12_TRIBUTES.splinterTrustGap) faction.push(m);
+    });
+    const remainder = members.filter(m => !faction.includes(m));
+    if (faction.length < 2 || remainder.length < 2) return undefined;
+    const cross = faction.reduce((sum, f) => sum + remainder.reduce((a, r) => a + trustOf(f, r) + trustOf(r, f), 0), 0)
+        / (2 * faction.length * remainder.length);
+    const within = (g: Tribute[]) => {
+        let n = 0, sum = 0;
+        g.forEach(a => g.forEach(b => { if (a.id !== b.id) { sum += trustOf(a, b); n++; } }));
+        return n ? sum / n : 0;
+    };
+    if (Math.min(within(faction), within(remainder)) - cross < AUDIT12_TRIBUTES.splinterTrustGap) return undefined;
     return faction;
 }
 
@@ -820,26 +869,46 @@ function schismAlliances(ctx: SimContext, alliances: Map<string, Tribute[]>) {
         const chance = ALLIANCES.schismChance * (careerPack ? ALLIANCES.careerSchismFactor : 1);
         if (!ctx.rng.chance(chance)) return;
 
-        const faction = findFaction(members);
+        // AUDIT-12 §6: a regard schism first; failing that, a trust splinter —
+        // a group whose members still like each other well enough but have
+        // stopped trusting across one line comes apart along it, and the trust
+        // gap is itself the thing it splits over.
+        let faction = findFaction(members);
+        let splinter = false;
+        if (!faction || !hasGrievanceAcross(ctx, faction, members.filter(m => !faction!.some(f => f.id === m.id)))) {
+            faction = trustFaction(members);
+            splinter = !!faction;
+        }
         if (!faction) return;
-        const remainder = members.filter(m => !faction.some(f => f.id === m.id));
-        // ...and something to split over.
-        if (!hasGrievanceAcross(ctx, faction, remainder)) return;
+        const chosen = faction;
+        const remainder = members.filter(m => !chosen.some(f => f.id === m.id));
 
         // The splinter becomes a standing alliance of its own rather than a
         // handful of loners — that is the whole point of modelling it as a
         // faction instead of a mass departure.
-        const splinterId = `alliance-${faction[0].id}-splinter`;
-        faction.forEach(m => { m.allianceId = splinterId; });
-        registerAlliance(ctx, splinterId, faction);
-        alliances.set(splinterId, faction);
+        const splinterId = `alliance-${chosen[0].id}-splinter`;
+        chosen.forEach(m => { m.allianceId = splinterId; });
+        const splinterRecord = registerAlliance(ctx, splinterId, chosen);
+        alliances.set(splinterId, chosen);
         alliances.set(id, remainder);
 
         // Whatever was left of the shared regard does not survive the split.
-        faction.forEach(f => remainder.forEach(r => {
+        chosen.forEach(f => remainder.forEach(r => {
             adjustRel(f, r.id, -ALLIANCES.soloDepartureRegard);
             adjustRel(r, f.id, -ALLIANCES.soloDepartureRegard);
         }));
+
+        if (splinter) {
+            const parent = allianceOf(ctx.state, id);
+            ctx.logEvent(
+                `${parent?.name ? `${parent.name[0].toUpperCase()}${parent.name.slice(1)}` : 'The group'} splits along a line of trust nobody drew out loud. `
+                + `${chosen.map(m => m.name).join(' and ')} go as ${splinterRecord.name ?? 'a camp of their own'}; `
+                + `${remainder.map(m => m.name).join(' and ')} stay. Nobody was betrayed. Nobody would bet on it staying that way.`,
+                members.map(m => m.id),
+                { type: 'alliance-splinter', important: true, category: 'alliance' }
+            );
+            return;
+        }
 
         ctx.logEvent(
             `${faction.map(m => m.name).join(' and ')} stop eating with the others. By morning it is not an argument any more, it is two camps: `

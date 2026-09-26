@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { CrueltyMeter } from './SeasonPanels';
 import { Hint } from './Hint';
 import { GameState, Tribute } from '../models/types';
 import {
@@ -648,6 +649,8 @@ export const DossierPanel = React.memo(function DossierPanel({
                     miss on day six frequently gives away which of the survivors
                     is about to win, and the end screen already shows the same
                     list at the one moment it costs the reader nothing. */}
+                {/* AUDIT-12 wave 3: the cruelty meter the fairness guard reads. */}
+                {!gameState.config.vanillaRules && <div className="mt-3"><CrueltyMeter gameState={gameState} /></div>}
                 {gameState.audienceInterest !== undefined && (
                     <Explainer
                         align="left"

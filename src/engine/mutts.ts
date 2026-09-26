@@ -1,4 +1,5 @@
 import { traitMod } from '../data/traits';
+import { muttHandlingScale } from './traitHooks';
 import { Mutt, Tribute } from '../models/types';
 import { ARENA_MUTTS } from '../data/mutts';
 import { ITEMS } from '../data/constants';
@@ -279,6 +280,8 @@ export function engageMutt(ctx: SimContext, t: Tribute, mutt: Mutt) {
 
     // Hardened: having met worse is worth something against exactly this.
     damage *= Math.max(0.2, 1 + traitMod(t, 'muttDamage'));
+    // AUDIT-12 §16: Animal handling — knowing how an animal comes at you.
+    damage *= muttHandlingScale(t);
 
     applyDamage(ctx, t, Math.round(damage), { cause: `Torn apart by ${mutt.name}`, kind: 'mutt', code: 'mutt' });
     // §1.2: walking away from something with teeth leaves a mark that is not
@@ -286,6 +289,7 @@ export function engageMutt(ctx: SimContext, t: Tribute, mutt: Mutt) {
     if (t.status === 'alive') rattle(t, HUNTING.rattledPerMutt);
     applyMuttInjuries(t, mutt);
     trainProficiency(t, 'tracking');
+    if (t.status === 'alive') trainProficiency(t, 'animalHandling');
     addZoneThreat(ctx.state, t, t.zone, MEMORY.hazardThreat * 2);
 
     tryFacesOfTheFallen(ctx, t, mutt);

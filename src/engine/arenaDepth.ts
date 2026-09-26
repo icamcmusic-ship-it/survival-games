@@ -12,11 +12,13 @@ import { endZoneEffect, hasEffect, startZoneEffect } from './zoneEffects';
 import { giveItem, inventoryValue, itemPhrase, mintItem } from './items';
 import { applyDamage, checkDeath } from './combat';
 import { injure } from './wounds';
+import { clampTribute } from './vitals';
 import { profOf } from './proficiency';
 import { canAfford, spend } from './actionBudget';
 import { allied } from './alliance';
-import { currentSightline, fallenZones, setMark, getMark } from './arenaRules';
-import { ACTION_BUDGET } from '../data/balance';
+import { currentSightline, fallenZones, setMark, getMark, markActCut, releaseActCut, unstrandZones, isEnclosedIgnitionZone } from './arenaRules';
+import { ACTION_BUDGET, AUDIT12_ARENA } from '../data/balance';
+import { buildCollapseOrder } from './phases/dayNight';
 
 /**
  * AUDIT-11 §5 "Add depth", §7 "Shared upgrades", §13 "crafting".
@@ -226,7 +228,9 @@ function tickWeather(ctx: SimContext) {
 
     // Clear.
     if (d.weather && cycle > d.weather.untilCycle) {
-        ctx.logEvent(CLEARS[d.weather.kind], [], { category: 'arena' });
+        // AUDIT-12 E11: fog under a whiteout or blackout was never in force
+        // (`currentWeather` hides it), so nobody sees it thin.
+        if (!(d.weather.kind === 'fog' && sightlineHides(state))) ctx.logEvent(CLEARS[d.weather.kind], [], { category: 'arena' });
         d.weather = undefined;
     }
 
@@ -440,7 +444,14 @@ function ensureCache(ctx: SimContext) {
     if (d.hiddenCache) return;
     const rng = new RNG(`${ctx.state.seed}-depth-cache`);
     const horn = ctx.state.arena.zones[0]?.name;
-    const options = ctx.state.arena.zones.filter(z => z.name !== horn && !/cornucopia/i.test(z.name));
+    const all = ctx.state.arena.zones.filter(z => z.name !== horn && !/cornucopia/i.test(z.name));
+    // AUDIT-12 E8: hide it where the border reaches last — the back half of
+    // the collapse order — so a plan to it is not a plan into the void.
+    const order = buildCollapseOrder(ctx);
+    const late = new Set(order.slice(Math.floor(order.length / 2)));
+    const fallen = fallenZones(ctx.state);
+    const safe = all.filter(z => late.has(z.name) && !fallen.includes(z.name));
+    const options = safe.length > 0 ? safe : all;
     if (options.length === 0) return;
     d.hiddenCache = { zone: rng.pick(options).name, knownBy: [] };
 }
@@ -606,7 +617,8 @@ function tickActs(ctx: SimContext) {
     const horn = state.arena.zones[0]?.name;
     if (step.end) state.arena.zones.forEach(z => step.end!.forEach(k => endZoneEffect(state, z.name, k)));
     if (step.restoreCuts && d.actCuts?.length) {
-        state.severedEdges = (state.severedEdges ?? []).filter(e => !d.actCuts!.includes(e));
+        // AUDIT-12 E2: only the edges the act still owns come back.
+        d.actCuts.forEach(e => releaseActCut(state, e));
         d.actCuts = [];
     }
     if (step.start) {
@@ -618,20 +630,22 @@ function tickActs(ctx: SimContext) {
     if (step.cutAround) {
         const cuts: string[] = [];
         const severed = state.severedEdges ?? (state.severedEdges = []);
-        state.arena.zones.filter(z => step.cutAround!.includes(z.terrain) && z.name !== horn).forEach(z => {
+        const openEdges = (name: string) => (getZone(state.arena, name)?.adjacent ?? [])
+            .filter(m => !collapsed.includes(m) && !severed.includes(edgeKey(name, m))).length;
+        state.arena.zones.filter(z => step.cutAround!.includes(z.terrain) && z.name !== horn && !collapsed.includes(z.name)).forEach(z => {
             z.adjacent.forEach(n => {
                 const key = edgeKey(z.name, n);
-                if (severed.includes(key) || n === horn) return;
-                // Never strand a zone completely.
-                const other = getZone(state.arena, n);
-                const openOut = (other?.adjacent ?? []).filter(m => !severed.includes(edgeKey(n, m))).length;
-                if (openOut <= 1) return;
+                if (severed.includes(key) || n === horn || collapsed.includes(n)) return;
+                // AUDIT-12 E1: never strand a zone — neither end may lose its last open edge.
+                if (openEdges(n) <= 1 || openEdges(z.name) <= 1) return;
                 severed.push(key);
+                markActCut(state, key);
                 cuts.push(key);
             });
         });
         d.actCuts = [...(d.actCuts ?? []), ...cuts];
     }
+    unstrandZones(state);
     setMark(state, 'depthActWeather', step.weather);
 }
 
@@ -726,6 +740,15 @@ export function planOf(state: SimContext['state'], t: Tribute): TributePlan | un
     return state.arenaDepth?.plans?.[t.id];
 }
 
+/** AUDIT-12 E9: the dead keep no plans — called from `killTribute`. */
+export function dropPlan(state: SimContext['state'], id: string) {
+    const plans = state.arenaDepth?.plans;
+    if (!plans || !(id in plans)) return;
+    const next = { ...plans };
+    delete next[id];
+    state.arenaDepth!.plans = next;
+}
+
 function setPlan(ctx: SimContext, t: Tribute, plan: TributePlan | undefined) {
     const d = depth(ctx);
     const plans = { ...(d.plans ?? {}) };
@@ -743,7 +766,9 @@ function makePlan(ctx: SimContext, t: Tribute, rng: RNG): TributePlan | undefine
     const steps = (list: Array<[string | undefined, ObjectiveReason]>) =>
         list.filter((s): s is [string, ObjectiveReason] => s[0] !== undefined).map(([zone, reason]) => ({ zone, reason }));
 
-    if (cache && !cache.foundBy && cache.knownBy.includes(t.id) && cache.zone !== home) {
+    // AUDIT-12 E8: not to a zone that has already fallen.
+    const cacheGone = !!cache && ((ctx.state.collapsedZones ?? []).includes(cache.zone) || fallenZones(ctx.state).includes(cache.zone));
+    if (cache && !cacheGone && !cache.foundBy && cache.knownBy.includes(t.id) && cache.zone !== home) {
         return { label: `the unannounced cache in ${cache.zone}`, steps: steps([[cache.zone, 'forage'], [home, 'shelter']]), step: 0, madeCycle: cycle, interruptions: 0 };
     }
     if (t.health < ARENA_DEPTH.planHurtBelow) {
@@ -796,6 +821,13 @@ export function followPlan(ctx: SimContext, t: Tribute) {
         bump(ctx, 'plansMade');
         ctx.logEvent(`${t.name} makes a plan and means to keep it: ${plan.label}, ${plan.steps.map(s => s.zone).join(', then ')}.`, [t.id], { category: 'survival' });
     }
+    // AUDIT-12 E8: a step into ground that has since fallen ends the plan.
+    const gone = (ctx.state.collapsedZones ?? []);
+    if (plan.steps.slice(plan.step).some(st => gone.includes(st.zone))) {
+        bump(ctx, 'plansAbandoned');
+        setPlan(ctx, t, undefined);
+        return;
+    }
     // Advance past any step they are standing on.
     while (plan.step < plan.steps.length && plan.steps[plan.step].zone === t.zone) plan.step++;
     if (plan.step >= plan.steps.length) {
@@ -839,10 +871,15 @@ function isSchemer(t: Tribute): boolean {
         || t.archetype === 'strategist' || t.attributes.intelligence >= ARENA_DEPTH.decoySeeThrough;
 }
 
+const feintKey = (feigner: string, fooled: string) => `${feigner}>${fooled}`;
+
 /** Combat power a feigner has over somebody who came in believing the limp. */
 export function deceptionEdge(state: SimContext['state'], t: Tribute, opponent: Tribute | undefined): number {
     if (!opponent) return 0;
-    const until = state.arenaDepth?.feints?.[t.id];
+    // AUDIT-12 E10: only against somebody who saw the limp and believed it.
+    // The fooled are recorded as `${feigner}>${fooled}` keys beside the
+    // feigner's own entry, sharing its expiry.
+    const until = state.arenaDepth?.feints?.[feintKey(t.id, opponent.id)];
     if (until === undefined || (state.cycle ?? 0) > until) return 0;
     return ARENA_DEPTH.feignCombatEdge;
 }
@@ -889,7 +926,8 @@ function tickDeception(ctx: SimContext) {
         const audience = getAlive(state).filter(o => o.id !== t.id && near.has(o.zone)
             && !allied(o, t));
         if (audience.length === 0 || !rng.chance(ARENA_DEPTH.feignChance)) return;
-        d.feints = { ...(d.feints ?? {}), [t.id]: cycle + ARENA_DEPTH.feignCycles };
+        const until = cycle + ARENA_DEPTH.feignCycles;
+        d.feints = { ...(d.feints ?? {}), [t.id]: until, ...Object.fromEntries(audience.map(o => [feintKey(t.id, o.id), until])) };
         audience.forEach(o => {
             const rec = rivalRecord(o, t.id);
             rec.lastSeenZone = t.zone;
@@ -969,4 +1007,31 @@ export function tickArenaDepth(ctx: SimContext) {
     tickCache(ctx);
     tickDeception(ctx);
     tickRisk(ctx);
+    tickEnclosedSmoke(ctx);
+}
+
+/**
+ * AUDIT-12 §8.10: a fire in an enclosed-ignition room has nowhere to vent.
+ * Anybody inside a burning room of that kind breathes it — the rooms the
+ * Malt House flashes through are the rooms that choke people between flashes.
+ */
+function tickEnclosedSmoke(ctx: SimContext) {
+    const state = ctx.state;
+    if (!state.arena.rules?.enclosedIgnition) return;
+    state.arena.zones.forEach(z => {
+        if (!isEnclosedIgnitionZone(state, z.name) || !hasEffect(state, z.name, 'burning')) return;
+        const inside = getAlive(state).filter(t => t.zone === z.name && !t.downed);
+        if (inside.length === 0) return;
+        bump(ctx, 'enclosedSmoke', inside.length);
+        ctx.logEvent(
+            `The smoke in ${z.name} has nowhere to go. ${inside.map(t => t.name).join(' and ')} ${inside.length === 1 ? 'is' : 'are'} breathing it.`,
+            inside.map(t => t.id), { important: true, zone: z.name, category: 'hazard' });
+        const cause = `Choked on the smoke trapped in ${z.name}`;
+        inside.forEach(t => {
+            t.vitals.fatigue += AUDIT12_ARENA.enclosedSmokeFatigue;
+            applyDamage(ctx, t, AUDIT12_ARENA.enclosedSmokeDamage, { cause, kind: 'hazard', code: 'asphyxiation' });
+            clampTribute(t);
+            checkDeath(ctx, t, cause);
+        });
+    });
 }

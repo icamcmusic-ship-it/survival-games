@@ -1,4 +1,5 @@
 import { forecastHazard } from './hazardChain';
+import { menageriePrey } from './traitHooks';
 import { DeathCauseCode, SignatureRule, Tribute } from '../models/types';
 import { RNG } from '../utils/rng';
 import { SimContext, getAlive } from './context';
@@ -18,6 +19,7 @@ import { allied } from './alliance';
 import { gallerySignature, malthouseSignature, circuitSignature, wardblockSignature, glasshouseSignature } from './arenaSignaturesBuildings';
 import { tickLockdowns } from './arenaRules';
 import { HIPPODROME_SET_SIGNATURES } from './arenaSignatureSetHippodrome';
+import { finishingDamage, runWave2Arena, stampSignature, woundSnapshot, woodpileOf } from './arenaWave2';
 
 /**
  * Arena signature mechanics.
@@ -53,7 +55,8 @@ function machineryMayFinish(ctx: SimContext, t: Tribute, rng: RNG, cause: string
     if (t.status !== 'alive' || t.health <= 0) return;
     if (t.health > SIGNATURE_RULES.machineryFinishBelowHealth) return;
     if (!rng.chance(SIGNATURE_RULES.machineryFinishChance)) return;
-    applyDamage(ctx, t, t.health, { cause, kind: 'arena', code });
+    // AUDIT-12 §8.2: sized past the lethality scaling, or the finishing blow is a graze.
+    applyDamage(ctx, t, finishingDamage(ctx, t), { cause, kind: 'arena', code });
     ctx.logEvent(line, [t.id], { important: true, zone, category: 'hazard' });
     checkDeath(ctx, t, cause);
 }
@@ -1578,7 +1581,8 @@ function menagerieSignature(ctx: SimContext, cycle: number, rng: RNG) {
     const occupied = zones.filter(z => tributesIn(ctx, z).length > 0);
     if (occupied.length === 0) return;
     const zone = rng.pick(occupied);
-    const prey = rng.pick(tributesIn(ctx, zone));
+    // AUDIT-12 §16: the animals pass over whoever knows how to stand near them.
+    const prey = menageriePrey(rng, tributesIn(ctx, zone));
     engageMutt(ctx, prey, rng.pick(roster));
 }
 
@@ -1936,7 +1940,8 @@ function cabinSignature(ctx: SimContext, _cycle: number, rng: RNG) {
     // Somebody has to be working the fuel store: standing in it, or holding
     // the ground next door to it. The stove is only as reliable as the
     // Woodshed, which is the whole argument of the arena.
-    const stocked = !collapsed.includes(woodshed)
+    // AUDIT-12 §8: the woodpile is finite (`arenaWave2.ts`); an empty one is an unstocked stove.
+    const stocked = !collapsed.includes(woodshed) && woodpileOf(ctx.state) > 0
         && getAlive(ctx.state).some(t => t.zone === woodshed || t.zone === 'The Cornucopia (Dooryard)' || t.zone === 'The Back Door');
 
     HEARTH_ZONES.filter(z => !collapsed.includes(z)).forEach(zone => {
@@ -2413,10 +2418,15 @@ export function runArenaSignature(ctx: SimContext) {
     const cycle = ctx.state.cycle ?? 0;
     const signature = SIGNATURES[ctx.state.arena.id];
     const rng = new RNG(`${ctx.state.seed}-signature-${ctx.state.arena.id}-${cycle}`);
+    // AUDIT-12 §8.2: everything the arena does from here is its own doing.
+    const before = woundSnapshot(ctx.state);
     if (signature) {
         signature(ctx, cycle, rng);
-        return;
+    } else {
+        const rule = ctx.state.arena.signatureRule;
+        if (rule) runDeclarativeSignature(ctx, rule, cycle, rng);
     }
-    const rule = ctx.state.arena.signatureRule;
-    if (rule) runDeclarativeSignature(ctx, rule, cycle, rng);
+    // AUDIT-12 §8: the thin arenas' mechanics, scarce water, telegraphs.
+    if (getAlive(ctx.state).length > ESCALATION.finalistCount) runWave2Arena(ctx);
+    stampSignature(ctx.state, before);
 }

@@ -137,6 +137,30 @@ function anchorFor(t: Tribute): { kind: RescueLineRecord['anchor']; quality: num
 }
 
 /**
+ * AUDIT-12 E15: the anchor-failure obituary, in the arena's own ground.
+ *
+ * One fixed sentence — "Fell in The Cornucopia when the anchor went" — was the
+ * most common named arena death in 224 runs, and it read the same in a
+ * glacier, a salt pan and a cathedral. What the anchor was sunk into comes from
+ * the zone's terrain; a procedural arena's `effectVocab` names the ground that
+ * shifted under it where it has a word for that. Every form still ends
+ * "…went", which `causes.ts` reads as a fall.
+ */
+function anchorFallCause(state: GameState, zone: string, kind: string): string {
+    const terrain = state.arena.zones.find(z => z.name === zone)?.terrain;
+    const into: Partial<Record<string, string>> = {
+        ice: 'the ice screw', highland: 'the piton', cave: 'the rock bolt', ruins: 'the rusted rail',
+        urban: 'the railing', forest: 'the root it was tied round', wetland: 'the stake in the mud',
+        water: 'the mooring post', desert: 'the stake in the sand', open: 'the stake',
+    };
+    const held = kind === 'improvised' ? 'the knotted strapping' : (terrain && into[terrain]) || 'the anchor';
+    const shifted = state.arena.effectVocab?.quaking?.label;
+    return shifted
+        ? `Fell in ${zone} when ${held} went, ${shifted}`
+        : `Fell in ${zone} when ${held} went`;
+}
+
+/**
  * AUDIT-10 F07: can this person actually do it, asked *before* ranking.
  *
  * `tickRescueLines` used to rank the whole zone by willingness and then check
@@ -445,7 +469,7 @@ function resolveRescueLine(
             : ctx.rng.chance(RESCUE_LINE.rescuerFallsShare) ? rescuer : stranded;
         const cause = outcome === 'overloaded'
             ? `Dragged down in ${stranded.zone} by what they would not let go of`
-            : `Fell in ${stranded.zone} when the anchor went`;
+            : anchorFallCause(ctx.state, stranded.zone, anchor.kind);
         // F05, the accidental twin of the cut: an anchor that tears out under
         // a downed person has to reach them through the same door, or it is a
         // fall the engine silently declines to apply.

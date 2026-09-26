@@ -1,4 +1,6 @@
 import { Item, Tribute, Trap } from '../models/types';
+import { isKnotTier } from '../data/traits';
+import { huntingYield } from './traitHooks';
 import { ACTION_BUDGET, BLEEDING, CRAFTING, EARNED_TRAIT_RULES, ENDGAME, HUNTING, POISONING, PROFICIENCY, TRAPS, STANCE_MODES } from '../data/balance';
 import { SimContext } from './context';
 import { canAfford, progressOf, projectAt, work } from './actionBudget';
@@ -528,16 +530,20 @@ export function tickTraps(ctx: SimContext) {
         const owner = ctx.state.tributes.find(o => o.id === trap.ownerId);
         if (!owner || owner.status !== 'alive') return;
 
-        if (trap.kind === 'snare'
+        // AUDIT-12 §16: a Knot-Tier's line catches game whatever it was set for.
+        if ((trap.kind === 'snare' || isKnotTier(owner))
             && ctx.rng.chance(TRAPS.gameCatchChance + traitMod(owner, 'trapSkill') * TRAPS.gameCatchPerTrapSkill)) {
             // Only useful to an owner close enough to collect it — standing on
             // it, or (AUDIT-11 §11.4) checking the line from the next sector.
             const nextDoor = TRAPS.gameCollectAdjacent
                 && (getZone(ctx.state.arena, owner.zone)?.adjacent ?? []).includes(trap.zone);
             if (owner.zone === trap.zone || nextDoor) {
-                const feed = TRAPS.gameFeed + profOf(owner, 'butchery') * TRAPS.gameFeedPerButchery;
+                const feed = TRAPS.gameFeed + profOf(owner, 'butchery') * TRAPS.gameFeedPerButchery
+                    // AUDIT-12 §16: Animal handling is the hunting yield.
+                    + huntingYield(owner);
                 owner.vitals.hunger = Math.max(0, owner.vitals.hunger - feed);
                 trainProficiency(owner, 'butchery');
+                trainProficiency(owner, 'animalHandling', ctx);
                 clampTribute(owner);
                 ctx.logEvent(
                     `${owner.name}'s snare in ${trap.zone} has something in it. They eat well for once.`,
@@ -597,6 +603,8 @@ export function tickTraps(ctx: SimContext) {
 type CampKey = 'fire' | 'shelter' | 'camouflage';
 
 function campOf(ctx: SimContext, t: Tribute) {
+    // AUDIT-12 T15: the first ground they ever made camp on is Homebody's.
+    t.firstCampZone = t.firstCampZone ?? t.zone;
     ctx.state.camps = ctx.state.camps ?? {};
     ctx.state.camps[t.id] = ctx.state.camps[t.id] ?? {};
     return ctx.state.camps[t.id];

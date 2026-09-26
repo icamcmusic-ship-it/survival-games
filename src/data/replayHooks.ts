@@ -1,6 +1,9 @@
-import { GameConfig } from '../models/types';
+import { GameConfig, Prediction, Tribute } from '../models/types';
 import { ARENAS, DEFAULT_GAME_CONFIG } from './constants';
 import { RNG } from '../utils/rng';
+import { drawMutators, mutatorName } from './mutators';
+import { ARENA_FLAVOR } from './arenaFlavor';
+import { AUDIT12_WAVE3 } from './balance';
 
 /**
  * §10: the replayability layer — three things built entirely on top of
@@ -49,14 +52,15 @@ export function dailyArenaId(seed: string = dailySeed()): string {
  * Distinct from the presets, which are the four coherent *default* shapes a
  * Games comes in. A mutator is deliberately lopsided.
  */
-export interface Mutator {
+/** AUDIT-12 S4: renamed from `Mutator` — the deck in `mutators.ts` owns that name. */
+export interface Preset {
     id: string;
     name: string;
     blurb: string;
     config: Partial<GameConfig>;
 }
 
-export const MUTATORS: Mutator[] = [
+export const PRESETS: Preset[] = [
     {
         id: 'famine',
         name: 'Famine Year',
@@ -131,12 +135,12 @@ export const MUTATORS: Mutator[] = [
     },
 ];
 
-export function applyMutator(config: GameConfig, mutator: Mutator): GameConfig {
+export function applyPreset(config: GameConfig, mutator: Preset): GameConfig {
     return { ...config, ...mutator.config };
 }
 
 /** True when every field the mutator sets currently matches. */
-export function mutatorActive(config: GameConfig, mutator: Mutator): boolean {
+export function presetActive(config: GameConfig, mutator: Preset): boolean {
     return (Object.keys(mutator.config) as Array<keyof GameConfig>)
         .every(k => config[k] === mutator.config[k]);
 }
@@ -164,7 +168,72 @@ export function featuredArena(seenNames: string[], now: Date = new Date()): { id
     return { id: pick.id, name: pick.name, unseen: unplayed.length > 0 };
 }
 
-/** The config a daily run uses, so everybody's daily is genuinely the same. */
-export function dailyConfig(): GameConfig {
-    return { ...DEFAULT_GAME_CONFIG };
+/**
+ * The config a daily run uses, so everybody's daily is genuinely the same.
+ * AUDIT-12 wave 3 §11: with a fixed mutator pair drawn from the date, so the
+ * daily is a specific puzzle rather than an ordinary Games on a shared seed.
+ */
+export function dailyConfig(seed: string = dailySeed()): GameConfig {
+    return { ...DEFAULT_GAME_CONFIG, mutators: dailyMutators(seed) };
+}
+
+/** The daily's two cards — compatible, and the same for everybody today. */
+export function dailyMutators(seed: string = dailySeed()): string[] {
+    return drawMutators(`${seed}-daily`);
+}
+
+/**
+ * AUDIT-12 wave 3 §11: the shareable slip. A plain-text card for the daily —
+ * the date, the cards, and the picks by name — so two players can compare
+ * calls before either of them has watched the result.
+ */
+export function slipText(seed: string, mutators: readonly string[] | undefined, p: Prediction | undefined, tributes: Tribute[]): string {
+    const name = (id?: string) => {
+        const t = tributes.find(x => x.id === id);
+        return t ? `${t.name} (D${t.district})` : '—';
+    };
+    const lines = [
+        `Survival Games slip · ${seed}`,
+        `Cards: ${(mutators ?? []).map(mutatorName).join(' + ') || 'none'}`,
+        `Victor: ${name(p?.winnerId)}`,
+        `First to fall: ${name(p?.firstDeathId)}${p?.firstDeathCause ? ` (by ${p.firstDeathCause})` : ''}`,
+        `Top killer: ${name(p?.topKillerId)}`,
+    ];
+    if (p?.endDayPick && p.endDayLine !== undefined) lines.push(`Games end: ${p.endDayPick} day ${p.endDayLine}`);
+    const eight = (p?.finalEight ?? []).filter(Boolean);
+    if (eight.length > 0) lines.push(`Final eight: ${eight.map(id => name(id)).join(', ')}`);
+    return lines.join('\n');
+}
+
+/** Monday-anchored UTC week key, e.g. `week-2026-09-21`. */
+export function weekKey(now: Date = new Date()): string {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const day = (d.getUTCDay() + 6) % 7;
+    d.setUTCDate(d.getUTCDate() - day);
+    return `week-${d.toISOString().slice(0, 10)}`;
+}
+
+/** Authored arena events per arena, the measure of how "thin" it is. */
+export function arenaDepthOf(id: string): number {
+    return ARENA_FLAVOR[id]?.events.length ?? 0;
+}
+
+/**
+ * AUDIT-12 wave 3 §11/§12: the weekly rotation. One arena a week, weighted
+ * toward the thinnest-authored arenas so new content gets seen. Same for
+ * everybody that week.
+ */
+export function weeklyArena(now: Date = new Date()): { id: string; name: string; thin: boolean } {
+    const R = AUDIT12_WAVE3.rotation;
+    const ranked = [...ARENAS].sort((a, b) => arenaDepthOf(a.id) - arenaDepthOf(b.id) || a.id.localeCompare(b.id));
+    const thin = new Set(ranked.slice(0, R.thinPool).map(a => a.id));
+    const weights = ranked.map(a => (thin.has(a.id) ? R.thinWeight : 1));
+    const rng = new RNG(`${weekKey(now)}-rotation`);
+    let x = rng.nextFloat() * weights.reduce((a, b) => a + b, 0);
+    let pick = ranked[ranked.length - 1];
+    for (let i = 0; i < ranked.length; i++) {
+        x -= weights[i];
+        if (x < 0) { pick = ranked[i]; break; }
+    }
+    return { id: pick.id, name: pick.name, thin: thin.has(pick.id) };
 }

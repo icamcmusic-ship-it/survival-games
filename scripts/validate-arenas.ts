@@ -10,6 +10,7 @@ import { NEW_ARENA_FLAVOR } from '../src/data/arenaFlavorNew';
 import { DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { ArenaLawId, GameState } from '../src/models/types';
 import { ARENA_MUTTS } from '../src/data/mutts';
+import { AUDIT12_WAVE2_ARENA } from '../src/data/balance';
 import { CLIMATE_LABELS } from '../src/data/arenaBriefing';
 import { usesUniversalPack } from '../src/data/arenaEventPacks';
 import { OFF_SEASON_SKINS } from '../src/data/offSeason';
@@ -22,6 +23,8 @@ import { generateArena, PROCEDURAL_BIOME_COUNT } from '../src/engine/arenaGenera
 import { zoneFeatures } from '../src/engine/map';
 import { proceduralArenaFlavor } from '../src/data/proceduralFlavor';
 import { arenaHasLaw } from '../src/engine/gamesProfile';
+import { hasActs } from '../src/engine/arenaDepth';
+import { strandedZones } from '../src/engine/arenaRules';
 
 const problems: string[] = [];
 /** §5.12: things worth saying out loud that are not build failures. */
@@ -131,6 +134,9 @@ ARENAS.forEach(arena => {
     // horror is a different game from one with five kinds of teeth. An arena
     // does still need at least one.
     if (arena.mutts.length < 1) problems.push(`${arena.id}: no mutts at all`);
+    // AUDIT-12 §8.7: the roster floor. Three creatures on a loop for nine days
+    // is not a roster.
+    if ((ARENA_MUTTS[arena.id] ?? []).length < AUDIT12_WAVE2_ARENA.muttRosterFloor) problems.push(`${arena.id}: ${(ARENA_MUTTS[arena.id] ?? []).length} mutts in ARENA_MUTTS, floor is ${AUDIT12_WAVE2_ARENA.muttRosterFloor}`);
     // §1.11: `Arena.mutts` is flavour the engine ignores — it resolves mutts
     // through ARENA_MUTTS — so it drifted with nothing to notice. Five arenas
     // carried a roster mutt their briefing never named. Both lists must agree.
@@ -347,6 +353,12 @@ if (GENERIC_ARENA_FLAVOR.events.length < 1) problems.push('generic flavour has n
             if (flavor.events.length < PROC_EVENT_FLOOR) problems.push(`${arena.id} (${tag}): generated arena receives ${flavor.events.length} authored events, under ${PROC_EVENT_FLOOR}`);
             if (once < PROC_ONCE_FLOOR) problems.push(`${arena.id} (${tag}): generated arena has ${once} once-per-run events, under ${PROC_ONCE_FLOOR}`);
             if (chains < 1) problems.push(`${arena.id} (${tag}): generated arena has no event chain`);
+            // AUDIT-12 §8.7: the generated roster and the shared biome roster
+            // both meet the floor.
+            const generatedRoster = arena.muttRoster ?? [];
+            if (generatedRoster.length < AUDIT12_WAVE2_ARENA.muttRosterFloor) problems.push(`${arena.id} (${tag}): generated mutt roster has ${generatedRoster.length}, floor is ${AUDIT12_WAVE2_ARENA.muttRosterFloor}`);
+            const biomeRoster = ARENA_MUTTS[biomeId.replace(/^procedural-/, '')];
+            if (biomeRoster && biomeRoster.length < AUDIT12_WAVE2_ARENA.muttRosterFloor) problems.push(`${biomeId}: biome mutt roster has ${biomeRoster.length}, floor is ${AUDIT12_WAVE2_ARENA.muttRosterFloor}`);
             if (flavor.ambient.length < PROC_AMBIENT_FLOOR) problems.push(`${arena.id} (${tag}): generated arena has ${flavor.ambient.length} ambient lines, under ${PROC_AMBIENT_FLOOR}`);
             const ids = flavor.events.filter(e => e.id).map(e => e.id!);
             if (new Set(ids).size !== ids.length) problems.push(`${arena.id} (${tag}): duplicate event ids in the composed pack`);
@@ -440,6 +452,34 @@ if (GENERIC_ARENA_FLAVOR.events.length < 1) problems.push('generic flavour has n
             }
         }
         notes.push(`stacked laws ${key}: played to completion in ${id} (${live.day} days, ${live.log.length} log lines)`);
+    });
+}
+
+/**
+ * AUDIT-12 E1 / §8.9: the strand invariant, played out. An arena act cuts the
+ * edges around its terrain; it must never leave a live zone with no way out.
+ */
+{
+    ARENAS.filter(a => hasActs(a.id)).forEach(arena => {
+        for (let i = 0; i < 4; i++) {
+            const seed = `strand-${arena.id}-${i}`;
+            const gamesProfile = gamesProfileFor(seed);
+            const tributes = generateTributes(seed, DEFAULT_GAME_CONFIG, arena.zones[0].name, gamesProfile.castShape);
+            const state = {
+                seed, arena, tributes, phase: 'day', day: 1, log: [], gamemakerMode: false,
+                config: DEFAULT_GAME_CONFIG, baseConfig: DEFAULT_GAME_CONFIG, gamesProfile,
+                logCounter: 0, feastsHeld: 0, cycle: 0,
+            } as unknown as GameState;
+            const sim = new Simulator(state);
+            const live = sim.getState();
+            const stranded = new Set<string>();
+            let guard = 400;
+            while (guard-- > 0) {
+                if (!sim.processTurn()) break;
+                strandedZones(live).forEach(z => stranded.add(z));
+            }
+            if (stranded.size > 0) problems.push(`${arena.id} (${seed}): stranded zone(s) ${[...stranded].join(', ')} — no open edge`);
+        }
     });
 }
 

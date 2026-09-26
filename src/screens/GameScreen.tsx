@@ -12,6 +12,7 @@ import { RelationshipMatrix } from '../components/RelationshipMatrix';
 import { FeedLine, VISIBLE_CAP, passesDensity, tierOf } from '../components/EventFeed';
 import { ChronicleFilters } from '../components/ChronicleFilters';
 import { BroadcastBar } from '../components/BroadcastBar';
+import { NearMissHints } from '../components/NearMissHints';
 import { DossierPanel } from '../components/DossierPanel';
 import { FollowCam } from '../components/FollowCam';
 import { StandingsTable } from '../components/StandingsTable';
@@ -171,6 +172,7 @@ export function GameScreen({
     };
 
 
+    const unlockedAchievements = useStore(gameStore, s => s.panem.unlocked);
     const [stageTab, setStageTab] = useState<StageTab>('standings');
     const [mobilePane, setMobilePane] = useState<MobilePane>('standings');
     const [rosterView, setRosterView] = useState<'list' | 'matrix'>('list');
@@ -621,7 +623,8 @@ export function GameScreen({
      * actually standing, not hashed from the id.
      */
     const allianceColours = useMemo(() => {
-        const palette = ['#2f7a4f', '#2461a8', '#b3691b', '#5a3f9c', '#b23e78', '#1f7a78'];
+        // AUDIT-12 U8: per-theme, colour-blind-safe tokens (index.css --alliance-N).
+        const palette = [1, 2, 3, 4, 5, 6].map(n => `var(--alliance-${n})`);
         const ids = [...new Set(
             gameState.tributes.filter(t => t.status === 'alive' && t.allianceId).map(t => t.allianceId!)
         )].sort();
@@ -772,7 +775,9 @@ export function GameScreen({
                 <div className={`lg:col-span-2 space-y-4 ${mobilePane === 'tributes' ? 'hidden lg:block' : ''}`}>
                     <div className="panel p-4 space-y-3">
                         <div className="flex flex-wrap items-center justify-between gap-3">
-                            <div className="seg">
+                            {/* AUDIT-12 §4: one pane switcher on a phone — the
+                                bottom bar — so this one is desktop-only. */}
+                            <div className="seg hidden lg:inline-flex">
                                 {/* §17 (requests): no arena page until the
                                     Games start. Through the reaping, training
                                     and the interviews there is no arena to
@@ -955,6 +960,9 @@ export function GameScreen({
                         oddsMovement={oddsMovement}
                         onGamemakerEvent={spendGamemaker}
                     />
+                    <div className="mt-4">
+                        <NearMissHints state={gameState} unlocked={unlockedAchievements} spoilerSafe={prefs.spoilerSafe} />
+                    </div>
                 </div>
             </div>
 
@@ -962,7 +970,7 @@ export function GameScreen({
                 controls and a tab bar all at once. */}
             <nav aria-label="Arena panes" className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-[var(--chrome-bg)] border-t-[3px] border-[var(--red)] flex items-stretch pb-[env(safe-area-inset-bottom)]">
                 {([
-                    { id: 'standings', label: 'Table' },
+                    { id: 'standings', label: 'Standings' },
                     // §17: no map pane before the gong.
                     ...(inArena ? [{ id: 'map' as const, label: 'Map' }] : []),
                     { id: 'roster', label: 'Roster' },
@@ -988,7 +996,7 @@ export function GameScreen({
                         // AUDIT-11 U13: disabled while Run-to-End is simulating.
                         disabled={!!runProgress}
                         aria-disabled={!!runProgress || undefined}
-                        className="flex-none px-4 sm:px-5 min-h-[44px] bg-[var(--red)] text-white text-micro font-extrabold uppercase tracking-[0.1em] disabled:opacity-50"
+                        className="flex-none px-4 sm:px-5 min-h-[44px] bg-[var(--red)] text-[var(--on-red)] text-micro font-extrabold uppercase tracking-[0.1em] disabled:opacity-50"
                         style={{ fontFamily: 'var(--font-mono)' }}
                     >
                         {runProgress ? 'Running…' : 'Proceed'}

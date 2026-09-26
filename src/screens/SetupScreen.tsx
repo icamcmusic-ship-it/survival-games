@@ -1,7 +1,7 @@
 import { ARENA_REVEALS } from '../data/arenaReveals';
 import React, { useMemo, useState } from 'react';
 import { ARENAS, STARTER_ARENA_IDS, DEFAULT_GAME_CONFIG } from '../data/constants';
-import { MUTATORS, applyMutator, dailyArenaId, dailyConfig, dailySeed, featuredArena, mutatorActive } from '../data/replayHooks';
+import { PRESETS as QUICK_PRESETS, applyPreset, dailyArenaId, dailyConfig, dailySeed, featuredArena, presetActive } from '../data/replayHooks';
 import { GameConfig } from '../models/types';
 import { Play, ChevronDown, ChevronRight, ArrowRight, History, Lock } from 'lucide-react';
 import { gameActions, gameStore, readHallOfFame, readSavedRun } from '../store/gameStore';
@@ -26,7 +26,9 @@ import { ARENA_MUTTS } from '../data/mutts';
 import { ARENA_DEATH_BUDGET, BLOODBATH, CAMPAIGN_ARC, COIN_ECONOMY } from '../data/balance';
 import { RNG } from '../utils/rng';
 import { QUELLS } from '../data/gamesProfile';
-import { MUTATORS as MUTATOR_DECK, MUTATORS_PER_GAMES, drawMutators } from '../data/mutators';
+import { MUTATORS as MUTATOR_DECK, MUTATORS_PER_GAMES, compatibleMutators, drawMutators, mutatorCap, mutatorConflict } from '../data/mutators';
+import { stackDifficulty } from '../engine/season/gauntlet';
+import { SetupSeasonPanel } from '../components/SeasonPanels';
 
 /** §9 (audit): how many standing patronages the Capitol will sell one player. */
 const PATRON_MAX_DISTRICTS = COIN_ECONOMY.patronMaxDistricts;
@@ -666,15 +668,21 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                 <div className="text-xs font-bold text-[var(--ink)]">
                                     The districts are {rebellionLabel(r)} &mdash; rebellion {Math.round(r)}/100
                                 </div>
-                                {rebellionCallsQuell(campaignSnapshotOf(panem))
-                                    ? <div className="mt-0.5 text-[var(--red)]">The Capitol has announced it: the next Games will be a Quarter Quell.</div>
-                                    : <div className="mt-0.5">At {CAMPAIGN_ARC.quellAt} the Capitol calls a Quell. Unrest makes the arena crueller and the sponsors warier.</div>}
+                                {/* AUDIT-12 wave 3: the Quell is announced a season ahead, by name. */}
+                                {panem.ledger?.announcedQuell
+                                    ? <div className="mt-0.5 text-[var(--red)]" data-testid="announced-quell">
+                                        The Capitol has announced it: {panem.ledger.announcedQuell.forRun === panem.runs + 1 ? 'the next Games' : 'the Games after next'} will be a Quarter Quell — {QUELLS.find(q => q.id === panem.ledger!.announcedQuell!.quellId)?.name ?? 'a Quell'}.
+                                    </div>
+                                    : rebellionCallsQuell(campaignSnapshotOf(panem))
+                                        ? <div className="mt-0.5 text-[var(--red)]">The districts are at the Quell line. Finish these Games there and the Capitol will name a Quell for the season after.</div>
+                                        : <div className="mt-0.5">At {CAMPAIGN_ARC.quellAt} the Capitol names a Quell for the season after. Unrest makes the arena crueller and the sponsors warier.</div>}
                                 {feuds.length > 0 && (
                                     <div className="mt-0.5">Feuds: {feuds.map(f => `${f.aName} (D${f.aDistrict}) vs ${f.bName} (D${f.bDistrict})`).join('; ')}.</div>
                                 )}
                             </div>
                         );
                     })()}
+                    <SetupSeasonPanel config={config} setConfig={setConfig} onPickArena={(id: string) => setArenaId(id)} />
                     {(() => {
                         // The Games profile is a pure function of the seed, so the
                         // temperament the player is committing to can be shown live.
@@ -794,17 +802,17 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                 {tab === 'rules' && (
                     <div>
                 <div className="p-5 space-y-2">
-                    <span className="eyebrow">Mutators</span>
+                    <span className="eyebrow">Quick presets</span>
                     <p className="text-micro text-[var(--color-ink-500)]">
-                        One click for a whole lopsided year. Nothing here is a new rule — each one is a combination of the settings below.
+                        One click for a whole lopsided year. Nothing here is a new rule — each one is a combination of the settings below. (The mutator deck, which does add rules, is on the Tributes tab.)
                     </p>
                     <div className="grid sm:grid-cols-2 gap-2 mt-2">
-                        {MUTATORS.map(m => {
-                            const on = mutatorActive(config, m);
+                        {QUICK_PRESETS.map(m => {
+                            const on = presetActive(config, m);
                             return (
                                 <button
                                     key={m.id}
-                                    onClick={() => setConfig(c => applyMutator(c, m))}
+                                    onClick={() => setConfig(c => applyPreset(c, m))}
                                     aria-pressed={on}
                                     aria-label={`${m.name}${on ? ' — active' : ''}`}
                                     className={`text-left p-3 border-2 transition-colors ${
@@ -924,7 +932,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                             </p>
                                         )}
                                         {selected && SIGNATURE_BLURBS[a.id] && (
-                                            <div className="text-micro mt-1 font-mono text-[var(--red)]">
+                                            <div className="text-micro mt-1 font-mono text-[var(--red-on-ink)]">
                                                 ⚙ {SIGNATURE_BLURBS[a.id]}
                                             </div>
                                         )}
@@ -1373,16 +1381,31 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                     </p>
                                 )}
                             </div>
-                            {/* AUDIT-11 §12: the mutators deck. Two cards at most, picked or drawn. */}
+                            {/* AUDIT-11 §12: the mutators deck. AUDIT-12 wave 3: fourteen cards, an
+                                incompatibility table, and gauntlet mode (up to four, scored). */}
                             <div className="space-y-2 pt-1" data-testid="mutators-deck">
-                                <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center justify-between gap-2 flex-wrap">
                                     <span className="text-xs font-semibold text-[var(--color-ink-300)]">
-                                        Mutator deck <span className="font-normal text-[var(--color-ink-500)]">({(config.mutators ?? []).length}/{MUTATORS_PER_GAMES})</span>
+                                        Mutator deck <span className="font-normal text-[var(--color-ink-500)]">({(config.mutators ?? []).length}/{mutatorCap(config)})</span>
                                     </span>
-                                    <span className="flex gap-2">
+                                    <span className="flex gap-2 items-center">
+                                        <label className="flex items-center gap-1.5 text-micro cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                data-testid="gauntlet-toggle"
+                                                checked={!!config.gauntlet}
+                                                onChange={(e) => setConfig(c => ({
+                                                    ...c,
+                                                    gauntlet: e.target.checked ? true : undefined,
+                                                    mutators: e.target.checked ? c.mutators : c.mutators?.slice(0, MUTATORS_PER_GAMES),
+                                                }))}
+                                                className="w-3.5 h-3.5 accent-[var(--red)]"
+                                            />
+                                            Gauntlet
+                                        </label>
                                         <button type="button" className="btn btn-sm btn-ghost"
-                                            onClick={() => setConfig(c => ({ ...c, mutators: drawMutators(`${Date.now()}-${Math.random()}`) }))}>
-                                            Draw {MUTATORS_PER_GAMES}
+                                            onClick={() => setConfig(c => ({ ...c, mutators: drawMutators(`${Date.now()}-${Math.random()}`, mutatorCap(c)) }))}>
+                                            {(config.mutators?.length ?? 0) > 0 ? `Redraw ${mutatorCap(config)}` : `Draw ${mutatorCap(config)}`}
                                         </button>
                                         <button type="button" className="btn btn-sm btn-ghost" disabled={!(config.mutators?.length)}
                                             onClick={() => setConfig(c => ({ ...c, mutators: undefined }))}>
@@ -1390,33 +1413,40 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                         </button>
                                     </span>
                                 </div>
-                                <div className="flex flex-wrap gap-2">
+                                {/* AUDIT-12 U7: each card carries its blurb; a full hand says so instead of disabling silently.
+                                    AUDIT-12 wave 3: a card that cannot share a Games with one already picked says why. */}
+                                <div className="grid sm:grid-cols-2 gap-2">
                                     {MUTATOR_DECK.map(m => {
                                         const on = config.mutators?.includes(m.id) ?? false;
-                                        const full = (config.mutators?.length ?? 0) >= MUTATORS_PER_GAMES;
+                                        const full = (config.mutators?.length ?? 0) >= mutatorCap(config);
+                                        const conflict = on ? undefined : (config.mutators ?? []).map(x => mutatorConflict(x, m.id)).find(Boolean);
                                         return (
                                             <button
                                                 key={m.id}
                                                 type="button"
-                                                className="seg-item text-left"
+                                                className="seg-item mutator-card text-left"
                                                 aria-pressed={on}
-                                                disabled={!on && full}
+                                                disabled={!on && (full || !!conflict)}
                                                 onClick={() => setConfig(c => {
                                                     const cur = c.mutators ?? [];
-                                                    const next = on ? cur.filter(x => x !== m.id) : [...cur, m.id];
+                                                    const next = on ? cur.filter(x => x !== m.id) : compatibleMutators([...cur, m.id], mutatorCap(c));
                                                     return { ...c, mutators: next.length > 0 ? next : undefined };
                                                 })}
                                             >
-                                                {m.name}
+                                                <span className="block text-xs font-bold">{m.name}{on && <span className="ml-2 text-micro font-mono uppercase">Picked</span>}</span>
+                                                <span className="block text-micro font-normal normal-case tracking-normal text-[var(--color-ink-500)] mt-0.5">{conflict ?? m.blurb}</span>
                                             </button>
                                         );
                                     })}
                                 </div>
-                                {(config.mutators?.length ?? 0) > 0 && (
-                                    <p className="text-micro text-[var(--color-ink-500)]">
-                                        {config.mutators!.map(id => MUTATOR_DECK.find(m => m.id === id)?.blurb).join(' ')}
-                                    </p>
-                                )}
+                                <p className="text-micro text-[var(--color-ink-500)]" data-testid="mutators-note" aria-live="polite">
+                                    {(config.mutators?.length ?? 0) >= mutatorCap(config)
+                                        ? `${mutatorCap(config)} of ${mutatorCap(config)} picked — unpick one to swap. Drawing replaces ${mutatorCap(config) === 2 ? 'both' : 'all of them'}.`
+                                        : `${config.mutators?.length ?? 0} of ${mutatorCap(config)} picked.${(config.mutators?.length ?? 0) > 0 ? ' Drawing replaces your pick.' : ''}`}
+                                    {config.gauntlet
+                                        ? ` Gauntlet: stack difficulty ${stackDifficulty(config.mutators)}, scored × how well your slip reads the Games.`
+                                        : ' Gauntlet stacks up to four cards and scores the run into the Hall of Fame.'}
+                                </p>
                             </div>
                             <div className="flex flex-wrap gap-5 pt-1">
                                 {/* §18 (requests): one victor, guaranteed. */}

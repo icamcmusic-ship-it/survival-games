@@ -1,4 +1,6 @@
 import { Hint } from '../components/Hint';
+import { mutatorName } from '../data/mutators';
+import { MuseumPanel } from '../components/SeasonPanels';
 import React, { useMemo, useState } from 'react';
 import { useTransientFlag } from '../ui/useTransientFlag';
 import { HallOfFameEntry } from '../models/types';
@@ -154,6 +156,8 @@ export function HallOfFameScreen() {
             </div>
 
             <PanemRecordBook panem={panem} />
+            {/* AUDIT-12 wave 3: the off-season arena museum. */}
+            <MuseumPanel />
 
             {/* AUDIT-11 §8/§12: the bankroll leaderboard and the prediction career. */}
             {((panem.bankrollBoard?.length ?? 0) > 0 || (panem.predictions?.scored ?? 0) > 0) && (
@@ -378,6 +382,20 @@ export function HallOfFameScreen() {
                                                         Your prediction: {entry.prediction.score}/{entry.prediction.max} pts
                                                         {entry.prediction.hits.length > 0 ? ` (${entry.prediction.hits.join(', ')})` : ''}
                                                     </div>
+                                                )}
+                                                {/* AUDIT-12 wave 3: gauntlet score, kill ledger, director effect. */}
+                                                {entry.gauntlet && (
+                                                    <div className="text-micro text-[var(--red)] mt-1 font-semibold">
+                                                        Gauntlet {entry.gauntlet.score} · {entry.gauntlet.mutators.map(mutatorName).join(' + ')}
+                                                    </div>
+                                                )}
+                                                {entry.killLedger && entry.killLedger.length > 0 && (
+                                                    <div className="text-micro text-[var(--color-ink-500)] mt-1">
+                                                        Kill ledger: {entry.killLedger.map(k => `${k.victim} (D${k.district}, day ${k.day})`).join(', ')}
+                                                    </div>
+                                                )}
+                                                {entry.directorEffect && (
+                                                    <div className="text-micro text-[var(--color-ink-500)] mt-1">{entry.directorEffect}</div>
                                                 )}
                                                 {entry.winnerTraits && entry.winnerTraits.length > 0 && (
                                                     <div className="flex flex-wrap gap-1 mt-2">

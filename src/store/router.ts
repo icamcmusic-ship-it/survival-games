@@ -22,6 +22,8 @@ const ROUTES: Array<{ view: ViewName; path: string }> = [
     // while one is open, and on the arena once the Games are running.
     { view: 'roster', path: '/roster' },
     { view: 'game', path: '/arena' },
+    // AUDIT-12 U13: the finished Games (victor interview, end screen, what-if) has its own address.
+    { view: 'debrief', path: '/debrief' },
     // A3: the chronicle as a page of its own, not a scrollbox inside the arena.
     { view: 'chronicle', path: '/chronicle' },
     { view: 'hallOfFame', path: '/hall-of-fame' },
@@ -41,7 +43,9 @@ export function routeIsAvailable(view: ViewName): boolean {
     // §(requests 5): only the reaping still renders here. Everything the old
     // roster page did lives in the arena's Roster tab.
     if (view === 'roster') return !!gameState && gameState.phase === 'reaping';
-    if (view === 'game') return !!gameState && gameState.phase !== 'reaping';
+    const over = !!gameState && (gameState.phase === 'ended' || gameState.phase === 'epilogue');
+    if (view === 'game') return !!gameState && gameState.phase !== 'reaping' && !over;
+    if (view === 'debrief') return over;
     // §(requests 7): confirming the reaping lands on the chronicle, which at
     // that point has no pages yet and offers the button that starts the run.
     if (view === 'chronicle') return !!gameState && gameState.phase !== 'reaping';
@@ -54,7 +58,8 @@ export function fallbackFor(view: ViewName): ViewName {
     if (!gameState) return 'setup';
     // A run still on the plates goes to the reaping; anything else to the arena.
     if (gameState.phase === 'reaping') return 'roster';
-    if (view === 'roster') return 'game';
+    if (gameState.phase === 'ended' || gameState.phase === 'epilogue') return view === 'hallOfFame' || view === 'howToPlay' ? view : 'debrief';
+    if (view === 'roster' || view === 'debrief') return 'game';
     return 'setup';
 }
 

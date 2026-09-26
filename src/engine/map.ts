@@ -10,7 +10,7 @@ import { SimContext, getAlive } from './context';
 import { profOf, trainProficiency } from './proficiency';
 import { resolveCombat } from './combat';
 import { allied } from './alliance';
-import { isReopenable, latentEdgeClosed, regrowthScale, ruleTransitCycles } from './arenaRules';
+import { isReopenable, unstrandZones, latentEdgeClosed, regrowthScale, ruleTransitCycles } from './arenaRules';
 
 export function zoneNames(arena: Arena): string[] {
     return arena.zones.map(z => z.name);
@@ -704,8 +704,21 @@ export function regenerateZones(ctx: SimContext): string[] {
  * thicket through, a flood drops and leaves a ford. This restores a severed
  * edge, once the thing that severed it has had time to pass.
  */
+/**
+ * AUDIT-12 E1: no live zone is left without a way out, whatever cut it. Run in
+ * upkeep and again as the cycle closes, so a cut made late in the cycle is
+ * never carried into the next one.
+ */
+export function repairStrandedZones(ctx: SimContext) {
+    unstrandZones(ctx.state).forEach(key => {
+        const [a, b] = key.split('|');
+        ctx.logEvent(`A way opens between ${a} and ${b} again. Somewhere in the control room, somebody decided nobody gets boxed in for good.`, [], { important: true, zone: a, category: 'arena' });
+    });
+}
+
 export function tickOpeningEdges(ctx: SimContext) {
     const state = ctx.state;
+    repairStrandedZones(ctx);
     // Generic arena rule: a permanent cut is never put back.
     const severed = (state.severedEdges ?? []).filter(k => isReopenable(state, k));
     if (severed.length === 0) return;

@@ -1,4 +1,4 @@
-import { deceptionEdge, weaponFails, weatherRangedPenalty } from './arenaDepth';
+import { deceptionEdge, dropPlan, weaponFails, weatherRangedPenalty } from './arenaDepth';
 import { arenaHasLaw } from './gamesProfile';
 import { targetDrawOf } from './targeting';
 import { DamageRecord, DeathCauseCode, Item, Tribute, attr } from '../models/types';
@@ -33,7 +33,8 @@ import { dominantSideCost, effectiveAgility, grappleResistance, injuryAbsorption
 import { addExcitement } from './audience';
 import { traitMod } from '../data/traits';
 import { earnTrait } from './earnedTraits';
-import { PREGAMES } from '../data/balance';
+import { PREGAMES, AUDIT12_WAVE2_TRIBUTES } from '../data/balance';
+import { evasionRetreat, lootChanceBonus, noteRetreatFailed, onCannon, traitPowerHooks, twitchyAllyHit } from './traitHooks';
 import { armourOf, effectiveDamage, encumbranceOf, wearArmour } from './items';
 import { isAggressiveStance, isEvasiveStance } from '../data/stances';
 import { loseSanity } from './sanityBands';
@@ -79,6 +80,10 @@ const DOWNABLE_DAMAGE: DamageRecord['kind'][] = ['tribute', 'mutt', 'arena', 'ha
  * the deaths that still land.
  */
 function strikeDown(ctx: SimContext, victim: Tribute, killer: Tribute, weapon?: Item) {
+    // AUDIT-12 E6: a killer who went down in the same exchange (a weapon that
+    // broke into them) is not standing over anybody. The ordinary funnel
+    // decides the ending, attributing the wound to them.
+    if (!isActive(killer)) { checkDeath(ctx, victim); return; }
     // §4.1: if their two groups had an agreement, this ends it for everybody
     // on both sides at once.
     noteBlocKill(ctx, killer, victim);
@@ -815,6 +820,10 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
         power += readOf(t, opponent.id) * ARCHETYPE_HOOKS.archivistReadPower;
     }
 
+    // AUDIT-12 T15 / §16: Homebody on first-camp ground, Night Owl after dark,
+    // and the Cornered Rat after a retreat that did not work.
+    power += traitPowerHooks(ctx, t);
+
     return power;
 }
 
@@ -926,6 +935,10 @@ function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, round
     // A §8: somebody in shock is not weighing anything. They break off.
     if (inShock(ctx, t)) chance += COMBAT.retreatLosingBonus;
     chance += traitMod(t, 'retreat');
+    // AUDIT-12 §16: the Evasion skill.
+    chance += evasionRetreat(t);
+    // AUDIT-12 §7: an archetype that will not fight bare-handed.
+    if (!t.inventory.some(i => i.type === 'weapon')) chance += arch.unarmedRetreat ?? 0;
     // A §4: the same composite the stance table reads. A tribute with nothing
     // left to lose and a shrinking field stands; one with a full pack on day
     // nine at half health takes the exit.
@@ -1079,6 +1092,9 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
         );
     }
     wearWeapon(weapon, ctx, attacker);
+    // AUDIT-12 E6: the weapon can break into the hand holding it and finish
+    // them. A dead or downed attacker trains nothing and frightens nobody.
+    if (!isActive(attacker)) { clampTribute(defender); return damage; }
     noteWound(attacker, defender);
     adjustRel(defender, attacker.id, -COMBAT.grudgeOnWound);
     // Losing an exchange to someone is how you learn to be afraid of them
@@ -1264,6 +1280,12 @@ export function resolveCombat(
             const loser = edge > 0 ? t2 : t1;
             const weapon = edge > 0 ? w1 : w2;
             landHit(ctx, winner, loser, Math.abs(edge), weapon, damageMultiplier);
+            // AUDIT-12 E6: the winner's weapon broke into them — the fight is over.
+            if (!isActive(winner)) {
+                if (loser.health <= 0) checkDeath(ctx, loser);
+                ended = true;
+                break;
+            }
             // CONTENT-04: situational exchange lines. A hit on someone already
             // barely standing reads differently than an opening blow, and a
             // rematch between two people who have done this before should say so.
@@ -1288,6 +1310,9 @@ export function resolveCombat(
         if (round <= noRetreatRounds) continue;
         const t1Flees = wantsToRetreat(ctx, t1, -edge, round, t2);
         const t2Flees = wantsToRetreat(ctx, t2, edge, round, t1);
+        // AUDIT-12 §16: losing, badly hurt, and the roll says stay — cornered.
+        if (!t1Flees && edge < 0 && t1.health < AUDIT12_WAVE2_TRIBUTES.corneredRatHealth) noteRetreatFailed(ctx, t1);
+        if (!t2Flees && edge > 0 && t2.health < AUDIT12_WAVE2_TRIBUTES.corneredRatHealth) noteRetreatFailed(ctx, t2);
         if (t1Flees && t2Flees) {
             ctx.logEvent(
                 fill(ctx.pickText(DUEL_TEXTS.mutualBreak), { t1: t1.name, t2: t2.name, zone: t1.zone }),
@@ -1317,6 +1342,8 @@ export function resolveCombat(
             if (ctx.rng.chance(partingChance)) {
                 const parting = bestWeapon(stayer);
                 landHit(ctx, stayer, fleer, 2, parting);
+                // AUDIT-12 §16: a retreat that cost a blow is one that failed.
+                noteRetreatFailed(ctx, fleer);
                 if (fleer.health <= 0) {
                     strikeDown(ctx, fleer, stayer, parting);
                     ended = true;
@@ -1326,6 +1353,8 @@ export function resolveCombat(
             // Clean away is the lesson; the share above is what the attempt
             // was worth whether or not it cost them a hit on the way out.
             trainProficiency(fleer, 'sprinting', ctx);
+            // AUDIT-12 §16: and staying away is the Evasion skill.
+            trainProficiency(fleer, 'evasion', ctx);
             ctx.logEvent(
                 fill(ctx.pickText(DUEL_TEXTS.retreat), { fleer: fleer.name, stayer: stayer.name, zone: stayer.zone }),
                 [fleer.id, stayer.id],
@@ -1481,6 +1510,8 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
     // removed from the live arrays mid-fight but were still on their side.
     const origPack = new Set(packSide.map(t => t.id));
     const origOther = new Set(otherSide.map(t => t.id));
+    // AUDIT-12 T15: Twitchy Trigger rolls once per brawl.
+    const twitchyRolled = new Set<string>();
 
     // Rivalry bookkeeping: each pair that actually trades blows in this brawl
     // records one fight with each other — once per engagement, like a duel,
@@ -1565,7 +1596,11 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
             }
         }
 
-        const lead = attackers.reduce((best, a) =>
+        // AUDIT-12 T15: and a Twitchy Trigger in a crowd hits their own side.
+        twitchyAllyHit(ctx, attackers, fighters.length, twitchyRolled);
+        if (!attackers.some(isActive)) continue;
+
+        const lead = attackers.filter(isActive).reduce((best, a) =>
             (combatPower(ctx, a, bestWeapon(a)) > combatPower(ctx, best, bestWeapon(best)) ? a : best));
         // A pack fight feeds the same rivalry ledger a duel does — the pair
         // actually trading blows remember it, which is what rematch study,
@@ -1801,6 +1836,13 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
 export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, opts: { weapon?: Item; cause?: string; silent?: boolean } = {}) {
     const { weapon, cause, silent } = opts;
     if (victim.status === 'dead') return;
+    // AUDIT-12 E5: a wound outlives the one who gave it. A killer already dead
+    // before this cycle (not a mutual kill in the same exchange) gets no
+    // live-killer line, no kill credit and no sponsor or audience reaction —
+    // the victim dies of the wounds they were given.
+    const posthumousKiller = killer && killer.status !== 'alive'
+        && (killer.lastDamage?.cycle ?? cycleOf(ctx.state)) < cycleOf(ctx.state) ? killer : undefined;
+    if (posthumousKiller) killer = undefined;
     /*
      * REQUEST: the backstop for the fixed Games.
      *
@@ -1818,6 +1860,8 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
     enforceCapacity(victim);
     victim.health = 0;
     victim.dayOfDeath = ctx.state.day;
+    // AUDIT-12 E9: a corpse's plan is dead weight in every save and snapshot.
+    dropPlan(ctx.state, victim.id);
     /*
      * AUDIT-9 B16: the elimination *order*, which nothing recorded.
      *
@@ -2039,6 +2083,8 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             let lootChance = LOOTING.baseChance
                 + ARCHETYPES[killer.archetype].aggression * LOOTING.perAggression
                 + traitMod(killer, 'scavenge')
+                // AUDIT-12 T15 / §16: Pack Rat, and the Scavenging skill.
+                + lootChanceBonus(killer, false)
                 + (desperate ? LOOTING.desperateBonus : 0)
                 - onlookers * LOOTING.perOnlooker
                 - (killer.injuries.bleeding ? LOOTING.bleedingPenalty : 0);
@@ -2109,6 +2155,15 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
                 important: true, category: 'kill', actorId: killer.id,
                 fact: `${killer.name} killed ${victim.name} (${weapon?.name ?? 'unarmed'})`,
             });
+        }
+    } else if (posthumousKiller) {
+        victim.causeOfDeath = cause || victim.lastDamage?.cause || `Died of the wounds ${posthumousKiller.name} gave them`;
+        if (!silent) {
+            ctx.logEvent(
+                `${victim.name} dies of the wounds ${posthumousKiller.name} gave them. ${posthumousKiller.name} is not alive to know it.`,
+                [victim.id],
+                { important: true, category: 'death', zone: victim.zone, fact: `${victim.name} died — ${victim.causeOfDeath}` },
+            );
         }
     } else {
         victim.causeOfDeath = cause || victim.lastDamage?.cause || 'Died to environment';
@@ -2237,6 +2292,8 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
     ctx.state.recentCannonZones = (ctx.state.recentCannonZones ?? [])
         .filter(c => c.cycle === cycle)
         .concat({ zone: victim.zone, cycle });
+    // AUDIT-12 T15: the Cannon-Counter hears it and is steadier for it.
+    onCannon(ctx, victim);
 
     // 'The Bounty Quell': collecting the named quarry is a standing sponsor
     // stream, not a one-off gift — maintainBounty (dayNight.ts) names a new

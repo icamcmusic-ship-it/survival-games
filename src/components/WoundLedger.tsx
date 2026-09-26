@@ -1,5 +1,7 @@
 import React from 'react';
 import { DamageRecord, DeathCauseCode, GameState, Tribute } from '../models/types';
+import { significantWounds } from '../engine/woundLedger';
+import { AUDIT12_UI } from '../data/balance';
 
 /**
  * AUDIT-10 B3-02: causal inspection — *"from a death, jump to the wound, the
@@ -113,6 +115,13 @@ export function WoundLedger({ tribute, gameState }: { tribute: Tribute; gameStat
     return (
         <section>
             <h4 className="panel-title mb-2">What has hurt them ({wounds.length})</h4>
+            {/* AUDIT-12 S8: the serious ones, counted, so a long list of ticks still reads. */}
+            {(() => {
+                const serious = significantWounds(tribute, AUDIT12_UI.seriousWound);
+                return serious.length > 0 && serious.length < wounds.length ? (
+                    <p className="text-micro text-[var(--color-ink-500)] mb-1">{serious.length} serious — the rest are scratches and ticks.</p>
+                ) : null;
+            })()}
             <ol className="space-y-1">
                 {rows.map((row, i) => {
                     const w = row.last;

@@ -1,4 +1,5 @@
 import { Item, Tribute } from '../models/types';
+import { salvageExtra, salvageFindBonus } from './traitHooks';
 import { SimContext } from './context';
 import { ABANDONED_CAMPS } from '../data/balance';
 import { ITEMS, IMPROVISED_ITEMS } from '../data/constants';
@@ -119,13 +120,18 @@ function checkAbandonedCamps(ctx: SimContext, t: Tribute) {
     // Unless you crossed the arena to stand on it, in which case you are not
     // walking past anything.
     if (!onPurpose
-        && !ctx.rng.chance(ABANDONED_CAMPS.findBase + t.attributes.intelligence * ABANDONED_CAMPS.findPerIntelligence)) return;
+        && !ctx.rng.chance(ABANDONED_CAMPS.findBase + t.attributes.intelligence * ABANDONED_CAMPS.findPerIntelligence
+            // AUDIT-12 §16: Salvage is knowing where people stash things.
+            + salvageFindBonus(t))) return;
 
     camp.foundBy = t.id;
     camp.items.forEach(id => {
         const def = ITEMS.find(i => i.id === id) ?? IMPROVISED_ITEMS.find(i => i.id === id);
         if (def) giveItem(t, mintItem(ctx.rng, def as Item, QUALITY_BIAS.scavenged));
     });
+    // AUDIT-12 §16: and a salvager gets into the stash under the stash.
+    const rigged = salvageExtra(ctx, t, ABANDONED_CAMPS.salvage);
+    if (rigged) giveItem(t, rigged);
 
     // The real prize: somebody was here, recently, and left in a hurry.
     const owner = state.tributes.find(o => o.id === camp.ownerId);

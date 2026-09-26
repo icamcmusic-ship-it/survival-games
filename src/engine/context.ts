@@ -1,3 +1,5 @@
+import { noteLogFacts } from './audit12Facts';
+import { rotateFixedBeat } from './beatVariants';
 import { STORY_PACING } from '../data/balance';
 import { GameState, LogOptions, Phase, Tribute } from '../models/types';
 import { lineHash } from '../utils/lineHash';
@@ -231,7 +233,10 @@ export function createContext(state: GameState, rng: RNG): SimContext {
             }
             return chosen;
         },
-        logEvent(text, tributesInvolved, options, zone) {
+        logEvent(rawText, tributesInvolved, options, zone) {
+            // AUDIT-12 §10: the fixed 99-100 % beats rotate through variant
+            // pools, drawn via `pickText` so the recent-lines filter applies.
+            const text = rotateFixedBeat(pool => ctx.pickText(pool), rawText);
             // Legacy call shape: logEvent(text, ids, important, zone)
             const opts: LogOptions = typeof options === 'boolean'
                 ? { important: options, zone }
@@ -315,6 +320,8 @@ export function createContext(state: GameState, rng: RNG): SimContext {
                         ?? (tributesInvolved.length === 1 || category === 'kill' ? tributesInvolved[0] : undefined))
                     : undefined,
             });
+            // AUDIT-12 §14: the facts the new achievements read.
+            noteLogFacts(ctx.state, ctx.state.log[ctx.state.log.length - 1]);
         }
     };
     return ctx;

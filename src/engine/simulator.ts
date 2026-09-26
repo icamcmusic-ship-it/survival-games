@@ -18,6 +18,7 @@ import { FEAST_TEXTS } from '../data/flavorText';
 import { FEAST } from '../data/balance';
 import { wildcardIs } from './gamesProfile';
 import { updateAudience } from './audienceSegments';
+import { beforeTurnSeason } from './season/tick';
 import { MUTATOR_TUNING, hasMutator } from '../data/mutators';
 
 export class Simulator {
@@ -127,6 +128,7 @@ export class Simulator {
             case 'interviews':
                 startGames(this.ctx); break;
             case 'bloodbath':
+                beforeTurnSeason(this.ctx); // AUDIT-12 wave 3: `wounded-start`
                 processBloodbath(this.ctx); break;
             case 'epilogue':
             case 'ended':
@@ -175,6 +177,7 @@ export class Simulator {
          */
         replayPlannedInterventions(this.ctx);
         if (this.state.phase === 'ended') return false;
+        beforeTurnSeason(this.ctx); // AUDIT-12 wave 3: phase-start mutators
         if (this.state.phase === 'epilogue') {
             // The epilogue is terminal for the simulation; the UI drives the
             // transition to 'ended'. Re-entering here used to replay the

@@ -315,7 +315,7 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
                         const days = crown.first.days ?? 0;
                         return (
                             <div key={d} className="panel-flush p-2.5 flex items-start gap-2.5">
-                                <Crown className="w-3.5 h-3.5 mt-0.5 flex-none" style={{ color: 'var(--gold)' }} />
+                                <Crown className="w-3.5 h-3.5 mt-0.5 flex-none" style={{ color: 'var(--gold-text)' }} />
                                 <div className="min-w-0">
                                     <div className="flex items-baseline gap-2 flex-wrap">
                                         <span className="text-sm font-bold text-[var(--ink)]">District {d}</span>

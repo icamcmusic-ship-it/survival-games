@@ -805,7 +805,7 @@ export const QUIRKS: Quirk[] = [
         ],
     },
     {
-        label: 'never sits with their back to a door',
+        label: 'always keeps a wall behind them',
         lines: [
             '{name} moves twice in {zone} before settling, until the only way in is in front of them.',
             'There is a wall at {name}\'s back in {zone}. There is always a wall at {name}\'s back.',
@@ -841,7 +841,7 @@ export const QUIRKS: Quirk[] = [
         ],
     },
     {
-        label: 'hoards cordage',
+        label: 'unpicks cloth for thread',
         lines: [
             '{name} picks up a length of something stringy in {zone} and adds it to the bundle. The bundle is now most of their pack.',
             'In {zone} {name} unpicks a bit of cloth for the thread. They have no immediate use for the thread.',
@@ -877,7 +877,7 @@ export const QUIRKS: Quirk[] = [
         ],
     },
     {
-        label: 'sharpens the same stick',
+        label: 'whittles one stick down to nothing',
         lines: [
             '{name} takes the stick out in {zone} and puts an edge on it that was already there.',
             'In {zone} {name} whittles the point of a stick they have been whittling since day one. It is very sharp and very short.',
@@ -895,7 +895,7 @@ export const QUIRKS: Quirk[] = [
         ],
     },
     {
-        label: 'wears a dead tribute\'s token',
+        label: 'carries a stranger\'s token',
         lines: [
             '{name} touches the thing at their throat in {zone}. It was not theirs at the start.',
             'In {zone} {name} takes out a token that belonged to somebody who is in the sky now, and holds it, and puts it back.',
@@ -913,7 +913,7 @@ export const QUIRKS: Quirk[] = [
         ],
     },
     {
-        label: 'names their weapon',
+        label: 'talks to their blade',
         lines: [
             '{name} says something to the blade in {zone} before putting it away. It has a name. They have not told anyone the name.',
             'In {zone} {name} cleans the weapon and talks to it, low, the way you would to a dog.',
@@ -975,6 +975,61 @@ export const QUIRKS: Quirk[] = [
             '{name} finishes the anthem in {zone} on the wrong note, deliberately, and looks happier for it.',
         ],
     },
+    // AUDIT-12 §16: six more, each with a mods row below.
+    {
+        label: 'counts the plates before the gong',
+        lines: [
+            '{name} is still counting, under their breath, the plates between them and the treeline — even here in {zone}.',
+            'In {zone} {name} measures the distance to the nearest cover out loud, the way they measured the plates.',
+            '{name} marks every way out of {zone} before sitting down, and counts them twice.',
+            'Somebody says something in {zone} and {name} answers with a number — how many steps to the trees.',
+        ],
+    },
+    {
+        label: 'eats the rind too',
+        lines: [
+            '{name} eats the whole thing in {zone}, skin, rind and all, and looks around for more.',
+            'Nothing {name} finds in {zone} goes to waste, including the parts nobody should eat.',
+            '{name} scrapes the last of it off with their teeth in {zone}. The rind goes too.',
+            'In {zone} {name} chews something bitter for a long time and swallows it anyway.',
+        ],
+    },
+    {
+        label: 'never sleeps in the same spot twice',
+        lines: [
+            '{name} gives up a good hollow in {zone} for a worse one, because they slept in the good one last night.',
+            'Dusk in {zone}, and {name} moves their bedroll forty paces for no reason anybody else can see.',
+            '{name} will not lie down where they lay down before. In {zone} that means the wet side.',
+            '{name} wakes twice in {zone}, and both times picks up and moves before settling again.',
+        ],
+    },
+    {
+        label: 'hums when lying',
+        lines: [
+            '{name} hums a bar of something in {zone} while explaining where they were. Nobody asked about the tune.',
+            'There is a tune under what {name} says in {zone}, very quiet, and it stops when they tell the truth.',
+            '{name} catches themself humming in {zone} and stops, mid-sentence.',
+            'In {zone} {name} tells a story about the last two days, humming softly the whole time.',
+        ],
+    },
+    {
+        label: 'wraps wounds too tight',
+        lines: [
+            '{name} rewraps a cut in {zone} so tightly the fingers go white, and calls it done.',
+            'The bandage {name} ties in {zone} will stop anything bleeding, including the blood that should be there.',
+            '{name} pulls the knot on a dressing in {zone} until it creaks.',
+            'In {zone} {name} loosens their own bandage an inch, winces, and tightens it again.',
+        ],
+    },
+    {
+        label: 'whispers to the wind before moving',
+        lines: [
+            '{name} says something to the air in {zone} before they set off. It sounds like a question.',
+            'Before leaving {zone}, {name} stands very still and whispers into the wind.',
+            '{name} waits for a gust in {zone}, murmurs to it, and only then moves.',
+            'Nobody in {zone} hears what {name} whispers before walking off into the dark, which is the idea.',
+        ],
+    },
 ];
 
 /**
@@ -1000,6 +1055,13 @@ export const QUIRKS: Quirk[] = [
  * are free, and they are meant to be a tilt rather than a build.
  */
 export const QUIRK_MODS: Record<string, Partial<Record<TraitMod, number>>> = {
+    // AUDIT-12 §16.
+    'counts the plates before the gong': { retreat: 0.03 },
+    'eats the rind too': { hungerDrain: -0.8, poisonResist: -0.05 },
+    'never sleeps in the same spot twice': { awarenessNight: 0.3, fatigueNight: 0.8 },
+    'hums when lying': { suspicionResist: -0.1 },
+    'wraps wounds too tight': { bleedResist: 0.05, medicine: -0.03 },
+    'whispers to the wind before moving': { nightMovement: 0.2, concealment: -0.01 },
     'counts the days out loud': { resolveDrift: 0.2 },
     'will not sleep near water': { water: -0.6, awarenessNight: 0.3 },
     'always takes the high ground': { highland: 0.7 },
@@ -1088,19 +1150,19 @@ export const QUIRK_MODS: Record<string, Partial<Record<TraitMod, number>>> = {
     'won\'t say the word "arena"': { resolveDrift: 0.15, sanityDrain: -0.05 },
     'measures time in shifts': { fatigueDay: -0.6, fatigueNight: -0.6 },
     'sleeps with a knife in their fist': { awarenessNight: 0.3, sanityRecovery: -1 },
-    'never sits with their back to a door': { ambush: -0.03, awareness: 0.3 },
+    'always keeps a wall behind them': { ambush: -0.03, awareness: 0.3 },
     'talks to the dead by name': { griefResist: 0.15, sanityDrain: 0.05 },
     'rations by the mouthful': { hungerDrain: -1.0 },
     'whistles when scared': { concealment: -0.03, fearGain: -0.05 },
-    'hoards cordage': { trapSkill: 0.15, capacity: 1 },
+    'unpicks cloth for thread': { trapSkill: 0.15, capacity: 1 },
     'checks the sky for cameras': { sponsorTrust: -0.2, excitement: 0.05 },
     'keeps score on their arm': { killSanity: -0.1, resolveDrift: 0.1 },
     'apologises to the arena': { forage: 0.05, sanityRecovery: 1 },
-    'sharpens the same stick': { meleePower: 0.2 },
+    'whittles one stick down to nothing': { meleePower: 0.2 },
     'counts exits before sitting down': { retreat: 0.04 },
-    'wears a dead tribute\'s token': { griefResist: 0.2, targetDraw: 0.3 },
+    'carries a stranger\'s token': { griefResist: 0.2, targetDraw: 0.3 },
     'eats with their boots on and laced': { awareness: 0.2, fatigueDay: 0.5 },
-    'names their weapon': { combatPower: 0.2, excitement: 0.05 },
+    'talks to their blade': { combatPower: 0.2, excitement: 0.05 },
     'sleeps in shifts with nobody': { awarenessNight: 0.6, fatigueNight: 1.0 },
     'presses flowers in their pack': { resolveDrift: 0.15, sponsorAppeal: 0.3 },
     'salutes the cannon': { griefResist: 0.1, sponsorTrust: 0.2 },
@@ -1117,6 +1179,8 @@ export const QUIRK_MODS: Record<string, Partial<Record<TraitMod, number>>> = {
  * `data/traits.ts` describes for its own `info` field.
  */
 const MOD_PHRASES: Partial<Record<TraitMod, [string, string]>> = {
+    suspicionResist: ['is harder to doubt', 'is easier to doubt'],
+    bleedResist: ['bleeds less', 'bleeds more'],
     // [what a positive value means, what a negative value means]. Several of
     // these hooks are costs rather than benefits — a drain, a fatigue, a
     // multiplier offset — so the sign that reads as *good* is not the same

@@ -1,3 +1,4 @@
+import { WAVE2_MUTTS } from './muttsWave2';
 import { Mutt } from '../models/types';
 import { HIPPODROME_SET_MUTTS } from './arenaExtrasSetHippodrome';
 
@@ -2316,3 +2317,8 @@ export const ARENA_MUTTS: Record<string, Mutt[]> = {
 
 // The Hippodrome set (arenasSetHippodrome.ts): rosters kept with the set.
 Object.assign(ARENA_MUTTS, HIPPODROME_SET_MUTTS);
+
+// AUDIT-12 §8.7: the roster floor of four (muttsWave2.ts).
+for (const [id, extra] of Object.entries(WAVE2_MUTTS)) {
+    ARENA_MUTTS[id] = [...(ARENA_MUTTS[id] ?? []), ...extra];
+}

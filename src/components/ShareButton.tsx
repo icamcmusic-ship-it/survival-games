@@ -140,6 +140,8 @@ export function shareParams(
         enableBreakdowns: String(config.enableBreakdowns !== false),
         // AUDIT-11 §12: the mutator cards change the run; empty is none.
         mutators: (config.mutators ?? []).join(','),
+        // AUDIT-12 wave 3: a gauntlet stack is a different run.
+        gauntlet: config.gauntlet ? '1' : '0',
     });
     // AUDIT-9 B06: opaque and optional, so a seed link stays as short as it
     // has always been and a run link is complete.

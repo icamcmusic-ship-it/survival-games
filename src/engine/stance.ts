@@ -22,6 +22,8 @@ import { debtTo } from './debts';
 import { trapsIn } from './fieldcraft';
 import { inventoryValue } from './items';
 import { allied } from './alliance';
+import { AUDIT12_WAVE2_TRIBUTES as W2 } from '../data/balance';
+import { hidingAvailable } from './traitHooks';
 
 /**
  * What a tribute can actually see of someone without knowing their sheet.
@@ -289,6 +291,16 @@ type StanceScorer = (ctx: SimContext, t: Tribute, sig: StanceSignals) => number;
  */
 type StancePrecondition = (ctx: SimContext, t: Tribute, sig: StanceSignals) => boolean;
 
+/**
+ * AUDIT-12 §16: the two new conditional stances read a situation that flickers
+ * cycle to cycle (somebody hostile in the sector), so they hold their own
+ * precondition for `minHold` cycles once taken rather than being dropped the
+ * cycle the stranger walks on.
+ */
+function stickyHold(t: Tribute, stance: Stance): boolean {
+    return t.stance === stance && (t.stanceHeld ?? 0) < STANCE_PROFILES[stance].minHold;
+}
+
 export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> = {
     // §8: Hunting held 2.0% of cycles — the flagship aggressive-play stance,
     // and the rarest thing in the game, rarer even than Desperate, which is a
@@ -393,6 +405,22 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
     Nursing: (ctx, t, sig) => nursingPatients(ctx, t, sig.occupants).length > 0,
 
     /*
+     * AUDIT-12 §16: going to ground on purpose. Evasive is running and
+     * healing; Hiding is lying still in the best cover there is while
+     * something dangerous goes past — so it needs both the cover and the
+     * danger. The payoff (untargetable by a hunt unless tracked) and the price
+     * (hunger and thirst every cycle) are in `traitHooks.ts`.
+     */
+    Hiding: (ctx, t, sig) => stickyHold(t, 'Hiding') || hidingAvailable(ctx, t, sig.hostile, sig.cannonNearby,
+        sig.occupants.filter(o => o.id !== t.id && allied(o, t)).length) !== undefined,
+
+    /*
+     * AUDIT-12 §16: somebody hostile is here and this tribute does not want to
+     * find out how it goes. Every meeting is a talk first (`encounters.ts`).
+     */
+    Parleying: (ctx, t, sig) => stickyHold(t, 'Parleying') || sig.hostile > 0 && riskTolerance(ctx, t) <= W2.parleyingRiskMax,
+
+    /*
      * Audit 5 §12: a pack with somewhere to walk the edge of.
      *
      * AUDIT-6 §3.1: 0.5% of tribute-cycles, the deadest stance in the roster,
@@ -407,6 +435,10 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
      * because two people holding a chokepoint is a picket.
      */
     Patrolling: (ctx, t, sig) => {
+        // AUDIT-12 §16: a Scout-Runner walks the edge of wherever their people
+        // are, pack or no pack — that is the job.
+        if (t.archetype === 'scout-runner'
+            && ctx.state.tributes.some(o => o.status === 'alive' && o.id !== t.id && allied(o, t))) return true;
         // AUDIT-11 §5: a camp of one's own is ground worth walking the edge
         // of, pack or no pack — once it has been held long enough to matter.
         if (ctx.state.camps?.[t.id] !== undefined
@@ -715,6 +747,28 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
         return s;
     },
 
+    Hiding: (ctx, t, sig) => {
+        let s = W2.hidingBase;
+        const cover = hidingAvailable(ctx, t, sig.hostile, sig.cannonNearby,
+            sig.occupants.filter(o => o.id !== t.id && allied(o, t)).length) ?? 0;
+        s += (cover - W2.hidingConcealmentMin) * W2.hidingPerConcealment * 10;
+        s += Math.min(W2.hidingThreatCap, sig.hostile) * W2.hidingPerThreat;
+        if (sig.wounded) s += W2.hidingWoundedBonus;
+        s += sig.arch.caution * STANCE.archetypeWeight * STANCE_MODES.conditionalArchetypeWeight;
+        s += sig.arch.stanceBias?.Hiding ?? 0;
+        return s;
+    },
+
+    Parleying: (_ctx, t, sig) => {
+        let s = W2.parleyingBase;
+        s += t.attributes.charisma * W2.parleyingPerCharisma;
+        s += profOf(t, 'persuasion') * W2.parleyingPerCharisma;
+        s -= (t.parleysFailed ?? 0) * W2.parleyingPerCharisma * 2;
+        s -= sig.arch.aggression * STANCE.archetypeWeight * STANCE_MODES.conditionalArchetypeWeight;
+        s += sig.arch.stanceBias?.Parleying ?? 0;
+        return s;
+    },
+
     Patrolling: (ctx, t, sig) => {
         let s = STANCE_MODES.patrolling.base;
         const pack = sig.occupants.filter(o => allied(o, t)).length;
@@ -772,6 +826,10 @@ export function forceStance(t: Tribute, stance: Stance, reason = 'imposed by an 
      * already marked its trace `forced`; the other three now do the same, so
      * the guard measures the scorer and not the story beats that overrule it.
      */
+    // AUDIT-12 T2: a forced stance is never a trail. Every forced path (shock,
+    // grief, break-off, vengeance) used to leave a live `shadowing` record for
+    // `isBeingFollowed` and the pursuit read to count.
+    if (stance !== 'Shadowing') t.shadowing = undefined;
     if (t.stance === stance) { t.stanceHeld = 0; return true; }
     // Returns whether the posture actually changed. It has to: every caller
     // narrates the beat it is forcing — a surrender, a walk into the open, an

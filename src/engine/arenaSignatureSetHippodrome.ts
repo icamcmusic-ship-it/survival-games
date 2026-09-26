@@ -12,7 +12,7 @@ import { hasTool } from './items';
 import { loseSanity } from './sanityBands';
 import { ARENA_RULES, ARENA_SIGNATURES, MEMORY } from '../data/balance';
 import {
-    clearSightline, closedLatentEdges, collapseZonePermanently, currentSightline, evictZone,
+    clearSightline, canCollapseZonePermanently, closedLatentEdges, collapseZonePermanently, currentSightline, evictZone,
     fallenZones, getMark, openLatentEdge, setMark, setSightline,
 } from './arenaRules';
 
@@ -397,6 +397,8 @@ const opencutSignature: Signature = (ctx, cycle, rng) => {
     const target = String(pending);
     setMark(state, 'opencut:next', undefined);
     if (!activeZones(ctx).includes(target) || !staysConnected(ctx, target)) return;
+    // AUDIT-12 E7: the collapse is refused below three standing zones; say nothing and hurt nobody then.
+    if (!canCollapseZonePermanently(state, target)) return;
 
     const neighbours = getZone(state.arena, target)?.adjacent ?? [];
     ctx.logEvent(

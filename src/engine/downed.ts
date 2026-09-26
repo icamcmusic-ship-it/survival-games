@@ -245,12 +245,16 @@ export function tickDowned(ctx: SimContext) {
              * somebody up two days ago and walked away has killed them, and
              * the Capitol is scrupulous about who the cannon belongs to.
              */
-            const by = t.downed?.byId ? ctx.state.tributes.find(o => o.id === t.downed!.byId) : undefined;
+            // AUDIT-12 T10: credit only a killer who is still alive to be credited;
+            // a dead one gets no posthumous kill line.
+            const found = t.downed?.byId ? ctx.state.tributes.find(o => o.id === t.downed!.byId) : undefined;
+            const by = found?.status === 'alive' ? found : undefined;
             ctx.logEvent(
                 `The Gamemakers are done waiting on ${t.name}. Whatever was keeping them breathing in ${t.zone} stops.`
                 + (by ? ` The kill is credited to ${by.name}, who put them there and did not stay to watch.` : ''),
                 by ? [t.id, by.id] : [t.id],
-                { important: true, category: by ? 'kill' : 'death' }
+                // AUDIT-12 T10: say who acted; the cast order is victim-first.
+                { important: true, category: by ? 'kill' : 'death', actorId: by?.id }
             );
             bleedOut(ctx, t, name => `Killed by ${name}, who left them for dead`, t.downed!.cause, true);
             return;
@@ -388,7 +392,15 @@ export function tickDowned(ctx: SimContext) {
                 const witnesses = here.filter(o => o.id !== decider.id);
                 if (ctx.rng.chance(Math.max(0, Math.min(1, chance)))) {
                     decider.finishedDowned = [...(decider.finishedDowned ?? []), t.id];
-                    finish(ctx, t, `Killed by ${decider.name} while they lay unconscious`, decider);
+                    // AUDIT-12 §7: name what finished them. The execution line was
+                    // the largest single source of "bare-hand" kills in the
+                    // metrics table (27% of them) while the executioner was
+                    // usually holding something.
+                    const blade = decider.inventory.filter(i => i.type === 'weapon')
+                        .sort((a, b) => (b.damage ?? 0) - (a.damage ?? 0))[0];
+                    finish(ctx, t, blade
+                        ? `Killed by ${decider.name} while they lay unconscious (${blade.name})`
+                        : `Killed by ${decider.name} while they lay unconscious`, decider);
                     // Finishing the helpless is not fighting, and the zone knows it.
                     witnesses.forEach(w => {
                         addFear(w, decider.id, DOWNED.executeFear, decider);

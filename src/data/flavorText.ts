@@ -552,6 +552,27 @@ export const CAESAR_QUESTIONS = {
             'Caesar asks {tribute} what they noticed on the way in. {tribute} tells him, in order, including two things Caesar had not.',
             '"Do you sleep?" Caesar asks. {tribute} says somebody has to not be, and leaves it there.',
         ],
+        // AUDIT-12 §16: the five new skills.
+        evasion: [
+            'Caesar asks {tribute} how they plan to handle the Careers. {tribute} says, politely, that they plan to be somewhere else.',
+            '"Have you ever been caught?" Caesar asks. {tribute} says not yet, and the audience decides it likes that.',
+        ],
+        rationing: [
+            'Caesar offers {tribute} a pastry from the tray. {tribute} eats half and puts the other half in a pocket without thinking about it.',
+            '"How long can you go without?" Caesar asks {tribute}. The number is longer than he expected, and they do not look proud of it.',
+        ],
+        salvage: [
+            'Caesar asks {tribute} what they would take from the Cornucopia. {tribute} says whatever everybody else left behind, and means it.',
+            '"You notice things," Caesar says. {tribute} says they notice where people put things, which is not the same.',
+        ],
+        ambush: [
+            'Caesar asks {tribute} whether they are patient. {tribute} says yes, and says nothing else for long enough that the audience laughs.',
+            '"Where would you wait?" Caesar asks. {tribute} glances at the side of the stage the cameras are not pointing at.',
+        ],
+        animalHandling: [
+            'Caesar asks {tribute} whether they are afraid of the mutts. {tribute} says animals are only frightening if you do not know what they want.',
+            '"You grew up around animals?" Caesar asks. {tribute} says they grew up around things that bite, and that people are most of them.',
+        ],
     },
     /** Keyed on the district's trade, so a tribute is asked about home properly. */
     district: [

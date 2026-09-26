@@ -2,7 +2,11 @@ import { useState } from 'react';
 import { Prediction, Tribute } from '../models/types';
 import { gameActions, gameStore } from '../store/gameStore';
 import { useStore } from '../store/createStore';
-import { PARLAY, PREDICTION } from '../data/balance';
+import { AUDIT12_WAVE3, PARLAY, PREDICTION } from '../data/balance';
+import { FIRST_DEATH_CAUSES } from '../engine/prediction';
+import { lengthLine } from '../engine/sideMarkets';
+import { slipText } from '../data/replayHooks';
+import { copyMessage, copyText } from '../utils/copyText';
 
 /**
  * AUDIT-11 §12/§8: the prediction slip and the campaign parlay, side by side
@@ -20,6 +24,9 @@ export function PredictionSlip({ tributes }: { tributes: Tribute[] }) {
     const seed = useStore(gameStore, s => s.gameState?.seed);
     const [stake, setStake] = useState<number>(PARLAY.minStake * 4);
     const [legs, setLegs] = useState<number>(PARLAY.minLegs);
+    const bank = useStore(gameStore, s => s.panem.ledger?.predictionBank);
+    const mutators = useStore(gameStore, s => s.gameState?.config.mutators);
+    const [copied, setCopied] = useState<string | null>(null);
 
     const slip: Prediction = prediction ?? {};
     const sorted = [...tributes].sort((a, b) => a.district - b.district || a.name.localeCompare(b.name));
@@ -68,6 +75,52 @@ export function PredictionSlip({ tributes }: { tributes: Tribute[] }) {
                 {picker('Victor', slip.winnerId, id => update({ winnerId: id }), 'predict-winner')}
                 {picker('First to fall', slip.firstDeathId, id => update({ firstDeathId: id }), 'predict-first-death')}
                 {picker('Top killer', slip.topKillerId, id => update({ topKillerId: id }), 'predict-top-killer')}
+            </div>
+            {/* AUDIT-12 wave 3 §11: how the first one dies, and when it ends. */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <label className="flex flex-col gap-1 text-micro">
+                    <span className="eyebrow">First death, by ({AUDIT12_WAVE3.prediction.causePoints} pts)</span>
+                    <select
+                        data-testid="predict-first-cause"
+                        className="field text-xs"
+                        value={slip.firstDeathCause ?? ''}
+                        onChange={e => update({ firstDeathCause: (e.target.value || undefined) as Prediction['firstDeathCause'] })}
+                    >
+                        <option value="">—</option>
+                        {FIRST_DEATH_CAUSES.map(c => <option key={c} value={c}>{c === 'body' ? 'their own body (wounds, thirst, cold)' : c === 'tribute' ? 'another tribute' : c === 'gamemaker' ? 'the Gamemakers' : c === 'mutt' ? 'a mutt' : 'the arena'}</option>)}
+                    </select>
+                </label>
+                <label className="flex flex-col gap-1 text-micro">
+                    <span className="eyebrow">The Games end ({AUDIT12_WAVE3.prediction.overUnderPoints} pts)</span>
+                    <select
+                        data-testid="predict-end-day"
+                        className="field text-xs"
+                        value={slip.endDayPick ?? ''}
+                        onChange={e => {
+                            const pick = e.target.value as 'over' | 'under' | '';
+                            update(pick ? { endDayPick: pick, endDayLine: slip.endDayLine ?? lengthLine(tributes) } : { endDayPick: undefined, endDayLine: undefined });
+                        }}
+                    >
+                        <option value="">—</option>
+                        <option value="over">after day {slip.endDayLine ?? lengthLine(tributes)}</option>
+                        <option value="under">before day {slip.endDayLine ?? lengthLine(tributes)}</option>
+                    </select>
+                </label>
+            </div>
+            <p className="text-micro text-[var(--color-ink-500)]" data-testid="prediction-bank">
+                Call a victor with no kills or from a thin district and it is an upset: +{AUDIT12_WAVE3.prediction.upsetPoints} pts and {AUDIT12_WAVE3.prediction.upsetCoins} coins.
+                {' '}Slip bankroll {bank?.bankroll ?? AUDIT12_WAVE3.prediction.bankrollStart} pts (each slip stakes {AUDIT12_WAVE3.prediction.slipStake})
+                {bank ? ` · sharp streak ${bank.streak} (best ${bank.bestStreak}) · upsets called ${bank.upsetsCalled}` : ''}.
+            </p>
+            <div className="flex items-center gap-2">
+                <button
+                    className="btn btn-sm"
+                    data-testid="copy-slip"
+                    onClick={async () => setCopied(copyMessage(await copyText(slipText(seed ?? '', mutators, slip, tributes)), 'slip'))}
+                >
+                    Copy slip to share
+                </button>
+                {copied && <span className="text-micro" role="status">{copied}</span>}
             </div>
             <details>
                 <summary className="text-xs cursor-pointer">Rank a final eight ({eight.filter(Boolean).length}/{PREDICTION.finalSize})</summary>

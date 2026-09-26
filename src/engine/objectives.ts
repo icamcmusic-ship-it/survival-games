@@ -1,7 +1,8 @@
 import { targetDrawOf } from './targeting';
+import { hiddenFromHunt } from './traitHooks';
 import { GameState, Objective, Tribute, Zone } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
-import { ENDGAME, ESCALATION, PERCEPTION, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, MEMORY, MOVEMENT, OBJECTIVES, PLANNING, REPUTATION_TARGETING, RISK, STANDING_GOAL } from '../data/balance';
+import { AUDIT12_TRIBUTES, ENDGAME, ESCALATION, PERCEPTION, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, MEMORY, MOVEMENT, OBJECTIVES, PLANNING, REPUTATION_TARGETING, RISK, STANDING_GOAL } from '../data/balance';
 import { SimContext } from './context';
 import { cycleOf, cyclesSinceContact, ensureMemory, hasVengeanceAgainst, impressionOf, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
 import { getZone, hopsTo, nextHopToward, severedEdgeSet, zoneFeatures } from './map';
@@ -11,7 +12,7 @@ import { riskTolerance } from './risk';
 import { fearOf } from './fear';
 import { breakTruce, breaksTruce, hasTruce } from './parley';
 import { perceivedBond, targetReluctance } from './rapport';
-import { prerequisiteFor, pressTension, queueGoal } from './intent';
+import { errandChain, pressTension, queueGoal } from './intent';
 import { areLovers, allied, isHostileTo } from './alliance';
 import { sharesVengeancePact } from './vengeancePact';
 import { getRel } from './relationships';
@@ -135,6 +136,31 @@ function announce(ctx: SimContext, t: Tribute, objective: Objective) {
             return;
         default:
             return;
+    }
+}
+
+/**
+ * AUDIT-12 §5: commitment by caution. A cautious tributes keeps walking toward
+ * a `reach` through a minor threat and past its nominal expiry (up to a cap),
+ * rather than re-rolling their whole life each time the clock runs out; a
+ * reckless one drops the errand the moment somebody hostile turns up.
+ */
+function commitmentByCaution(ctx: SimContext, t: Tribute, here: Tribute[]) {
+    const o = t.objective;
+    if (!o || o.kind !== 'reach') { t.committedSince = undefined; t.committedZone = undefined; return; }
+    const cycle = cycleOf(ctx.state);
+    if (t.committedZone !== o.zone || t.committedSince === undefined) { t.committedSince = cycle; t.committedZone = o.zone; }
+    const caution = ARCHETYPES[t.archetype].caution;
+    const hostile = here.some(x => x.id !== t.id && x.status === 'alive' && !allied(x, t));
+    if (caution <= AUDIT12_TRIBUTES.recklessCaution && hostile && t.zone !== o.zone) {
+        o.expires = cycle;  // expire now: the cascade re-scores with the threat in view
+        return;
+    }
+    const minorThreat = here.every(x => x.id === t.id || allied(x, t) || fearOf(t, x.id) < OBJECTIVES.fleeFear);
+    if (caution >= AUDIT12_TRIBUTES.committedCaution && cycle >= o.expires && t.zone !== o.zone && minorThreat
+        && cycle - t.committedSince < AUDIT12_TRIBUTES.commitmentMaxCycles
+        && !(ctx.state.collapsedZones ?? []).includes(o.zone)) {
+        o.expires = cycle + AUDIT12_TRIBUTES.commitmentExtension;
     }
 }
 
@@ -319,7 +345,8 @@ function chooseObjective(
     const faceOffScore = (o: Tribute) => {
         const seen = impressionOf(state, t, o);
         return (100 - seen.health) + (1 - seen.armed) * 30
-            - fearOf(t, o.id)
+            // AUDIT-12 T12: a loner weighs fear heavier — nobody is behind them.
+            - fearOf(t, o.id) * (t.allianceId ? 1 : AUDIT12_TRIBUTES.lonerFearWeight)
             + Math.max(0, -getRel(t, o.id)) * OBJECTIVES.faceOffGrudgeWeight
             + (hasVengeanceAgainst(t, o.id) ? OBJECTIVES.faceOffVengeanceBonus : 0)
             - (hasTruce(state, t, o.id) ? OBJECTIVES.faceOffTruceCost : 0);
@@ -335,6 +362,29 @@ function chooseObjective(
         // terrified loner facing the Career pack here falls through to the
         // flee rung instead of walking into them.
         const terrified = inZone.some(o => fearOf(t, o.id) >= OBJECTIVES.huntAbandonFear);
+        /*
+         * AUDIT-12 T12 / §5: the loner's fear curve. Somebody with nobody at
+         * their back who is merely afraid (past `fleeFear`, short of
+         * terrified) does not walk into the room swinging: they hide and let
+         * it thin, lie in wait for the one they fear, or try talking to the
+         * one they fear least.
+         */
+        const peak = inZone.reduce((m, o) => Math.max(m, fearOf(t, o.id)), 0);
+        if (!t.allianceId && !terrified && inZone.length > 0 && peak >= OBJECTIVES.fleeFear) {
+            const feared = inZone.reduce((top, o) => (fearOf(t, o.id) > fearOf(t, top.id) ? o : top));
+            const leastFeared = inZone.reduce((top, o) => (fearOf(t, o.id) < fearOf(t, top.id) ? o : top));
+            const band = (peak - OBJECTIVES.fleeFear) / Math.max(1, OBJECTIVES.huntAbandonFear - OBJECTIVES.fleeFear);
+            let choice: Objective;
+            if (band >= AUDIT12_TRIBUTES.lonerHideBand) {
+                choice = { kind: 'wait', zone: t.zone, expires: expiry(AUDIT12_TRIBUTES.lonerHideCycles) };
+            } else if (t.attributes.stealth >= AUDIT12_TRIBUTES.lonerAmbushStealth) {
+                choice = { kind: 'stalk', targetId: feared.id, expires: expiry(OBJECTIVES.huntCycles) };
+            } else {
+                choice = { kind: 'court', targetId: leastFeared.id, expires: expiry(OBJECTIVES.huntCycles) };
+            }
+            const o = offer(99, choice);
+            if (o) return o;
+        }
         const rival = terrified ? undefined : pickFaceOff(inZone);
         if (rival) {
             const o = offer(99, { kind: 'hunt', targetId: rival.id, expires: expiry(OBJECTIVES.huntCycles) });
@@ -534,7 +584,9 @@ function chooseObjective(
             && !allied(o, t)
             && rememberedRivals(state, t, o.zone) > 0
             && cyclesSinceContact(state, t, o.id) <= MEMORY.sightingLifetime
-            && fearOf(t, o.id) < OBJECTIVES.huntAbandonFear);
+            && fearOf(t, o.id) < OBJECTIVES.huntAbandonFear
+            // AUDIT-12 §16: somebody Hiding is off the list unless they are tracked.
+            && !hiddenFromHunt(t, o));
         // A standing truce is worth most exactly here — deciding who to go
         // looking for. It used to be consulted only in `resolvePairEncounter`,
         // so a truce held during a chance meeting and was silently irrelevant
@@ -612,7 +664,7 @@ function chooseObjective(
                 const thirdPartyCost = trucedWithAnAlly ? OBJECTIVES.thirdPartyTruceCost : 0;
                 return (winnable + loot + weakness + grudge - fearOf(t, o.id) + reputation - thirdPartyCost
                     + targetDrawOf(o)
-                    + targetPreferenceScore(t, o, hops)
+                    + targetPreferenceScore(state, t, o, hops)
                     // §3.2 (audit): the outcome ledger. A mark that has got
                     // away from this hunter before scores lower, so a tribute
                     // who keeps failing changes *target* rather than trying
@@ -877,6 +929,7 @@ function nearestZoneMatching(
  * recomputed every cycle is just a mood with extra steps.
  */
 export function updateObjective(ctx: SimContext, t: Tribute, here: Tribute[]) {
+    commitmentByCaution(ctx, t, here);
     if (isObjectiveValid(ctx, t)) {
         // §3.2: being torn is now cumulative. Three cycles pulled the same two
         // ways and the runner-up wins outright, loudly — the tension system
@@ -989,9 +1042,12 @@ export function updateObjective(ctx: SimContext, t: Tribute, here: Tribute[]) {
 
     // §3.2: a goal the tribute cannot currently serve gets an errand put in
     // front of it and is remembered rather than discarded.
-    const prerequisite = prerequisiteFor(ctx, t, next);
+    // AUDIT-12 §5: the whole errand chain, not only its first stop — the goal
+    // goes to the back of the queue and the second errand in front of it.
+    const [prerequisite, secondErrand] = errandChain(ctx, t, next);
     if (prerequisite) {
         queueGoal(t, next);
+        if (secondErrand) queueGoal(t, secondErrand);
         next = prerequisite;
     }
 

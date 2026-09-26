@@ -144,7 +144,9 @@ export const VITALS = {
      */
     exhaustedDamage: 4,
     /** Relief drops fatigue to just under the threshold, as with the other vitals. */
-    starvingDamage: 3,
+    // AUDIT-12 wave 2 §7: 3 -> 5. Starvation sat at 0.9-1.0% of deaths
+    // against a 1-2% goal after the escalating bite alone was raised.
+    starvingDamage: 5,
     /** §7.7: 10 -> 8 — dehydration is meant to pressure tributes toward water, not out-kill the mutts. */
     dehydratedDamage: 5,
 
@@ -1964,7 +1966,7 @@ export const BLOODBATH = {
      * for twenty-three of twenty-four came up three or four short. When the
      * horn is the whole story, the field does not get to leave it.
      */
-    runDownFloor: 0.85,
+    // AUDIT-12 T1: superseded by AUDIT12_TRIBUTES.runDownFloor (0.35, ∝ shortfall² × proximity, applied after the scrum).
 } as const;
 
 /**
@@ -4822,7 +4824,8 @@ export const STANCE_MODES = {
         // AUDIT-6 §3.1: two people holding a chokepoint is a picket. At three
         // this was half of why Patrolling held 0.5% of tribute-cycles.
         packMin: 2,
-        base: 4.2,
+        // AUDIT-12 §7: 4.2 -> 4.9 (1.3% of stance-time at n=1,600; goal >= 1.5%).
+        base: 4.9,
         perExtraMember: 0.3,
         perTrackingPoint: 0.25,
         cannonBonus: 0.8,
@@ -8814,7 +8817,6 @@ export const ARCHETYPE_HOOKS = {
     woundedBleedingBonus: 12,
     woundedDownedBonus: 20,
     famousPerNotoriety: 0.25,
-    famousPerKill: 8,
     famousPerTrainingPoint: 1.2,
 
     // ---- signatures ----
@@ -10329,4 +10331,552 @@ export const AUDIT11_EVENTS = {
     damageScale: 5,
     /** Added to each lethal event's dodge difficulty (or the default). */
     dodgeDifficultyBonus: 3,
+} as const;
+
+/* ========================================================================
+ * AUDIT-12 §3.2 / §5 / §6 — tribute, alliance and side-system knobs.
+ * Appended block; owned by the tributes/alliances workstream.
+ * ====================================================================== */
+export const AUDIT12_TRIBUTES = {
+    /** T1: the run-down now runs after the scrum; floor ∝ shortfall² × proximity. */
+    runDownFloor: 0.35,
+    /** T1: runners caught at the horn are capped at this share of the death target. */
+    runDownTargetShare: 0.35,
+    /** T1: the scrum leaves (expected runners caught × this, ≈ the kill rate of a caught runner) to the run-down. */
+    runDownReservePerRunner: 0.8,
+    /** T1: scale on the proximity/agility catch term (the chase after the scrum). */
+    runDownChaseScale: 2.4,
+    /** §5 horn plans: fight-chance shift for a grab-and-go / straight-run plan. */
+    hornPlanGrabFight: 0.12,
+    hornPlanRunFight: 0.12,
+    /** §5 horn plans: exposure to the run-down for each plan (scatter = 1). */
+    hornPlanGrabExposure: 1.25,
+    hornPlanRunExposure: 0.55,
+    /** §5 horn plans: chance a grab-and-go runner leaves with something. */
+    hornPlanGrabItem: 0.55,
+    /** §5 horn plans: pull toward a straight run when a pact partner waits. */
+    hornPlanPartnerRun: 0.3,
+    hornPlanNoise: 0.6,
+    /** T3: hunger relief of a friendly meal with no food item to share (fraction). */
+    emptyMealRelief: 0.5,
+    /** T13: greed chance ceiling for a treacherous provider. */
+    greedChanceCap: 0.5,
+    /** T3/T13: hunger one food item relieves, split over the camp's portions. */
+    campMealPortion: 24,
+    /** §6 watch: treachery a sleeper needs to use a failed watch. */
+    nightTheftTreachery: 0.2,
+    /** §6 watch: chance they act on it. */
+    nightTheftChance: 0.45,
+    /** §6 watch: base chance each other sleeper wakes and sees it. */
+    nightTheftSeen: 0.25,
+    /** §6: suspicion a witnessed deceit (theft, lure) adds. */
+    deceitSuspicion: 30,
+    /** §5 zone depletion: multiplier on per-forage and per-attempt depletion. */
+    forageDepletionScale: 3,
+    /** §5: share of a zone's depletion taken off the whole forage roll there. */
+    depletionForagePenalty: 0.8,
+    /** §5 hunger that bites: starvation damage grows per consecutive starving cycle, to a cap. */
+    // AUDIT-12 wave 2 §7: 7 -> 10 and 35 -> 45 (starvation 0.75% of deaths at
+    // n=4,800 after Rationer and Rationing; goal 1-2%).
+    starvingDamagePerCycle: 10,
+    starvingDamageCap: 45,
+    /** T14: pack value (by impression) that reads as "carrying supplies". */
+    ladenLootImpression: 18,
+    /** T5 / §5 errands: printed yield a forage errand's destination must have. */
+    errandMinResources: 0.45,
+    /** T5 / §5 errands: remembered barrenness above which a zone is not worth the walk. */
+    errandBarrenLine: 0.5,
+    /** T12 loner fear curve: fear weight in a loner's face-off score. */
+    lonerFearWeight: 1.5,
+    /** T12: share of the fleeFear→huntAbandonFear band past which a loner hides. */
+    lonerHideBand: 0.55,
+    lonerHideCycles: 2,
+    /** T12: stealth at which a frightened loner lies in wait instead of parleying. */
+    lonerAmbushStealth: 6,
+    /** §5 commitment by caution: archetype caution at/above which a reach is kept past expiry. */
+    committedCaution: 0.3,
+    /** §5: caution at/below which a reach is dropped the moment a hostile is present. */
+    recklessCaution: -0.1,
+    /** §5: cycles a cautious tribute will keep extending one reach, and by how much each time. */
+    commitmentMaxCycles: 8,
+    commitmentExtension: 2,
+    /** T11: cycles an ally must lie down a sector away before a rescue promise counts as missed. */
+    rescueMissCycles: 2,
+    /** §6 splinters: smallest group that can split on trust, and the trust gap it needs. */
+    splinterMinSize: 4,
+    splinterTrustGap: 15,
+    /** §6 hollow victory: sanity lost for killing a former ally, and suspicion it earns among those who knew. */
+    hollowVictorySanity: 18,
+    hollowVictorySuspicion: 20,
+    /** §6 loner support: one-night shared camp between two loners. */
+    sharedCampChance: 0.25,
+    sharedCampRegard: -5,
+    sharedCampCycles: 2,
+    sharedCampDebtRepaid: 1,
+    sharedCampTrust: 4,
+    /** §6 truce chains: chance a shared truce partner brings two strangers into one truce. */
+    truceChainChance: 0.5,
+    /** §5 earned traits: kills for Bloodied (I), then kills for II and III. */
+    bloodiedKills: 2,
+    bloodiedTierKills: [4, 6] as readonly number[],
+    /** §5 earned traits: days survived unhurt for Unbroken (I), then II and III. */
+    unbrokenDays: 10,
+    unbrokenTierDays: [13, 16] as readonly number[],
+} as const;
+
+// ============================================================================
+// AUDIT-12 (UI agent): knobs for the debrief and broadcast-bar additions.
+// Display thresholds only — no simulation path reads these.
+// ============================================================================
+export const AUDIT12_UI = {
+    /** §4 what-if: the branch counts the debrief offers (8 is `WHAT_IF.branches`). */
+    whatIfBranchOptions: [8, 16, 32] as readonly number[],
+    /** §4 audience chip: the loudest segment is named only once it is this loud (0-100). */
+    audienceChipMin: 25,
+    /** S8 wound ledger: a wound worth counting as serious, in health. */
+    seriousWound: 4,
+} as const;
+
+// ============================================================================
+// AUDIT-12 (engine agent): arena, rules and combat fixes.
+// ============================================================================
+export const AUDIT12_ARENA = {
+    /** §8.10: smoke in an enclosed-ignition room that is burning, per cycle, for everybody inside. */
+    enclosedSmokeDamage: 9,
+    /** §8.10: fatigue the smoke adds on top. */
+    enclosedSmokeFatigue: 8,
+} as const;
+
+/**
+ * AUDIT-12 wave 2 §8 (generic 1-8 and the thin arenas' mechanics). See
+ * `engine/arenaWave2.ts` and `scripts/check-arena-deathmix.ts`.
+ */
+export const AUDIT12_WAVE2_ARENA = {
+    /** §8.1: border kills allowed per Games before the closing sector fires the arena's own hazard instead. */
+    borderKillCap: 2,
+    /** §8.1: damage of the arena's own hazard when it stands in for the border. */
+    borderHazardDamage: 34,
+    /** §8.2: floor on own-cause deaths as a share of non-tribute deaths, per arena. */
+    signatureShareMin: 0.08,
+    /** §8.3: the tribute-kill share band, per arena. */
+    tributeShareMin: 0.5,
+    tributeShareMax: 0.72,
+    /** §8.4: dodge-roll bonus for a telegraphed hazard, for a tribute who reads the sky. */
+    telegraphDodgeBonus: 3,
+    /** §8.4: bonus for anyone else who was in the zone when the warning went out. */
+    telegraphWarnedBonus: 1,
+    /** §8.4: a called hazard lands at this multiple of its authored damage — the warning is the mercy. */
+    telegraphDamageScale: 1.8,
+    /** §8.4: …and this much harder to simply be lucky about. Reading the sky (above) is what buys it back. */
+    telegraphDifficulty: 3,
+    /** §8.4: chance per cycle the arena calls its next hazard, when none is pending. */
+    telegraphChance: 0.6,
+    /** §8.4: most a single called hazard can catch, so it stays a hazard and not a cull. */
+    telegraphMaxCaught: 3,
+    /** §8.6: thirst a scarce water source takes off. */
+    scarceWaterQuench: 30,
+    /** §8.6: thirst at which a tribute goes looking for the scarce source. */
+    scarceWaterThirst: 45,
+    /** §8.6: chance the source's risk lands. */
+    scarceWaterRiskChance: 0.28,
+    /** §8.6: damage when it does. */
+    scarceWaterRiskDamage: 12,
+    /** §8.7: the mutt roster floor, per arena. */
+    muttRosterFloor: 4,
+    /** Thin-arena mechanics: the standard hit, the heavy hit, and the base dodge. */
+    mechanicDamage: 20,
+    mechanicHeavyDamage: 30,
+    mechanicDodgeBase: 0.3,
+    mechanicDodgePerAgility: 0.03,
+    /** Thin-arena mechanics: a relief beat's sanity/fatigue/hunger swing. */
+    mechanicRelief: 14,
+    /** Chance a finishing blow lands on an already-hurt tribute caught by a mechanic. */
+    mechanicFinishBelowHealth: 30,
+    mechanicFinishChance: 0.35,
+    /** §8.2: an arena's own authored hazard finishes a tribute left at or under this health… */
+    signatureFinishBelowHealth: 45,
+    /** …this often. */
+    signatureFinishChance: 0.7,
+    /** Snowbound woodpile: logs at the start and logs burned per night. */
+    woodpileStart: 8,
+    woodpileBurnPerNight: 2,
+    /** Silk Wood: sanity lost when a line reveals you. */
+    silkRevealSanity: 4,
+    /** The No-One Place: relationship drift when the place forgets. */
+    forgetRegard: 12,
+    /** The thin arenas' own mechanics (`engine/arenaWave2.ts`), one knob per beat. */
+    thin: {
+        votiveIgniteChance: 0.35,
+        closedHouseFatigue: 6,
+        closedHouseKeepsBelow: 50,
+        garageDoorChance: 0.15,
+        gasMainFromDay: 4,
+        gasMainChance: 0.25,
+        cocoonChance: 0.3,
+        cocoonCacheShare: 0.6,
+        silkDryCycles: 3,
+        woodSplitChance: 0.4,
+        woodSplitFatigue: 6,
+        chimneyFireChance: 0.12,
+        frozenWellThirst: 6,
+        wellIceChance: 0.3,
+        roofLoadNights: 4,
+        roofDepletion: 0.2,
+        penDangerRise: 0.2,
+        looseAnimalChance: 0.3,
+        smallDodgeBonus: 0.15,
+        keysLockChance: 0.4,
+        airPocketChance: 0.35,
+        diveLineDodgeBonus: 0.35,
+        gasPocketChance: 0.3,
+        crustSafeAt: 2,
+        spoilDepletion: 0.15,
+        bucketBelowHealth: 60,
+        bucketChance: 0.4,
+        bucketFallChance: 0.2,
+        hedgeFatigue: 8,
+        forgottenBelowSanity: 20,
+        sprinklerFatigue: 4,
+        forgetAllyChance: 0.5,
+    },
+} as const;
+
+/**
+ * AUDIT-12 wave 3 (§11 side features, §12 replayability, §13 shallow systems).
+ * One block so the side-feature tuning never collides with the core balance
+ * pass. Grouped by feature; every leaf is read by one module under
+ * `src/engine/season/` or by the store.
+ */
+export const AUDIT12_WAVE3 = {
+    prediction: {
+        /** Points for naming the family of the first death. */
+        causePoints: 2,
+        /** Points for the right side of the "day the Games end" over/under. */
+        overUnderPoints: 2,
+        /** Bonus for naming a victor the book called an upset (no kills, or a thin district). */
+        upsetPoints: 4,
+        /** Legacy tiers that count as thin for the upset. */
+        upsetTiers: ['forgotten'] as readonly string[],
+        /** Bankroll a first slip opens with, and what each slip stakes. */
+        bankrollStart: 20,
+        slipStake: 4,
+        /** Capitol Coins paid when a called upset comes in. */
+        upsetCoins: 150,
+    },
+    sideMarkets: {
+        /** Measured share of runs where arena-and-body deaths outnumber tribute kills. */
+        arenaMajorityBase: 0.32,
+        /** Share of runs with at least one mutt kill, and at least one border death. */
+        muttKillBase: 0.55,
+        borderCasualtyBase: 0.35,
+        /** Chance a named tribute is the first a mutt kills, scaled by field size. */
+        firstMuttKillScale: 0.55,
+    },
+    directors: {
+        /** Earliest day an authored director intervention can land. */
+        earliestDay: 2,
+        /** The mutt-lover's rarest-mutt release. */
+        rareMuttDay: 5,
+        /** The fire-lover's scarred zone. */
+        scarDay: 3,
+        scarDamage: 18,
+        /** Share of those in the scarred zone who get out of it. */
+        scarDodge: 0.5,
+        /** The alliance-breaker's whisper: regard lost between two pack-mates. */
+        whisperRegard: -40,
+        whisperDay: 3,
+        /** The weather-obsessive's second front, and the storm day. */
+        frontDay: 3,
+        /** Sponsor-friendly: purse top-up share and the open-house day. */
+        purseTopUp: 0.35,
+        openHouseDay: 3,
+        /** Showrunner: the bounty's excitement and the spotlight day. */
+        bountyExcitement: 25,
+        spotlightDay: 4,
+        /** Hands-off: hazard relief the quiet day buys (share of threat removed). */
+        quietRelief: 0.5,
+        /**
+         * Measured per-run means under a neutral taste (60 runs, default
+         * config, `npm run test:directors`, which prints them). The run
+         * profile's "director effect" line is the run's own count against these.
+         */
+        baseline: { muttAttacks: 15.7, muttDeaths: 0.5, fireWeather: 1.1, betrayals: 12.8, weatherFronts: 2.8, parachutes: 83.1, headlines: 20.8, interventions: 3.2 } as Record<string, number>,
+        /** Minimum shift, in standard errors of the difference, the guard demands. */
+        guardSd: 2,
+    },
+    mutators: {
+        /** Thirst every tribute takes each cycle under `water-ration`. */
+        waterRationThirst: 4,
+        /** Health taken, and bleeding chance, under `wounded-start`. */
+        woundedStartDamage: 22,
+        woundedStartBleedChance: 0.35,
+        /** `border-doubles`: the second pulse's damage and dodge. */
+        borderPulseDamage: 26,
+        borderPulseDodge: 0.45,
+        /** `border-doubles`: days the closing starts early. */
+        borderEarlyDays: 2,
+        /** `mutts-only-kills`: excitement a tribute kill costs, and what a mutt kill pays its nearest rival. */
+        muttsOnlyKillPenalty: 12,
+        muttsOnlyCredit: 10,
+        /** `mutts-only-kills`: mutt odds multiplier. */
+        muttsOnlyMuttChance: 1.5,
+        /** `sponsor-auction`: every gift is contested, at this cost multiplier. */
+        auctionCost: 1.6,
+        /** Gauntlet: most cards on a stack, and the score per difficulty point. */
+        gauntletMax: 4,
+        gauntletPointsPerDifficulty: 100,
+        /** Gauntlet: score multiplier when the slip named the victor. */
+        gauntletCalledVictor: 1.5,
+    },
+    audience: {
+        /** Per-phase decay of excitement toward zero (share kept). */
+        excitementKeep: 0.99,
+        /** Heat (sum of segments, 0-300) below which the booth is bored. */
+        boredHeat: 55,
+        /** A segment this far above the others steers the Gamemakers. */
+        leadMargin: 8,
+    },
+    cruelty: {
+        /** Cruelty each kind of intervention adds. */
+        perMutt: 9,
+        perWeather: 5,
+        perFeast: 3,
+        perSignature: 8,
+        perDirector: 6,
+        /** Per-cycle decay (share kept). */
+        keep: 0.93,
+        /** Above this the fairness guard refuses further authored interventions. */
+        guardAt: 70,
+        /** The meter's display bands. */
+        bands: [25, 50, 70] as readonly number[],
+        logCap: 12,
+    },
+    sponsors: {
+        /** A second bloc within this share of the winner's weight starts a bidding war. */
+        warMargin: 0.25,
+        /** Bidding-war cost multiplier for both blocs. */
+        warCost: 1.4,
+        /** Chance a qualifying pair actually bids against each other. */
+        warChance: 0.5,
+        /** Patron's regret: a tribute dead within this many cycles of a gift. */
+        regretCycles: 2,
+        /** Regret multiplier per incident, and its floor. */
+        regretStep: 0.75,
+        regretFloor: 0.4,
+        /** Arena-logical gift weight when the arena's shortage matches the item. */
+        logicalWeight: 2.5,
+        /** Share of zones that must be dry, icy or cave for the arena to count as waterless, cold or dark. */
+        dryShare: 0.85,
+        coldShare: 0.3,
+        darkShare: 0.3,
+    },
+    mentors: {
+        /** Proficiency share the opening tip trains. */
+        tipShare: 0.6,
+        /** Dodge bonus a victor-mentor's warning gives against their own arena's terrain. */
+        warningDodge: 1,
+        /** Days the warning holds. */
+        warningDays: 4,
+    },
+    apprenticeship: {
+        /** Grade-training share the chosen skill gives the district's next tribute. */
+        carriedShare: 1.2,
+    },
+    reunions: {
+        /** Regard between reunion districts' tributes at the next reaping. */
+        bondRegard: 18,
+        /** Resolve a veteran's district carries forward. */
+        veteranResolve: 6,
+        maxBonds: 6,
+    },
+    rivalries: {
+        /** Heat decay per Games (share kept) and the threshold that seeds hatred. */
+        keep: 0.6,
+        seedAt: 2,
+        /** Heat below this is forgotten. */
+        dropBelow: 0.5,
+        regard: -22,
+        maxRivalries: 6,
+        /** A nemesis: a victor who killed at least this many, kept for this many Games. */
+        nemesisKills: 3,
+        nemesisRuns: 4,
+        maxNemeses: 4,
+        nemesisReputation: 15,
+    },
+    story: {
+        /** Days between chain steps. */
+        stepDays: 3,
+        /** Steps in an arena story chain. */
+        steps: 3,
+        /** A step's excitement and threat. */
+        stepExcitement: 8,
+        stepThreat: 10,
+        /** The payoff's item value floor. */
+        rewardMinValue: 30,
+    },
+    season: {
+        /** Games in a season. */
+        length: 5,
+        /** Points: a crown, a finalist (last three), a kill. */
+        crownPoints: 5,
+        finalistPoints: 2,
+        killPoints: 0.5,
+    },
+    museum: {
+        /** Pieces kept per arena. */
+        perArena: 5,
+    },
+    mastery: {
+        victorsKept: 5,
+    },
+    interview: {
+        /** Minimum wound amount a scar question will ask about. */
+        scarMin: 18,
+    },
+    events: {
+        /** Bidding War: the second bloc's gift value floor. */
+        biddingWarFloor: 20,
+        /** Truce of the Wounded: cycles the two do not fight, and the regard it leaves. */
+        truceCycles: 3,
+        truceRegard: 20,
+        /** Below this health a tribute counts as wounded for the truce. */
+        woundedBelow: 60,
+        /** Paranoia Night: trust lost among allies in the zone. */
+        paranoiaTrust: -10,
+        paranoiaSanity: 4,
+    },
+    rotation: {
+        /** Arenas in the weekly thin-arena pool (fewest authored events). */
+        thinPool: 12,
+        /** Weight on the thinnest vs the rest. */
+        thinWeight: 3,
+    },
+} as const;
+
+/* ========================================================================
+ * AUDIT-12 wave 2 — tributes: T15 trait hooks, the §16 traits, archetypes,
+ * skills, quirks and stances, and the §7 re-balance. Appended block; owned by
+ * the tributes workstream. Read in `engine/traitHooks.ts` and at the sites it
+ * names.
+ * ====================================================================== */
+export const AUDIT12_WAVE2_TRIBUTES = {
+    // ---- T15: the AUDIT-11 §16 traits, made real ------------------------
+    /** Mimic: chance per cycle of throwing a voice at a hostile one sector over. */
+    mimicLureChance: 0.12,
+    /** Mimic: the lure only works on somebody no healthier than the mimic plus this. */
+    mimicLureHealthMargin: 10,
+    /** Mimic: ambush chance the lure buys on the target it drew in. */
+    mimicLureAmbushBonus: 0.35,
+    /** Mimic: a bystander's chance of seeing it done, plus per point of awareness. */
+    mimicWitnessBase: 0.3,
+    mimicWitnessPerAwareness: 0.04,
+    /** Twitchy Trigger: fighters in the brawl before a swing can go astray. */
+    twitchyCrowd: 4,
+    /** Twitchy Trigger: chance per brawl of hitting an ally, and what it costs. */
+    twitchyAllyHitChance: 0.2,
+    twitchyAllyDamage: 8,
+    twitchyAllyRegard: 12,
+    twitchyAllyTrust: 8,
+    /** Homebody: combat power on the ground of their first camp. */
+    homebodyCampPower: 2.5,
+    /** Forgets Faces: multiplier on how fast a grudge (negative regard) fades. */
+    forgetsFacesGrudgeDecay: 2,
+    /** Oathkeeper: what keeping a promise they could not afford costs them. */
+    oathkeeperStrainSanity: 6,
+    oathkeeperStrainFatigue: 12,
+    /** Oathkeeper: sanity an oath costs when the pack's betrayal roll picks them. */
+    oathkeeperBetrayalSanity: 4,
+    /** Watch-fail multipliers: Heavy Sleeper nods off, Night Owl does not. */
+    heavySleeperWatchFail: 2.5,
+    nightOwlWatchFail: 0.5,
+    /** Night Owl: combat power after dark. */
+    nightOwlNightPower: 1,
+    /** Bone-Setter: limb grade at which they splint it, and the chance per cycle. */
+    boneSetterSplintGrade: 1,
+    boneSetterSplintChance: 0.4,
+    /** Cannon-Counter: sanity each cannon is worth, and the share of fear it sheds. */
+    cannonCounterSanity: 2,
+    cannonCounterFearShed: 0.1,
+    /** Cannon-Counter: destination penalty per cannon just fired in a zone. */
+    cannonCounterAvoid: 1.5,
+    /** Salt-Tongued: chance a caught plant is read as an honest mistake instead. */
+    saltTonguedEscape: 0.5,
+    /** Pack Rat: loot chance over a body they just made. */
+    packRatLootBonus: 0.2,
+    /** Pack Rat: chance of stripping a body in the Scavenging stance. */
+    packRatStripBonus: 0.15,
+
+    // ---- §16 traits ------------------------------------------------------
+    /** Plate-Sprinter: share of the horn run-down catch that still applies (-40%). */
+    plateSprinterCatch: 0.6,
+    /** Cornered Rat: power below this health, within a cycle of a failed retreat. */
+    corneredRatPower: 1.5,
+    corneredRatHealth: 30,
+    corneredRatCycles: 1,
+
+    // ---- §16 skills ------------------------------------------------------
+    /** Evasion: retreat chance per level, and share of the run-down catch removed per level. */
+    evasionRetreatPerLevel: 0.02,
+    evasionCatchPerLevel: 0.05,
+    /** Rationing: hunger drain removed per level; trained eating on this many rations or fewer. */
+    rationingDrainPerLevel: 0.15,
+    rationingLowStock: 1,
+    /** Scavenging: loot / strip chance per level. */
+    scavengingLootPerLevel: 0.04,
+    /** Salvage: find chance per level at a left camp; the level that turns up the rigged spare. */
+    salvageFindPerLevel: 0.05,
+    salvageExtraLevel: 2,
+    /** Signalling: destination pull toward an absent ally, per level. */
+    signallingPullPerLevel: 0.35,
+    /** Ambush: ambush chance per level. */
+    ambushChancePerLevel: 0.03,
+    /** Animal handling: mutt damage removed per level, snare feed per level, Menagerie calm level. */
+    animalHandlingMuttPerLevel: 0.06,
+    animalHandlingFeedPerLevel: 2,
+    animalHandlingMenagerieLevel: 2,
+
+    // ---- §16 stances -----------------------------------------------------
+    /** Hiding: concealment the ground has to offer before it is on the menu. */
+    hidingConcealmentMin: 0.45,
+    hidingBase: 4.6,
+    hidingPerConcealment: 3,
+    hidingPerThreat: 0.6,
+    hidingThreatCap: 3,
+    hidingWoundedBonus: 0.8,
+    /** Hiding: extra concealment, and the tracking level that still finds them. */
+    hidingConcealmentBonus: 0.12,
+    hidingTrackedLevel: 3,
+    /** Hiding: what lying still costs per cycle. */
+    hidingHunger: 1.5,
+    hidingThirst: 2,
+    /** Parleying: the risk tolerance at or under which talking comes first. */
+    parleyingRiskMax: -0.15,
+    parleyingBase: 4.4,
+    parleyingPerCharisma: 0.12,
+    /** Parleying: fear each failed talk adds. */
+    parleyingFailFear: 12,
+
+    // ---- §16 archetypes --------------------------------------------------
+    /** Scout-Runner: how long the warned ally is hard to ambush, by how much, and the trust it buys. */
+    scoutWarnCycles: 3,
+    scoutWarnAmbushRelief: 0.3,
+    scoutWarnTrust: 8,
+    /** Turncoat: earliest day, and the smallest group worth taking over. */
+    turncoatMinDay: 3,
+    turncoatMinMembers: 3,
+    turncoatRegard: 25,
+    turncoatSuspicion: 40,
+    /** Warden-of-the-Weak: cycles added to a downed ally's window. */
+    guardianWindow: 1,
+    /** Warden-of-the-Weak: an ally this hurt, with a hostile standing over them, counts as weak. */
+    guardianWeakHealth: 40,
+    guardianTrust: 12,
+    /** Forger: bonus durability on what they make. */
+    forgerDurability: 15,
+    /** Gambler: the most the fight may look like, and the day the wager is on the board. */
+    gamblerOddsMax: 0.4,
+    gamblerMinDay: 2,
+    gamblerExcitement: 25,
+    /** Gambler: what a visible weapon adds to how a bettor prices a fighter. */
+    gamblerArmedWorth: 3,
 } as const;

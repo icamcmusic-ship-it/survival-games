@@ -2,6 +2,7 @@ import { Tribute } from '../models/types';
 import { SimContext } from './context';
 import { TRAIT_DEFS } from '../data/traits';
 import { traitFits } from '../data/constants';
+import { AUDIT12_TRIBUTES } from '../data/balance';
 
 /**
  * Traits a tribute leaves the arena with that they did not arrive with.
@@ -191,8 +192,15 @@ export function earnTrait(ctx: SimContext, t: Tribute, trait: string, converted 
     if (!converted && !TRAIT_DEFS[trait]?.earned) return false;
     if (!TRAIT_DEFS[trait]) return false;
     if (!traitFits(t.traits, trait)) return false;
+    // AUDIT-12 §5: the two near-universal earned traits are tightened. One
+    // kill is not Bloodied (the horn hands most victors that); eight days
+    // unhurt is not Unbroken when a victor usually lasts eleven.
+    if (!converted && trait === 'Bloodied' && t.kills < AUDIT12_TRIBUTES.bloodiedKills) return false;
+    if (!converted && trait === 'Unbroken' && t.daysSurvived < AUDIT12_TRIBUTES.unbrokenDays) return false;
+    if (t.traits.includes(trait)) return false;
 
     t.traits.push(trait);
+    if (TIERS[trait]) (t.traitTiers ??= {})[trait] = 1;
 
     // A conversion narrates itself. `transformTrait` (traitArcs.ts) hands the
     // arc its own line and logs it immediately after this call returns, so
@@ -212,4 +220,48 @@ export function earnTrait(ctx: SimContext, t: Tribute, trait: string, converted 
     // the set that is typed is the set something counts.
     ctx.logEvent(line, [t.id], { type: trait === 'Haunted' ? 'haunted-grants' : undefined, important: true, category: 'sanity' });
     return true;
+}
+
+/**
+ * AUDIT-12 §5: tiered earned traits. Bloodied and Unbroken grow — II and III —
+ * so the sheet says *how* bloodied a victor is rather than only that they are.
+ * Thresholds are kills (Bloodied) and days survived unhurt (Unbroken).
+ */
+const TIERS: Record<string, { measure: (t: Tribute) => number; steps: readonly number[] }> = {
+    Bloodied: { measure: t => t.kills, steps: AUDIT12_TRIBUTES.bloodiedTierKills },
+    Unbroken: {
+        measure: t => ((t.lowHealthRecoveries ?? 0) === 0 && t.everDowned !== true ? t.daysSurvived : 0),
+        steps: AUDIT12_TRIBUTES.unbrokenTierDays,
+    },
+};
+
+const ROMAN = ['', 'I', 'II', 'III'];
+
+/** The tier (1-3) a tiered earned trait has reached, 0 when not held. */
+export function traitTier(t: Tribute, trait: string): number {
+    if (!t.traits.includes(trait)) return 0;
+    return t.traitTiers?.[trait] ?? 1;
+}
+
+/** Grants missing tier-I Bloodied and raises tiers; call once per cycle. */
+export function refreshTraitTiers(ctx: SimContext) {
+    ctx.state.tributes.forEach(t => {
+        if (t.status !== 'alive') return;
+        if (traitTier(t, 'Bloodied') === 0 && t.kills >= AUDIT12_TRIBUTES.bloodiedKills) earnTrait(ctx, t, 'Bloodied');
+        Object.entries(TIERS).forEach(([trait, rule]) => {
+            if (!t.traits.includes(trait)) return;
+            const value = rule.measure(t);
+            const reached = 1 + rule.steps.filter(step => value >= step).length;
+            const current = traitTier(t, trait);
+            if (reached <= current) return;
+            (t.traitTiers ??= {})[trait] = reached;
+            ctx.logEvent(
+                trait === 'Bloodied'
+                    ? `${t.name} has stopped counting how many. The crowd has not: Bloodied ${ROMAN[reached]}.`
+                    : `Day after day and nothing in this arena has been able to put ${t.name} down. Unbroken ${ROMAN[reached]}.`,
+                [t.id],
+                { important: reached === 3, category: 'sanity' }
+            );
+        });
+    });
 }

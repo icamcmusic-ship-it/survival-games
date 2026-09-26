@@ -115,6 +115,17 @@ export const STANCE_PROFILES: Record<Stance, StanceProfile> = {
         conditional: true, minHold: 2,
         blurb: 'Deliberately visible, on ground they prepared. Wants to be found, in the one place being found is survivable.',
     },
+    // AUDIT-12 §16: a loner's alternative to Evasive, and talking first.
+    Hiding: {
+        id: 'Hiding', label: 'Hiding', family: 'evasive',
+        conditional: true, minHold: 2,
+        blurb: 'Lying still in the best cover there is while something dangerous goes past. Nobody hunting finds them unless they know them — and lying still is hungry work.',
+    },
+    Parleying: {
+        id: 'Parleying', label: 'Parleying', family: 'defensive',
+        conditional: true, minHold: 2,
+        blurb: 'Somebody hostile is here and they would rather talk. Every meeting opens with an offer; every one that fails frightens them more.',
+    },
 };
 
 /** Every stance, in display order. The single source of truth for iteration. */

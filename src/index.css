@@ -125,6 +125,20 @@
     --on-red: #ffffff;
     --red-hover: #d3202f;
     --header-h: 3.75rem;
+    /* AUDIT-12 U1/U8: theme-stable text for the gold band (gold never flips,
+       so neither does what sits on it), and a colour-blind-safe alliance
+       palette (Okabe–Ito hues, tuned to clear 4.5:1 on each theme's paper). */
+    --on-gold: #140a06;
+    --on-gold-muted: #4f3a0e;
+    /* Gold used as a text colour on paper. */
+    --gold-text: #7a5a0c;
+    --on-coin: #ffffff;
+    --alliance-1: #0a5ea8;
+    --alliance-2: #9a5200;
+    --alliance-3: #00705a;
+    --alliance-4: #b0390a;
+    --alliance-5: #973c78;
+    --alliance-6: #6a5a00;
 
     --shadow-ink: 6px 6px 0 var(--ink);
     --shadow-ink-sm: 4px 4px 0 var(--ink);
@@ -198,6 +212,18 @@
     --chrome-muted: #bcae95;
     --on-red: #140a06;
     --red-hover: #ff8a90;
+    --on-gold: #140a06;
+    --on-gold-muted: #4f3a0e;
+    --gold-text: #e3ae27;
+    /* AUDIT-12: the coin teal, lifted for text on dark paper; its chip flips to dark ink. */
+    --color-coin-400: #4cc2ad;
+    --on-coin: #0b0705;
+    --alliance-1: #7ab8ff;
+    --alliance-2: #ffb35c;
+    --alliance-3: #44d3b0;
+    --alliance-4: #ff8f66;
+    --alliance-5: #eda0d6;
+    --alliance-6: #e6d352;
 
     --shadow-ink: 6px 6px 0 var(--ink);
     --shadow-ink-sm: 4px 4px 0 var(--ink);
@@ -259,6 +285,18 @@
     --chrome-muted: #bcae95;
     --on-red: #140a06;
     --red-hover: #ff8a90;
+    --on-gold: #140a06;
+    --on-gold-muted: #4f3a0e;
+    --gold-text: #e3ae27;
+    /* AUDIT-12: the coin teal, lifted for text on dark paper; its chip flips to dark ink. */
+    --color-coin-400: #4cc2ad;
+    --on-coin: #0b0705;
+    --alliance-1: #7ab8ff;
+    --alliance-2: #ffb35c;
+    --alliance-3: #44d3b0;
+    --alliance-4: #ff8f66;
+    --alliance-5: #eda0d6;
+    --alliance-6: #e6d352;
 
     --shadow-ink: 6px 6px 0 var(--ink);
     --shadow-ink-sm: 4px 4px 0 var(--ink);
@@ -553,7 +591,8 @@ html[data-reduce-motion='true'] {
         z-index: 0;
     }
 
-    .masthead > * {
+    /* AUDIT-12 U2: the ghost numeral keeps its absolute position. */
+    .masthead > *:not(.masthead-ghost) {
         position: relative;
         z-index: 1;
     }
@@ -577,12 +616,12 @@ html[data-reduce-motion='true'] {
         text-transform: uppercase;
         letter-spacing: -0.01em;
         line-height: 0.92;
-        color: var(--ink);
+        color: var(--on-gold);
         margin: 0;
     }
 
     .masthead-sub {
-        color: var(--gold-line);
+        color: var(--on-gold-muted);
         font-weight: 600;
         margin-top: 0.9rem;
         max-width: 42rem;
@@ -684,14 +723,14 @@ html[data-reduce-motion='true'] {
 
     .btn-gold {
         background: var(--gold);
-        border-color: var(--ink);
-        color: var(--ink);
+        border-color: var(--on-gold);
+        color: var(--on-gold);
         box-shadow: var(--shadow-ink-sm);
     }
 
     .btn-gold:hover:not(:disabled) {
         background: #ecbb42;
-        color: var(--ink);
+        color: var(--on-gold);
     }
 
     .btn-gold:active:not(:disabled) {
@@ -751,6 +790,7 @@ html[data-reduce-motion='true'] {
     }
 
     .seg-item[aria-pressed="true"],
+    .seg-item[aria-selected="true"],
     .seg-item.is-active {
         background: var(--ink);
         color: var(--paper);
@@ -839,15 +879,15 @@ html[data-reduce-motion='true'] {
     }
 
     .chip-gold {
-        border-color: var(--ink);
+        border-color: var(--on-gold);
         background: var(--gold);
-        color: var(--ink);
+        color: var(--on-gold);
     }
 
     .chip-coin {
         border-color: var(--ink);
         background: var(--color-coin-400);
-        color: #fff;
+        color: var(--on-coin);
     }
 
     .stat-tile {
@@ -1549,8 +1589,11 @@ input[type="range"]:focus-visible {
         a.chip,
         [role="tab"],
         select,
-        input[type="checkbox"],
-        input[type="radio"],
+        /* AUDIT-12 U12: a box inside a label takes its target from the label. */
+        input[type="checkbox"]:not(label input),
+        input[type="radio"]:not(label input),
+        label:has(> input[type="checkbox"]),
+        label:has(> input[type="radio"]),
         input[type="text"],
         input[type="search"],
         input[type="number"],
@@ -1567,8 +1610,8 @@ input[type="range"]:focus-visible {
         button:has(> svg:only-child),
         a[href]:has(> svg:only-child),
         .tap-target,
-        input[type="checkbox"],
-        input[type="radio"] {
+        input[type="checkbox"]:not(label input),
+        input[type="radio"]:not(label input) {
             min-width: 44px;
         }
 
@@ -1657,3 +1700,71 @@ input[type="range"]:focus-visible {
 
 /* §4: an armed destructive button. */
 .btn-danger-armed { background: var(--red) !important; color: var(--on-red) !important; border-color: var(--ink) !important; }
+
+/* ============================================================================
+   AUDIT-12 §4 — mobile tribute sheet as a bottom sheet (U4).
+   ========================================================================== */
+.sheet-overflow > summary::-webkit-details-marker { display: none; }
+.sheet-overflow-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.35rem);
+    z-index: 5;
+    width: min(16rem, 80vw);
+}
+@media (max-width: 640px) {
+    .tribute-sheet {
+        max-width: none;
+        max-height: 92vh;
+        max-height: 92dvh;
+        border-bottom: 0;
+        border-radius: 10px 10px 0 0;
+    }
+    .tribute-sheet .sheet-tabs {
+        position: sticky;
+        top: -1rem;
+        z-index: 4;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        scrollbar-width: none;
+        gap: 0.35rem;
+    }
+    .tribute-sheet .sheet-tabs > .seg-item {
+        flex: 0 0 auto;
+        padding-inline: 0.8rem;
+    }
+}
+
+/* AUDIT-12 U7: deck cards carry a blurb, so they wrap like prose. */
+.seg-item.mutator-card { white-space: normal; padding-block: 0.55rem; }
+
+/* AUDIT-12 §4: a compact hero band on a phone (~160px, was ~480px). */
+@media (max-width: 640px) {
+    .masthead { padding: 1rem 1rem 1.1rem; }
+    .masthead-ghost { font-size: 6.5rem; opacity: 0.4; }
+    .masthead-eyebrow { margin-bottom: 0.6rem; padding: 0.3rem 0.6rem; font-size: 0.62rem; }
+    .masthead .masthead-title { font-size: 2.1rem; line-height: 0.95; }
+    .masthead-sub {
+        margin-top: 0.5rem;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+}
+
+/* AUDIT-12 §4: standings on a phone — pinned Tribute column, right-edge fade. */
+@media (max-width: 1023px) {
+    .standings-scroll .standings-pin {
+        position: sticky;
+        left: 0;
+        z-index: 2;
+        background: var(--paper-panel);
+        box-shadow: 1px 0 0 var(--line-soft);
+    }
+    .standings-scroll thead .standings-pin { z-index: 11; background: var(--paper); }
+    .standings-scroll {
+        -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 1.5rem), transparent);
+        mask-image: linear-gradient(to right, #000 calc(100% - 1.5rem), transparent);
+    }
+}

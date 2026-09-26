@@ -1,6 +1,7 @@
 import { GameState, Obligation, Tribute } from '../models/types';
+import { oathHolds } from './traitHooks';
 import { SimContext, getAlive } from './context';
-import { OBLIGATIONS } from '../data/balance';
+import { AUDIT12_TRIBUTES, OBLIGATIONS } from '../data/balance';
 import { cycleOf } from './memory';
 import { adjustRel, adjustTrust, getRel } from './relationships';
 import { hasTruce } from './parley';
@@ -174,6 +175,8 @@ export function keep(ctx: SimContext, o: Obligation, line: string) {
  * somebody who was able to come, and they did not.
  */
 function breakRescue(ctx: SimContext, o: Obligation, from: Tribute, to: Tribute) {
+    // AUDIT-12 T15: an Oathkeeper cannot break it — they run the sector instead.
+    if (oathHolds(ctx, o, from, to)) return;
     o.status = 'broken';
     from.faithBroken = (from.faithBroken ?? 0) + 1;
     if (to.status === 'alive') adjustRel(to, from.id, -OBLIGATIONS.brokenRegard);
@@ -210,7 +213,14 @@ export function tickObligations(ctx: SimContext) {
         if (o.kind === 'rescue' && from && to && from.status === 'alive' && to.status === 'alive'
             && isDowned(to) && isActive(from) && !samePlace(state.arena, from, to)
             && (hopsTo(state.arena, from.zone, to.zone, state.collapsedZones ?? [], severedEdgeSet(state)) ?? Infinity) <= 1) {
-            o.rescueMissed = true;
+            // AUDIT-12 T11: one cycle is not a choice — it takes a cycle to
+            // hear and move. Two or more cycles of staying put is.
+            o.rescueMissedCycles = (o.rescueMissedCycles ?? 0) + 1;
+            if (o.rescueMissedCycles >= AUDIT12_TRIBUTES.rescueMissCycles) o.rescueMissed = true;
+        } else if (o.kind === 'rescue' && to && !isDowned(to)) {
+            // Back on their feet (whoever got them there): the miss is moot.
+            o.rescueMissedCycles = 0;
+            o.rescueMissed = false;
         }
 
         // The person it was owed to is dead: nothing left to owe — unless they
@@ -318,6 +328,9 @@ export function tickObligations(ctx: SimContext) {
                 breakRescue(ctx, o, from, to);
                 return;
             }
+            // AUDIT-12 T15: an Oathkeeper who could keep it keeps it, even out
+            // of the last ration they have.
+            if (couldHave && oathHolds(ctx, o, from, to)) return;
             /*
              * §12: three outcomes, not two.
              *

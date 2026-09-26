@@ -1,6 +1,8 @@
 import { GameState, Phase, Tribute } from '../models/types';
 import { ODDS, SIDE_MARKETS } from '../data/balance';
 import { tributeOdds } from './odds';
+import { AUDIT12_WAVE3 } from '../data/balance';
+import { CAUSE_FAMILY, deathCodeOf } from './causes';
 
 /**
  * §6.1: the proposition book, live-priced.
@@ -79,7 +81,16 @@ export type SideBetKind =
     /** The crown goes to somebody who never killed. */
     | 'bloodless-victor'
     /** The victor is crowned still carrying a wound. */
-    | 'wounded-victor';
+    | 'wounded-victor'
+    // AUDIT-12 wave 3 §11: markets on how people die, settled from `deathCodeOf`.
+    /** The arena (and the body) kill more than the tributes do. */
+    | 'arena-majority'
+    /** At least one tribute dies to a mutt. */
+    | 'mutt-kill'
+    /** A named tribute is the first a mutt kills. */
+    | 'first-mutt-kill'
+    /** At least one tribute dies at the border. */
+    | 'border-casualty';
 
 /**
  * Every market, as a runtime list. Save normalisation validates an unknown
@@ -90,6 +101,7 @@ export const SIDE_BET_KINDS: readonly SideBetKind[] = [
     'first-blood', 'no-victor', 'career-victor', 'top-three',
     'bloodbath-over', 'bloodbath-under', 'victor-district', 'long-games',
     'feast-held', 'bloodless-victor', 'wounded-victor',
+    'arena-majority', 'mutt-kill', 'first-mutt-kill', 'border-casualty',
 ] as const;
 
 /** What a market needs beyond its kind to be a specific wager. */
@@ -372,7 +384,31 @@ export function priceSideBet(
         }
         case 'wounded-victor':
             return { kind, ...price(SIDE_MARKETS.woundedVictorBase), label: 'a victor crowned still wounded' };
+        case 'arena-majority':
+            return { kind, ...price(W3M.arenaMajorityBase), label: 'the arena killing more than the tributes do' };
+        case 'mutt-kill':
+            return { kind, ...price(W3M.muttKillBase), label: 'a mutt claiming somebody' };
+        case 'border-casualty':
+            return { kind, ...price(W3M.borderCasualtyBase), label: 'somebody caught by the border' };
+        case 'first-mutt-kill': {
+            const t = named(pool, target.targetId);
+            if (!t) return undefined;
+            // The weak and the slow are the mutts' first meal; a flat share of
+            // the market's own rate, tilted by agility.
+            const share = W3M.muttKillBase * W3M.firstMuttKillScale / pool.length * (1.5 - t.attributes.agility / 10);
+            return { kind, targetId: t.id, ...price(share), label: `${t.name} the first a mutt kills` };
+        }
     }
+}
+
+const W3M = AUDIT12_WAVE3.sideMarkets;
+
+/** AUDIT-12 wave 3: the dead in the order they fell, with each one's cause family. */
+function deathsInOrder(state: GameState): Array<{ t: Tribute; family: string; code: string }> {
+    return state.tributes
+        .filter(t => t.status === 'dead')
+        .sort((a, b) => (a.eliminationIndex ?? a.dayOfDeath ?? 0) - (b.eliminationIndex ?? b.dayOfDeath ?? 0))
+        .map(t => ({ t, code: deathCodeOf(t), family: CAUSE_FAMILY[deathCodeOf(t)] }));
 }
 
 /** The whole board, for a UI that wants to show what is on offer. */
@@ -388,6 +424,9 @@ export function quoteSideMarkets(field: Tribute[], rules?: MarketRules): SideQuo
         priceSideBet('feast-held', pool, {}, rules),
         priceSideBet('bloodless-victor', pool, {}, rules),
         priceSideBet('wounded-victor', pool, {}, rules),
+        priceSideBet('arena-majority', pool, {}, rules),
+        priceSideBet('mutt-kill', pool, {}, rules),
+        priceSideBet('border-casualty', pool, {}, rules),
         ...districts.map(d => priceSideBet('victor-district', pool, { targetDistrict: d }, rules)),
         ...pool.map(t => priceSideBet('first-blood', pool, { targetId: t.id }, rules)),
         ...pool.map(t => priceSideBet('top-three', pool, { targetId: t.id }, rules)),
@@ -483,5 +522,18 @@ export function settleSideBet(state: GameState, bet: SideBetKind extends never ?
         case 'wounded-victor':
             return yes(survivors.length > 0 && survivors.some(t => Object.values(t.injuries).some(Boolean)),
                 'a victor crowned still wounded');
+        case 'arena-majority': {
+            const dead = deathsInOrder(state);
+            const byTribute = dead.filter(d => d.family === 'tribute').length;
+            return yes(dead.length - byTribute > byTribute, 'the arena killing more than the tributes do');
+        }
+        case 'mutt-kill':
+            return yes(deathsInOrder(state).some(d => d.family === 'mutt'), 'a mutt claiming somebody');
+        case 'border-casualty':
+            return yes(deathsInOrder(state).some(d => d.code === 'border'), 'somebody caught by the border');
+        case 'first-mutt-kill': {
+            const first = deathsInOrder(state).find(d => d.family === 'mutt');
+            return yes(!!first && first.t.id === bet.targetId, `${target?.name ?? 'a named tribute'} the first a mutt kills`);
+        }
     }
 }

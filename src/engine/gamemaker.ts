@@ -1,4 +1,6 @@
 import { SimContext, getAlive } from './context';
+import { noteGamemakerCruelty } from './season/cruelty';
+import { barAlliance } from './season/barredAlliance';
 import { RNG } from '../utils/rng';
 import { directorTaste, weightedIndex } from '../data/directors';
 import { ExposureProfile, applyExposure } from './exposure';
@@ -210,6 +212,7 @@ export function triggerGamemakerEvent(ctx: SimContext, type: GamemakerEventType,
     (ctx.state.interventionLog ??= []).push({
         cycle, type, ...(targetId ? { targetId } : {}), ...(capitolSchedule ? { scheduled: true } : {}),
     });
+    noteGamemakerCruelty(ctx.state, type, capitolSchedule); // AUDIT-12 wave 3: the cruelty meter
     const ambient = ctx.rng;
     ctx.rng = new RNG(`${ctx.state.seed}-gm-${cycle}-${type}-${commandIndex}`);
     try {
@@ -248,6 +251,7 @@ export function replayPlannedInterventions(ctx: SimContext) {
         // AUDIT-11 E6: a parachute is replayed through the same booth the
         // player used; its gift stream is seeded off the run, so it lands the
         // same item it did the first time.
+        if (a.type === 'bar-alliance') return barAlliance(ctx, a.targetId); // AUDIT-12 wave 3 what-if
         if (a.type === 'parachute') {
             if (a.targetId && a.itemId) sendPlayerParachute(ctx.state, a.targetId, a.itemId);
             return;

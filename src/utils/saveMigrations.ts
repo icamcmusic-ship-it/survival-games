@@ -53,7 +53,7 @@ export interface Bet {
  * catalogue rather than a hardcoded list.
  */
 import { SIDE_BET_KINDS, SideBetKind } from '../engine/sideMarkets';
-import { MUTATORS, MUTATORS_PER_GAMES } from '../data/mutators';
+import { compatibleMutators, mutatorCap } from '../data/mutators';
 export type { SideBetKind };
 export interface SideBet {
     kind: SideBetKind;
@@ -129,6 +129,13 @@ export interface SavedRun {
     savedAt: string;
     /** A line the player wrote on the slot card — "before the feast", "the one where Rue is winning". */
     note?: string;
+    /**
+     * AUDIT-12 wave 3: the run as it stood at the reaping, for the "never
+     * reaped" and "alliance never formed" what-ifs. Optional: a save from
+     * before it existed resumes without those two branches, and the first
+     * thing dropped when a save will not fit.
+     */
+    reaping?: GameState;
 }
 
 /**
@@ -641,8 +648,10 @@ const CONFIG_RULES: ConfigRules = {
     // AUDIT-11 §12: the mutator cards. Absent on older saves (no mutators);
     // unknown ids are dropped rather than trusted.
     mutators: r => Array.isArray(r.mutators)
-        ? r.mutators.filter((m): m is string => typeof m === 'string' && MUTATORS.some(x => x.id === m)).slice(0, MUTATORS_PER_GAMES)
+        // AUDIT-12 wave 3: incompatible pairs keep the first card; a gauntlet holds up to four.
+        ? compatibleMutators(r.mutators.filter((m): m is string => typeof m === 'string'), mutatorCap({ gauntlet: r.gauntlet === true }))
         : undefined,
+    gauntlet: r => (r.gauntlet === true ? true : undefined),
     // AUDIT-7 §1.2: the four that were being dropped.
     vanillaRules: r => asBool(r.vanillaRules, DEFAULT_GAME_CONFIG.vanillaRules ?? false),
     singleVictor: r => asBool(r.singleVictor, DEFAULT_GAME_CONFIG.singleVictor ?? false),
@@ -765,6 +774,11 @@ export function normalizePrediction(raw: unknown): GameState['prediction'] {
         firstDeathId: id(p.firstDeathId),
         topKillerId: id(p.topKillerId),
         ...(finalEight && finalEight.some(v => v !== '') ? { finalEight } : {}),
+        // AUDIT-12 wave 3: the cause pick and the "day the Games end" over/under.
+        ...(typeof p.firstDeathCause === 'string' && ['tribute', 'body', 'arena', 'mutt', 'gamemaker'].includes(p.firstDeathCause)
+            ? { firstDeathCause: p.firstDeathCause as NonNullable<GameState['prediction']>['firstDeathCause'] } : {}),
+        ...((p.endDayPick === 'over' || p.endDayPick === 'under') && typeof p.endDayLine === 'number' && Number.isFinite(p.endDayLine) && p.endDayLine >= 1
+            ? { endDayPick: p.endDayPick as 'over' | 'under', endDayLine: Math.round(p.endDayLine) } : {}),
     };
 }
 
@@ -1006,6 +1020,7 @@ export function normalizeSavedRun(raw: unknown): SavedRun | null {
         isReplayedRun: asBool(r.isReplayedRun, false),
         savedAt: Number.isNaN(Date.parse(savedAt)) ? new Date(0).toISOString() : savedAt,
         note: typeof r.note === 'string' ? r.note.slice(0, 120) : undefined,
+        reaping: r.reaping !== undefined ? normalizeGameState(r.reaping) ?? undefined : undefined,
     };
 }
 

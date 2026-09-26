@@ -40,7 +40,7 @@ async function intoTheArena(page) {
     await page.getByRole('heading', { name: 'The Reaping' }).waitFor();
     await page.getByRole('button', { name: /confirm tributes/i }).click();
     await page.getByRole('heading', { name: /the chronicle/i }).waitFor();
-    const PRE_GAMES = /hold the reaping|board the train|run the parade|open the training floor|training day \d|read the scores|start the interviews|sound the gong|run the bloodbath/i;
+    const PRE_GAMES = /hold the reaping|go to the square|board the train|run the parade|open the training floor|training day \d|read the scores|start the interviews|sound the gong|run the bloodbath/i;
     for (let i = 0; i < 12; i++) {
         const next = page.getByRole('button', { name: PRE_GAMES });
         if (await next.count() === 0) break;

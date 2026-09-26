@@ -12,6 +12,11 @@ import { gameActions, gameStore } from '../store/gameStore';
 import { useStore } from '../store/createStore';
 import { Glossed } from './Glossed';
 import { ARENA_MUTTS } from '../data/mutts';
+import { AUDIENCE_SEGMENT_LIST, audienceOf } from '../engine/audienceSegments';
+import { mutatorName } from '../data/mutators';
+import { AUDIT12_UI } from '../data/balance';
+
+const SEGMENT_LABEL = { bloodthirsty: 'the bloodthirsty', romantic: 'the romantics', underdog: 'the underdog fans' } as const;
 
 /**
  * A6: the sticky broadcast bar.
@@ -186,6 +191,28 @@ export function BroadcastBar({
                                     ☣ {loose.length} pack{loose.length === 1 ? '' : 's'} loose
                                 </span>
                             </Glossed>
+                        </>
+                    )}
+                    {/* AUDIT-12 §4: the loudest audience segment, outside the tribute sheet. */}
+                    {(() => {
+                        if (!gameState.audience) return null;
+                        const mood = audienceOf(gameState);
+                        const top = [...AUDIENCE_SEGMENT_LIST].sort((a, b) => mood[b] - mood[a])[0];
+                        if (mood[top] < AUDIT12_UI.audienceChipMin) return null;
+                        return (
+                            <>
+                                {' / '}
+                                <Glossed align="right" text={`The loudest part of the crowd right now is ${SEGMENT_LABEL[top]} (${Math.round(mood[top])}/100). A tribute they love costs more to sponsor.`}>
+                                    <span className="font-black" data-testid="audience-chip">♪ crowd: {SEGMENT_LABEL[top]}</span>
+                                </Glossed>
+                            </>
+                        );
+                    })()}
+                    {/* AUDIT-12 §4: the mutator cards in play. */}
+                    {(gameState.config.mutators?.length ?? 0) > 0 && (
+                        <>
+                            {' / '}
+                            <span className="font-black" data-testid="broadcast-mutators">✦ {gameState.config.mutators!.map(mutatorName).join(' · ')}</span>
                         </>
                     )}
                 </div>

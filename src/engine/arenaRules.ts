@@ -233,12 +233,18 @@ export function fallenZones(state: GameState): string[] {
  * fall cost them first). Refuses the Cornucopia and refuses to leave fewer
  * than three zones. Returns whether it happened.
  */
+/** Whether `collapseZonePermanently` would accept this zone — checked before anything narrates the fall (AUDIT-12 E7). */
+export function canCollapseZonePermanently(state: GameState, zone: string): boolean {
+    if (zone === state.arena.zones[0]?.name) return false;
+    const collapsed = state.collapsedZones ?? [];
+    const standing = state.arena.zones.map(z => z.name).filter(n => !collapsed.includes(n) && n !== zone);
+    return standing.length >= 3;
+}
+
 export function collapseZonePermanently(ctx: SimContext, zone: string): boolean {
     const state = ctx.state;
-    if (zone === state.arena.zones[0]?.name) return false;
+    if (!canCollapseZonePermanently(state, zone)) return false;
     const collapsed = state.collapsedZones ?? (state.collapsedZones = []);
-    const standing = state.arena.zones.map(z => z.name).filter(n => !collapsed.includes(n) && n !== zone);
-    if (standing.length < 3) return false;
     const rs = ruleState(state);
     rs.fallen = [...new Set([...(rs.fallen ?? []), zone])];
     if (!collapsed.includes(zone)) collapsed.push(zone);
@@ -302,6 +308,46 @@ export function markPackCut(state: GameState, a: string, b: string) {
     rs.marks = { ...(rs.marks ?? {}), [PACK_CUT_MARK + edgeKey(a, b)]: 1 };
 }
 
+const ACT_CUT_MARK = 'actcut:';
+
+/** Marks a severed edge as owned by an arena act (AUDIT-12 E2): only the act's own restore puts it back. */
+export function markActCut(state: GameState, key: string) {
+    const rs = ruleState(state);
+    rs.marks = { ...(rs.marks ?? {}), [ACT_CUT_MARK + key]: 1 };
+}
+
+/** Whether an arena act still owns this severed edge. */
+export function isActCut(state: GameState, key: string): boolean {
+    return state.arenaRuleState?.marks?.[ACT_CUT_MARK + key] !== undefined;
+}
+
+/** Drops an act's claim on an edge — used when the act restores it, or another system takes it over. */
+export function clearActCut(state: GameState, key: string) {
+    const marks = state.arenaRuleState?.marks;
+    if (!marks || marks[ACT_CUT_MARK + key] === undefined) return;
+    const next = { ...marks };
+    delete next[ACT_CUT_MARK + key];
+    ruleState(state).marks = next;
+}
+
+/**
+ * An act restoring one of its cuts (AUDIT-12 E2). The edge only reopens when
+ * nobody else claims it: a permanent or pack cut keeps it shut; an edge into a
+ * zone sealed right now is handed to the lockdown, whose release restores it.
+ */
+export function releaseActCut(state: GameState, key: string) {
+    if (!isActCut(state, key)) return;
+    clearActCut(state, key);
+    const marks = state.arenaRuleState?.marks ?? {};
+    if (isPermanentCut(state, key) || marks[PACK_CUT_MARK + key] !== undefined || marks['lockcut:' + key] !== undefined) return;
+    const [a, b] = key.split('|');
+    if (isZoneLocked(state, a) || isZoneLocked(state, b)) {
+        ruleState(state).marks = { ...marks, ['lockcut:' + key]: 1 };
+        return;
+    }
+    state.severedEdges = (state.severedEdges ?? []).filter(e => e !== key);
+}
+
 /**
  * Whether `tickOpeningEdges` may put this severed edge back: not a permanent
  * cut, not an event pack's cut, not a lockdown's cut, and not an edge into a
@@ -310,7 +356,8 @@ export function markPackCut(state: GameState, a: string, b: string) {
 export function isReopenable(state: GameState, key: string): boolean {
     if (isPermanentCut(state, key)) return false;
     const marks = state.arenaRuleState?.marks ?? {};
-    if (marks[PACK_CUT_MARK + key] !== undefined || marks['lockcut:' + key] !== undefined) return false;
+    if (marks[PACK_CUT_MARK + key] !== undefined || marks['lockcut:' + key] !== undefined
+        || marks[ACT_CUT_MARK + key] !== undefined) return false;
     const [a, b] = key.split('|');
     return !isZoneLocked(state, a) && !isZoneLocked(state, b);
 }
@@ -385,6 +432,80 @@ export function lockedZones(state: GameState): string[] {
         .filter(k => k.startsWith(LOCK_MARK))
         .map(k => k.slice(LOCK_MARK.length))
         .filter(z => isZoneLocked(state, z));
+}
+
+/**
+ * AUDIT-12 E1 / §8.9, the strand invariant: live zones with no open edge to
+ * another live zone. A zone sealed by a lockdown right now is exempt — that is
+ * deliberate, and it lifts. A zone whose every neighbour has collapsed is the
+ * closing border's endgame, not a strand; nor is an empty zone closed only by
+ * pack or permanent cuts (deliberately sealed, nobody inside). Asserted by `test:sim` and `test:arenas`.
+ */
+export function strandedZones(state: GameState): string[] {
+    const collapsed = new Set(state.collapsedZones ?? []);
+    const cut = severedEdgeSet(state);
+    const sealed = sealedZones(state);
+    return state.arena.zones
+        .filter(z => !collapsed.has(z.name) && !sealed.has(z.name))
+        .filter(z => {
+            // Neighbours lost to the closing border (or sealed right now) are
+            // not a cut: only a zone with open neighbours it cannot reach counts.
+            const liveNeighbours = z.adjacent.filter(n => !collapsed.has(n) && !sealed.has(n));
+            if (liveNeighbours.length === 0 || !liveNeighbours.every(n => cut.has(edgeKey(z.name, n)))) return false;
+            // Sealed on purpose with nobody inside — every cut a pack's or
+            // permanent — is a closed room, not a strand: nobody can walk in.
+            const empty = !state.tributes.some(t => t.status === 'alive' && t.zone === z.name);
+            const deliberate = liveNeighbours.every(n => {
+                const k = edgeKey(z.name, n);
+                return isPermanentCut(state, k) || state.arenaRuleState?.marks?.[PACK_CUT_MARK + k] !== undefined;
+            });
+            return !(empty && deliberate);
+        })
+        .map(z => z.name);
+}
+
+/** Zones sealed on purpose right now: lockdowns, and the horn under `seal-the-horn`. */
+function sealedZones(state: GameState): Set<string> {
+    const sealed = new Set(lockedZones(state));
+    if (state.sealedHornUntilCycle !== undefined && (state.cycle ?? 0) <= state.sealedHornUntilCycle) {
+        const horn = state.arena.zones[0]?.name;
+        if (horn) sealed.add(horn);
+    }
+    return sealed;
+}
+
+/**
+ * AUDIT-12 E1: the repair half of the strand invariant. Whatever cut it — an
+ * act, a hazard that took a route, a crossing that gave way, a border that
+ * closed over the last open neighbour — a live zone left with no way out gets
+ * one back. The edge chosen is the least deliberate cut: an act's first, then
+ * anything the generic reopening tick could put back, and a pack's or a
+ * permanent cut only when somebody is standing inside. Lockdown cuts and the
+ * sealed horn are never touched. Returns the edges reopened.
+ */
+export function unstrandZones(state: GameState): string[] {
+    const reopened: string[] = [];
+    const marks = () => state.arenaRuleState?.marks ?? {};
+    strandedZones(state).forEach(zone => {
+        const z = getZone(state.arena, zone);
+        if (!z) return;
+        const collapsed = state.collapsedZones ?? [];
+        const sealed = sealedZones(state);
+        const occupied = state.tributes.some(t => t.status === 'alive' && t.zone === zone);
+        const keys = z.adjacent.filter(n => !collapsed.includes(n) && !sealed.has(n)).map(n => edgeKey(zone, n));
+        const rank = (k: string) => isActCut(state, k) ? 0
+            : isReopenable(state, k) ? 1
+            // A pack's or a permanent cut is somebody's deliberate design:
+            // reopened only when a living tribute is actually boxed in.
+            : marks()[PACK_CUT_MARK + k] !== undefined ? (occupied ? 2 : 9)
+            : isPermanentCut(state, k) && occupied ? 3 : 9;
+        const pick = keys.filter(k => rank(k) < 9).sort((a, b) => rank(a) - rank(b) || a.localeCompare(b))[0];
+        if (!pick) return;
+        clearActCut(state, pick);
+        state.severedEdges = (state.severedEdges ?? []).filter(e => e !== pick);
+        reopened.push(pick);
+    });
+    return reopened;
 }
 
 /**

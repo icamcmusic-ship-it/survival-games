@@ -13,6 +13,7 @@ import { HEAD_GAMEMAKERS } from '../../data/gamemakers';
 import { resolveContinuity, standingEffect, standingLine } from '../continuity';
 import { addNotoriety } from '../notoriety';
 import { applyCampaignArc, campaignOf } from '../campaign';
+import { applyLedgerAtReaping } from '../season/carry';
 import { directorTaste } from '../../data/directors';
 import { ordinal } from '../gamesProfile';
 import { loseSanity } from '../sanityBands';
@@ -102,9 +103,12 @@ export function processSquare(ctx: SimContext) {
     // AUDIT-11 §12: the director's taste, stated where the briefing is read.
     // Their betrayal weight lands on the run's executed config, which is the
     // one lever every alliance system already reads.
-    const taste = directorTaste(headGamemaker.name);
-    ctx.state.config = { ...ctx.state.config, betrayalRate: ctx.state.config.betrayalRate * taste.betrayal };
-    ctx.logEvent(`Director's reputation: ${taste.label}. ${taste.blurb}`, [], { category: 'gamemaker' });
+    // AUDIT-12 E12: not under Vanilla rules — "the player's sliders, verbatim".
+    if (!ctx.state.config.vanillaRules) {
+        const taste = directorTaste(headGamemaker.name);
+        ctx.state.config = { ...ctx.state.config, betrayalRate: ctx.state.config.betrayalRate * taste.betrayal };
+        ctx.logEvent(`Director's reputation: ${taste.label}. ${taste.blurb}`, [], { category: 'gamemaker' });
+    }
     if (incumbent) {
         const year = (term?.runsServed ?? 0) + 1;
         ctx.logEvent(
@@ -154,6 +158,7 @@ export function processSquare(ctx: SimContext) {
         adjustRel(a, b.id, Math.min(0, regard - getRel(a, b.id)));
         adjustRel(b, a.id, Math.min(0, regard - getRel(b, a.id)));
     }).forEach(line => ctx.logEvent(line.text, line.ids, { important: true, category: 'system' }));
+    applyLedgerAtReaping(ctx, cast); // AUDIT-12 wave 3: apprenticeships, reunions, rivalries, nemeses
 
     // §10.4: the small continuity thread. Somebody from this district died in
     // an earlier Games carrying something from home, and the district sent it

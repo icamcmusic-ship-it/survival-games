@@ -5,6 +5,7 @@ import { OFF_SEASON_SKINS_EXTRA1 } from './offSeasonSkins/extra1';
 import { OFF_SEASON_SKINS_EXTRA2 } from './offSeasonSkins/extra2';
 import { OFF_SEASON_SKINS_EXTRA3 } from './offSeasonSkins/extra3';
 import { OFF_SEASON_SKINS_HIPPODROME } from './offSeasonSkins/extraHippodrome';
+import { OFF_SEASON_SKINS_BUILDINGS } from './offSeasonSkins/extraBuildings';
 
 /**
  * §5: the off-season skin.
@@ -334,7 +335,7 @@ export const OFF_SEASON_SKINS: Record<string, OffSeasonSkin[]> = {
 
 // §6.1: fold the extra season files in once, at load, so every reader sees
 // one roster per arena.
-for (const group of [OFF_SEASON_SKINS_EXTRA1, OFF_SEASON_SKINS_EXTRA2, OFF_SEASON_SKINS_EXTRA3, OFF_SEASON_SKINS_HIPPODROME]) {
+for (const group of [OFF_SEASON_SKINS_EXTRA1, OFF_SEASON_SKINS_EXTRA2, OFF_SEASON_SKINS_EXTRA3, OFF_SEASON_SKINS_HIPPODROME, OFF_SEASON_SKINS_BUILDINGS]) {
     for (const [id, skins] of Object.entries(group)) {
         OFF_SEASON_SKINS[id] = [...(OFF_SEASON_SKINS[id] ?? []), ...skins];
     }

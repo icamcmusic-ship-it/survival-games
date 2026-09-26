@@ -10,6 +10,7 @@ import { COMPOSURE, GIFT_NEED, QUELL_MECHANICS, SPONSORS, SPONSOR_MARKET, PROFIC
 import { composureOf } from './composure';
 import { SPONSOR_TEXTS } from '../data/flavorText';
 import { drawFromBloc } from './sponsorBlocs';
+import { arenaLogicalWeight, biddingWar, logicalGiftNote } from './season/sponsorWars';
 import { clampTribute } from './vitals';
 import { itemPhrase } from './items';
 import { ensureMemory } from './memory';
@@ -119,7 +120,8 @@ export function needWeight(t: Tribute, item: Item): number {
 }
 
 export function pickNeededGift(ctx: SimContext, t: Tribute, pool: Item[]): Item {
-    const weights = pool.map(i => needWeight(t, i));
+    // AUDIT-12 wave 3: arena-logical gifts — the shortage this arena has.
+    const weights = pool.map(i => needWeight(t, i) * arenaLogicalWeight(ctx.state, i));
     let roll = ctx.rng.nextFloat() * weights.reduce((a, b) => a + b, 0);
     for (let i = 0; i < pool.length; i++) {
         roll -= weights[i];
@@ -167,8 +169,11 @@ export function processSponsors(ctx: SimContext) {
         }
         // AUDIT-11 §8/§12: the Head Gamemaker's taste, and the campaign — a
         // restless Panem makes sponsors wary; a district's standing warms them.
-        generosity *= directorTaste(ctx.state.headGamemaker).sponsor
-            * campaignSponsorMultiplier(ctx.state.campaign, t.district);
+        // AUDIT-12 E12: neither applies under Vanilla rules.
+        if (!ctx.state.config.vanillaRules) {
+            generosity *= directorTaste(ctx.state.headGamemaker).sponsor
+                * campaignSponsorMultiplier(ctx.state.campaign, t.district);
+        }
         if (!ctx.rng.chance(giftChance(t, generosity, ctx.state.day))) return;
 
         const tier = rollGiftTier(ctx, t);
@@ -206,10 +211,11 @@ export function processSponsors(ctx: SimContext) {
         ctx.logEvent(
             tier >= 2
                 ? `${text} The Capitol does not send these lightly — this is the ${ordinal(ensureMemory(t).giftsReceived)} parachute for ${t.name}. ${bloc.seal}`
-                : `${text} ${bloc.seal}`,
+                : `${text} ${bloc.seal}${logicalGiftNote(ctx.state, gift) ? ` ${logicalGiftNote(ctx.state, gift)}` : ''}`,
             [t.id],
             { important: true, category: 'sponsor' }
         );
+        biddingWar(ctx, t, gift, bloc); // AUDIT-12 wave 3: rival blocs bid against each other
     });
 }
 

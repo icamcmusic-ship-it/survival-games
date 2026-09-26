@@ -1,4 +1,5 @@
 import { GameState, RivalRecord, Tribute, TributeMemory, ZoneMemory } from '../models/types';
+import { grudgeDecayScale, scarReaderSees } from './traitHooks';
 import { FEAR, HUNTING, INTEL, MEMORY, NOISE, PERCEPTION, RELATIONSHIPS, RIVAL_READ, SANITY_BANDS, SUSPICION, ZONES } from '../data/balance';
 import { arenaHasLaw } from './gamesProfile';
 import { profOf } from './proficiency';
@@ -418,6 +419,11 @@ export function noteRivalPlace(state: GameState, t: Tribute, other: Tribute) {
  */
 export interface Impression { health: number; armed: number; loot: number; confidence: number }
 export function impressionOf(state: GameState, t: Tribute, other: Tribute): Impression {
+    // AUDIT-12 §16: a Scar-Reader who has fought somebody knows how hurt they are.
+    if (other.status === 'alive' && t.zone !== other.zone && scarReaderSees(t, other)) {
+        const stale = impressionOf({ ...state }, { ...t, traits: [] }, other);
+        return { ...stale, health: other.health };
+    }
     if (t.zone === other.zone && other.status === 'alive') {
         return {
             health: other.health,
@@ -1047,6 +1053,8 @@ export function decayRelationships(state: GameState) {
             // each other before they met.
             const wasAllied = (t.formerAllies ?? []).includes(otherId);
             if (wasAllied) rate *= RELATIONSHIPS.exAllyDecayShare;
+            // AUDIT-12 T15: Forgets Faces lets a grudge go twice as fast.
+            rate *= grudgeDecayScale(t, value);
             const floor = wasAllied && value > 0 ? RELATIONSHIPS.exAllyFloor : 0;
             const next = value > 0
                 ? Math.max(Math.min(value, floor), value - rate)

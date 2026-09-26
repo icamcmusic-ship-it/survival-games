@@ -30,11 +30,6 @@ import { addFear } from './fear';
  * `proven` without inventing a forensics system.
  */
 
-/** What this tribute believes, if anything, about who killed a given person. */
-export function accusationAgainst(t: Tribute, accusedId: string) {
-    return ensureMemory(t).accusations?.[accusedId];
-}
-
 /**
  * Record that `witness` knows `killer` killed `victim`, first-hand.
  *
@@ -256,5 +251,6 @@ function deliver(ctx: SimContext, teller: Tribute, listener: Tribute,
 /** How many people believe, on any level, that this tribute has killed. */
 export function accusersOf(state: GameState, accusedId: string): number {
     return state.tributes.filter(t => t.status === 'alive'
-        && ensureMemory(t).accusations?.[accusedId] !== undefined).length;
+        // Read-only: the tribute sheet calls this on store state.
+        && t.memory?.accusations?.[accusedId] !== undefined).length;
 }

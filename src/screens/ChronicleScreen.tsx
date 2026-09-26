@@ -60,7 +60,10 @@ function phaseLabel(phase: string): string {
 /** What pressing Advance will run next, as the button's own label. */
 function nextStageLabel(phase: string): string {
     switch (phase) {
-        case 'setup': case 'roster': case 'reaping': return 'Hold the reaping';
+        // AUDIT-12 U11: after "Confirm tributes" the reaping is done; what
+        // runs next is the ceremony in the square.
+        case 'setup': return 'Go to the square';
+        case 'roster': case 'reaping': return 'Hold the reaping';
         case 'square': return 'Board the train';
         case 'train': return 'Run the parade';
         case 'parade': return 'Open the training floor';
@@ -76,6 +79,13 @@ function nextStageLabel(phase: string): string {
         case 'epilogue': return 'Close the Games';
         default: return 'Advance';
     }
+}
+
+/** AUDIT-12 §4: the pre-Games stages, in order, for the "stage n of 9" label. */
+const PRE_STAGES = ['setup', 'square', 'train', 'parade', 'training1', 'training2', 'training3', 'scores', 'interviews'];
+function preStageOf(phase: string): number {
+    const at = PRE_STAGES.indexOf(phase === 'training' ? 'training3' : phase);
+    return at;
 }
 
 /** One page per (day, phase), in chronological order. */
@@ -613,11 +623,23 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                     </span>
                 </div>
 
+                {canAdvance && preStageOf(gameState.phase) >= 0 && (
+                    <span className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono text-micro uppercase tracking-wider text-[var(--color-ink-500)]" data-testid="pre-stage">
+                            Stage {preStageOf(gameState.phase) + 1} of {PRE_STAGES.length} before the gong
+                        </span>
+                        {gameState.phase !== 'interviews' && (
+                            <button type="button" className="btn btn-ghost"
+                                onClick={() => { setAdvanceArmed(true); gameActions.skipToGong(); }}>
+                                Skip to the gong
+                            </button>
+                        )}
+                    </span>
+                )}
                 {onLastPage && canAdvance ? (
                     <button
-                        className="btn"
+                        className="btn btn-primary"
                         onClick={advanceGames}
-                        style={{ background: 'var(--red)', color: '#fff', borderColor: 'var(--red)' }}
                         aria-label={`Advance the Games: ${nextStageLabel(gameState.phase)}`}
                     >
                         {nextStageLabel(gameState.phase)} <ChevronRight className="w-4 h-4" />
