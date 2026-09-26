@@ -151,20 +151,27 @@ export function passesFollowCam(s: Pick<ChronicleState, 'followOnly' | 'pinnedId
     return involved.some(id => s.pinnedIds.includes(id));
 }
 
+/**
+ * How many filters are narrowing the chronicle right now.
+ *
+ * AUDIT-13 U5: the density used to count against 'everything', so the dot was
+ * lit on a fresh install with nothing touched — the shipped 'scenes' default
+ * read as "you have filters on", which a reader who set none cannot act on.
+ * Only 'headlines', a narrowing the reader chose, counts now.
+ */
+export function activeFilterCount(s: ChronicleState): number {
+    return (s.mutedGroups.length > 0 ? 1 : 0)
+        + (s.density === 'headlines' ? 1 : 0)
+        + (s.searchText !== '' ? 1 : 0)
+        + (s.filterTributeId !== null || s.filterTributeId2 !== null ? 1 : 0)
+        + (s.filterDay !== null ? 1 : 0)
+        + (s.selectedZone !== null ? 1 : 0)
+        + (s.followOnly && s.pinnedIds.length > 0 ? 1 : 0);
+}
+
 /** True when anything is narrowing the chronicle right now. */
 export function filtersActive(s: ChronicleState): boolean {
-    return s.mutedGroups.length > 0
-        // Against 'everything', deliberately: the dot means "some of the
-        // chronicle is hidden from you", and the shipped default of 'scenes'
-        // does hide the ambient tier. It is lit on a fresh install because on a
-        // fresh install lines really are being held back.
-        || s.density !== 'everything'
-        || s.searchText !== ''
-        || s.filterTributeId !== null
-        || s.filterTributeId2 !== null
-        || s.filterDay !== null
-        || s.selectedZone !== null
-        || (s.followOnly && s.pinnedIds.length > 0);
+    return activeFilterCount(s) > 0;
 }
 
 export function resetChronicleFilters(): void {

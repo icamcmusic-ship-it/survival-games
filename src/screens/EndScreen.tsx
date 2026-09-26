@@ -15,6 +15,15 @@ import { Trophy, MapPin, Swords, Skull, RotateCcw, Repeat, Award } from 'lucide-
 import { META_ACHIEVEMENTS, ACHIEVEMENTS, AchievementRarity } from '../data/achievements';
 import { COIN_ECONOMY } from '../data/balance';
 
+/** AUDIT-13 Q1: unlock cards shown before "Show all N". */
+const UNLOCKS_SHOWN = 5;
+const DEBRIEF_SECTIONS: Array<[string, string]> = [
+    ['debrief-summary', 'Summary'],
+    ['debrief-achievements', 'Achievements'],
+    ['debrief-stats', 'Stats'],
+    ['debrief-standings', 'Standings'],
+];
+
 /** §19/§20: the same four colours the record book uses, so the two pages agree. */
 const RARITY_COLOR: Record<AchievementRarity, string> = {
     common: 'var(--color-ink-500)',
@@ -70,6 +79,9 @@ export function EndScreen({
     onOpenEvidence?: (evidence: NotableEvidence) => void,
 }) {
     const [activeTab, setActiveTab] = useState<'stats' | 'replay' | 'logs'>('stats');
+    // AUDIT-13 Q1: the unlock list was every card expanded — the debrief ran to
+    // 8,810 px at 380 px. The first few, then a button for the rest.
+    const [showAllUnlocks, setShowAllUnlocks] = useState(false);
     // Full chronicle: clicking a linked name opens the same tribute profile
     // the live Game screen offers, so "who was that?" doesn't require
     // switching screens.
@@ -206,6 +218,18 @@ export function EndScreen({
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fadeIn">
+                    {/* AUDIT-13 Q1: jump links, so the long page has a table of contents. */}
+                    <nav aria-label="Debrief sections" className="md:col-span-2 flex flex-wrap gap-x-3 gap-y-1 text-mini font-mono uppercase tracking-wider">
+                        {DEBRIEF_SECTIONS
+                            .filter(([id]) => id !== 'debrief-achievements' || (outcome && (outcome.newAchievements.length > 0 || outcome.brokenRecords.length > 0)))
+                            .map(([id, label]) => (
+                                <a key={id} href={`#${id}`} className="underline underline-offset-2 text-[var(--color-ink-400)] hover:text-[var(--red)] py-1"
+                                    onClick={e => { e.preventDefault(); document.getElementById(id)?.scrollIntoView({ block: 'start' }); }}>
+                                    {label}
+                                </a>
+                            ))}
+                    </nav>
+                    <span id="debrief-summary" className="md:col-span-2 scroll-mt-20" aria-hidden="true" />
                     {/* §2.3: the debrief opened with cause-of-death counts. The run's
                         actual story — the price they carried, what the arena made of
                         them, who they lost — was all on the state and nowhere on the
@@ -291,7 +315,7 @@ export function EndScreen({
                     )}
 
                     {outcome && (outcome.newAchievements.length > 0 || outcome.brokenRecords.length > 0) && (
-                        <div className="md:col-span-2 panel p-5 space-y-3"
+                        <div id="debrief-achievements" className="md:col-span-2 panel p-5 space-y-3 scroll-mt-20"
                             style={{ borderColor: 'var(--cat-alliance)', borderWidth: '3px' }}>
                             <div className="flex items-baseline justify-between gap-3 flex-wrap">
                                 <span className="eyebrow" style={{ color: 'var(--cat-alliance)' }}>
@@ -307,7 +331,7 @@ export function EndScreen({
                                     </span>
                                 )}
                             </div>
-                            {outcome.newAchievements.map(id => {
+                            {(showAllUnlocks ? outcome.newAchievements : outcome.newAchievements.slice(0, UNLOCKS_SHOWN)).map(id => {
                                 const found = ACHIEVEMENTS.find(a => a.id === id) ?? META_ACHIEVEMENTS.find(a => a.id === id);
                                 if (!found) return null;
                                 const rarity = 'rarity' in found ? found.rarity : undefined;
@@ -328,7 +352,7 @@ export function EndScreen({
                                     </div>
                                 );
                             })}
-                            {outcome.brokenRecords.map(id => {
+                            {(showAllUnlocks ? outcome.brokenRecords : outcome.brokenRecords.slice(0, Math.max(0, UNLOCKS_SHOWN - outcome.newAchievements.length))).map(id => {
                                 const def = RECORD_DEFS.find(r => r.id === id);
                                 const held = outcome.records.bests[id];
                                 if (!def || !held) return null;
@@ -343,6 +367,12 @@ export function EndScreen({
                                     </div>
                                 );
                             })}
+                            {outcome.newAchievements.length + outcome.brokenRecords.length > UNLOCKS_SHOWN && (
+                                <button type="button" className="btn btn-sm btn-ghost" aria-expanded={showAllUnlocks}
+                                    onClick={() => setShowAllUnlocks(v => !v)}>
+                                    {showAllUnlocks ? 'Show fewer' : `Show all ${outcome.newAchievements.length + outcome.brokenRecords.length}`}
+                                </button>
+                            )}
                         </div>
                     )}
 
@@ -416,7 +446,7 @@ export function EndScreen({
                     {/* AUDIT-12 wave 3: director effect, victor's tour, apprenticeships. */}
                     <EndSeasonPanel gameState={gameState} />
 
-                    <div className="panel p-5 space-y-3">
+                    <div id="debrief-stats" className="panel p-5 space-y-3 scroll-mt-20">
                         <h3 className="panel-title flex items-center gap-2 border-b border-[var(--color-ink-800)] pb-2">
                             <Swords className="w-3.5 h-3.5 text-[var(--cat-death)]" /> Kill leaderboard
                         </h3>
@@ -476,7 +506,7 @@ export function EndScreen({
                         </div>
                     </div>
 
-                    <div className="panel p-5 space-y-3 md:col-span-2">
+                    <div id="debrief-standings" className="panel p-5 space-y-3 md:col-span-2 scroll-mt-20">
                         <h3 className="panel-title border-b border-[var(--color-ink-800)] pb-2">Last standing, by district</h3>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 text-xs">
                             {lastStandingPerDistrict.map(t => (

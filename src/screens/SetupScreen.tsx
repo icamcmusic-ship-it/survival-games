@@ -7,7 +7,7 @@ import { Play, ChevronDown, ChevronRight, ArrowRight, History, Lock } from 'luci
 import { gameActions, gameStore, readHallOfFame, readSavedRun } from '../store/gameStore';
 import type { SlotSummary } from '../store/gameStore';
 import { useStore } from '../store/createStore';
-import { enterFullscreen, prefsStore } from '../store/prefsStore';
+import { enterFullscreen, prefsStore, setPrefs } from '../store/prefsStore';
 import { Hint } from '../components/Hint';
 import { ConfirmButton } from '../components/ConfirmButton';
 import { resumeWithRecap } from '../ui/uiStore';
@@ -348,7 +348,11 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
     const [patronPending, setPatronPending] = useState<number | null>(null);
     const [arenaBuyPending, setArenaBuyPending] = useState(false);
     const [arenaBought, setArenaBought] = useState<string | null>(null);
-    const [arenaId, setArenaId] = useState(ARENAS[0].id);
+    // AUDIT-13 Q10: the last arena started is where a new setup opens.
+    const [arenaId, setArenaId] = useState(() => {
+        const last = prefsStore.getState().lastArenaId;
+        return last && (ARENAS.some(a => a.id === last) || last === 'random-hidden') ? last : ARENAS[0].id;
+    });
     const [arenaFacet, setArenaFacet] = useState<'all' | 'unseen' | 'stacked' | 'blackout' | 'water' | 'small' | 'large'>('all');
     const [gamemakerMode, setGamemakerMode] = useState(false);
     const [forceQuell, setForceQuell] = useState(false);
@@ -430,6 +434,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
         // rather than anywhere that looks more like "app start". Silent if
         // refused; see `enterFullscreen`.
         if (prefs.fullscreenOnStart) enterFullscreen();
+        setPrefs({ lastArenaId: arenaId });
         onStart(trimmedSeed || randomSeed(), arenaId, gamemakerMode, config, forceQuell, forceQuell ? pinnedQuellId : null);
     };
 

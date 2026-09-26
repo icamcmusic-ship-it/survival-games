@@ -6,6 +6,7 @@ import { QUIRKS } from '../data/quirks';
 import { LAW_LABELS } from '../data/arenaBriefing';
 import { ARENAS } from '../data/constants';
 import { ArenaLawId } from '../models/types';
+import { CHRONICLE_KEYS } from './ChronicleScreen';
 
 /**
  * §(requests 4): what the words mean, and how the simulation decides.
@@ -251,6 +252,16 @@ export function HowToPlayScreen() {
                     <li><b>Following</b> a tribute filters the record to their story, which is the best way to read a run a second time.</li>
                     <li><b>Red</b> is a death or a kill, and there is exactly one red line per death.</li>
                 </ul>
+                {/* AUDIT-13 Q4: the chronicle's keys, from the same list its own ? overlay reads. */}
+                <p className="text-sm text-[var(--color-ink-300)]"><b>Keys on the chronicle page</b> — Play in the footer runs the stages for you, at one to five seconds each.</p>
+                <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+                    {CHRONICLE_KEYS.map(([k, what]) => (
+                        <React.Fragment key={k}>
+                            <dt><kbd className="font-mono font-bold">{k}</kbd></dt>
+                            <dd className="text-[var(--color-ink-300)]">{what}</dd>
+                        </React.Fragment>
+                    ))}
+                </dl>
             </Section>
         </div>
     );

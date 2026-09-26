@@ -3,16 +3,17 @@ import { EventCategory, EventLog, GameState, Tribute } from '../models/types';
 import { CATEGORY_GROUPS, categoryMeta } from '../ui/eventStyles';
 import { MomentShare, groupBeats, passesDensity, stripZoneClause, tierOf, withTributeLinks } from '../components/EventFeed';
 import { ReplayFallenStrip } from '../components/ReplayFallenStrip';
+import { Hint } from '../components/Hint';
 import { TributeModal } from '../components/TributeModal';
 import { TributeCompare } from '../components/TributeCompare';
 import { ChronicleFilters } from '../components/ChronicleFilters';
-import { ChronicleState, chronicleStore, filtersActive, passesFollowCam, setChronicle } from '../store/chronicleStore';
-import { isDialogOpen } from '../ui/useDialogFocus';
+import { ChronicleState, activeFilterCount, chronicleStore, passesFollowCam, setChronicle } from '../store/chronicleStore';
+import { isDialogOpen, useDialogFocus } from '../ui/useDialogFocus';
 import { useStore } from '../store/createStore';
-import { prefsStore } from '../store/prefsStore';
+import { prefsStore, setPrefs } from '../store/prefsStore';
 import { factLineOf } from '../ui/chronicleFacts';
 import { canSeeArena, disclosureFor } from '../ui/disclosure';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Pause, Play, Undo2 } from 'lucide-react';
 import { useTransientFlag } from '../ui/useTransientFlag';
 import { PRE_ARENA_PHASE_SET, phaseLabel as prettyPhase } from '../ui/phaseLabels';
 import { gameActions, gameStore } from '../store/gameStore';
@@ -261,6 +262,65 @@ function LogRow({ log, cast, byId, facts, onSelectTribute, showZone, continuatio
     );
 }
 
+/** AUDIT-13 Q4: the chronicle's own keys, listed in its help overlay and in How to Play. */
+export const CHRONICLE_KEYS: Array<[string, string]> = [
+    ['← / →', 'Previous / next page'],
+    ['N', 'Run the next stage (on the last page)'],
+    ['/', 'Search the chronicle'],
+    ['?', 'This list'],
+];
+
+function ChronicleKeysHelp({ onClose }: { onClose: () => void }) {
+    const panelRef = useDialogFocus<HTMLDivElement>(onClose);
+    return (
+        <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label="Chronicle keyboard shortcuts" onClick={onClose}>
+            <div ref={panelRef} tabIndex={-1} className="panel p-5 max-w-sm w-full space-y-3" onClick={e => e.stopPropagation()}>
+                <h3 className="panel-title">Chronicle keys</h3>
+                <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
+                    {CHRONICLE_KEYS.map(([k, what]) => (
+                        <React.Fragment key={k}>
+                            <dt><kbd className="font-mono font-bold">{k}</kbd></dt>
+                            <dd className="text-[var(--color-ink-300)]">{what}</dd>
+                        </React.Fragment>
+                    ))}
+                </dl>
+                <button type="button" className="btn btn-sm" onClick={onClose}>Close</button>
+            </div>
+        </div>
+    );
+}
+
+/**
+ * AUDIT-13 Q6: the epilogue page was one line. A recap of the run — the days,
+ * the kills, the last two standing — so the page earns its place before the
+ * debrief.
+ */
+function EpilogueRecap({ gameState }: { gameState: GameState }) {
+    const alive = gameState.tributes.filter(t => t.status === 'alive');
+    const byDeath = gameState.tributes.filter(t => t.status === 'dead')
+        .sort((a, b) => (b.dayOfDeath ?? 0) - (a.dayOfDeath ?? 0));
+    const finalTwo = [...alive, ...byDeath].slice(0, 2);
+    const kills = gameState.tributes.reduce((n, t) => n + t.kills, 0);
+    const leader = [...gameState.tributes].sort((a, b) => b.kills - a.kills)[0];
+    return (
+        <section className="panel p-5 space-y-2" aria-label="The Games in brief" data-testid="epilogue-recap">
+            <span className="eyebrow">The Games in brief</span>
+            <dl className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+                <div><dt className="eyebrow">Days</dt><dd className="font-mono text-xl font-black">{gameState.day}</dd></div>
+                <div><dt className="eyebrow">Killed by a tribute</dt><dd className="font-mono text-xl font-black">{kills}</dd></div>
+                <div className="col-span-2"><dt className="eyebrow">Most kills</dt>
+                    <dd className="font-semibold">{leader && leader.kills > 0 ? `${leader.name} (D${leader.district}) · ${leader.kills}` : 'Nobody — the arena did it'}</dd></div>
+            </dl>
+            {finalTwo.length === 2 && (
+                <p className="text-sm text-[var(--color-ink-300)]">
+                    The final two: <strong>{finalTwo[0].name}</strong> of District {finalTwo[0].district} and <strong>{finalTwo[1].name}</strong> of District {finalTwo[1].district}
+                    {finalTwo[1].status === 'dead' && finalTwo[1].dayOfDeath ? `, who fell on day ${finalTwo[1].dayOfDeath}` : ''}.
+                </p>
+            )}
+        </section>
+    );
+}
+
 export function ChronicleScreen({ gameState }: { gameState: GameState }) {
     const filters = useStore(chronicleStore, s => s);
     // AUDIT-11 §4: filters in the link apply before the first paint.
@@ -355,6 +415,7 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
     }, [clamped, pageIndex]);
 
     const page = pages[clamped];
+    const go = (step: number) => setPageIndex(i => Math.min(pages.length - 1, Math.max(0, i + step)));
     useEffect(() => {
         if (!deepLinkApplied) return;
         writeDeepLink(page, filters);
@@ -367,6 +428,18 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
         if (typeof window === 'undefined') return;
         window.scrollTo({ top: 0, behavior: 'auto' });
     }, [page?.key]);
+
+    // AUDIT-13 Q2: land on the focused line (a death jump), after the
+    // page-top scroll above has run.
+    useEffect(() => {
+        const id = filters.focusLogId;
+        if (!id) return;
+        const raf = window.requestAnimationFrame(() => {
+            const row = document.querySelector<HTMLElement>(`[data-log-id="${CSS.escape(id)}"]`);
+            row?.scrollIntoView({ block: 'center' });
+        });
+        return () => window.cancelAnimationFrame(raf);
+    }, [page?.key, filters.focusLogId]);
 
     // §(requests): the Games can be advanced from here. The chronicle used to
     // be read-only — reaching the last page meant going back to the arena
@@ -387,6 +460,55 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
         setAdvanceArmed(true);
         gameActions.nextPhase();
     };
+
+    // AUDIT-13 Q9: the rewind ring already existed on the arena screen; the
+    // chronicle is where most advancing happens, so one press undoes one here.
+    const canUndo = useStore(gameStore, () => gameActions.canStepBack());
+    const undoAdvance = () => {
+        if (!gameActions.canStepBack()) return;
+        setPlaying(false);
+        setAdvanceArmed(true);
+        gameActions.stepBack();
+    };
+
+    /*
+     * AUDIT-13 Q3: autoplay. A full run took ~39 presses of the same button.
+     * Play pages forward through anything unread, then runs the next stage,
+     * every `chronicleAutoDelay` seconds. It stops at the epilogue (closing
+     * the Games is the reader's call), when a dialog opens, or on Pause.
+     */
+    const [playRequested, setPlaying] = useState(false);
+    const playing = playRequested && gameState.phase !== 'epilogue' && gameState.phase !== 'ended';
+    const autoDelay = useStore(prefsStore, p => p.chronicleAutoDelay);
+    useEffect(() => {
+        if (!playing) return;
+        if (runProgress || selectedTributeId) return;
+        const id = window.setTimeout(() => {
+            if (isDialogOpen()) return;
+            if (!onLastPage) go(1);
+            else advanceGames();
+        }, autoDelay * 1000);
+        return () => window.clearTimeout(id);
+    }); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // AUDIT-13 Q2: next/previous death, on the page. The palette and the arena
+    // screen have had this; the chronicle is where the reader is looking.
+    const deathLogs = useMemo(
+        () => filteredLogs.filter(l => l.category === 'death' || l.category === 'kill'),
+        [filteredLogs],
+    );
+    const jumpDeath = (step: number) => {
+        if (deathLogs.length === 0) return;
+        const at = deathLogs.findIndex(l => l.id === filters.focusLogId);
+        const next = at === -1 ? (step > 0 ? 0 : deathLogs.length - 1)
+            : Math.min(deathLogs.length - 1, Math.max(0, at + step));
+        const target = deathLogs[next];
+        const pageAt = pages.findIndex(p => p.day === target.day && p.phase === target.phase);
+        if (pageAt >= 0) setPageIndex(pageAt);
+        setChronicle({ focusLogId: target.id });
+    };
+    const searchRef = useRef<HTMLInputElement>(null);
+    const [showKeys, setShowKeys] = useState(false);
 
     const beats = useMemo(() => (page ? groupBeats(page.entries) : []), [page]);
 
@@ -416,7 +538,6 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
     const days = useMemo(() => [...new Set(pages.map(p => p.day))], [pages]);
 
     const swipeRef = useRef<{ x: number; y: number } | null>(null);
-    const go = (step: number) => setPageIndex(i => Math.min(pages.length - 1, Math.max(0, i + step)));
 
     // Previous/Next belong on the arrow keys on a page whose entire model is
     // "one phase at a time".
@@ -427,11 +548,19 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
             if (e.ctrlKey || e.metaKey || e.altKey || selectedTributeId || isDialogOpen()) return;
             if (e.key === 'ArrowLeft') { e.preventDefault(); go(-1); }
             else if (e.key === 'ArrowRight') { e.preventDefault(); go(1); }
+            // AUDIT-13 Q4: N runs the next stage, / searches, ? lists the keys.
+            else if (e.key === 'n' || e.key === 'N') {
+                if (onLastPage && canAdvance) { e.preventDefault(); advanceGames(); }
+            }
+            else if (e.key === '/') { e.preventDefault(); searchRef.current?.focus(); }
+            else if (e.key === '?') { e.preventDefault(); setShowKeys(true); }
         };
         window.addEventListener('keydown', onKey);
         return () => window.removeEventListener('keydown', onKey);
-    }, [pages.length, selectedTributeId]);
+    }); // eslint-disable-line react-hooks/exhaustive-deps
 
+    const activeFilters = activeFilterCount(filters);
+    const preStage = preStageOf(gameState.phase);
     const scaleClass = filters.textScale === 'small' ? 'chronicle-text-sm'
         : filters.textScale === 'large' ? 'chronicle-text-lg' : '';
 
@@ -468,7 +597,29 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                         )}
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap min-w-0 w-full sm:w-auto">
+                    {/* AUDIT-13 Q2: search on the page itself — it lived only
+                        inside the Filters panel. Shares the store's searchText. */}
+                    <input
+                        ref={searchRef}
+                        type="search"
+                        className="field text-sm w-full sm:w-44 min-w-0"
+                        placeholder="Search  /"
+                        aria-label="Search the chronicle"
+                        value={filters.searchText}
+                        onChange={e => setChronicle({ searchText: e.target.value })}
+                        onKeyDown={e => { if (e.key === 'Escape') { setChronicle({ searchText: '' }); e.currentTarget.blur(); } }}
+                    />
+                    {revealed && deathLogs.length > 0 && (
+                        <span className="flex items-center gap-1" role="group" aria-label="Jump between deaths">
+                            <button type="button" className="btn btn-sm btn-ghost" onClick={() => jumpDeath(-1)} aria-label="Previous death">
+                                <ChevronLeft className="w-3.5 h-3.5" /> Death
+                            </button>
+                            <button type="button" className="btn btn-sm btn-ghost" onClick={() => jumpDeath(1)} aria-label="Next death">
+                                Death <ChevronRight className="w-3.5 h-3.5" />
+                            </button>
+                        </span>
+                    )}
                     {/* AUDIT-6 §2.6: the bullet was the only statement that
                         filters were active, which a screen reader does not read
                         as anything and a reader has to already know. The count
@@ -478,11 +629,12 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                         className="seg-item"
                         aria-pressed={showFilters}
                         onClick={() => setShowFilters(v => !v)}
-                        aria-label={filtersActive(filters)
-                            ? 'Filters, density, search and export — filters are active'
+                        aria-label={activeFilters > 0
+                            ? `Filters, density, search and export — ${activeFilters} ${activeFilters === 1 ? 'filter' : 'filters'} active`
                             : 'Filters, density, search and export'}
                     >
-                        Filters{filtersActive(filters) ? ' •' : ''}
+                        {/* AUDIT-13 U5: lit only by a filter the reader set. */}
+                        Filters{activeFilters > 0 ? ' •' : ''}
                     </button>
                 </div>
             </header>
@@ -492,6 +644,7 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                     gameState={gameState}
                     filteredCount={readableCount}
                     onSelectTribute={setSelectedTributeId}
+                    page={page}
                 />
             )}
 
@@ -501,7 +654,16 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                     {gameState.log.length === 0
                         // §(requests 7): confirming the reaping lands here, with
                         // nothing written yet and the button below waiting.
-                        ? 'The cast is confirmed and the record is empty. Start the Games with the button below — every stage writes its own page here.'
+                        ? <>
+                            <p>The cast is confirmed and the record is empty. Every stage writes its own page here.</p>
+                            {/* AUDIT-13 U6: the next step, where the eye already is —
+                                at 380 px the footer button sat below the fold. */}
+                            {canAdvance && (
+                                <button type="button" className="btn btn-primary mt-4" onClick={advanceGames} data-testid="empty-advance">
+                                    {nextStageLabel(gameState.phase)} <ChevronRight className="w-4 h-4" />
+                                </button>
+                            )}
+                        </>
                         : 'Every logged event is hidden by your current filters.'}
                 </div>
             ) : (
@@ -543,11 +705,16 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                             />
                         </section>
                     )}
+                    {page.phase === 'epilogue' && <EpilogueRecap gameState={gameState} />}
                 </>
             )}
 
             {/* ---------- footer: paging ---------- */}
-            <footer className="panel p-4 flex flex-wrap items-center justify-between gap-3 sticky bottom-0">
+            {/* AUDIT-13: sticky only from sm up. At 380 px the wrapped scrubber
+                plus the play controls made a footer half the viewport tall,
+                parked over the log it pages; the empty state and swipe cover
+                the phone case. */}
+            <footer className="panel p-4 flex flex-wrap items-center justify-between gap-3 sm:sticky sm:bottom-0">
                 <button
                     className="btn"
                     onClick={() => go(-1)}
@@ -567,12 +734,17 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                         {pages.map((p, i) => {
                             const deadly = gameState.tributes.some(t => t.status === 'dead' && t.dayOfDeath === p.day)
                                 && p.phase === 'night';
+                            // AUDIT-13 Q7: say what each tick is — "Day 6 — NIGHT · 2 deaths".
+                            const deathsHere = p.entries.filter(l => l.category === 'death').length;
+                            const tickLabel = revealed && deathsHere > 0
+                                ? `${p.label} · ${deathsHere} ${deathsHere === 1 ? 'death' : 'deaths'}`
+                                : p.label;
                             return (
                                 <button
                                     key={p.key}
                                     onClick={() => setPageIndex(i)}
                                     aria-current={i === clamped ? 'true' : undefined}
-                                    aria-label={p.label}
+                                    aria-label={tickLabel}
                                     /* AUDIT-7 §2.1: the tick stays 10x20 and the
                                        *target* does not. A scrubber is a row of
                                        marks whose spacing carries the meaning, so
@@ -619,24 +791,48 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                         true, and it sat directly under the empty-state copy
                         that correctly explains there is nothing here yet. */}
                     <span className="font-mono text-micro uppercase tracking-wider text-[var(--color-ink-500)]">
-                        {pages.length === 0 ? 'No pages yet' : `${clamped + 1} / ${pages.length}`}
+                        {pages.length === 0 ? 'No pages yet' : `Page ${clamped + 1}/${pages.length}`}
+                        {/* AUDIT-13 U4: one counter, both numbers labelled —
+                            "7 / 7" beside "Stage 9 of 9" read as two
+                            disagreeing progress bars. */}
+                        {canAdvance && preStage >= 0 ? ` · stage ${preStage + 1}/${PRE_STAGES.length} before the gong` : ''}
                     </span>
                 </div>
 
-                {canAdvance && preStageOf(gameState.phase) >= 0 && (
-                    <span className="flex items-center gap-2 flex-wrap">
-                        <span className="font-mono text-micro uppercase tracking-wider text-[var(--color-ink-500)]" data-testid="pre-stage">
-                            Stage {preStageOf(gameState.phase) + 1} of {PRE_STAGES.length} before the gong
-                        </span>
-                        {gameState.phase !== 'interviews' && (
-                            <button type="button" className="btn btn-ghost"
-                                onClick={() => { setAdvanceArmed(true); gameActions.skipToGong(); }}>
-                                Skip to the gong
+                {canAdvance && preStage >= 0 && (
+                    <button type="button" className="btn btn-ghost" data-testid="skip-to-gong"
+                        onClick={() => { setAdvanceArmed(true); gameActions.skipToGong(); }}>
+                        Skip to the gong
+                    </button>
+                )}
+                {/* AUDIT-13 Q3/Q9: play, pace and undo. */}
+                {canAdvance && (
+                    <span className="flex items-center gap-1" role="group" aria-label="Autoplay">
+                        <button type="button" className="btn btn-ghost" aria-pressed={playing}
+                            aria-label={playing ? 'Pause autoplay' : 'Play — advance a stage automatically'}
+                            onClick={() => setPlaying(!playing)}>
+                            {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                        </button>
+                        <select className="field text-xs w-auto" aria-label="Seconds per stage when playing"
+                            value={autoDelay} onChange={e => setPrefs({ chronicleAutoDelay: Number(e.target.value) })}>
+                            {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}s</option>)}
+                        </select>
+                        <Hint text="Undo the last stage" align="right">
+                            <button type="button" className="btn btn-ghost" disabled={!canUndo}
+                                aria-label="Undo the last stage" onClick={undoAdvance}>
+                                <Undo2 className="w-4 h-4" />
                             </button>
-                        )}
+                        </Hint>
                     </span>
                 )}
-                {onLastPage && canAdvance ? (
+                {onLastPage && !canAdvance && (gameState.phase === 'ended' || gameState.phase === 'epilogue') ? (
+                    // AUDIT-13 U2: the last page of a finished Games led nowhere —
+                    // a disabled "Next page" in the primary slot.
+                    <button type="button" className="btn btn-primary" data-testid="see-debrief"
+                        onClick={() => gameActions.setView('debrief')}>
+                        See the debrief <ChevronRight className="w-4 h-4" />
+                    </button>
+                ) : onLastPage && canAdvance ? (
                     <button
                         className="btn btn-primary"
                         onClick={advanceGames}
@@ -655,6 +851,8 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                     </button>
                 )}
             </footer>
+
+            {showKeys && <ChronicleKeysHelp onClose={() => setShowKeys(false)} />}
 
             {/* §2.5: paging is a navigation event with no visual anchor for a
                 screen-reader user — say which page they landed on. */}

@@ -11,11 +11,14 @@ import { useStore } from '../store/createStore';
  * available: people share stories, and every exported chronicle carries the
  * seed needed to replay it.
  */
-export function ChronicleExport({ gameState, importantOnly = false }: {
+export function ChronicleExport({ gameState, importantOnly = false, page }: {
     gameState: GameState;
     importantOnly?: boolean;
+    /** AUDIT-13 Q8: the chronicle page being read, for "Copy this page". */
+    page?: { day: number; phase: string; label: string };
 }) {
     const [copied, setCopied] = useTransientFlag<'idle' | 'ok' | 'fail'>('idle', 2500);
+    const [pageCopied, setPageCopied] = useTransientFlag<'idle' | 'ok' | 'fail'>('idle', 2500);
     // §2.7: per-tribute chronicle — "everything involving Rue" as one file.
     const [tributeId, setTributeId] = useState('');
     // §2.11: markdown was the only format. A forum post wants BBCode and a
@@ -66,6 +69,20 @@ export function ChronicleExport({ gameState, importantOnly = false }: {
             >
                 {copied === 'ok' ? 'Chronicle copied' : copied === 'fail' ? 'Copy failed' : 'Copy chronicle'}
             </button>
+            {page && (
+                <button
+                    type="button"
+                    className="btn btn-sm btn-ghost"
+                    aria-live="polite"
+                    aria-label={`Copy only this page — ${page.label}`}
+                    onClick={async () => {
+                        const ok = await copyChronicle(gameState, { ...filter, page: { day: page.day, phase: page.phase } }, format, facts);
+                        setPageCopied(ok ? 'ok' : 'fail');
+                    }}
+                >
+                    {pageCopied === 'ok' ? 'Page copied' : pageCopied === 'fail' ? 'Copy failed' : 'Copy this page'}
+                </button>
+            )}
             <button
                 type="button"
                 className="btn btn-sm btn-ghost"

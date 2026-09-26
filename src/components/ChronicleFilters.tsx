@@ -22,9 +22,11 @@ import { useStore } from '../store/createStore';
  *    rather than a settings action, so they sit in one inline row at the top
  *    instead of at the bottom of a settings panel.
  */
-export function ChronicleFilters({ gameState, filteredCount, onSelectTribute }: {
+export function ChronicleFilters({ gameState, filteredCount, onSelectTribute, page }: {
     gameState: GameState;
     filteredCount: number;
+    /** AUDIT-13 Q8: the page being read, so the export can copy only it. */
+    page?: { day: number; phase: string; label: string };
     /** Optional: the roster select can double as a way into a profile. */
     onSelectTribute?: (id: string) => void;
 }) {
@@ -217,7 +219,7 @@ export function ChronicleFilters({ gameState, filteredCount, onSelectTribute }: 
                 )}
             </div>
 
-            <ChronicleExport gameState={gameState} importantOnly={f.density === 'headlines'} />
+            <ChronicleExport gameState={gameState} importantOnly={f.density === 'headlines'} page={page} />
 
             <div className="text-micro text-[var(--color-ink-500)]">
                 Showing {filteredCount} of {gameState.log.length} logged events.

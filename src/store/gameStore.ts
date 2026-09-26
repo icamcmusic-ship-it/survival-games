@@ -1550,11 +1550,14 @@ export const gameActions = {
     /**
      * AUDIT-12 §4: "Skip to the gong". Runs every pre-Games stage still ahead
      * — reaping ceremony, train, parade, training, scores, interviews — and
-     * stops with the gong itself unsounded, so the bloodbath is still the
+     * the gong, stopping before the bloodbath runs, so that is still the
      * player's own press. Each stage is the same `nextPhase` a click runs.
      */
     skipToGong(): boolean {
-        const PRE = new Set(['setup', 'roster', 'reaping', 'square', 'train', 'parade', 'training', 'training1', 'training2', 'training3', 'scores']);
+        // AUDIT-13 U3: 'interviews' is in the set, so the skip sounds the gong
+        // itself and lands on the bloodbath page — it used to stop one press
+        // short, on "Stage 9 of 9", with "Sound the gong" still to press.
+        const PRE = new Set(['setup', 'roster', 'reaping', 'square', 'train', 'parade', 'training', 'training1', 'training2', 'training3', 'scores', 'interviews']);
         let guard = 0;
         let moved = false;
         while (guard++ < 20) {

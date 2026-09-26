@@ -51,7 +51,7 @@ function ReapingWhatIf({ gameState }: { gameState: GameState }) {
                 <Dices className="w-3.5 h-3.5" /> What if, from the reaping?
             </h3>
             <div className="flex flex-wrap items-center gap-2">
-                <select className="field text-xs w-auto" aria-label="Which counterfactual" value={kind} disabled={busy}
+                <select className="field text-xs w-auto max-w-full min-w-0" aria-label="Which counterfactual" value={kind} disabled={busy}
                     onChange={e => {
                         const k = e.target.value as 'never-reaped' | 'no-alliance';
                         setKind(k);
@@ -61,7 +61,7 @@ function ReapingWhatIf({ gameState }: { gameState: GameState }) {
                     <option value="never-reaped">…this tribute was never reaped</option>
                     {alliances.length > 0 && <option value="no-alliance">…this alliance never formed</option>}
                 </select>
-                <select className="field text-xs w-auto" aria-label="About whom" value={subject} disabled={busy} onChange={e => { setSubject(e.target.value); setResult(null); }}>
+                <select className="field text-xs w-auto max-w-full min-w-0" aria-label="About whom" value={subject} disabled={busy} onChange={e => { setSubject(e.target.value); setResult(null); }}>
                     {kind === 'never-reaped'
                         ? [...gameState.tributes].sort((a, b) => a.district - b.district).map(t => <option key={t.id} value={t.id}>D{t.district} · {t.name}</option>)
                         : alliances.map(a => <option key={a.id} value={a.id}>{a.name ?? a.memberIds.map(id => gameState.tributes.find(t => t.id === id)?.name ?? '?').join(', ')}</option>)}
@@ -153,7 +153,7 @@ function PhaseWhatIf({ gameState, onOpenTribute }: { gameState: GameState; onOpe
                 <label className="text-xs text-[var(--color-ink-400)]" htmlFor="whatif-from">Re-roll</label>
                 <select
                     id="whatif-from"
-                    className="field text-xs w-auto"
+                    className="field text-xs w-auto max-w-full min-w-0"
                     value={picked ?? ''}
                     onChange={e => { setPicked(Number(e.target.value)); setResult(null); }}
                     disabled={progress !== null}
@@ -165,7 +165,7 @@ function PhaseWhatIf({ gameState, onOpenTribute }: { gameState: GameState; onOpe
                 <label className="text-xs text-[var(--color-ink-400)]" htmlFor="whatif-count">×</label>
                 <select
                     id="whatif-count"
-                    className="field text-xs w-auto"
+                    className="field text-xs w-auto max-w-full min-w-0"
                     aria-label="How many branches to play"
                     value={branchCount}
                     onChange={e => { setBranchCount(Number(e.target.value)); setResult(null); }}
