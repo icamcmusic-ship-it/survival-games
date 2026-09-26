@@ -9,7 +9,8 @@ import type { ArenaEventDef } from '../arenaFlavor';
  * total lethality per draw is what moves, and every death here is both gated
  * (a `requires` removes it from the pool until the moment exists) and carries
  * a weight of 0.5 or less so the mutts-and-hazards share stays inside its
- * guard. The boons carry full weight: they are what the audit's repetition
+ * guard. The boons carry 0.5 too: at full weight their food and rest
+ * measurably cut foraging (the-provider fell under its ceiling). They are what the audit's repetition
  * measurement (0.43–0.49 unique lines per run) was asking for.
  *
  * Every lethal entry declares its `code`. Several are the new AUDIT-13 W5
@@ -315,167 +316,167 @@ export const UNIVERSAL_EVENTS_AUDIT13: ArenaEventDef[] = [
     {
         id: 'u-a13-v1-drone-crash',
         text: 'A supply drone comes down smoking in {zone}. {tribute} gets to the wreck first and gets something out of it, and the others are already coming.',
-        escapeText: '', cause: '', grantItem: 'medkit', sanity: 6, witnesses: true,
+        escapeText: '', cause: '', weight: 0.5, grantItem: 'medkit', sanity: 6, witnesses: true,
         requires: { minSurvivors: 5 },
     },
     {
         id: 'u-a13-v2-turning-fog',
         text: 'A fog comes through {zone} and when it lifts {tribute} is sure they are somewhere else. They are not. They walk for an hour correcting a mistake they did not make.',
-        escapeText: '', cause: '', fatigue: 14, sanity: 8, startsZoneEffect: 'fogbound',
+        escapeText: '', cause: '', weight: 0.5, fatigue: 14, sanity: 8, startsZoneEffect: 'fogbound',
     },
     {
         id: 'u-a13-v3-migration',
         text: 'Some herd the arena keeps for its own reasons is crossing {zone}, hundreds of them, slow and loud. {tribute} waits them out and takes one of the stragglers.',
-        escapeText: '', cause: '', feed: 25, terrains: ['open', 'forest'],
+        escapeText: '', cause: '', weight: 0.5, feed: 25, terrains: ['open', 'forest'],
         requires: { stance: ['Hunting', 'Scavenging', 'Baiting'] },
     },
     {
         id: 'u-a13-v4-dead-tributes-cache',
         text: '{tribute} finds a cache in {zone} with a note tucked in it, in a hand they recognise from the reaping line. The note is for somebody else. The food is for whoever finds it.',
-        escapeText: '', cause: '', feed: 20, sanity: 4,
+        escapeText: '', cause: '', weight: 0.5, feed: 20, sanity: 4,
         requires: { maxSurvivors: 18, daysAbove: 2 },
     },
     {
         id: 'u-a13-v5-silence-hour',
         text: 'The Gamemakers announce a silence hour. Every sound in {zone} is thrown back three times as loud. {tribute} does not move a muscle for sixty minutes.',
-        escapeText: '', cause: '', fatigue: 10, sanity: 10, zoneWide: true,
+        escapeText: '', cause: '', weight: 0.5, fatigue: 10, sanity: 10, zoneWide: true,
     },
     {
         id: 'u-a13-v6-spring-dries',
         text: 'The water in {zone} was there yesterday. Today it is a crack in wet mud. {tribute} digs until their hands bleed and gets a mouthful.',
-        escapeText: '', cause: '', thirst: 14, quench: 6, terrains: ['water', 'wetland', 'open'],
+        escapeText: '', cause: '', weight: 0.5, thirst: 14, quench: 6, terrains: ['water', 'wetland', 'open'],
         requires: { time: 'day' },
     },
     {
         id: 'u-a13-v7-fruit-glut',
         text: 'Every tree in {zone} has fruited at once. {tribute} eats until they are sick and notices, between mouthfuls, all the other people who have noticed.',
-        escapeText: '', cause: '', feed: 30, sanity: 6, terrains: ['forest'], witnesses: true, startsZoneEffect: 'blooming',
+        escapeText: '', cause: '', weight: 0.5, feed: 30, sanity: 6, terrains: ['forest'], witnesses: true, startsZoneEffect: 'blooming',
     },
     {
         id: 'u-a13-v8-meteor-shower',
         text: 'Meteors all night over {zone}. {tribute} lies on their back and watches, and for an hour it is just a sky, and then they realise everyone can see them lying there.',
-        escapeText: '', cause: '', sanity: -12, requires: { time: 'night' },
+        escapeText: '', cause: '', weight: 0.5, sanity: -12, requires: { time: 'night' },
     },
     {
         id: 'u-a13-v9-parachute-in-tree',
         text: 'The silver parachute lands in the top of the tallest tree in {zone}. {tribute} gets it down after an hour of climbing and one bad moment.',
-        escapeText: '', cause: '', fatigue: 14, grantItem: 'bandages', terrains: ['forest'],
+        escapeText: '', cause: '', weight: 0.5, fatigue: 14, grantItem: 'bandages', terrains: ['forest'],
     },
     {
         id: 'u-a13-v10-home-footage',
         text: 'The sky over {zone} fills with home: a street, a door, a face at a window that {tribute} knows. Then it is gone and they have to decide what that was for.',
-        escapeText: '', cause: '', sanity: -8, zoneWide: true, requires: { time: 'night' },
+        escapeText: '', cause: '', weight: 0.5, sanity: -8, zoneWide: true, requires: { time: 'night' },
     },
     {
         id: 'u-a13-v11-fever-shared',
         text: 'The fever went round the camp in {zone} like a rumour. {tribute} has it now, and so does whoever they were sharing water with.',
-        escapeText: '', cause: '', fatigue: 18, sanity: 6, requires: { alone: false },
+        escapeText: '', cause: '', weight: 0.5, fatigue: 18, sanity: 6, requires: { alone: false },
     },
     {
         id: 'u-a13-v12-false-feast',
         text: 'The Gamemakers announce a feast. {tribute} walks half a day across {zone} and finds a table with nothing on it but a card that says so.',
-        escapeText: '', cause: '', fatigue: 16, sanity: 12, requires: { minSurvivors: 4 },
+        escapeText: '', cause: '', weight: 0.5, fatigue: 16, sanity: 12, requires: { minSurvivors: 4 },
     },
     {
         id: 'u-a13-v13-crossing-washed-out',
         text: 'The crossing {tribute} came in by is not there any more. {zone} is an island now, as far as they are concerned.',
-        escapeText: '', cause: '', fatigue: 8, severesRoute: true, requires: { storm: true },
+        escapeText: '', cause: '', weight: 0.5, fatigue: 8, severesRoute: true, requires: { storm: true },
     },
     {
         id: 'u-a13-v14-sleepwalking-ally',
         text: '{tribute} wakes in {zone} to find their ally standing at the edge of camp in the dark, eyes open, talking to nobody. They lead them back by the hand.',
-        escapeText: '', cause: '', fatigue: 10, sanity: 6, requires: { alone: false, time: 'night' },
+        escapeText: '', cause: '', weight: 0.5, fatigue: 10, sanity: 6, requires: { alone: false, time: 'night' },
     },
     {
         id: 'u-a13-v15-trap-reused',
         text: '{tribute} finds somebody\'s snare line in {zone}, disarms it wire by wire, and resets it facing the other way.',
-        escapeText: '', cause: '', grantItem: 'wire', requires: { stance: ['Scavenging', 'Baiting', 'Hunting'] },
+        escapeText: '', cause: '', weight: 0.5, grantItem: 'wire', requires: { stance: ['Scavenging', 'Baiting', 'Hunting'] },
     },
     {
         id: 'u-a13-v16-token-lost',
         text: '{tribute} reaches for the district token in {zone} and it is not there. They retrace an hour of ground on their knees.',
-        escapeText: '', cause: '', sanity: 14, fatigue: 10,
+        escapeText: '', cause: '', weight: 0.5, sanity: 14, fatigue: 10,
     },
     {
         id: 'u-a13-v17-snake-nest-camp',
         text: 'There is a snake nest under the camp in {zone}. {tribute} finds it by the sound, and the camp is somewhere else by dark.',
-        escapeText: '', cause: '', fatigue: 12, sanity: 6, terrains: ['forest', 'open', 'desert', 'wetland'],
+        escapeText: '', cause: '', weight: 0.5, fatigue: 12, sanity: 6, terrains: ['forest', 'open', 'desert', 'wetland'],
     },
     {
         id: 'u-a13-v18-hidden-spring',
         text: 'Under the roots in {zone} {tribute} finds a spring nobody else has: clean, cold and silent.',
-        escapeText: '', cause: '', quench: 40, sanity: -6, terrains: ['forest', 'highland', 'cave'],
+        escapeText: '', cause: '', weight: 0.5, quench: 40, sanity: -6, terrains: ['forest', 'highland', 'cave'],
     },
     {
         id: 'u-a13-v19-wildfire-own-fire',
         text: '{tribute}\'s cooking fire gets away from them in {zone}. They run, and behind them the whole zone learns what dry means.',
-        escapeText: '', cause: '', fatigue: 14, sanity: 8, startsZoneEffect: 'burning', terrains: ['forest', 'open'],
+        escapeText: '', cause: '', weight: 0.5, fatigue: 14, sanity: 8, startsZoneEffect: 'burning', terrains: ['forest', 'open'],
         requires: { time: 'day' },
     },
     {
         id: 'u-a13-v20-bird-repeats-scream',
         text: 'A bird in {zone} has learned a scream, somebody\'s from yesterday, and it will not stop doing it. {tribute} knows whose it was.',
-        escapeText: '', cause: '', sanity: 12, requires: { maxSurvivors: 18 },
+        escapeText: '', cause: '', weight: 0.5, sanity: 12, requires: { maxSurvivors: 18 },
     },
     {
         id: 'u-a13-v21-injured-deer',
         text: 'A deer with a broken leg in {zone}. {tribute} kneels by it for a long time before doing the kind thing, and then the useful one.',
-        escapeText: '', cause: '', feed: 25, sanity: 4, terrains: ['forest', 'open'],
+        escapeText: '', cause: '', weight: 0.5, feed: 25, sanity: 4, terrains: ['forest', 'open'],
     },
     {
         id: 'u-a13-v22-bounty-leader',
         text: 'The Gamemakers post a bounty on whoever leads the field. {tribute} hears it in {zone} and does the arithmetic on everybody they have met.',
-        escapeText: '', cause: '', sanity: 6, zoneWide: true, requires: { maxSurvivors: 12 },
+        escapeText: '', cause: '', weight: 0.5, sanity: 6, zoneWide: true, requires: { maxSurvivors: 12 },
     },
     {
         id: 'u-a13-v23-firefly-night',
         text: 'Fireflies light every hollow in {zone}. It is the most beautiful thing {tribute} has seen since the train, and it shows every camp for a mile.',
-        escapeText: '', cause: '', sanity: -8, requires: { time: 'night' }, terrains: ['forest', 'wetland', 'open'],
+        escapeText: '', cause: '', weight: 0.5, sanity: -8, requires: { time: 'night' }, terrains: ['forest', 'wetland', 'open'],
     },
     {
         id: 'u-a13-v24-hailstorm-gear',
         text: 'Hail the size of knuckles comes down on {zone}. {tribute} survives it under their pack, which does not survive it quite as well.',
-        escapeText: '', cause: '', fatigue: 10, sanity: 6, requires: { storm: true },
+        escapeText: '', cause: '', weight: 0.5, fatigue: 10, sanity: 6, requires: { storm: true },
     },
     {
         id: 'u-a13-v25-quake-opens-cave',
         text: 'The ground in {zone} shrugs, and when it settles there is a new cave mouth where there was a bank. {tribute} is the first thing to go into it.',
-        escapeText: '', cause: '', sanity: -6, fatigue: -6, terrains: ['highland', 'ruins', 'cave'],
+        escapeText: '', cause: '', weight: 0.5, sanity: -6, fatigue: -6, terrains: ['highland', 'ruins', 'cave'],
     },
     {
         id: 'u-a13-v26-shared-shelter',
         text: 'Two tributes from districts who would kill each other at the Cornucopia end up under the same overhang in {zone} in the rain. {tribute} is one of them. Nobody says anything. Nobody moves until it stops.',
-        escapeText: '', cause: '', sanity: -8, fatigue: -8, requires: { storm: true, alone: false },
+        escapeText: '', cause: '', weight: 0.5, sanity: -8, fatigue: -8, requires: { storm: true, alone: false },
     },
     {
         id: 'u-a13-v27-scratched-message',
         text: 'The sponsor gift in {zone} has something scratched into the lid in a hand that is not the Capitol\'s. {tribute} reads it three times and it helps.',
-        escapeText: '', cause: '', sanity: -10, feed: 10,
+        escapeText: '', cause: '', weight: 0.5, sanity: -10, feed: 10,
     },
     {
         id: 'u-a13-v28-weapon-breaks',
         text: '{tribute}\'s weapon snaps mid-swing in {zone}. They finish the hunt with half of it and a great deal of feeling.',
-        escapeText: '', cause: '', fatigue: 10, sanity: 6, feed: 10,
+        escapeText: '', cause: '', weight: 0.5, fatigue: 10, sanity: 6, feed: 10,
         requires: { carrying: 'weapon', stance: ['Hunting'] },
     },
     {
         id: 'u-a13-v29-mutt-carcass',
         text: 'A mutt carcass in {zone}, already picked over. {tribute} takes what the others left, which is more than it looks.',
-        escapeText: '', cause: '', feed: 15, requires: { daysAbove: 2 },
+        escapeText: '', cause: '', weight: 0.5, feed: 15, requires: { daysAbove: 2 },
     },
     {
         id: 'u-a13-v30-insomnia',
         text: 'Nobody in {zone} is sleeping tonight, and {tribute} is not the exception.',
-        escapeText: '', cause: '', fatigue: 14, sanity: 6, zoneWide: true, requires: { time: 'night' },
+        escapeText: '', cause: '', weight: 0.5, fatigue: 14, sanity: 6, zoneWide: true, requires: { time: 'night' },
     },
     {
         id: 'u-a13-v31-map-cornucopia',
         text: '{tribute} finds a map folded into a crate at the Cornucopia, drawn by hand, most of it wrong. The part that is right is the part they need.',
-        escapeText: '', cause: '', sanity: -6, requires: { daysAbove: 1 },
+        escapeText: '', cause: '', weight: 0.5, sanity: -6, requires: { daysAbove: 1 },
     },
     {
         id: 'u-a13-v32-false-alarm-truce',
         text: 'A branch cracks in {zone} and the truce ends in the time it takes to draw a blade. Nobody was there. Nobody puts the blade away either.',
-        escapeText: '', cause: '', sanity: 10, fatigue: 6, requires: { alone: false },
+        escapeText: '', cause: '', weight: 0.5, sanity: 10, fatigue: 6, requires: { alone: false },
     },
 ];

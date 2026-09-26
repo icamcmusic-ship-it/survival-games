@@ -392,7 +392,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Patient Zero',
         hint: 'Crown a victor who survived a serious infection in a Games where somebody who treated the wounded died of one.',
         category: 'survival',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (state, v) => !!v && (v.worstInfectionGrade ?? 0) >= 2
             && dead(state).some(t => (deathCodeOf(t) === 'infection' || deathCodeOf(t) === 'sepsis')
                 && involvedIn(state, 'treatment-given').includes(t.id)),
@@ -455,7 +455,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'No Beast Touched Them',
         hint: 'Crown a victor never wounded by a mutt in a Games where the mutts killed five or more.',
         category: 'survival',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (state, v) => !!v && muttDeaths(state) >= 5 && !(v.wounds ?? []).some(w => w.kind === 'mutt'),
         nearMiss: (state, v) => (v && muttDeaths(state) >= 3 && muttDeaths(state) < 5
             ? `The mutts took ${muttDeaths(state)} — five is the bar`
@@ -883,11 +883,13 @@ export const ACHIEVEMENTS: Achievement[] = [
         // Audit 2 §11.2: fifteen against a ceiling of five. A run is under nine
         // days and a tribute does not forage every cycle of it, so fifteen was
         // three times more foraging than the calendar allows.
-        hint: 'Crown a victor who successfully foraged five or more times.',
+        // AUDIT-13 §10: four. The new boons feed tributes that used to have
+        // to forage, and 500 seeded runs no longer crown a five-forage victor.
+        hint: 'Crown a victor who successfully foraged four or more times.',
         category: 'survival',
         rarity: 'legendary',
-        test: (_s, v) => !!v && (v.forageSuccesses ?? 0) >= 5,
-        nearMiss: (_s, v) => { const n = v?.forageSuccesses ?? 0; return n >= 3 && n < 5 ? `${v!.name} foraged successfully ${n} times — ${5 - n} short` : undefined; },
+        test: (_s, v) => !!v && (v.forageSuccesses ?? 0) >= 4,
+        nearMiss: (_s, v) => { const n = v?.forageSuccesses ?? 0; return n >= 2 && n < 4 ? `${v!.name} foraged successfully ${n} times — ${4 - n} short` : undefined; },
     },
     {
         id: 'the-whole-bestiary',
@@ -1908,7 +1910,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         hint: 'See one tribute personally stand in every zone the arena has.',
         category: 'arena',
         // Audit 5 §1.6: 8 of 9,600 tributes did it. Legendary, not theoretical.
-        rarity: 'possible',
+        rarity: 'legendary',
         test: state => {
             const all = state.arena.zones.map(z => z.name);
             return state.tributes.some(t => all.every(z => (t.visitedZones ?? []).includes(z)));
@@ -4692,7 +4694,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Whole Vocabulary',
         hint: 'See six or more different zone-effect kinds in one Games.',
         category: 'arena',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: state => {
             const kinds = new Set(Object.values(state.zoneEffects ?? {}).flat().map(e => e.kind));
             return kinds.size >= 6;
@@ -6068,7 +6070,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'a8-twenty-days',
         name: 'Twenty Days',
         hint: 'See a Games that ran twenty days or longer.',
-        category: 'games', rarity: 'possible',
+        category: 'games', rarity: 'legendary',
         test: state => state.day >= 20,
         nearMiss: state => (state.day >= 16 && state.day < 20 ? `it ran ${state.day} days` : undefined),
     },
@@ -6395,7 +6397,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Last Rites',
         hint: 'Crown a victor who stopped to bury an ally.',
         category: 'social',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: (state, v) => !!v && saidOf(state, v, [G7_BURIAL.text]),
         nearMiss: (state, v) => !(v && saidOf(state, v, [G7_BURIAL.text]))
             && state.tributes.some(t => saidOf(state, t, [G7_BURIAL.text]))
@@ -6435,7 +6437,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Keeper\'s Key',
         hint: 'Win the Menagerie with the tribute who opened an enclosure.',
         category: 'arena',
-        rarity: 'possible',
+        rarity: 'legendary',
         availableIn: state => state.arena.id === 'menagerie',
         test: (state, v) => !!v && state.arena.id === 'menagerie' && saidOf(state, v, [G7_KEEPERS_KEYS.text]),
         nearMiss: (state, v) => state.arena.id === 'menagerie' && (state.firedEvents ?? []).includes(G7_KEEPERS_KEYS.id!)
