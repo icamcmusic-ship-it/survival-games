@@ -573,6 +573,31 @@ export const CAESAR_QUESTIONS = {
             'Caesar asks {tribute} whether they are afraid of the mutts. {tribute} says animals are only frightening if you do not know what they want.',
             '"You grew up around animals?" Caesar asks. {tribute} says they grew up around things that bite, and that people are most of them.',
         ],
+        // AUDIT-13 §16 N17-N22.
+        angling: [
+            'Caesar asks {tribute} what they would do with a river. {tribute} says eat out of it, and describes how, and the audience goes quiet in the way it does for real knowledge.',
+            '"Patient with a line?" Caesar asks. {tribute} says the fish decide how patient, and they have never once been in a hurry.',
+        ],
+        mimicry: [
+            'Caesar asks {tribute} for a party trick. {tribute} says something in Caesar\'s own voice, and the laugh from the audience comes a beat too late.',
+            '"Could you fool somebody out there?" Caesar asks. {tribute} answers in a voice that is not theirs, and then in theirs: "I just did."',
+        ],
+        bartering: [
+            'Caesar asks {tribute} what they would trade for a way out. {tribute} asks what he is offering, and the audience enjoys watching him not have an answer.',
+            '"You drive a hard bargain?" Caesar asks. {tribute} says they drive a fair one, slowly, until the other person agrees it was fair.',
+        ],
+        weathercraft: [
+            'Caesar asks {tribute} what the weather will be tomorrow. {tribute} tells him, and it is a better forecast than the one on the Capitol screens.',
+            '"Does the cold bother you?" Caesar asks. {tribute} says the cold is only a problem for people who did not see it coming.',
+        ],
+        teaching: [
+            'Caesar asks {tribute} who taught them. {tribute} names three people, and then says they have taught more than that, and most of them are younger.',
+            '"Are you a leader?" Caesar asks. {tribute} says no, but they know how to make one, which is not the answer he wanted.',
+        ],
+        resting: [
+            'Caesar asks {tribute} how they are sleeping. {tribute} says well, every night, on purpose, and the audience laughs as if it were a joke.',
+            '"Nerves?" Caesar asks. {tribute} says nerves are for people who have not learned to put their head down when they can.',
+        ],
     },
     /** Keyed on the district's trade, so a tribute is asked about home properly. */
     district: [

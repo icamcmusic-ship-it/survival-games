@@ -1,4 +1,5 @@
 import { craftKit, followPlan, tickArenaDepth } from '../arenaDepth';
+import { badKneeClimb } from '../audit13Content';
 import { arenaHazardForBorder, borderCapReached } from '../arenaWave2';
 import { directorTaste } from '../../data/directors';
 import { capitolCruelty } from '../campaign';
@@ -1594,6 +1595,8 @@ function beginMove(ctx: SimContext, t: Tribute, destName: string): MoveOutcome {
     // itself, on top of whatever the destination terrain already costs.
     const cost = (dest ? travelCost(t, dest) : 1) + edgeTimeCost(ctx.state, t.zone, destName);
     applyEdgeToll(ctx, t, t.zone, destName);
+    // AUDIT-13 N3: a Bad Knee pays on the way up.
+    badKneeClimb(t, dest);
     // A1: Fortified is a commitment to *ground*. Pulling up a prepared
     // position and carrying it somewhere else costs double the fatigue —
     // which is the price that makes digging in a real decision rather than a
@@ -1624,6 +1627,8 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
     // anyone already brought ashore by an ally's iteration this cycle has
     // nothing left to do. See the arrival block below.
     if (crossed.has(t.id)) return;
+    // AUDIT-13 N36: Mourning does not leave the body for the cycle it lasts.
+    if (t.stance === 'Mourning' && !t.transit && !collapsed.includes(t.zone)) return;
 
     // §5.3: a traversal already underway finishes before anything else. A
     // crossing abandoned because the destination collapsed is just a wasted

@@ -1,4 +1,5 @@
 import { profOf, trainProficiency } from './proficiency';
+import { heartenedScale } from './audit13Content';
 import { ARCHETYPES } from '../data/archetypes';
 import { GameState, Tribute } from '../models/types';
 import { AUDIT13_CAREERS, FEAR, MEMORY, PROFICIENCY } from '../data/balance';
@@ -70,6 +71,8 @@ export function addFear(t: Tribute, otherId: string, amount: number, source?: Tr
     amount *= ARCHETYPES[t.archetype].fearScale ?? 1;
     // Temperament decides how much of a frightening thing actually sticks.
     amount *= Math.max(0, 1 + traitMod(t, 'fearGain'));
+    // AUDIT-13 N2: a Loud Heart on their side, standing next to them.
+    amount *= heartenedScale(t);
     if (amount <= 0) return;
     const mem = ensureMemory(t);
     if (!mem.fear) mem.fear = {};

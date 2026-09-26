@@ -1,4 +1,5 @@
 import { traitMod } from '../data/traits';
+import { crownLeadership } from './audit13Content';
 import { ARCHETYPES } from '../data/archetypes';
 import { Alliance, AllianceEndReason, AllianceRole, EventType, GameState, Item, Tribute } from '../models/types';
 import { ALLIANCES, AUDIT13_RELATIONS, PROFICIENCY, RELATIONSHIPS, ROMANCE } from '../data/balance';
@@ -151,7 +152,7 @@ export function pickLeader(members: Tribute[]): Tribute {
         // AUDIT-6 §12.2 `leadership`: whether people actually follow this one.
         const score = (t: Tribute) =>
             t.attributes.charisma * 1.6 + t.attributes.strength + t.trainingScore * 0.5 + t.kills * 2
-            + traitMod(t, 'leadership');
+            + traitMod(t, 'leadership') + crownLeadership(t);
         return score(m) > score(best) ? m : best;
     });
 }

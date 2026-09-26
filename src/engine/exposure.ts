@@ -1,4 +1,5 @@
 import { earnTrait } from './earnedTraits';
+import { exposureScale } from './audit13Content';
 import { DeathCauseCode, Tribute } from '../models/types';
 import { injure } from './wounds';
 import { CLIMATE, CRAFTING, PHYSIQUE, PROFICIENCY, TOOLS , EARNED_TRAIT_RULES } from '../data/balance';
@@ -95,7 +96,8 @@ export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProf
     // real edge off the weather even with no built camp; bare flats take none.
     const zone = getZone(ctx.state.arena, t.zone);
     const zoneShelterScale = zone ? 1 - (zoneFeatures(zone).shelterQuality ?? 0) * PHYSIQUE.zoneShelterExposureReduction : 1;
-    const scale = (profile.intensity ?? 1) * shelterScale * zoneShelterScale;
+    // AUDIT-13 N20 / N23 / N37: weathercraft, a kept hearth, and Sheltering.
+    const scale = (profile.intensity ?? 1) * shelterScale * zoneShelterScale * exposureScale(ctx, t);
     const amount = (value: number | undefined) => Math.round((value ?? 0) * scale);
     const isHeat = !!profile.thirst || !!profile.heat;
 

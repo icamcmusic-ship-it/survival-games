@@ -137,7 +137,8 @@ function nightThief(ctx: SimContext, record: Alliance, watcher: Tribute, sleeper
     const thief = [...sleepers].sort((a, b) => treachery(b) - treachery(a) || (a.id < b.id ? -1 : 1))[0];
     if (!thief || treachery(thief) < AUDIT12_TRIBUTES.nightTheftTreachery) return;
     if (!ctx.rng.chance(AUDIT12_TRIBUTES.nightTheftChance)) return;
-    const marks = [watcher, ...sleepers].filter(m => m.id !== thief.id && m.inventory.length > 0);
+    // AUDIT-13 N32: a keepsake is never the thing that goes missing.
+    const marks = [watcher, ...sleepers].filter(m => m.id !== thief.id && m.inventory.some(i => !i.keepsake));
     let taken: string | undefined;
     if (record.sharedCache.length > 0) {
         const item = record.sharedCache.splice(ctx.rng.nextInt(0, record.sharedCache.length - 1), 1)[0];
@@ -145,7 +146,8 @@ function nightThief(ctx: SimContext, record: Alliance, watcher: Tribute, sleeper
         taken = `the ${item.name} from the group's pile`;
     } else if (marks.length > 0) {
         const mark = ctx.rng.pick(marks);
-        const item = mark.inventory.splice(ctx.rng.nextInt(0, mark.inventory.length - 1), 1)[0];
+        const pick = ctx.rng.pick(mark.inventory.filter(i => !i.keepsake));
+        const item = mark.inventory.splice(mark.inventory.indexOf(pick), 1)[0];
         thief.inventory.push(item);
         taken = `${mark.name}'s ${item.name}`;
     }

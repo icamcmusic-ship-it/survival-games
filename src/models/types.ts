@@ -70,7 +70,11 @@ export type Stance =
     | 'Patrolling'
     // AUDIT-12 §16: going to ground on purpose, and talking first.
     | 'Hiding'
-    | 'Parleying';
+    | 'Parleying'
+    // AUDIT-13 N35-N37: finding the pack again, standing over the dead, and getting out of the weather.
+    | 'Regrouping'
+    | 'Mourning'
+    | 'Sheltering';
 
 export type ArchetypeId =
     | 'career' | 'strategist' | 'survivalist' | 'protector' | 'trickster' | 'wildcard' | 'underdog'
@@ -127,7 +131,9 @@ export type ArchetypeId =
     // AUDIT-11 §16: the pilot four.
     | 'hermit' | 'showrunner' | 'healer-pacifist' | 'engineer'
     // AUDIT-12 §16: five more, each with a signature of its own.
-    | 'scout-runner' | 'turncoat' | 'guardian' | 'forger' | 'gambler';
+    | 'scout-runner' | 'turncoat' | 'guardian' | 'forger' | 'gambler'
+    // AUDIT-13 §16 N23-N28.
+    | 'firekeeper' | 'kingmaker' | 'ratcatcher' | 'pilgrim' | 'mourner' | 'lamplighter';
 
 export interface Attributes {
     strength: number;
@@ -327,7 +333,14 @@ export type Proficiency = 'forage' | 'melee' | 'ranged' | 'medicine' | 'tracking
      * somebody else packed away; `ambush` is the Shadowing payoff as a craft;
      * `animalHandling` is the missing AUDIT-11 skill.
      */
-    | 'evasion' | 'rationing' | 'salvage' | 'ambush' | 'animalHandling';
+    | 'evasion' | 'rationing' | 'salvage' | 'ambush' | 'animalHandling'
+    /*
+     * AUDIT-13 §16 N17-N22: six more, each owning a read site that had no
+     * skill behind it — fish in a water zone, a lie that lands, the price of a
+     * deal, reading the weather before it arrives, passing a skill on, and
+     * actually resting when resting.
+     */
+    | 'angling' | 'mimicry' | 'bartering' | 'weathercraft' | 'teaching' | 'resting';
 
 /** Why a tribute is walking somewhere. Drives the chronicle copy as well as the route. */
 export type ObjectiveReason = 'water' | 'shelter' | 'feast' | 'ally' | 'forage'
@@ -442,6 +455,8 @@ export interface Item {
     id: string;
     name: string;
     type: 'weapon' | 'food' | 'water' | 'medical' | 'utility' | 'armour' | 'tool';
+    /** AUDIT-13 N32: the first thing a tribute with that quirk found. Never stolen. */
+    keepsake?: boolean;
     /** Current condition. Weapons degrade with use; at 0 they are dropped. */
     durability?: number;
     /** What `durability` started at, so condition can be read as a fraction. */
@@ -1599,6 +1614,31 @@ export interface Tribute {
     ambushWarnedUntil?: number;
     /** Parleying: talks that failed this run. */
     parleysFailed?: number;
+    /*
+     * AUDIT-13 §16 (N1-N37): per-tribute state the new traits, archetypes and
+     * stances keep, all read in `engine/audit13Content.ts`. Optional; an older
+     * save reads as "never happened".
+     */
+    /** N1 Stitch-Fingered: a dressing from one keeps infection off until this cycle. */
+    stitchedUntil?: number;
+    /** N12 Borrowed Luck: the one lethal blow that did not take has been spent. */
+    luckSpent?: boolean;
+    /** N23 Firekeeper: nights with a fire lit; and the hearth, once kept, lasts until this cycle. */
+    fireNights?: number;
+    hearthUntil?: number;
+    /** N24 Kingmaker: the ally they are crowning. */
+    crownedId?: string;
+    /** N24 Kingmaker: set on the ally being crowned — the Kingmaker's id. */
+    crownedById?: string;
+    /** N26 Pilgrim: the landmark picked at the reaping, and whether they reached it. */
+    pilgrimZone?: string;
+    pilgrimArrived?: boolean;
+    /** N28 Lamplighter: the route they marked is safe to walk until this cycle. */
+    beaconUntil?: number;
+    /** N36 Mourning: whose death, who did it (if known), and when. */
+    mourning?: { victimId: string; killerId?: string; cycle: number };
+    /** N2 Loud Heart: an ally with one is in the zone this cycle, so fear sticks less. */
+    heartened?: boolean;
     /** A1: cycles the tribute has been dug in — read by the Fortified payoffs. */
     fortifiedCycles?: number;
     /**
@@ -4204,6 +4244,8 @@ export type EventType =
     // AUDIT-12 wave 2: trait hooks and the §16 archetypes.
     | 'mimic-lure' | 'twitchy-hit' | 'oath-kept' | 'self-splint' | 'parley-failed'
     | 'scout-warning' | 'turncoat-coup' | 'guardian-stand' | 'forged-weapon' | 'gambler-wager'
+    // AUDIT-13 §16 N23-N28: the six new set pieces.
+    | 'hearth-kept' | 'kingmaker-crown' | 'pest-sweep' | 'pilgrim-arrival' | 'mourner-vigil' | 'beacon-lit'
     | 'sepsis-deepened'
     | 'sepsis-treated'
     | 'shelter-built'

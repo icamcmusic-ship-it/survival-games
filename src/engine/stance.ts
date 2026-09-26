@@ -1,4 +1,5 @@
 import { GameState, Stance, TraceReason, Tribute, ArchetypeId } from '../models/types';
+import { cannotPatrol, hungerSharpHunting, mourningAvailable, regroupingAvailable, shelterScore, shelteringAvailable } from './audit13Content';
 import { griefStance } from './allianceBonds';
 import { ARCHETYPES } from '../data/archetypes';
 import { DECISION_TRACE, FEAR, RISK, RIVAL_READ, STANCE, STANCE_HOLD, STANCE_MODES, STEALTH, VITALS } from '../data/balance';
@@ -22,7 +23,7 @@ import { debtTo } from './debts';
 import { trapsIn } from './fieldcraft';
 import { inventoryValue } from './items';
 import { allied } from './alliance';
-import { AUDIT12_WAVE2_TRIBUTES as W2 } from '../data/balance';
+import { AUDIT12_WAVE2_TRIBUTES as W2, AUDIT13_CONTENT as A13 } from '../data/balance';
 import { hidingAvailable } from './traitHooks';
 
 /**
@@ -421,6 +422,16 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
     Parleying: (ctx, t, sig) => stickyHold(t, 'Parleying') || sig.hostile > 0 && riskTolerance(ctx, t) <= W2.parleyingRiskMax,
 
     /*
+     * AUDIT-13 §16 N35-N37. Regrouping: in a group and none of it here.
+     * Mourning: a death they grieve, in or next to this zone, inside the
+     * window. Sheltering: weather on them or coming, and the skill to get
+     * under something. The payoffs are in `audit13Content.ts`.
+     */
+    Regrouping: (ctx, t) => stickyHold(t, 'Regrouping') || regroupingAvailable(ctx, t),
+    Mourning: (ctx, t) => stickyHold(t, 'Mourning') || mourningAvailable(ctx, t),
+    Sheltering: (ctx, t) => stickyHold(t, 'Sheltering') || shelteringAvailable(ctx, t),
+
+    /*
      * Audit 5 §12: a pack with somewhere to walk the edge of.
      *
      * AUDIT-6 §3.1: 0.5% of tribute-cycles, the deadest stance in the roster,
@@ -435,6 +446,8 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
      * because two people holding a chokepoint is a picket.
      */
     Patrolling: (ctx, t, sig) => {
+        // AUDIT-13 N3: a Bad Knee is never the one walking the perimeter.
+        if (cannotPatrol(t)) return false;
         // AUDIT-12 §16: a Scout-Runner walks the edge of wherever their people
         // are, pack or no pack — that is the job.
         if (t.archetype === 'scout-runner'
@@ -626,6 +639,8 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
         s += profOf(t, 'tracking') * STANCE_MODES.hunting.perTrackingPoint;
         const quarry = t.objective?.kind === 'hunt' ? t.objective.targetId : undefined;
         if (quarry && ensureMemory(t).vengeance.includes(quarry)) s += STANCE_MODES.hunting.vengeanceBonus;
+        // AUDIT-13 N11: Hunger-Sharp goes looking when the stomach is empty.
+        s += hungerSharpHunting(t);
         if (sig.hasWeapon) s += STANCE.weaponAggression;
         // Somebody bleeding out does not run a manhunt.
         s -= Math.max(0, (STANCE.evasiveHealth - t.health) / STANCE.evasiveHealthDivisor);
@@ -766,6 +781,32 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
         s -= (t.parleysFailed ?? 0) * W2.parleyingPerCharisma * 2;
         s -= sig.arch.aggression * STANCE.archetypeWeight * STANCE_MODES.conditionalArchetypeWeight;
         s += sig.arch.stanceBias?.Parleying ?? 0;
+        return s;
+    },
+
+    // AUDIT-13 N35: a separated ally who would rather find their people than a fight.
+    Regrouping: (_ctx, t, sig) => {
+        let s = A13.regroupingBase;
+        s += sig.arch.allianceAffinity * STANCE.archetypeWeight * STANCE_MODES.conditionalArchetypeWeight;
+        s -= Math.min(W2.hidingThreatCap, sig.hostile) * A13.regroupingHostilePenalty;
+        s += sig.arch.stanceBias?.Regrouping ?? 0;
+        return s;
+    },
+
+    // AUDIT-13 N36: grief, for one cycle, outranks almost everything.
+    Mourning: (_ctx, _t, sig) => {
+        let s = A13.mourningBase;
+        s -= Math.min(W2.hidingThreatCap, sig.hostile) * A13.regroupingHostilePenalty;
+        s += sig.arch.stanceBias?.Mourning ?? 0;
+        return s;
+    },
+
+    // AUDIT-13 N37: getting under something before the weather arrives.
+    Sheltering: (ctx, t, sig) => {
+        let s = shelterScore(ctx, t);
+        if (sig.wounded) s += W2.hidingWoundedBonus;
+        s += sig.arch.caution * STANCE.archetypeWeight * STANCE_MODES.conditionalArchetypeWeight;
+        s += sig.arch.stanceBias?.Sheltering ?? 0;
         return s;
     },
 

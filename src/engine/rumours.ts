@@ -21,6 +21,8 @@
  * Distinct from §3.5's notoriety, which is reputation *about people* and is a
  * scalar. This is content, and it can be checked.
  */
+import { mimicryCredibility, twoFacedTell } from './audit13Content';
+import { trainProficiency } from './proficiency';
 import { isRumourMonger, isSaltTongued } from '../data/traits';
 import { AUDIT12_WAVE2_TRIBUTES } from '../data/balance';
 import { GameState, Tribute } from '../models/types';
@@ -206,6 +208,8 @@ export function plantRumour(ctx: SimContext, planter: Tribute, listener: Tribute
     };
     pool(state).push(rumour);
     tell(state, planter, listener, rumour.id);
+    // AUDIT-13 N18: a lie that lands is practice at lying.
+    trainProficiency(planter, 'mimicry', ctx);
     ctx.logEvent(
         `${planter.name} mentions to ${listener.name}, as though it were an afterthought, that ${claim(ctx, rumour.kind, zone)}. `
         + 'It is said well. There is no reason at all for it to be true.',
@@ -238,6 +242,8 @@ export function tradeRumours(ctx: SimContext, a: Tribute, b: Tribute) {
         [...heard(from)].forEach(id => {
             if (!ctx.rng.chance(RUMOURS.passOnChance)) return;
             tell(state, from, to, id);
+            // AUDIT-13 N7: from a Two-Faced mouth it may arrive as somebody else's.
+            twoFacedTell(ctx, from, to, id);
             passed++;
         });
         // AUDIT-12 §16: a Rumour-Monger never leaves a meeting without passing one on.
@@ -253,7 +259,8 @@ export function tradeRumours(ctx: SimContext, a: Tribute, b: Tribute) {
         // AUDIT-6 §12.2 `rumourCredibility`: a Fabulist is believed. The roll is
         // whether the mark takes the claim, so this is the one place in the
         // rumour layer where being convincing is the whole question.
-        if (!ctx.rng.chance(RUMOURS.plantChance + traitMod(planter, 'rumourCredibility'))) return;
+        // AUDIT-13 N18: and `mimicry` is being convincing on purpose.
+        if (!ctx.rng.chance(RUMOURS.plantChance + traitMod(planter, 'rumourCredibility') + mimicryCredibility(planter))) return;
         plantRumour(ctx, planter, mark);
     });
 }

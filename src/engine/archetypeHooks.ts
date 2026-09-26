@@ -1,6 +1,7 @@
 import { samePlace } from './verticality';
 import { AUDIT12_WAVE2_TRIBUTES } from '../data/balance';
 import { forgeWeapon, gamblerWager, guardianStand, scoutSighting, turncoatCoup } from './traitHooks';
+import { crownAlly, keepFire, lightBeacon, mournerVigil, pestSweep, pilgrimArrival } from './audit13Content';
 import { EventType, GameState, Item, Objective, Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { severRandomEdge } from './zoneEffects';
@@ -1249,6 +1250,13 @@ export const SIGNATURES: Record<string, Signature> = {
             + (x.inventory.some(i => i.type === 'weapon') ? AUDIT12_WAVE2_TRIBUTES.gamblerArmedWorth : 0);
         return worth(a) / Math.max(1, worth(a) + worth(b));
     }),
+    // AUDIT-13 §16 N23-N28: the six new set pieces live in audit13Content.ts.
+    keepFire,
+    crownAlly,
+    pestSweep,
+    pilgrimArrival,
+    mournerVigil,
+    lightBeacon,
 };
 
 /**

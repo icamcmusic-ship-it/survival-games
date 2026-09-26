@@ -126,6 +126,28 @@ export const STANCE_PROFILES: Record<Stance, StanceProfile> = {
         conditional: true, minHold: 2,
         blurb: 'Somebody hostile is here and they would rather talk. Every meeting opens with an offer; every one that fails frightens them more.',
     },
+    /*
+     * AUDIT-13 §16 N35-N37: three more, each chosen to take share from
+     * somewhere specific. Regrouping takes from Evasive, where a separated
+     * ally used to end up; Mourning makes grief a visible posture instead of
+     * a flat sanity hit; Sheltering takes from Fortified and Desperate when
+     * the weather is the enemy.
+     */
+    Regrouping: {
+        id: 'Regrouping', label: 'Regrouping', family: 'evasive',
+        conditional: true, minHold: 2,
+        blurb: 'Cut off from their group and working back to it. Moves toward their people, fights only if cornered, and watches the way they came.',
+    },
+    Mourning: {
+        id: 'Mourning', label: 'Mourning', family: 'defensive',
+        conditional: true, minHold: 2,
+        blurb: 'Somebody they cared about just died, close by. They stay with the body for a cycle, steadier for it and blind to everything else — and leave knowing who to find.',
+    },
+    Sheltering: {
+        id: 'Sheltering', label: 'Sheltering', family: 'defensive',
+        conditional: true, minHold: 2,
+        blurb: 'Under cover with the weather coming. Half as exposed to cold and heat, found only by somebody who can read ground, and it costs food and rest to hold.',
+    },
 };
 
 /** Every stance, in display order. The single source of truth for iteration. */

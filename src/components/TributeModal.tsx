@@ -46,6 +46,9 @@ const PROFICIENCY_LABELS: Record<string, string> = {
     forage: 'Foraging', melee: 'Melee', ranged: 'Ranged', medicine: 'Medicine', tracking: 'Tracking',
     persuasion: 'Persuasion', climbing: 'Climbing', swimming: 'Swimming', crafting: 'Crafting',
     stealth: 'Stealth', intimidation: 'Intimidation',
+    // AUDIT-13 §16 N17-N22.
+    angling: 'Angling', mimicry: 'Mimicry', bartering: 'Bartering', weathercraft: 'Weathercraft',
+    teaching: 'Teaching', resting: 'Resting',
 };
 
 /** A5: four tabs, defaulting to Overview. */

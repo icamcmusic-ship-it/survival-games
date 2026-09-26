@@ -1,4 +1,5 @@
 import { spendUpTo } from './actionBudget';
+import { dressingReceived, extraRecoveryCycles, noteStitched } from './audit13Content';
 import { InjurySite, Tribute } from '../models/types';
 import { ACTION_BUDGET, BLEEDING, OBJECTIVES, PROFICIENCY, SCARRING, VITALS, WOUND_RECOVERY } from '../data/balance';
 import { SimContext } from './context';
@@ -117,7 +118,8 @@ export function tickWoundRecovery(ctx: SimContext, t: Tribute) {
         const stalled = t.vitals.hunger > VITALS.interactionHungerFrom
             || t.vitals.fatigue > VITALS.interactionFatigueFrom;
         if (stalled) return;
-        const needed = RECOVERY_CYCLES[site]!;
+        // AUDIT-13 N15: every wound on a Slow Healer takes a cycle longer.
+        const needed = RECOVERY_CYCLES[site]! + extraRecoveryCycles(t);
         // §16: a tribute who has gone to ground specifically to let a wound
         // close knits faster than one who is carrying it around.
         // `recoverHealingBonus` is the share of an extra cycle's knitting the
@@ -274,7 +276,7 @@ function hasBinding(t: Tribute): boolean {
     return t.inventory.some(i => i.id === 'rope' || i.id === 'wire' || i.id === 'backpack' || i.type === 'medical');
 }
 
-function dressChance(medic: Tribute, isAlly: boolean): number {
+function dressChance(medic: Tribute, isAlly: boolean, patient: Tribute): number {
     let chance = BLEEDING.dressBaseChance
         + medic.attributes.intelligence * BLEEDING.dressPerIntelligence
         + profOf(medic, 'medicine') * BLEEDING.dressPerMedicine;
@@ -287,6 +289,8 @@ function dressChance(medic: Tribute, isAlly: boolean): number {
     // Someone else's steady hands beat your own on a wound you cannot see.
     if (isAlly) chance += BLEEDING.allyDressBonus;
     chance += traitMod(medic, 'medicine');
+    // AUDIT-13 N15: a Slow Healer takes a bandage less well.
+    chance += dressingReceived(patient);
     return Math.max(0.05, Math.min(0.95, chance));
 }
 
@@ -312,7 +316,7 @@ export function attemptFieldDressing(ctx: SimContext, patient: Tribute, medic: T
     // that needs a medical kit and several days, not a bandage.
 
     const isAlly = medic.id !== patient.id;
-    if (!ctx.rng.chance(dressChance(medic, isAlly))) {
+    if (!ctx.rng.chance(dressChance(medic, isAlly, patient))) {
         // Audit 4 §3.4: a dressing that does not take still teaches something,
         // and without this `medicine` could not start — the roll that decides
         // whether it lands reads the skill the landing is the only source of.
@@ -328,6 +332,8 @@ export function attemptFieldDressing(ctx: SimContext, patient: Tribute, medic: T
     }
 
     trainProficiency(medic, 'medicine', ctx);
+    // AUDIT-13 N1: a Stitch-Fingered dressing on somebody else stays clean.
+    noteStitched(ctx, medic, patient);
     // §3.10: field medicine is the most watchable skill in the arena.
     observeProficiency(ctx, medic, 'medicine');
     // §3.1: a wound that has been cleaned and bound is not a neglected wound.

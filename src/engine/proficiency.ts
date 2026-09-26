@@ -4,7 +4,8 @@ import { ITEMS } from '../data/constants';
 import { craftOf } from '../data/districts';
 import { strengthCapForAge } from './physique';
 import { isAggressiveStance } from '../data/stances';
-import { traitProficiencyFloor } from '../data/traits';
+import { traitProficiencyFloor, traitProficiencyPenalty } from '../data/traits';
+import { teachingGainScale, trainingShareScale, watchTeacherLearns } from './audit13Content';
 import { SimContext, getAlive } from './context';
 import { witnessCompetence } from './rapport';
 import { injuryGrade } from './wounds';
@@ -87,6 +88,15 @@ const ARCHETYPE_SPECIALITY: Record<ArchetypeId, Proficiency> = {
     guardian: 'intimidation',
     forger: 'crafting',
     gambler: 'readingPeople',
+    // AUDIT-13 §16 N23-N28. Two of them give the new skills somebody whose
+    // character they are: the Pilgrim walks in the open whatever the sky is
+    // doing, and the Kingmaker's whole game is teaching somebody else to lead.
+    firekeeper: 'firecraft',
+    kingmaker: 'teaching',
+    ratcatcher: 'animalHandling',
+    pilgrim: 'weathercraft',
+    mourner: 'resting',
+    lamplighter: 'signalling',
     // AUDIT-9 stage D: the walk is the job.
     courier: 'pacing',
 };
@@ -240,6 +250,13 @@ export function isUnfamiliar(t: Tribute, weapon?: Item): boolean {
  * also applies to saves written before those axes existed.
  */
 export function profOf(t: Tribute, skill: Proficiency): number {
+    // AUDIT-13 N3/N9: a Bad Knee climbs, and Ash-Lunged sprints, a level
+    // below what they have learned. Read-side only, so training still counts.
+    return Math.max(0, heldProf(t, skill) - traitProficiencyPenalty(t, skill));
+}
+
+/** What has been learned (or granted by a trait), before the body's say. */
+function heldProf(t: Tribute, skill: Proficiency): number {
     const held = t.proficiencies?.[skill] ?? 0;
     const floor = traitProficiencyFloor(t, skill);
     return floor > held ? floor : held;
@@ -251,7 +268,7 @@ export function profOf(t: Tribute, skill: Proficiency): number {
  */
 export function trainProficiency(t: Tribute, skill: Proficiency, ctx?: SimContext, share = 1): number {
     if (!t.proficiencies) t.proficiencies = {};
-    const current = profOf(t, skill);
+    const current = heldProf(t, skill);
     // Each level already held shrinks the next gain, so the curve flattens
     // toward the cap instead of specialists slamming into a wall by mid-run.
     // §3.7: necessity is the arena's tutor — gains accelerate as the run
@@ -284,7 +301,7 @@ export function trainProficiency(t: Tribute, skill: Proficiency, ctx?: SimContex
      * A fumbled bandage is still the second time somebody has held one.
      * Defaults to 1, so every existing call site is unchanged.
      */
-    const gain = PROFICIENCY.gainPerUse * pressure * early * nearCap * share
+    const gain = PROFICIENCY.gainPerUse * pressure * early * nearCap * share * trainingShareScale(t, skill)
         * Math.pow(1 - PROFICIENCY.diminishingPerLevel, current);
     const next = Math.min(PROFICIENCY.max, current + gain);
     // Rounded so the value stays legible in a tooltip and in save files.
@@ -323,6 +340,8 @@ export function trainProficiency(t: Tribute, skill: Proficiency, ctx?: SimContex
         if (skill === 'medicine' || skill === 'forage') drift('intelligence', DRIFT.intelligencePerFieldcraftLevel);
         // §3: charisma was the only attribute that could not grow in the arena.
         if (skill === 'persuasion') drift('charisma', DRIFT.charismaPerPersuasionLevel);
+        // AUDIT-13 N21: an ally who watched it happen learns how to teach it.
+        if (ctx) watchTeacherLearns(ctx, t);
     }
     // §3.9: crossing into a named band is a visible thing about a person, and
     // the only part of the proficiency system a viewer can see without a
@@ -510,7 +529,10 @@ export function teachSkills(ctx: SimContext) {
         if (!ctx.rng.chance(PROFICIENCY.teachChance)) return;
 
         student.proficiencies = student.proficiencies ?? {};
-        const gained = Math.min(PROFICIENCY.max, profOf(student, skill) + PROFICIENCY.teachGain);
+        // AUDIT-13 N21: the `teaching` skill — somebody who has taught before
+        // gets it across faster, and teaching is how teaching is learned.
+        const gained = Math.min(PROFICIENCY.max, profOf(student, skill) + PROFICIENCY.teachGain * teachingGainScale(teacher));
+        trainProficiency(teacher, 'teaching', ctx);
         student.proficiencies[skill] = Math.round(gained * 100) / 100;
         // Being the person who knows things is the whole of what this buys.
         witnessCompetence(ctx, teacher, PROFICIENCY.teachRespectWeight);
@@ -562,6 +584,13 @@ const TEACH_PHRASE: Record<Proficiency, string> = {
     salvage: 'that the stash is never in the pack, it is under the thing the pack sat on',
     ambush: 'to let them walk past the spot and take them from the side they just checked',
     animalHandling: 'to stand side-on and never look it in the eye',
+    // AUDIT-13 §16
+    angling: 'to fish the slack water behind the rock, not the fast water in front of it',
+    mimicry: 'that a voice carries best when it is pitched a little lower than your own',
+    bartering: 'to name your price second, and never to be the one who fills a silence',
+    weathercraft: 'to watch which way the birds go before the wind turns',
+    teaching: 'to show it once slowly and then shut up while they get it wrong',
+    resting: 'to sleep in the first hour of dark and not the last, however cold it is',
 };
 
 /**

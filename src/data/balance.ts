@@ -10893,7 +10893,8 @@ export const AUDIT12_WAVE2_TRIBUTES = {
     scoutWarnTrust: 8,
     /** Turncoat: earliest day, and the smallest group worth taking over. */
     turncoatMinDay: 3,
-    turncoatMinMembers: 3,
+    // AUDIT-13 A18: 3 -> 2. A coup over one partner is still a coup; fired 12.6%.
+    turncoatMinMembers: 2,
     turncoatRegard: 25,
     turncoatSuspicion: 40,
     /** Warden-of-the-Weak: cycles added to a downed ally's window. */
@@ -10904,8 +10905,9 @@ export const AUDIT12_WAVE2_TRIBUTES = {
     /** Forger: bonus durability on what they make. */
     forgerDurability: 15,
     /** Gambler: the most the fight may look like, and the day the wager is on the board. */
-    gamblerOddsMax: 0.4,
-    gamblerMinDay: 2,
+    // AUDIT-13 A17: 0.4 -> 0.47 and day 2 -> 1; the wager fired 10.9% at n=1,600.
+    gamblerOddsMax: 0.47,
+    gamblerMinDay: 1,
     gamblerExcitement: 25,
     /** Gambler: what a visible weapon adds to how a bettor prices a fighter. */
     gamblerArmedWorth: 3,
@@ -11119,4 +11121,123 @@ export const AUDIT13_RELATIONS = {
     honourPactTargetWeight: 0.01,
     /** T5: chance a guardian, protector or pact-bound tribute shields their partner at the gong. */
     gongShieldChance: 0.5,
+} as const;
+
+/**
+ * AUDIT-13 §16 (N1-N37): the sixteen traits, six skills, six archetypes, six
+ * quirks and three stances added in this pass, read in
+ * `engine/audit13Content.ts` and at the sites that file names. Grouped by
+ * audit id so a row in the audit table is one search away from its knob.
+ */
+export const AUDIT13_CONTENT = {
+    // ---- traits ----------------------------------------------------------
+    /** N1 Stitch-Fingered: cycles a dressing keeps infection off, and what is left of the roll. */
+    stitchCycles: 6,
+    stitchInfectionScale: 0.75,
+    /** N2 Loud Heart: fear an ally in the zone picks up is cut by this share. */
+    loudHeartFearCut: 0.1,
+    /** N3 Bad Knee / N9 Ash-Lunged: proficiency levels lost on climbing / sprinting. */
+    badKneeClimbing: 1,
+    ashLungSprinting: 1,
+    /** N3 Bad Knee: extra fatigue on a crossing into high ground. */
+    badKneeHighlandFatigue: 1,
+    /** N4 Drowned Once: destination score a water crossing costs them. */
+    drownedOnceRefusal: 50,
+    /** N5 Mud-Skinned: how many times over the concealment row counts in marsh ground. */
+    mudSkinWetlandScale: 2,
+    /** N6 Bell-Voiced: signalling pull counted one zone further out, at this share. */
+    bellVoiceReachShare: 0.5,
+    /** N7 Two-Faced: chance a passed-on rumour is put in somebody else's mouth. */
+    twoFacedMisattribute: 0.3,
+    /** N9 Ash-Lunged: share of smoke and ash damage that lands. */
+    ashLungSmokeScale: 0.5,
+    /** N11 Hunger-Sharp: hunger at or over which it bites, the power it buys, and the Hunting pull. */
+    hungerSharpFrom: 30,
+    hungerSharpPower: 1,
+    hungerSharpHunting: 0.8,
+    /** N13 Bitter Root: chance a find sours in the mouth, and the sanity it costs. */
+    bitterRootChance: 0.2,
+    bitterRootSanity: 3,
+    /** N14 Deadfall Mind: ambush chance on ground they hold with their own traps on it. */
+    deadfallAmbush: 0.1,
+    /** N15 Slow Healer: extra cycles every wound takes, and the dressing chance lost on them. */
+    slowHealerCycles: 1,
+    slowHealerDressing: 0.1,
+    /** N16 Keeps Watch Alone: watch failure scale on a watch nobody shares. */
+    loneWatchScale: 0.6,
+
+    // ---- skills ----------------------------------------------------------
+    /** N17 angling: forage chance per level on water and wetland ground. */
+    anglingPerLevel: 0.04,
+    /** N18 mimicry: plant chance per level, and the level at which a thrown voice is a lure. */
+    mimicryPerLevel: 0.04,
+    mimicryLureLevel: 3,
+    /** N19 bartering: bargaining per level, on the `haggle` scale (the trait is the floor). */
+    barteringPerLevel: 0.12,
+    /** N20 weathercraft: exposure removed per level, and the floor. */
+    weathercraftPerLevel: 0.05,
+    weathercraftFloor: 0.6,
+    /** N21 teaching: student gain added per level; share of a lesson a watching teacher takes. */
+    teachingPerLevel: 0.25,
+    teachingWatchShare: 0.5,
+    /** N22 resting: sanity and night fatigue per level. */
+    restingSanityPerLevel: 1,
+    restingFatiguePerLevel: 0.5,
+
+    // ---- archetypes ------------------------------------------------------
+    /** N23 Firekeeper: nights a fire must burn, the chance they light one, the hearth's length, and its gifts. */
+    firekeeperNights: 2,
+    firekeeperLightChance: 0.35,
+    hearthCycles: 6,
+    hearthFatigue: 2,
+    hearthColdResist: 0.2,
+    hearthTargetDraw: 0.5,
+    /** N24 Kingmaker: leadership a crowned ally gains, and the sponsor trust the maker skims per cycle. */
+    crownLeadership: 1,
+    crownSponsorShare: 0.5,
+    /** N25 Ratcatcher: live traps the vermin sweep needs, and what it feeds. */
+    pestSweepTraps: 2,
+    pestSweepFeed: 15,
+    /** N26 Pilgrim: pull toward the landmark, and the resolve and sponsor trust arriving buys. */
+    pilgrimPull: 3,
+    pilgrimResolve: 0.5,
+    pilgrimSponsor: 10,
+    /** N27 Mourner: grief resistance lost, power against an ally's killer, sanity a vigil restores. */
+    mournerGrief: 0.2,
+    mournerVengeance: 1.5,
+    vigilSanity: 10,
+    /** N28 Lamplighter: earliest day, the hazard damage that lands on a marked route, and how long it lasts. */
+    beaconMinDay: 2,
+    beaconHazardScale: 0.7,
+    beaconCycles: 2,
+
+    // ---- quirks ----------------------------------------------------------
+    /** N29: navigation training multiplier for the step-counter. */
+    stepCounterNavigation: 1.1,
+
+    // ---- stances ---------------------------------------------------------
+    /** N35 Regrouping: score, the cost of a hostile here, ambush relief, and the pull toward an ally's zone. */
+    regroupingBase: 8.2,
+    regroupingHostilePenalty: 0.8,
+    regroupingAmbushRelief: 0.2,
+    regroupingPull: 3,
+    /** N35: with no group, a friend this close, last seen this recently, is who they walk back to. */
+    regroupingFriendRegard: 35,
+    regroupingContactCycles: 6,
+    /** N36 Mourning: how long after the death it may start, score, awareness lost, sanity per cycle. */
+    mourningWindow: 3,
+    /** N36: regard for the dead at or over which it is mourning rather than merely grief. */
+    mourningRegard: 20,
+    mourningBase: 8,
+    mourningAwareness: 0.5,
+    mourningSanity: 4,
+    /** N37 Sheltering: shelter skill needed, score, exposure kept, the costs, and the tracker who still finds them. */
+    shelteringSkillMin: 0.15,
+    shelteringPerCarpentry: 0.1,
+    shelteringBase: 6.8,
+    shelteringNightBonus: 1,
+    shelteringExposureScale: 0.5,
+    shelteringHunger: 1,
+    shelteringFatigue: 1,
+    shelteringTrackedLevel: 3,
 } as const;

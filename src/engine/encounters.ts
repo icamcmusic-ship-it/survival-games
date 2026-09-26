@@ -1,4 +1,5 @@
 import { Terrain, Tribute, attr } from '../models/types';
+import { afterForage, anglingForage, neverPoisonous } from './audit13Content';
 import { noteParleyFailed } from './traitHooks';
 import { adaptArenaEvent, applyEventMechanic } from './season/eventMechanics';
 import { mentorWarningBonus } from './season/carry';
@@ -844,7 +845,8 @@ function attemptForage(
     // that are only useful to someone who does not intend to eat them.
     // A scavenger turns up things nobody left on purpose: a dropped pack, a
     // coil of wire in the ruins, matches in a dead tribute's coat.
-    const pool = ctx.rng.chance(ZONES.nightlockChance)
+    // AUDIT-13 N13: nothing a Bitter Root picks is poison.
+    const pool = !neverPoisonous(t) && ctx.rng.chance(ZONES.nightlockChance)
         ? ITEMS.filter(i => i.id === 'nightlock')
         // `scavenging` is the read: what turns up is partly what is there and
         // partly whether the person looking knows a coil of wire from a root.
@@ -865,6 +867,8 @@ function attemptForage(
     trainProficiency(t, 'scavenging', undefined, PROFICIENCY.scavengingForageShare);
     trainProficiency(t, 'herbalism', undefined, PROFICIENCY.herbalismForageShare);
     noteForageSuccess(t, t.zone);
+    // AUDIT-13 N17 / N13: fishing trains angling; a Bitter Root's find can taste of despair.
+    afterForage(ctx, t);
     // §3.10: anybody standing here watched them do it.
     observeProficiency(ctx, t, 'forage');
     // AUDIT-12 §5 hunger that bites: ground is stripped faster than it regrows.
@@ -925,6 +929,8 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
         && (zone?.terrain === 'water' || zone?.terrain === 'wetland');
     const rawForageChance = ZONES.baseForageChance
         + (fishing ? ZONES.fishingBonus : 0)
+        // AUDIT-13 N17: `angling` is fishing without the kit.
+        + anglingForage(t, zone)
         // §11.5: a light after dark turns groping into searching.
         + (arenaIsDark(ctx.state) && hasTool(t, 'light') ? TOOLS.lightNightForageBonus : 0)
         + available * ZONES.yieldForageWeight

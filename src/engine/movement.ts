@@ -1,4 +1,5 @@
 import { Tribute, Zone } from '../models/types';
+import { audit13DestinationScore } from './audit13Content';
 import { cannonAvoidance, signallingPull } from './traitHooks';
 import { ARCHETYPES } from '../data/archetypes';
 import { CONFUSION, FEAR, MEMORY, MOVEMENT, NOTORIETY, DECISION_TRACE, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, RISK } from '../data/balance';
@@ -111,6 +112,8 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
         // AUDIT-12 T15 / §16: a Cannon-Counter keeps off the ground a cannon
         // just came from; Signalling pulls a scattered group back together.
         score += cannonAvoidance(state, t, z.name) + signallingPull(state, t, z.name);
+        // AUDIT-13 N4 / N26 / N35: Drowned Once, the Pilgrim's landmark, Regrouping.
+        score += audit13DestinationScore(state, t, z);
         if (z.terrain === 'water' || z.terrain === 'wetland') score += traitMod(t, 'water');
 
         if (isEvasiveStance(t.stance)) score -= z.danger * 2;

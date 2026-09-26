@@ -1,8 +1,8 @@
 import { Item, Obligation, Tribute } from '../models/types';
 import { SimContext, getAlive } from './context';
-import { AUDIT12_TRIBUTES, AUDIT12_WAVE2_TRIBUTES as W2 } from '../data/balance';
+import { AUDIT12_TRIBUTES, AUDIT12_WAVE2_TRIBUTES as W2, AUDIT13_CONTENT } from '../data/balance';
 import {
-    countsCannons, forgetsFaces, hasTwitchyTrigger, isBoneSetter, isCorneredRat, isHeavySleeper,
+    countsCannons, forgetsFaces, hasLongMemory, hasTwitchyTrigger, isBoneSetter, isCorneredRat, isHeavySleeper,
     isHomebody, isMimic, isNightOwl, isOathkeeper, isPackRat, isPlateSprinter, isRationer, readsScars,
 } from '../data/traits';
 import { cycleOf, raiseSuspicion, rivalRecord } from './memory';
@@ -24,6 +24,7 @@ import { dropParachute } from './parachutes';
 import { addExcitement } from './audience';
 import { arenaIsDark } from './arenaRules';
 import { RNG } from '../utils/rng';
+import { bellVoiceReach, canThrowVoice, loneWatchScale, shelteredFromHunt } from './audit13Content';
 
 /**
  * AUDIT-12 T15 and §16: the trait, skill, stance and archetype hooks that are
@@ -46,7 +47,8 @@ import { RNG } from '../utils/rng';
 export function tickTraitHooks(ctx: SimContext) {
     getAlive(ctx.state).forEach(t => {
         if (!isActive(t)) return;
-        if (isMimic(t)) mimicLure(ctx, t);
+        // AUDIT-13 N18: at enough `mimicry`, anybody can throw a voice.
+        if (isMimic(t) || canThrowVoice(t)) mimicLure(ctx, t);
         if (isBoneSetter(t)) boneSetterSplint(ctx, t);
         if (t.stance === 'Hiding') hidingCost(t);
     });
@@ -75,6 +77,7 @@ function mimicLure(ctx: SimContext, t: Tribute) {
     mark.zone = t.zone;
     mark.zoneLevel = t.zoneLevel;
     t.lure = { targetId: mark.id, cycle: cycleOf(ctx.state) };
+    trainProficiency(t, 'mimicry', ctx);
     ctx.logEvent(
         `${t.name} calls out from ${t.zone} in a voice that is not their own, and ${mark.name} comes out of ${from} toward it.`,
         [t.id, mark.id],
@@ -193,12 +196,16 @@ export function twitchyAllyHit(ctx: SimContext, side: Tribute[], crowd: number, 
 
 /** Read by `decayRelationships`: Forgets Faces lets a grudge go twice as fast. */
 export function grudgeDecayScale(t: Tribute, value: number): number {
-    return value < 0 && forgetsFaces(t) ? W2.forgetsFacesGrudgeDecay : 1;
+    if (value >= 0) return 1;
+    // AUDIT-13 A8: Long Memory owns how long a grudge lasts — the inverse of Forgets Faces.
+    return (forgetsFaces(t) ? W2.forgetsFacesGrudgeDecay : 1) / (hasLongMemory(t) ? W2.forgetsFacesGrudgeDecay : 1);
 }
 
 /** Read by `watchFails`: Heavy Sleeper nods off, Night Owl does not. */
 export function watchFailScale(t: Tribute): number {
-    return (isHeavySleeper(t) ? W2.heavySleeperWatchFail : 1) * (isNightOwl(t) ? W2.nightOwlWatchFail : 1);
+    return (isHeavySleeper(t) ? W2.heavySleeperWatchFail : 1) * (isNightOwl(t) ? W2.nightOwlWatchFail : 1)
+        // AUDIT-13 N16: the watch is one person's, and Keeps Watch Alone wants it that way.
+        * loneWatchScale(t);
 }
 
 /**
@@ -265,9 +272,11 @@ export function neverGreedy(t: Tribute): boolean {
  * A Rationer eats half and keeps half, so every other meal is the saved half.
  * Eating from a thin pack is what trains Rationing.
  */
-export function rationMeal(ctx: SimContext, t: Tribute): 'eat' | 'saved' {
+export function rationMeal(ctx: SimContext, t: Tribute): 'eat' | 'saved' | 'skip' {
     const rations = t.inventory.filter(i => i.type === 'food').reduce((n, i) => n + (i.stack ?? 1), 0);
     if (rations > 0 && rations <= W2.rationingLowStock) trainProficiency(t, 'rationing', ctx);
+    // AUDIT-13 N34: never eats the last of anything.
+    if (rations === 1 && t.quirks?.includes('never eats the last of anything')) return 'skip';
     if (!isRationer(t)) return 'eat';
     if (t.halfRation) { t.halfRation = false; return 'saved'; }
     t.halfRation = true;
@@ -308,11 +317,15 @@ export function signallingPull(state: SimContext['state'], t: Tribute, zone: str
     if (level <= 0) return 0;
     const absent = state.tributes.some(o => o.status === 'alive' && o.id !== t.id && allied(o, t)
         && o.zone === zone && o.zone !== t.zone);
-    return absent ? level * W2.signallingPullPerLevel : 0;
+    if (absent) return level * W2.signallingPullPerLevel;
+    // AUDIT-13 N6: a Bell-Voiced group hears one another a zone further off.
+    return bellVoiceReach(state, t, zone) ? level * W2.signallingPullPerLevel * AUDIT13_CONTENT.bellVoiceReachShare : 0;
 }
 
 /** Read by the hunt target filter: somebody Hiding is found only by a tracker who knows them. */
 export function hiddenFromHunt(hunter: Tribute, quarry: Tribute): boolean {
+    // AUDIT-13 N37: a Sheltering tribute is under something, and only a tracker reads the ground to it.
+    if (shelteredFromHunt(hunter, quarry)) return true;
     if (quarry.stance !== 'Hiding') return false;
     return profOf(hunter, 'tracking') < W2.hidingTrackedLevel && (rivalRecord(hunter, quarry.id).fights ?? 0) === 0;
 }

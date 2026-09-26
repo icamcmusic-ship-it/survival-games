@@ -1,4 +1,5 @@
 import { GameState, Item, Tribute } from '../models/types';
+import { mournerGriefResist } from './audit13Content';
 import { griefScaling } from './allianceBonds';
 import { forceStance } from './stance';
 import { noteRivalDeath } from './rapport';
@@ -361,7 +362,7 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
                 Math.pow(RELATIONSHIPS.griefRepeatDecay, buried),
             );
             // Some people have buried someone before, and some people have not.
-            loseSanity(other, sanityHit * numbing * Math.max(0, 1 - traitMod(other, 'griefResist')));
+            loseSanity(other, sanityHit * numbing * Math.max(0, 1 - traitMod(other, 'griefResist') - mournerGriefResist(other)));
             addExcitement(other, Math.round(10 + intensity * 25));
             // The crowd rewards visible grief.
             other.sponsorTrust += Math.round(intensity * RELATIONSHIPS.griefTrustPerIntensity);

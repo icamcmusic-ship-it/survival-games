@@ -35,6 +35,7 @@ import { traitMod } from '../data/traits';
 import { earnTrait } from './earnedTraits';
 import { AUDIT13_CAREERS, PREGAMES, AUDIT12_WAVE2_TRIBUTES } from '../data/balance';
 import { evasionRetreat, lootChanceBonus, noteRetreatFailed, onCannon, traitPowerHooks, twitchyAllyHit } from './traitHooks';
+import { audit13DamageScale, audit13PowerHooks, onAudit13Death, spendBorrowedLuck } from './audit13Content';
 import { armourOf, effectiveDamage, encumbranceOf, wearArmour } from './items';
 import { isAggressiveStance, isEvasiveStance } from '../data/stances';
 import { loseSanity } from './sanityBands';
@@ -115,6 +116,8 @@ function shouldGoDown(ctx: SimContext, t: Tribute): boolean {
     // of a final two, which `checkDualVictory` has no other defence against.
     const standing = ctx.state.tributes.filter(o => o.status === 'alive' && !o.downed).length;
     if (standing <= DOWNED.finalistFloor) return false;
+    // AUDIT-13 N12: Borrowed Luck — the first one that should have killed them does not.
+    if (spendBorrowedLuck(t)) return true;
     const chance = Math.min(DOWNED.maxChance,
         DOWNED.baseChance + attr(t, 'endurance') * DOWNED.perEndurance);
     return ctx.rng.chance(chance);
@@ -347,6 +350,8 @@ export function applyDamage(
     // not frame — and it is the first thing the run takes off a starving
     // tribute, so a long run strips the padding before it strips the health.
     if (ARMOURED_DAMAGE.includes(record.kind)) amount *= 1 - injuryAbsorption(t);
+    // AUDIT-13 N9 / N28: Ash-Lunged in smoke; a Lamplighter's marked route.
+    amount *= audit13DamageScale(t, record.kind, record.cause);
     /*
      * `naturalDeathRate`: how hard everything that is not another tribute hits.
      *
@@ -825,6 +830,8 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
     // AUDIT-12 T15 / §16: Homebody on first-camp ground, Night Owl after dark,
     // and the Cornered Rat after a retreat that did not work.
     power += traitPowerHooks(ctx, t);
+    // AUDIT-13 N11 / N27: Hunger-Sharp when hungry; a Mourner against an ally's killer.
+    power += audit13PowerHooks(t, opponent);
 
     return power;
 }
@@ -2376,6 +2383,8 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         .concat({ zone: victim.zone, cycle });
     // AUDIT-12 T15: the Cannon-Counter hears it and is steadier for it.
     onCannon(ctx, victim);
+    // AUDIT-13 N36: whoever grieves this one, close enough, can stop and mourn.
+    onAudit13Death(ctx, victim, killer);
 
     // 'The Bounty Quell': collecting the named quarry is a standing sponsor
     // stream, not a one-off gift — maintainBounty (dayNight.ts) names a new

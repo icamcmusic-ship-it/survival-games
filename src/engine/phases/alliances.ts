@@ -1,4 +1,5 @@
 import { dreadOf } from '../intent';
+import { kinBound } from '../audit13Content';
 import { oathRefusesBetrayal } from '../traitHooks';
 import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
@@ -640,7 +641,8 @@ export function processAlliances(ctx: SimContext) {
                         : baseChance;
                     const relThreshold = (ALLIANCES.baseRelThreshold - compat * 100 - persona * 60) * trustCost;
 
-                    if (rel > relThreshold && ctx.rng.chance(formChance)) {
+                    // AUDIT-13 N8: a Kin-Seeker on day 1 is not refused by their own district.
+                    if ((rel > relThreshold && ctx.rng.chance(formChance)) || kinBound(ctx.state, t1, t2)) {
                         const newId = `alliance-${t1.id}-${t2.id}`;
                         t1.allianceId = newId;
                         t2.allianceId = newId;

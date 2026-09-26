@@ -1,4 +1,5 @@
 import { Tribute, attr } from '../models/types';
+import { noteRest, restingFatigue, restingSanity } from './audit13Content';
 import { rationMeal, rationingDrain } from './traitHooks';
 import { ARENA_LAWS, CAREER_APPETITE, ZONES, POISONING, FATIGUE_MISTAKES, SANITY_BANDS, DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TOOLS, TRAIT_EFFECTS, UNIVERSAL_DEATHS, VITALS, WATER, SITUATIONAL_KIT , AUDIT12_TRIBUTES } from '../data/balance';
 import { SimContext, getAlive } from './context';
@@ -173,7 +174,7 @@ function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
     // AUDIT-12 §16: the Rationing skill.
     hunger -= rationingDrain(t);
     thirst += traitMod(t, 'thirstDrain');
-    fatigue += time === 'night' ? traitMod(t, 'fatigueNight') : traitMod(t, 'fatigueDay');
+    fatigue += time === 'night' ? traitMod(t, 'fatigueNight') - restingFatigue(t) : traitMod(t, 'fatigueDay');
     // Younger tributes burn through rations faster and sleep worse.
     if (t.age <= TRAIT_EFFECTS.youngAge) {
         hunger += TRAIT_EFFECTS.youngHungerPenalty;
@@ -571,7 +572,9 @@ function consumeSupplies(ctx: SimContext, t: Tribute) {
     }
     if (t.vitals.hunger > VITALS.eatThreshold) {
         // AUDIT-12 §16: a Rationer eats half and keeps the other half.
-        const food = rationMeal(ctx, t) === 'saved'
+        // AUDIT-13 N34: ...and somebody who never eats the last of anything does not.
+        const meal = rationMeal(ctx, t);
+        const food = meal === 'skip' ? undefined : meal === 'saved'
             ? t.inventory.find(i => i.type === 'food')
             : consumeOne(t, i => i.type === 'food');
         if (food) {
@@ -821,6 +824,8 @@ function applyNaturalRecovery(ctx: SimContext, t: Tribute, time: 'day' | 'night'
     if (t.injuries.bleeding || t.injuries.infected || t.injuries.poisoned) return;
     if (t.vitals.hunger > RECOVERY.maxHunger || t.vitals.thirst > RECOVERY.maxThirst) return;
 
+    // AUDIT-13 N22: a night that qualifies is what the `resting` skill is made of.
+    noteRest(t, ctx);
     let amount = RECOVERY.nightHeal + Math.max(0, traitMod(t, 'sanityRecovery') / 2);
     const zone = getZone(ctx.state.arena, t.zone);
     if (zone && (zone.terrain === 'forest' || zone.terrain === 'ruins')) amount += RECOVERY.shelteredBonus;
@@ -948,7 +953,7 @@ function applySanityPressure(ctx: SimContext, t: Tribute, time: 'day' | 'night',
 
     // Temperament on the way up. On the way down it is applied inside
     // `loseSanity`, with every other loss in the game.
-    if (recovery > 0) recovery += traitMod(t, 'sanityRecovery');
+    if (recovery > 0) recovery += traitMod(t, 'sanityRecovery') + restingSanity(t);
 
     /**
      * Audit 4 §3.2: the gauge and the thirty scattered subtractions are one

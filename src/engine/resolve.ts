@@ -1,4 +1,5 @@
 import { Tribute, attr } from '../models/types';
+import { audit13ResolveDrift, woundsShakeResolve } from './audit13Content';
 import { forceStance } from './stance';
 import { MOTIVES, RESOLVE, SOCIAL_AXES } from '../data/balance';
 import { SimContext, getAlive } from './context';
@@ -95,7 +96,8 @@ export function tickResolve(ctx: SimContext) {
         const lonely = allies.length === 0
             && !alive.some(o => o.id !== t.id && getRel(t, o.id) >= RESOLVE.isolationWarmthThreshold);
         if (lonely) delta -= RESOLVE.isolationPenalty;
-        if (t.health < RESOLVE.woundedHealth) delta -= RESOLVE.woundedPenalty;
+        // AUDIT-13 N15: pain has never talked a Slow Healer into quitting.
+        if (t.health < RESOLVE.woundedHealth && woundsShakeResolve(t)) delta -= RESOLVE.woundedPenalty;
         if (t.vitals.hunger > RESOLVE.deprivationThreshold || t.vitals.thirst > RESOLVE.deprivationThreshold) {
             delta -= RESOLVE.deprivationPenalty;
         }
@@ -113,6 +115,8 @@ export function tickResolve(ctx: SimContext) {
 
         // Traits: some people are simply harder to put out.
         delta += traitMod(t, 'resolveDrift');
+        // AUDIT-13 N26: a Pilgrim who got there.
+        delta += audit13ResolveDrift(t);
         // §3.1: resolve is per-run state; willpower is the disposition under
         // it. A negative day costs a strong-willed tribute less and a fragile
         // one more, and a positive day is worth slightly more to them — which
