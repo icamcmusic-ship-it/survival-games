@@ -5558,12 +5558,15 @@ export const ACHIEVEMENTS: Achievement[] = [
     {
         id: 'a8-four-ledgers',
         name: 'Four Ledgers',
-        hint: 'Crown a victor four or more people still owed at the end.',
+        // AUDIT-12 wave 2: this used to be `owed-by-four` verbatim (others owe
+        // the victor). It now reads the other side of the ledger: the victor
+        // still owes four or more people when the gong goes.
+        hint: 'Crown a victor who still owes four or more people at the end.',
         category: 'social', rarity: 'legendary',
-        test: (state, v) => !!v && state.tributes.filter(o => (o.debts?.[v.id] ?? 0) > 0).length >= 4,
-        nearMiss: (state, v) => {
-            const n = v ? state.tributes.filter(o => (o.debts?.[v.id] ?? 0) > 0).length : 0;
-            return n === 3 ? 'three people owed them at the end; four is the bar' : undefined;
+        test: (_state, v) => !!v && Object.values(v.debts ?? {}).filter(n => n > 0).length >= 4,
+        nearMiss: (_state, v) => {
+            const n = v ? Object.values(v.debts ?? {}).filter(n => n > 0).length : 0;
+            return n === 3 ? 'they owed three people at the end; four is the bar' : undefined;
         },
     },
     {

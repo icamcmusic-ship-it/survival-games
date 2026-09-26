@@ -10441,3 +10441,50 @@ export const AUDIT12_ARENA = {
     /** §8.10: fatigue the smoke adds on top. */
     enclosedSmokeFatigue: 8,
 } as const;
+
+/**
+ * AUDIT-12 wave 2 §8 (generic 1-8 and the thin arenas' mechanics). See
+ * `engine/arenaWave2.ts` and `scripts/check-arena-deathmix.ts`.
+ */
+export const AUDIT12_WAVE2_ARENA = {
+    /** §8.1: border kills allowed per Games before the closing sector fires the arena's own hazard instead. */
+    borderKillCap: 2,
+    /** §8.1: damage of the arena's own hazard when it stands in for the border. */
+    borderHazardDamage: 34,
+    /** §8.2: floor on own-cause deaths as a share of non-tribute deaths, per arena. */
+    signatureShareMin: 0.08,
+    /** §8.3: the tribute-kill share band, per arena. */
+    tributeShareMin: 0.5,
+    tributeShareMax: 0.72,
+    /** §8.4: dodge-roll bonus for a telegraphed hazard, for a tribute who reads the sky. */
+    telegraphDodgeBonus: 3,
+    /** §8.4: bonus for anyone else who was in the zone when the warning went out. */
+    telegraphWarnedBonus: 1,
+    /** §8.6: thirst a scarce water source takes off. */
+    scarceWaterQuench: 30,
+    /** §8.6: thirst at which a tribute goes looking for the scarce source. */
+    scarceWaterThirst: 45,
+    /** §8.6: chance the source's risk lands. */
+    scarceWaterRiskChance: 0.28,
+    /** §8.6: damage when it does. */
+    scarceWaterRiskDamage: 12,
+    /** §8.7: the mutt roster floor, per arena. */
+    muttRosterFloor: 4,
+    /** Thin-arena mechanics: the standard hit, the heavy hit, and the base dodge. */
+    mechanicDamage: 20,
+    mechanicHeavyDamage: 30,
+    mechanicDodgeBase: 0.3,
+    mechanicDodgePerAgility: 0.03,
+    /** Thin-arena mechanics: a relief beat's sanity/fatigue/hunger swing. */
+    mechanicRelief: 14,
+    /** Chance a finishing blow lands on an already-hurt tribute caught by a mechanic. */
+    mechanicFinishBelowHealth: 30,
+    mechanicFinishChance: 0.35,
+    /** Snowbound woodpile: logs at the start and logs burned per night. */
+    woodpileStart: 8,
+    woodpileBurnPerNight: 2,
+    /** Silk Wood: sanity lost when a line reveals you. */
+    silkRevealSanity: 4,
+    /** The No-One Place: relationship drift when the place forgets. */
+    forgetRegard: 12,
+} as const;

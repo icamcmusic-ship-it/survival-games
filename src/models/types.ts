@@ -792,6 +792,13 @@ export interface DamageRecord {
      */
     code?: DeathCauseCode;
     /** Set when another tribute dealt it. */
+    /**
+     * AUDIT-12 §8.2: this wound was the arena's own doing — its signature
+     * mechanic, or an authored event tagged `signature: true` — rather than
+     * generic weather, the border or another tribute. Read by the per-arena
+     * death-mix guard off `lastDamage`.
+     */
+    signature?: boolean;
     sourceId?: string;
     /** Broad bucket, for tone and epilogue copy. */
     kind: 'tribute' | 'mutt' | 'hazard' | 'climate' | 'status' | 'gamemaker' | 'arena';
