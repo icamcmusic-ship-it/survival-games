@@ -163,6 +163,13 @@ function finish(
  */
 function bleedOut(ctx: SimContext, t: Tribute, describe: (killerName: string) => string, fallback: string, silent = false) {
     const by = t.downed?.byId ? ctx.state.tributes.find(o => o.id === t.downed!.byId) : undefined;
+    // AUDIT-13 B3: a corpse cannot kill anybody. When whoever struck the blow
+    // has died since, the wound is what finishes them: it reads and codes as
+    // a bleed-out, and stays out of the tribute-kill share.
+    if (by && by.status !== 'alive') {
+        finish(ctx, t, `Bled out from a wound ${by.name} gave them`, undefined, silent, { kind: 'status', code: 'bleeding' });
+        return;
+    }
     finish(ctx, t, by ? describe(by.name) : fallback, by, silent);
 }
 
@@ -182,12 +189,12 @@ function bleedOut(ctx: SimContext, t: Tribute, describe: (killerName: string) =>
  * and credits `killer` when there is one, leaving the ordinary clock —
  * rescue, execution, bleeding out — exactly as it was for everything else.
  */
-export function cutDownedLine(ctx: SimContext, t: Tribute, cause: string, killer?: Tribute) {
+export function cutDownedLine(ctx: SimContext, t: Tribute, cause: string, killer?: Tribute, code: 'fall' | 'collapse' = 'fall') {
     if (!isDowned(t)) return;
     // With no killer this is the arena doing it — a fall — and it must say so
     // rather than inheriting a tribute attribution from the blow that downed
     // them, whose source is not the source of this.
-    finish(ctx, t, cause, killer, false, killer ? undefined : { kind: 'arena', code: 'fall' });
+    finish(ctx, t, cause, killer, false, killer ? undefined : { kind: 'arena', code });
 }
 
 /**

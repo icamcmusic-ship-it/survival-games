@@ -1983,3 +1983,4 @@ if (weaponKillTotal > 0) {
 
 console.log(failed ? `\n${failed} regression guard(s) breached.` : '\nAll regression guards hold.');
 if (failed) process.exit(1);
+

@@ -1,6 +1,7 @@
 import { GameState, Item, RescueLineRecord, Tribute } from '../models/types';
 import { SimContext, getAlive } from './context';
-import { RESCUE_LINE, BLEEDING } from '../data/balance';
+import { RESCUE_LINE, BLEEDING, AUDIT13_ARENA } from '../data/balance';
+import { zoneHasDrop } from './arenaDynamics';
 import { applyDamage, checkDeath } from './combat';
 import { cutDownedLine, isActive, isDowned, widenRescueWindow } from './downed';
 import { isVertical, samePlace } from './verticality';
@@ -146,18 +147,22 @@ function anchorFor(t: Tribute): { kind: RescueLineRecord['anchor']; quality: num
  * shifted under it where it has a word for that. Every form still ends
  * "…went", which `causes.ts` reads as a fall.
  */
-function anchorFallCause(state: GameState, zone: string, kind: string): string {
+function anchorFallCause(state: GameState, zone: string, kind: string, improvised?: string): string {
     const terrain = state.arena.zones.find(z => z.name === zone)?.terrain;
     const into: Partial<Record<string, string>> = {
         ice: 'the ice screw', highland: 'the piton', cave: 'the rock bolt', ruins: 'the rusted rail',
         urban: 'the railing', forest: 'the root it was tied round', wetland: 'the stake in the mud',
         water: 'the mooring post', desert: 'the stake in the sand', open: 'the stake',
     };
-    const held = kind === 'improvised' ? 'the knotted strapping' : (terrain && into[terrain]) || 'the anchor';
+    // AUDIT-13 W1: an improvised line is named for what it was knotted from
+    // (`improvised` is the caller's "when the X went"), and the zone reads by
+    // its plain name rather than its parenthesised sub-label.
+    const when = kind === 'improvised' && improvised ? improvised : `when ${(terrain && into[terrain]) || 'the anchor'} went`;
+    const where = plainZoneName(zone);
     const shifted = state.arena.effectVocab?.quaking?.label;
     return shifted
-        ? `Fell in ${zone} when ${held} went, ${shifted}`
-        : `Fell in ${zone} when ${held} went`;
+        ? `Fell in ${where} ${when}, ${shifted}`
+        : `Fell in ${where} ${when}`;
 }
 
 /**
@@ -274,7 +279,10 @@ export function tickRescueLines(ctx: SimContext) {
         const best = ranked[0].w;
         const tied = ranked.filter(r => Math.abs(r.w - best) < 1e-9).map(r => r.o);
         const rescuer = tied.length > 1 ? ctx.rng.pick(tied) : tied[0];
-        if (!ctx.rng.chance(Math.max(0, Math.min(RESCUE_LINE.maxWillingness, willingness(rescuer, stranded))))) return;
+        // AUDIT-13 W1/W2: on flat ground there is little to haul a downed
+        // tribute up or out of, so the line comes out less often.
+        const flatScale = stranding === 'downed' && !zoneHasDrop(state, stranded.zone) ? AUDIT13_ARENA.flatRescueScale : 1;
+        if (!ctx.rng.chance(flatScale * Math.max(0, Math.min(RESCUE_LINE.maxWillingness, willingness(rescuer, stranded))))) return;
 
         attemptRescueLine(ctx, rescuer, stranded, stranding);
     });
@@ -467,17 +475,26 @@ function resolveRescueLine(
         // braced against it; a load that drags takes the person holding it.
         const victim = outcome === 'overloaded' ? stranded
             : ctx.rng.chance(RESCUE_LINE.rescuerFallsShare) ? rescuer : stranded;
+        // AUDIT-13 W1: the zone's plain name, not its debug-style sub-label,
+        // and the improvised line named for what it was made of. W2: where
+        // there is no drop, the ground coming down is a collapse, not a fall.
+        const where = plainZoneName(stranded.zone);
+        const gave = anchor.kind === 'improvised' ? `when the ${ctx.rng.pick(IMPROVISED_LINES)} went` : 'when the anchor went';
+        const drop = zoneHasDrop(state, stranded.zone);
         const cause = outcome === 'overloaded'
-            ? `Dragged down in ${stranded.zone} by what they would not let go of`
-            : anchorFallCause(ctx.state, stranded.zone, anchor.kind);
+            ? `Dragged down in ${where} by what they would not let go of`
+            : drop
+                ? anchorFallCause(ctx.state, stranded.zone, anchor.kind, gave)
+                : `Buried in the collapse of the bank in ${where} ${gave}`;
+        const fallCode = outcome === 'overloaded' || drop ? 'fall' : 'collapse';
         // F05, the accidental twin of the cut: an anchor that tears out under
         // a downed person has to reach them through the same door, or it is a
         // fall the engine silently declines to apply.
         const victimDowned = isDowned(victim);
         if (victimDowned) {
-            cutDownedLine(ctx, victim, cause, undefined);
+            cutDownedLine(ctx, victim, cause, undefined, fallCode);
         } else {
-            applyDamage(ctx, victim, RESCUE_LINE.fallDamage, { cause, kind: 'arena', code: 'fall' });
+            applyDamage(ctx, victim, RESCUE_LINE.fallDamage, { cause, kind: 'arena', code: fallCode });
             openWound(victim, BLEEDING.combatSeverity);
             clampTribute(victim);
         }
@@ -656,4 +673,12 @@ export function tickRescueAftermath(ctx: SimContext) {
             );
         }
     });
+}
+
+/** AUDIT-13 W1: what an improvised line is knotted from. */
+const IMPROVISED_LINES = ['knotted belt', 'twisted vine', 'strip of tarp', 'sleeping-bag cord', 'pack straps', 'knotted jacket sleeves'];
+
+/** AUDIT-13 W1: "The Cornucopia (The Clearing)" reads as "The Cornucopia" in a cause of death. */
+export function plainZoneName(zone: string): string {
+    return zone.replace(/\s*\([^)]*\)\s*$/, '') || zone;
 }

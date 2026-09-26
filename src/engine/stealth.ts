@@ -12,6 +12,7 @@ import { isAggressiveStance, isEvasiveStance } from '../data/stances';
 import { allied } from './alliance';
 import { acousticsConcealmentShift, sightlineAmbush, sightlineConcealment, arenaIsDark } from './arenaRules';
 import { MUTATOR_TUNING, hasMutator } from '../data/mutators';
+import { nightHideBonus, zoneConcealmentDelta } from './arenaDynamics';
 
 /**
  * Concealment and awareness — the two halves of whether one tribute ever finds
@@ -202,6 +203,10 @@ export function isNoticed(ctx: SimContext, hider: Tribute, seeker: Tribute, zone
     // AUDIT-11 §7: the weather layer and the ground's scars (arenaDepth.ts).
     hidden0 += weatherConcealment(ctx.state, seeker) + scarCoverShift(ctx.state, hider.zone);
     hidden0 *= sightlineConcealment(ctx.state);
+    // AUDIT-13 W11/W13: what the ground has been through, and the dark
+    // rewarding whoever has committed to hiding in it.
+    if (zone) hidden0 += zoneConcealmentDelta(ctx.state, zone.name);
+    hidden0 += nightHideBonus(ctx.state, hider, dark);
     let hidden = Math.min(
         STEALTH.maxConcealment,
         Math.max(0, hidden0 + advantage * STEALTH.perPointAdvantage)

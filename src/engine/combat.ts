@@ -25,7 +25,7 @@ import { injure, injuryGrade, openWound } from './wounds';
 import { isUnfamiliar, noteWeaponUse, profOf, trainProficiency, weaponAffinity, weaponHandling, weaponProficiency } from './proficiency';
 import { addFear, fearFraction, reduceFear } from './fear';
 import { notorietyFraction, witnessReputation } from './notoriety';
-import { areLovers, emptyCache, allied } from './alliance';
+import { areLovers, emptyCache, allied, recordAllianceState } from './alliance';
 import { hasTruce } from './parley';
 import { riskTolerance } from './risk';
 import { blocTreatyHolds, noteBlocKill } from './blocTreaty';
@@ -2283,6 +2283,15 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         delete victim.allianceId;
         const remaining = ctx.state.tributes.filter(t => t.status === 'alive' && t.allianceId === formerAlliance);
         if (remaining.length < 2) remaining.forEach(m => delete m.allianceId);
+        // AUDIT-13 B4: take the dead id off the record's live roster now,
+        // after the chronicle has captured it, rather than leaving it for the
+        // next reconcile. A record falling below two keeps its last roster:
+        // `reconcileAlliances` needs it to note who the survivor was allied to.
+        const record = ctx.state.alliances?.[formerAlliance];
+        if (record && remaining.length >= 2) {
+            recordAllianceState(ctx.state, record);
+            record.memberIds = record.memberIds.filter(id => id !== victim.id);
+        }
     }
 
     // Feeds the `scavenger` mutt role: only eligible where a cannon just

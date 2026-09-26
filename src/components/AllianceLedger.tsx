@@ -41,7 +41,11 @@ export function AllianceLedger({ alliance, gameState }: { alliance: Alliance; ga
         .sort((a, b) => b[1] - a[1]);
     // Members who put in nothing are the point of the list, not an omission
     // from it — an empty row is the reason a split by contribution bites.
-    const freeloaders = alliance.memberIds.filter(id => !(alliance.cacheContributions?.[id] ?? 0));
+    // AUDIT-13 B4: `memberIds` can still hold the dead until the next
+    // reconcile, and a corpse is not a freeloader.
+    const freeloaders = alliance.memberIds
+        .filter(id => gameState.tributes.find(t => t.id === id)?.status === 'alive')
+        .filter(id => !(alliance.cacheContributions?.[id] ?? 0));
 
     const breaches = Object.entries(alliance.breachesBy ?? {}).filter(([, rules]) => rules.length > 0);
     const expelled = alliance.expelledIds ?? [];
