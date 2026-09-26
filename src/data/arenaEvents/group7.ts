@@ -20,14 +20,15 @@ import { ENCOUNTERS } from '../balance';
  */
 
 /**
- * Tuning for this file, as group 6 has its own. Lighter than group 6's: the
+ * Tuning for this file, as group 6 has its own, and a little lighter: the
  * universal pool is already dense with lethal entries, and these are meant
- * to diversify how tributes die rather than to add deaths.
+ * to diversify how tributes die rather than to add deaths. Measured at
+ * roughly 1 death in 100 from this file across the hand-authored arenas.
  */
 export const AUDIT12_EVENTS = {
-    arenaWeightScale: 4,
-    universalWeightScale: 2.5,
-    damageScale: 3,
+    arenaWeightScale: 7,
+    universalWeightScale: 5,
+    damageScale: 4,
     dodgeDifficultyBonus: 2,
 } as const;
 

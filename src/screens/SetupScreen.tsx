@@ -924,7 +924,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                             </p>
                                         )}
                                         {selected && SIGNATURE_BLURBS[a.id] && (
-                                            <div className="text-micro mt-1 font-mono text-[var(--red)]">
+                                            <div className="text-micro mt-1 font-mono text-[var(--red-on-ink)]">
                                                 ⚙ {SIGNATURE_BLURBS[a.id]}
                                             </div>
                                         )}
@@ -1402,7 +1402,6 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                                 className="seg-item mutator-card text-left"
                                                 aria-pressed={on}
                                                 disabled={!on && full}
-                                                title={!on && full ? `Hand full — unpick a card to swap in ${m.name}` : undefined}
                                                 onClick={() => setConfig(c => {
                                                     const cur = c.mutators ?? [];
                                                     const next = on ? cur.filter(x => x !== m.id) : [...new Set([...cur, m.id])];

@@ -824,8 +824,16 @@ export function processBloodbath(ctx: SimContext) {
      * run-down is allowed to take, in proportion to how many turned and ran —
      * the runners are the *rest* of the ask, never the whole of it.
      */
-    const runnerReserve = Math.round(deathTarget * Math.min(AUDIT12_TRIBUTES.runDownTargetShare,
-        runners.length / Math.max(1, alive.length) * AUDIT12_TRIBUTES.runDownReservePerRunner));
+    const expectedCaught = runners.reduce((sum, t) => {
+        const exposure = t.hornPlan === 'grab' ? AUDIT12_TRIBUTES.hornPlanGrabExposure
+            : t.hornPlan === 'run' ? AUDIT12_TRIBUTES.hornPlanRunExposure : 1;
+        const p = BLOODBATH.runDownChance * AUDIT12_TRIBUTES.runDownChaseScale
+            * (1 + AUDIT12_TRIBUTES.runDownTargetShare * BLOODBATH.runDownCatchUp)
+            * (1 - (t.platePosition ?? 0.5)) * exposure * Math.max(0.3, 1 - t.attributes.agility / 12);
+        return sum + Math.min(0.97, p);
+    }, 0);
+    const runnerReserve = Math.min(Math.round(deathTarget * AUDIT12_TRIBUTES.runDownTargetShare),
+        Math.round(expectedCaught * AUDIT12_TRIBUTES.runDownReservePerRunner));
     const scrumTarget = Math.max(1, deathTarget - runnerReserve);
     let rounds = Math.max(pool.length * 6 + 12, deathTarget * BLOODBATH.scrumRoundsPerTribute);
     while (pool.length > 1 && rounds-- > 0) {

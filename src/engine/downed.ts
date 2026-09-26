@@ -245,7 +245,10 @@ export function tickDowned(ctx: SimContext) {
              * somebody up two days ago and walked away has killed them, and
              * the Capitol is scrupulous about who the cannon belongs to.
              */
-            const by = t.downed?.byId ? ctx.state.tributes.find(o => o.id === t.downed!.byId) : undefined;
+            // AUDIT-12 T10: credit only a killer who is still alive to be credited;
+            // a dead one gets no posthumous kill line.
+            const found = t.downed?.byId ? ctx.state.tributes.find(o => o.id === t.downed!.byId) : undefined;
+            const by = found?.status === 'alive' ? found : undefined;
             ctx.logEvent(
                 `The Gamemakers are done waiting on ${t.name}. Whatever was keeping them breathing in ${t.zone} stops.`
                 + (by ? ` The kill is credited to ${by.name}, who put them there and did not stay to watch.` : ''),

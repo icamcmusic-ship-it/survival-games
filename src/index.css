@@ -132,6 +132,7 @@
     --on-gold-muted: #4f3a0e;
     /* Gold used as a text colour on paper. */
     --gold-text: #7a5a0c;
+    --on-coin: #ffffff;
     --alliance-1: #0a5ea8;
     --alliance-2: #9a5200;
     --alliance-3: #00705a;
@@ -214,6 +215,9 @@
     --on-gold: #140a06;
     --on-gold-muted: #4f3a0e;
     --gold-text: #e3ae27;
+    /* AUDIT-12: the coin teal, lifted for text on dark paper; its chip flips to dark ink. */
+    --color-coin-400: #4cc2ad;
+    --on-coin: #0b0705;
     --alliance-1: #7ab8ff;
     --alliance-2: #ffb35c;
     --alliance-3: #44d3b0;
@@ -284,6 +288,9 @@
     --on-gold: #140a06;
     --on-gold-muted: #4f3a0e;
     --gold-text: #e3ae27;
+    /* AUDIT-12: the coin teal, lifted for text on dark paper; its chip flips to dark ink. */
+    --color-coin-400: #4cc2ad;
+    --on-coin: #0b0705;
     --alliance-1: #7ab8ff;
     --alliance-2: #ffb35c;
     --alliance-3: #44d3b0;
@@ -880,7 +887,7 @@ html[data-reduce-motion='true'] {
     .chip-coin {
         border-color: var(--ink);
         background: var(--color-coin-400);
-        color: #fff;
+        color: var(--on-coin);
     }
 
     .stat-tile {

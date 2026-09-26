@@ -1964,7 +1964,7 @@ export const BLOODBATH = {
      * for twenty-three of twenty-four came up three or four short. When the
      * horn is the whole story, the field does not get to leave it.
      */
-    runDownFloor: 0.85,
+    // AUDIT-12 T1: superseded by AUDIT12_TRIBUTES.runDownFloor (0.35, ∝ shortfall² × proximity, applied after the scrum).
 } as const;
 
 /**
@@ -8814,7 +8814,6 @@ export const ARCHETYPE_HOOKS = {
     woundedBleedingBonus: 12,
     woundedDownedBonus: 20,
     famousPerNotoriety: 0.25,
-    famousPerKill: 8,
     famousPerTrainingPoint: 1.2,
 
     // ---- signatures ----
@@ -10340,10 +10339,10 @@ export const AUDIT12_TRIBUTES = {
     runDownFloor: 0.35,
     /** T1: runners caught at the horn are capped at this share of the death target. */
     runDownTargetShare: 0.35,
-    /** T1: the scrum leaves (runner share of the field × this) of the target to the run-down. */
-    runDownReservePerRunner: 1.2,
+    /** T1: the scrum leaves (expected runners caught × this, ≈ the kill rate of a caught runner) to the run-down. */
+    runDownReservePerRunner: 0.8,
     /** T1: scale on the proximity/agility catch term (the chase after the scrum). */
-    runDownChaseScale: 1.8,
+    runDownChaseScale: 2.4,
     /** §5 horn plans: fight-chance shift for a grab-and-go / straight-run plan. */
     hornPlanGrabFight: 0.12,
     hornPlanRunFight: 0.12,
@@ -10374,8 +10373,8 @@ export const AUDIT12_TRIBUTES = {
     /** §5: share of a zone's depletion taken off the whole forage roll there. */
     depletionForagePenalty: 0.8,
     /** §5 hunger that bites: starvation damage grows per consecutive starving cycle, to a cap. */
-    starvingDamagePerCycle: 5,
-    starvingDamageCap: 30,
+    starvingDamagePerCycle: 7,
+    starvingDamageCap: 35,
     /** T14: pack value (by impression) that reads as "carrying supplies". */
     ladenLootImpression: 18,
     /** T5 / §5 errands: printed yield a forage errand's destination must have. */

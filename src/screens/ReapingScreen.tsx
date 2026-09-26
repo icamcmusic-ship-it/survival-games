@@ -72,7 +72,7 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
                     <span className="eyebrow">Mutators in play</span>
                     {gameState!.config.mutators!.map(id => {
                         const m = MUTATOR_DECK.find(x => x.id === id);
-                        return <span key={id} className="chip chip-accent" title={m?.blurb}>{m?.name ?? id}</span>;
+                        return <span key={id} className="chip chip-accent" role="group" aria-label={`${m?.name ?? id}: ${m?.blurb ?? ''}`} title={m?.blurb}>{m?.name ?? id}</span>;
                     })}
                 </div>
             )}

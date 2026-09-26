@@ -9,8 +9,7 @@ import { EventLog, GameState } from '../models/types';
  * writes is small and bounded, and it never touches the RNG or any mechanical
  * state — it only watches.
  */
-/** Flooding is too routine to count: 86% of victors stood in water at some point. */
-const SCARRING_EFFECTS = new Set(['burning']);
+const SCARRING_EFFECTS = new Set(['burning', 'flooded']);
 
 export function noteLogFacts(state: GameState, entry: EventLog): void {
     const facts = state.audit12Facts ?? (state.audit12Facts = {});
@@ -41,12 +40,20 @@ export function noteLogFacts(state: GameState, entry: EventLog): void {
         });
     }
 
-    // Standing on ground that is burning or fallen in, right now.
+    // Standing on ground the same day it caught fire, flooded or fell in.
+    const scarDay = facts.scarDay ?? (facts.scarDay = {});
+    // A structure falling in, as `arenaDepth` scars it — not the border
+    // closing a sector, which happens to most zones in most runs.
+    const scars = state.arenaDepth?.scars ?? {};
+    const scarredNow = (zone: string) => scars[zone]?.kind === 'collapsed'
+        || (state.zoneEffects?.[zone] ?? []).some(e => SCARRING_EFFECTS.has(e.kind));
+    for (const zone of Object.keys(scarDay)) if (!scarredNow(zone)) delete scarDay[zone];
+    for (const zone of [...Object.keys(state.zoneEffects ?? {}), ...Object.keys(scars)]) {
+        if (scarDay[zone] === undefined && scarredNow(zone)) scarDay[zone] = state.day;
+    }
     const scarred = facts.scarredGround ?? (facts.scarredGround = []);
-    const collapsed = state.collapsedZones ?? [];
     for (const t of state.tributes) {
         if (t.status !== 'alive' || scarred.includes(t.id)) continue;
-        const here = state.zoneEffects?.[t.zone] ?? [];
-        if (collapsed.includes(t.zone) || here.some(e => SCARRING_EFFECTS.has(e.kind))) scarred.push(t.id);
+        if (scarDay[t.zone] === state.day) scarred.push(t.id);
     }
 }

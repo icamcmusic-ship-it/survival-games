@@ -102,13 +102,13 @@ export function summariseBranches(checkpoint: GameState, actual: GameState, ends
     };
 }
 
-/** Re-roll the phase after `checkpoint` `WHAT_IF.branches` times. */
-export function whatIf(checkpoint: GameState, actual: GameState): WhatIfResult {
+/** Re-roll the phase after `checkpoint` `count` times (AUDIT-12 §4: 8, 16 or 32). */
+export function whatIf(checkpoint: GameState, actual: GameState, count: number = WHAT_IF.branches): WhatIfResult {
     if (!BRANCHABLE.has(checkpoint.phase)) {
         throw new Error(`what-if branches start from an arena phase, not '${checkpoint.phase}'`);
     }
     const planned = playerInterventionsAfter(checkpoint, actual);
     const ends: GameState[] = [];
-    for (let k = 0; k < WHAT_IF.branches; k++) ends.push(playBranch(checkpoint, String(k), planned));
+    for (let k = 0; k < count; k++) ends.push(playBranch(checkpoint, String(k), planned));
     return summariseBranches(checkpoint, actual, ends, planned.length);
 }

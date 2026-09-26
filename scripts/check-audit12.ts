@@ -24,11 +24,13 @@ function guard(ok: boolean, label: string, detail: string) {
 
 const decisionN: Record<string, number> = {};
 const decisionDied: Record<string, number> = {};
-let deaths = 0, starved = 0;
+let deaths = 0, starved = 0, hornRuns = 0, hornDeaths = 0;
 let roleSamples = 0, staleRoleSamples = 0, staleLeaderSamples = 0;
 let shadowSamples = 0, staleShadow = 0;
 let victors = 0, bloodiedVictors = 0, unbrokenVictors = 0;
 const archN: Record<string, number> = {};
+const NEW_TYPES: string[] = ['night-theft', 'hollow-victory', 'shared-camp', 'alliance-splinter'];
+const beat: Record<string, number> = {};
 const archW: Record<string, number> = {};
 
 function sampleRoles(state: GameState) {
@@ -62,6 +64,10 @@ for (let i = 0; i < RUNS; i++) {
         else if (state.phase === 'interviews') sim.startGames();
         else if (state.phase === 'bloodbath') {
             sim.processBloodbath();
+            if (sim.getState().tributes.length >= 24) {
+                hornRuns++;
+                hornDeaths += sim.getState().tributes.filter(t => t.status === 'dead').length;
+            }
             sim.getState().tributes.forEach(t => {
                 const d = t.gongDecision;
                 if (!d) return;
@@ -74,6 +80,7 @@ for (let i = 0; i < RUNS; i++) {
         state = sim.getState();
         if (state.phase === 'day' || state.phase === 'night') sampleRoles(state);
     }
+    state.log.forEach(l => { if (l.type && NEW_TYPES.includes(l.type)) beat[l.type] = (beat[l.type] ?? 0) + 1; });
     state.tributes.forEach(t => {
         archN[t.archetype] = (archN[t.archetype] ?? 0) + 1;
         if (t.status !== 'dead') return;
@@ -92,14 +99,18 @@ const rate = (d: string) => (decisionDied[d] ?? 0) / Math.max(1, decisionN[d] ??
 const pct = (x: number) => `${(x * 100).toFixed(1)}%`;
 
 console.log(`AUDIT-12 sweep: ${RUNS} runs, ${deaths} deaths, ${victors} victors`);
+console.log(`bloodbath deaths per full-field Games: ${(hornDeaths / Math.max(1, hornRuns)).toFixed(2)}`);
 console.log('horn deaths by gong decision:');
 Object.keys(decisionN).sort().forEach(d => console.log(`  ${d.padEnd(8)} n=${String(decisionN[d]).padStart(5)}  died ${pct(rate(d))}`));
 const arch = Object.keys(archN).filter(a => archN[a] >= 40).map(a => ({ a, w: (archW[a] ?? 0) / archN[a] }));
 arch.sort((x, y) => y.w - x.w);
 if (arch.length) console.log(`archetype win spread: best ${arch[0].a} ${pct(arch[0].w)} / worst ${arch[arch.length - 1].a} ${pct(arch[arch.length - 1].w)}`);
+console.log(`new beats: ${NEW_TYPES.map(k => `${k} ${beat[k] ?? 0}`).join(', ')}`);
 console.log('guards:');
+NEW_TYPES.forEach(k => guard((beat[k] ?? 0) > 0, `§6 beat '${k}' fires`, String(beat[k] ?? 0)));
 guard(rate('flee') <= rate('edge') + 0.02, 'T1 flee death rate <= edge rate', `${pct(rate('flee'))} vs ${pct(rate('edge'))}`);
 guard(rate('flee') <= 0.4, 'T1 flee death rate <= 40%', pct(rate('flee')));
+guard(hornDeaths / Math.max(1, hornRuns) >= 7, 'T1 bloodbath still takes >= 7 of 24', (hornDeaths / Math.max(1, hornRuns)).toFixed(2));
 guard(staleLeaderSamples / Math.max(1, roleSamples) <= 0.002, 'E16 leaders living', `${staleLeaderSamples}/${roleSamples}`);
 guard(staleRoleSamples / Math.max(1, roleSamples) <= 0.002, 'E4 role holders living members', `${staleRoleSamples}/${roleSamples}`);
 guard(staleShadow === 0, 'T2 no shadowing record off the Shadowing stance', `${staleShadow}/${shadowSamples}`);

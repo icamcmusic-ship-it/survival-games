@@ -3857,8 +3857,10 @@ export interface GameState {
      * older saves load; bounded (ids and zone names, never per-line).
      */
     audit12Facts?: {
-        /** Tributes who stood in a zone while it was burning or collapsed. */
+        /** Tributes who stood in a zone on the day it caught fire, flooded or collapsed. */
         scarredGround?: string[];
+        /** zone -> the day its current fire, flood or collapse began. */
+        scarDay?: Record<string, number>;
         /** tribute id -> times downed. */
         downed?: Record<string, number>;
         /** Weather fronts that arrived this run. */

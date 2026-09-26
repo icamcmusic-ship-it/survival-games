@@ -1,6 +1,6 @@
 import { accusersOf } from '../engine/accusations';
 import { PERSONA_BLOC_AFFINITY, PERSONA_FAMILY, PERSONA_FAMILY_LABEL } from '../data/personas';
-import React, { useId, useMemo, useState } from 'react';
+import React, { useEffect, useId, useMemo, useState } from 'react';
 import { Hint } from './Hint';
 import { useDialogFocus } from '../ui/useDialogFocus';
 import { useTransientFlag } from '../ui/useTransientFlag';
@@ -390,6 +390,15 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
     // declaration. Putting it on the tribute sheet would spoil the only twist
     // the mechanic exists to create.
 
+    // AUDIT-12 U4: one Compare control, which a phone keeps in an overflow menu.
+    const [narrow, setNarrow] = useState(() => typeof window !== 'undefined' && window.matchMedia?.('(max-width: 640px)').matches);
+    useEffect(() => {
+        const mq = window.matchMedia?.('(max-width: 640px)');
+        if (!mq) return;
+        const on = () => setNarrow(mq.matches);
+        mq.addEventListener('change', on);
+        return () => mq.removeEventListener('change', on);
+    }, []);
     const compareSelect = (idFor: string, cls: string) => (
         <select
                             id={idFor}
@@ -518,13 +527,14 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                             that; otherwise it shows the inline side-by-side. */}
                         {/* AUDIT-12 U4 / §4: on a phone Compare moves into an
                             overflow menu so the header chips keep their row. */}
-                        <span className="hidden sm:inline-flex">{compareSelect('compare-with', 'field text-xs w-auto')}</span>
-                        <details className="sheet-overflow sm:hidden relative">
-                            <summary className="btn btn-sm btn-ghost list-none" aria-label="More actions"><MoreHorizontal className="w-4 h-4" /></summary>
-                            <div className="sheet-overflow-menu panel p-2">
-                                {compareSelect('compare-with-mobile', 'field text-xs w-full')}
-                            </div>
-                        </details>
+                        {narrow ? (
+                            <details className="sheet-overflow relative">
+                                <summary className="btn btn-sm btn-ghost list-none" aria-label="More actions"><MoreHorizontal className="w-4 h-4" /></summary>
+                                <div className="sheet-overflow-menu panel p-2">
+                                    {compareSelect('compare-with', 'field text-xs w-full')}
+                                </div>
+                            </details>
+                        ) : compareSelect('compare-with', 'field text-xs w-auto')}
                         <button onClick={onClose} className="btn btn-sm btn-ghost" aria-label="Close">
                             <X className="w-4 h-4" />
                         </button>

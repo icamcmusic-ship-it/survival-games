@@ -55,7 +55,7 @@ export function HowToPlayScreen() {
                 <span className="masthead-ghost" aria-hidden="true">00</span>
                 <span className="masthead-eyebrow">00 — How To Play</span>
                 <h2 className="masthead-title text-4xl md:text-5xl">The Rules Of The Thing</h2>
-                <p className="text-[var(--gold-line)] font-semibold text-sm mt-2">
+                <p className="masthead-sub font-semibold text-sm mt-2">
                     You do not control a tribute. You set the conditions, and then you watch what the conditions do.
                 </p>
             </div>

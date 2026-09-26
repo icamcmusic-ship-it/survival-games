@@ -34,7 +34,7 @@ const setupTab = name => page.getByRole('tab', { name });
 
 await step('setup tabs switch sections', async () => {
   await setupTab('Rules').click();
-  await page.getByText(/mutators/i).first().waitFor();
+  await page.getByText(/quick presets/i).first().waitFor();
   await setupTab('Meta').click();
   await page.getByText('Gamemaker Mode').waitFor();
   await setupTab('Cast').click();
