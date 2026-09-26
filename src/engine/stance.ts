@@ -837,7 +837,10 @@ export function forceStance(t: Tribute, stance: Stance, reason = 'imposed by an 
     // never moved.
     if ((t.stanceChurn ?? 0) >= STANCE.churnMax) return false;
     t.stance = stance;
-    t.stanceHeld = 0;
+    // AUDIT-13: a reaction is held a little past the ordinary minimum — see
+    // `STANCE.reactionHold`. Counted as negative tenure so the hold, the
+    // emergency and the margin logic in `updateStance` stay one mechanism.
+    t.stanceHeld = reaction ? -STANCE.reactionHold : 0;
     // `reaction`: a posture the moment imposed (breaking off a fight is
     // getting clear, not deciding to run) is not the tribute changing their
     // mind, so it adds no churn. Churn is read as revealed indecision and
@@ -993,6 +996,17 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
     };
 
     const ranked = (Object.entries(scores) as Array<[Stance, number]>).sort((a, b) => b[1] - a[1]);
+    // AUDIT-13: stance thrash for surviving Careers. A conditional stance
+    // (Fortified, Shadowing...) won on a near-tie with a lasting option was
+    // vacated the next cycle when its precondition flickered, and the
+    // tribute landed on that lasting option anyway — two changes for what
+    // was one decision. On a near-tie, the lasting option ranks first.
+    if (ranked.length > 1 && ranked[0][0] !== t.stance
+        && STANCE_PROFILES[ranked[0][0]]?.conditional
+        && !STANCE_PROFILES[ranked[1][0]]?.conditional
+        && ranked[0][1] - ranked[1][1] < STANCE_HOLD.conditionalEntryTieBand) {
+        [ranked[0], ranked[1]] = [ranked[1], ranked[0]];
+    }
     const [bestStance, bestScore] = ranked[0] ?? ['Defensive', 0];
 
     // A §1: what the scorer actually saw, kept for one cycle so the tribute
@@ -1036,8 +1050,14 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
 
     // A genuine emergency overrides the *hold*: nobody stands their ground
     // bleeding out waiting for a minimum-cycles counter.
-    const emergency = t.health < STANCE.evasiveHealth * STANCE.emergencyHealthFactor
-        || sig.ratio > STANCE.outmatchedRatio * STANCE.emergencyRatioFactor
+    // AUDIT-13: ...and only a hold on a stance that is *not already* getting
+    // clear. A tribute pushed into Evasive by a break-off is, by definition,
+    // hurt or outmatched, so the emergency used to void the very hold that
+    // keeps them clear, and they flipped back to what they were doing the
+    // next cycle — then broke off again. Evasive is the emergency answer.
+    const emergency = (t.stance !== 'Evasive'
+        && (t.health < STANCE.evasiveHealth * STANCE.emergencyHealthFactor
+            || sig.ratio > STANCE.outmatchedRatio * STANCE.emergencyRatioFactor))
         || !stillValid;
 
     // §1.7: churn extends the hold as well as the margin. Aggressive/Evasive

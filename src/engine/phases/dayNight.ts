@@ -27,7 +27,7 @@ import { announceCrossing } from '../noise';
 import { correctAccusations, tradeAccusations } from '../accusations';
 import { onObjectiveArrival } from '../objectiveArrival';
 import { checkTraps, hasCamp, tickTraps } from '../fieldcraft';
-import { allianceRecords, areLovers, fractureBlocs, isHostileTo, leaderFor, allied } from '../alliance';
+import { allianceRecords, areLovers, fractureBlocs, isHostileTo, leaderFor, allied, noteAllianceEnd } from '../alliance';
 
 import { decayNotoriety, reputationPriors, spreadNotoriety } from '../notoriety';
 import { updateStance } from '../stance';
@@ -1067,8 +1067,10 @@ function forceFinale(ctx: SimContext) {
         // standoff to reach, so the alliance is revoked for them too.
         && (ctx.state.config.singleVictor || !areLovers(alive[0], alive[1]))) {
         const [a, b] = alive;
+        const revoked = a.allianceId;
         delete a.allianceId;
         delete b.allianceId;
+        noteAllianceEnd(ctx.state, revoked, 'victor'); // AUDIT-13 R2
         ctx.logEvent(
             `The announcement is short: there will be one victor. Whatever ${a.name} and ${b.name} agreed, the Capitol has just revoked it from the sky.`,
             [a.id, b.id],

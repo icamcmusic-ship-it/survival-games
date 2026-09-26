@@ -14,7 +14,7 @@ import { cycleOf, noteSighting, rememberedRivals, addZoneThreat } from './memory
 import { fearOf } from './fear';
 import { OBJECTIVES } from '../data/balance';
 import { loseSanity } from './sanityBands';
-import { allied } from './alliance';
+import { allied, noteAllianceEnd } from './alliance';
 import { directorTaste, weightedIndex } from '../data/directors';
 
 /**
@@ -186,7 +186,9 @@ function resolveWildcard(ctx: SimContext, wildcard: Wildcard) {
         case 'career-collapse': {
             const pack = alive.filter(t => t.isCareer && t.allianceId?.startsWith('career-pack'));
             if (pack.length < 2) break;
+            const packIds = new Set(pack.map(t => t.allianceId));
             pack.forEach(t => { delete t.allianceId; });
+            packIds.forEach(id => noteAllianceEnd(ctx.state, id, 'walkout')); // AUDIT-13 R2
             ctx.logEvent(
                 `The Career pack comes apart in the open: ${pack.map(p => p.name).join(', ')} are no longer anybody's allies.`,
                 pack.map(p => p.id),

@@ -2004,7 +2004,19 @@ export interface AllianceRecollection {
     formedCycle: number;
     /** The last cycle it was observed holding together. */
     lastCycle: number;
+    /**
+     * AUDIT-13 R2: how it ended, written by whichever path took it below two
+     * members (or removed the record). Absent while the group still stands.
+     */
+    endReason?: AllianceEndReason;
+    /** AUDIT-13 R2: who ended it, where one person did (betrayer, walker). */
+    endedById?: string;
+    /** AUDIT-13 R1: the group this one split away from, if it was a splinter. */
+    splitFrom?: string;
 }
+
+/** AUDIT-13 R2: the ways an alliance stops being one. */
+export type AllianceEndReason = 'attrition' | 'splinter' | 'betrayal' | 'pact-expired' | 'walkout' | 'merged' | 'victor';
 
 export interface Alliance {
     id: string;
@@ -2012,6 +2024,11 @@ export interface Alliance {
     leaderId: string;
     memberIds: string[];
     formedCycle: number;
+    /** AUDIT-13 R1: the group this one split from; both halves carry it. */
+    splitFrom?: string;
+    /** AUDIT-13 R2: set by the path that took the group below two members. */
+    endReason?: AllianceEndReason;
+    endedById?: string;
     /**
      * §4.5: what the broadcast calls them. An alliance with a name is a brand
      * the crowd tracks — 'the Career pack' was the only group that ever had

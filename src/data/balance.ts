@@ -4712,6 +4712,13 @@ export const STANCE = {
     churnMax: 4,
     /** Extra cycles of hold per unit of accumulated churn. */
     churnHoldPerSwitch: 1.5,
+    /**
+     * AUDIT-13: extra cycles a posture imposed by a reaction (breaking off a
+     * fight) is held before the scorer may move them on. Getting clear takes
+     * longer than the exchange did; turning straight round into the next
+     * situation was two stance changes a fight for anybody who fought often.
+     */
+    reactionHold: 1,
     /** Health fractions that pull a tribute toward each stance. */
     evasiveHealth: 40,
     cautiousEvasiveHealth: 55,
@@ -9254,6 +9261,13 @@ export const STANCE_HOLD = {
     /** Score added to a still-valid conditional incumbent before the compare. */
     conditionalIncumbentBonus: 0.9,
     /**
+     * AUDIT-13: a conditional challenger that leads a lasting (non-conditional)
+     * runner-up by less than this is not worth entering — its precondition
+     * can lapse next cycle and the tribute is then bounced to that runner-up
+     * anyway, two changes for one decision. Take the lasting option.
+     */
+    conditionalEntryTieBand: 0.5,
+    /**
      * Fortified for anybody with a camp and the supplies to sit in it — a
      * fire, a shelter or a camouflaged position plus food and water is a
      * position worth keeping whether or not the ground is a chokepoint.
@@ -11031,4 +11045,20 @@ export const AUDIT13_CAREERS = {
     packFractureLockedRounds: 3,
     /** Hunt-target score an outsider adds for a Career with no packmate left. */
     strayCareerHuntBonus: 45,
+} as const;
+
+/**
+ * AUDIT-13 §6: relationships and alliances. Guarded by
+ * `test:audit13-relations` (alliance median lifetime >= 4 cycles, every ended
+ * alliance records how it ended).
+ */
+export const AUDIT13_RELATIONS = {
+    /**
+     * R1: for this many cycles after forming, a group only comes apart
+     * voluntarily (rot, a pact coming due, a merger) with a trigger: a breach
+     * on the record, a faction, or somebody going short.
+     */
+    cohesionFloorCycles: 4,
+    /** R1: hunger or thirst at which a young group counts as going short. */
+    cohesionShortageVital: 80,
 } as const;

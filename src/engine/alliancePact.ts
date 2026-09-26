@@ -3,6 +3,7 @@ import { Alliance, AlliancePact, GameState, PactEvent, Tribute } from '../models
 import { ALLIANCES } from '../data/balance';
 import { RNG } from '../utils/rng';
 import { SimContext, getAlive } from './context';
+import { inCohesionFloor, noteAllianceEnd } from './alliance';
 
 /**
  * §4.1: what an alliance agreed about its own ending.
@@ -224,6 +225,10 @@ export function resolveDuePacts(ctx: SimContext) {
     byId.forEach((members, id) => {
         const record = ctx.state.alliances?.[id];
         if (!record || members.length < 2) return;
+        // AUDIT-13 R1: a pact that came due the day it was sworn waits out the
+        // cohesion floor; the terms still hold, they just are not the first
+        // thing the group does.
+        if (inCohesionFloor(ctx.state, record)) return;
         const because = pactDue(ctx.state, record, members);
         if (!because) return;
 
@@ -244,5 +249,6 @@ export function resolveDuePacts(ctx: SimContext) {
         // it as though it were.
         noteFormerAllies(members);
         members.forEach(m => { delete m.allianceId; });
+        noteAllianceEnd(ctx.state, id, 'pact-expired'); // AUDIT-13 R2
     });
 }

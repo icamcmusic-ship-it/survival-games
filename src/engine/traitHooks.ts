@@ -6,7 +6,7 @@ import {
     isHomebody, isMimic, isNightOwl, isOathkeeper, isPackRat, isPlateSprinter, isRationer, readsScars,
 } from '../data/traits';
 import { cycleOf, raiseSuspicion, rivalRecord } from './memory';
-import { allied, allianceRecords, membersOf } from './alliance';
+import { allied, allianceRecords, membersOf, noteAllianceEnd } from './alliance';
 import { hasTruce } from './parley';
 import { isActive, isDowned, widenRescueWindow } from './downed';
 import { getZone } from './map';
@@ -428,6 +428,7 @@ export function turncoatCoup(ctx: SimContext, t: Tribute): boolean {
     const roles = record.roles ?? {};
     (Object.keys(roles) as Array<keyof typeof roles>).forEach(role => { if (roles[role] === leader.id) roles[role] = t.id; });
     delete leader.allianceId;
+    noteAllianceEnd(ctx.state, record.id, 'betrayal', t.id); // AUDIT-13 R2
     adjustRel(leader, t.id, -W2.turncoatRegard);
     raiseSuspicion(leader, t.id, W2.turncoatSuspicion);
     members.filter(m => m.id !== t.id && m.id !== leader.id).forEach(m => raiseSuspicion(m, t.id, W2.turncoatSuspicion / 2));

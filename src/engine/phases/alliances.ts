@@ -17,7 +17,7 @@ import { careerSocialFactor, sniffPerformances, isStarCrossed, cacheDivisionLine
 import { grudgeAgainst, grudgeTotal, noteGrudgeMotive, performsForCameras, stationBondOf, tickAllianceBonds, tickHollowVictories, tickLonerCamps } from '../allianceBonds';
 import { refreshTraitTiers } from '../earnedTraits';
 import { ALLIANCE_BONDS, AUDIT12_TRIBUTES } from '../../data/balance';
-import { allianceOf, areLovers, cacheValue, contributeToCache, isPerforming, maintainPerformance, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance, shownRegard } from '../alliance';
+import { allianceOf, areLovers, cacheValue, contributeToCache, isPerforming, maintainPerformance, membersOf, inCohesionFloor, mergeAllianceRecords, noteAllianceEnd, pickLeader, reconcileAlliances, registerAlliance, shownRegard } from '../alliance';
 import { resolveBetrayal, preemptiveBetrayer } from '../betrayal';
 import { resolveDuePacts } from '../alliancePact';
 import { runAlliancePolitics, wasExpelled } from '../alliancePolitics';
@@ -254,13 +254,15 @@ export function processAlliances(ctx: SimContext) {
         // warmth counts toward cohesion even when the ledger underneath is cold.
         const averageTrust = members.reduce((sum, m) =>
             sum + members.reduce((inner, o) => inner + (o.id === m.id ? 0 : shownRegard(m, o.id)), 0) / (members.length - 1), 0) / members.length;
-        if (averageTrust < ALLIANCES.rotDissolveTrust) {
+        // AUDIT-13 R1: a young group needs more than a cold mood to split.
+        if (averageTrust < ALLIANCES.rotDissolveTrust && !inCohesionFloor(ctx.state, allianceOf(ctx.state, id))) {
             // AUDIT-9 B07: the second of the three teardown paths that dropped
             // the shared cache on the floor. A group that stops being a group
             // still has to account for the food it was holding — and a bad
             // parting is exactly where who ends up with it is interesting.
             const division = distributeCache(ctx, allianceOf(ctx.state, id), members);
             members.forEach(m => { delete m.allianceId; });
+            noteAllianceEnd(ctx.state, id, 'walkout'); // AUDIT-13 R2
             const divisionLine = cacheDivisionLine(division);
             // One line for the whole collapse, not a near-identical one per member.
             ctx.logEvent(
@@ -378,6 +380,7 @@ export function processAlliances(ctx: SimContext) {
                 return;
             }
             delete m.allianceId;
+            noteAllianceEnd(ctx.state, id, 'walkout', m.id); // AUDIT-13 R2
             ctx.logEvent(
                 `${m.name} is gone before dawn. No theft, no knife — just a bedroll left cold and ${suspect.name} watched all the way out of sight. Some betrayals you leave before they happen.`,
                 [m.id, suspect.id],
@@ -396,6 +399,9 @@ export function processAlliances(ctx: SimContext) {
     if (alive.length <= ALLIANCES.soloDepartureFieldSize) {
         alliances.forEach((members, id) => {
             if (members.length < 2 || id.startsWith('lovers-')) return;
+            // AUDIT-13 R1: the arithmetic was just as plain when they shook
+            // on it yesterday. Nobody joins a group to leave it next cycle.
+            if (inCohesionFloor(ctx.state, allianceOf(ctx.state, id))) return;
             members.forEach(m => {
                 if (m.status !== 'alive' || m.allianceId !== id) return;
                 // Nobody walks out on someone they are bonded to.
@@ -414,6 +420,7 @@ export function processAlliances(ctx: SimContext) {
 
                 const others = members.filter(o => o.id !== m.id && o.status === 'alive');
                 delete m.allianceId;
+                noteAllianceEnd(ctx.state, id, 'walkout', m.id); // AUDIT-13 R2
                 // Leaving on good terms still costs: they are people you were
                 // sharing food with yesterday.
                 others.forEach(o => adjustRel(o, m.id, -ALLIANCES.soloDepartureRegard));
@@ -448,6 +455,7 @@ export function processAlliances(ctx: SimContext) {
             const leaver = [...live].sort((a, b) => bound(a) - bound(b))[0];
             const others = live.filter(o => o.id !== leaver.id);
             delete leaver.allianceId;
+            noteAllianceEnd(ctx.state, id, 'walkout', leaver.id); // AUDIT-13 R2
             others.forEach(o => {
                 adjustRel(o, leaver.id, -AUDIT13_CAREERS.packFractureRegard);
                 adjustRel(leaver, o.id, -AUDIT13_CAREERS.packFractureRegard);
@@ -476,12 +484,16 @@ export function processAlliances(ctx: SimContext) {
         if (members.length < 2 || id.startsWith('lovers-')) return;
         const record = allianceOf(ctx.state, id);
         if (!record || cacheValue(record) > ALLIANCES.mercenaryRetainer) return;
+        // AUDIT-13 R1: a group formed yesterday has not run its cache dry, it
+        // has not filled it yet. The terms come due after the cohesion floor.
+        if (inCohesionFloor(ctx.state, record)) return;
         members.forEach(m => {
             if (m.status !== 'alive' || m.allianceId !== id) return;
             if (m.archetype !== 'mercenary') return;
             const others = members.filter(o => o.id !== m.id && o.status === 'alive');
             if (others.length === 0) return;
             delete m.allianceId;
+            noteAllianceEnd(ctx.state, id, 'walkout', m.id); // AUDIT-13 R2
             ctx.logEvent(
                 `${m.name} counts what is left in the alliance's cache in ${m.zone}, finds it empty, and leaves. `
                 + `${others.map(o => o.name).join(' and ')} are not betrayed so much as no longer paying, and ${m.name} makes no pretence that it was ever anything else.`,
@@ -992,6 +1004,9 @@ function mergeAlliances(ctx: SimContext) {
             if (!a || !b || !groups.has(ids[i]) || !groups.has(ids[j])) continue;
             if (a.length < 2 || b.length < 2) continue;
             if (a.length + b.length > maxSize) continue;
+            // AUDIT-13 R1: a group that has only just formed is not shopping
+            // for a bigger one yet.
+            if (inCohesionFloor(ctx.state, allianceOf(ctx.state, ids[i])) || inCohesionFloor(ctx.state, allianceOf(ctx.state, ids[j]))) continue;
             // Same ground, or there is no conversation to have — judged by the
             // leaders who would do the negotiating, not by array order.
             if (pickLeader(a).zone !== pickLeader(b).zone) continue;
@@ -1024,6 +1039,7 @@ function mergeAlliances(ctx: SimContext) {
                 ...b.filter(m => m.id !== leadB.id && regardFor(m, a) < ALLIANCES.mergeDissentThreshold),
             ];
             dissenters.forEach(m => { delete m.allianceId; });
+            [ids[i], ids[j]].forEach(gid => noteAllianceEnd(ctx.state, gid, 'walkout')); // AUDIT-13 R2
 
             const stayA = a.filter(m => !dissenters.includes(m));
             const stayB = b.filter(m => !dissenters.includes(m));
@@ -1418,7 +1434,9 @@ function declareLovers(ctx: SimContext, t1: Tribute, t2: Tribute, performer?: Tr
                 [t.id],
                 { category: 'alliance' }
             );
+            const left = t.allianceId;
             delete t.allianceId;
+            noteAllianceEnd(ctx.state, left, 'walkout', t.id); // AUDIT-13 R2
         }
     });
 

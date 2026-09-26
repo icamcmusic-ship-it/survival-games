@@ -1,7 +1,7 @@
 import { Alliance, CharterRule, EventType, Tribute } from '../models/types';
 import { ALLIANCES, PROFICIENCY } from '../data/balance';
 import { SimContext, getAlive } from './context';
-import { allianceRecords, membersOf, pickLeader, registerAlliance, allied } from './alliance';
+import { allianceRecords, closeChronicle, membersOf, noteAllianceEnd, pickLeader, registerAlliance, allied } from './alliance';
 import { adjustRel, getRel } from './relationships';
 import { cycleOf, suspicionOf } from './memory';
 import { giveItem } from './items';
@@ -131,7 +131,9 @@ function resolveFactions(ctx: SimContext, record: Alliance, members: Tribute[]) 
     // The bloc that walks is a real alliance from the moment it walks: its own
     // pact, its own charter, its own leader. Without this it carried an id and
     // nothing else until the sweep below gave it a pactless, charterless record.
-    registerAlliance(ctx, splinterId, bloc);
+    registerAlliance(ctx, splinterId, bloc).splitFrom = record.id;
+    record.splitFrom = splinterId; // AUDIT-13 R2
+    noteAllianceEnd(ctx.state, record.id, 'splinter');
     record.memberIds = record.memberIds.filter(id => !faction.memberIds.includes(id));
     record.factions = (record.factions ?? []).filter(f => f !== faction);
     // §22: the members who stayed are on this line and were never in it.
@@ -269,6 +271,7 @@ export function expel(ctx: SimContext, record: Alliance, offender: Tribute, memb
     takes.forEach(item => giveItem(offender, item));
 
     delete offender.allianceId;
+    noteAllianceEnd(ctx.state, record.id, 'walkout', offender.id); // AUDIT-13 R2
     record.memberIds = record.memberIds.filter(id => id !== offender.id);
     record.expelledIds = [...(record.expelledIds ?? []), offender.id];
     if (record.cacheContributions) delete record.cacheContributions[offender.id];
@@ -349,6 +352,7 @@ export function runAlliancePolitics(ctx: SimContext) {
         const left = membersOf(ctx.state, record.id);
         if (left.length >= 2) return;
         left.forEach(m => { delete m.allianceId; });
+        closeChronicle(ctx.state, record, 'walkout'); // AUDIT-13 R2
         delete records[record.id];
     });
 
