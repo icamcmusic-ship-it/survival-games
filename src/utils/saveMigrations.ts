@@ -641,7 +641,7 @@ const CONFIG_RULES: ConfigRules = {
     // AUDIT-11 §12: the mutator cards. Absent on older saves (no mutators);
     // unknown ids are dropped rather than trusted.
     mutators: r => Array.isArray(r.mutators)
-        ? r.mutators.filter((m): m is string => typeof m === 'string' && MUTATORS.some(x => x.id === m)).slice(0, MUTATORS_PER_GAMES)
+        ? [...new Set(r.mutators.filter((m): m is string => typeof m === 'string' && MUTATORS.some(x => x.id === m)))].slice(0, MUTATORS_PER_GAMES)
         : undefined,
     // AUDIT-7 §1.2: the four that were being dropped.
     vanillaRules: r => asBool(r.vanillaRules, DEFAULT_GAME_CONFIG.vanillaRules ?? false),

@@ -772,6 +772,10 @@ export function forceStance(t: Tribute, stance: Stance, reason = 'imposed by an 
      * already marked its trace `forced`; the other three now do the same, so
      * the guard measures the scorer and not the story beats that overrule it.
      */
+    // AUDIT-12 T2: a forced stance is never a trail. Every forced path (shock,
+    // grief, break-off, vengeance) used to leave a live `shadowing` record for
+    // `isBeingFollowed` and the pursuit read to count.
+    if (stance !== 'Shadowing') t.shadowing = undefined;
     if (t.stance === stance) { t.stanceHeld = 0; return true; }
     // Returns whether the posture actually changed. It has to: every caller
     // narrates the beat it is forcing — a surrender, a walk into the open, an

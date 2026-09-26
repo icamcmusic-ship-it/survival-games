@@ -65,6 +65,7 @@ export function mutatorName(id: string): string {
 /** Parse a comma list (share link) into known mutator ids; empty -> undefined. */
 export function parseMutators(raw: string | null | undefined): string[] | undefined {
     if (!raw) return undefined;
-    const ids = raw.split(',').filter(id => MUTATORS.some(m => m.id === id)).slice(0, MUTATORS_PER_GAMES);
+    // AUDIT-12 S5: de-duplicated, so `blind-night,blind-night` is one card.
+    const ids = [...new Set(raw.split(',').filter(id => MUTATORS.some(m => m.id === id)))].slice(0, MUTATORS_PER_GAMES);
     return ids.length > 0 ? ids : undefined;
 }

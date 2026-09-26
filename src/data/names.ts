@@ -39,6 +39,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Ormer', 'Illume', 'Yttrian', 'Orfevre', 'Xoana', 'Yale', 'Oriel', 'Xanthene', 'Ulmira', 'Ouvert',
             // AUDIT-9 stage D: vetted candidates from the audit's §11.
             'Miravel',
+            // AUDIT-12 §15.
+            'Chatoyant', 'Moonstone', 'Kunzite', 'Spinel', 'Lazulite',
         ],
         Female: [
             'Glimmer', 'Crystal', 'Diamond', 'Opal', 'Sapphire', 'Silk', 'Solitaria', 'Amber', 'Auriel', 'Ruby',
@@ -58,6 +60,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Avelune', 'Cirelle',
             // AUDIT-11 §15.
             'Solenne', 'Sienna', 'Tesla',
+            // AUDIT-12 §15.
+            'Aurelle', 'Citrine', 'Oriane', 'Ambrine', 'Lucienne', 'Perlina', 'Orsolya', 'Ottavia', 'Morganite',
         ],
     },
     // District 2 — Masonry & Peacekeepers: Roman names, stone, and
@@ -81,6 +85,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Caldrin', 'Torven', 'Bravik', 'Dorsen',
             // AUDIT-11 §15.
             'Rook', 'Gneiss', 'Tuff', 'Scree', 'Slate',
+            // AUDIT-12 §15.
+            'Corbel', 'Gabbro', 'Dressel', 'Porphyr', 'Buttress', 'Gargoyle', 'Castellan', 'Crenel', 'Parapet',
         ],
         Female: [
             'Clove', 'Enobaria', 'Lyme', 'Livia', 'Diana', 'Victoria', 'Aurelia', 'Octavia', 'Portia', 'Juno',
@@ -100,6 +106,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Stenra',
             // AUDIT-11 §15.
             'Pumice',
+            // AUDIT-12 §15.
+            'Travertine', 'Dolomite', 'Arkose', 'Breccia', 'Merlon',
         ],
     },
     // District 3 — Technology: circuitry words worn plain, plus Beetee-style
@@ -121,6 +129,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Ustor', 'Xand', 'Opto', 'Ionn', 'Quibit', 'Zolta', 'Xantic', 'Ondel', 'Uvex', 'Quarz',
             // AUDIT-11 §15.
             'Rivet', 'Gasket', 'Axle', 'Cog', 'Flywheel', 'Ferrous',
+            // AUDIT-12 §15.
+            'Capstan', 'Rheostat', 'Tappet', 'Bushing', 'Grommet', 'Ratchet', 'Flange', 'Lathe', 'Trimpot', 'Arduin', 'Leif', 'Taavi',
         ],
         Female: [
             'Wiress', 'Cyra', 'Nova', 'Beta', 'Echo', 'Ada', 'Dot', 'Logic', 'Spark', 'Meg',
@@ -138,6 +148,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Oscillo', 'Querl', 'Zed', 'Xenna', 'Ulvex', 'Ydris', 'Querin', 'Yttrix', 'Ixel', 'Orbit',
             // AUDIT-9 stage D: vetted candidates from the audit's §11.
             'Tivra',
+            // AUDIT-12 §15.
+            'Varistor', 'Triode', 'Pentode', 'Spline', 'Tensor', 'Vernier', 'Cilla', 'Gerda',
         ],
     },
     // District 4 — Fishing: sea, sail, and shore. Career-polished, so the
@@ -161,6 +173,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Coralin', 'Tavil',
             // AUDIT-11 §15.
             'Coble', 'Galley', 'Rigg', 'Sprat', 'Dace', 'Tench', 'Burbot', 'Gudgeon', 'Wrack', 'Curlew',
+            // AUDIT-12 §15.
+            'Brill', 'Garfish', 'Pilchard', 'Bonito', 'Snook', 'Mackerel', 'Turbot', 'Skate',
         ],
         Female: [
             'Annie', 'Cresta', 'Mags', 'Nerida', 'Trawler', 'Coral', 'Siren', 'Delta', 'Marina', 'Ocean',
@@ -180,6 +194,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Pelora',
             // AUDIT-11 §15.
             'Samphire', 'Dulse', 'Laver', 'Dunlin', 'Tern',
+            // AUDIT-12 §15.
+            'Winkle', 'Scallop', 'Limpet', 'Cockle', 'Nerita', 'Coquina', 'Murex', 'Anchovy',
         ],
     },
     // District 5 — Power: current, light, and the grid. Words that hum,
@@ -203,6 +219,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Dynel', 'Arclen', 'Helion',
             // AUDIT-11 §15.
             'Henry', 'Bellows',
+            // AUDIT-12 §15.
+            'Fulgor', 'Kilovolt',
         ],
         Female: [
             'Electra', 'Nova', 'Astra', 'Flare', 'Aurora', 'Lumina', 'Solara', 'Nebula', 'Helix', 'Voltina',
@@ -220,6 +238,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Zolt', 'Ovolt', 'Oersted', 'Orrey', 'Ionel', 'Ultima', 'Querent', 'Yseult', 'Zinnober',
             // AUDIT-9 stage D: vetted candidates from the audit's §11.
             'Lumenna',
+            // AUDIT-12 §15.
+            'Tesselle', 'Ohma', 'Argon', 'Krypton', 'Anouk', 'Dagny', 'Ailsa', 'Birgit',
         ],
     },
     // District 6 — Transportation: rails, roads, and flight. Grounded nouns
@@ -243,6 +263,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Railen', 'Tressel',
             // AUDIT-11 §15.
             'Tongs',
+            // AUDIT-12 §15.
+            'Coupler', 'Caboose', 'Switchback', 'Shunter', 'Bogie', 'Pim', 'Soren', 'Wystan',
         ],
         Female: [
             'Lane', 'Piper', 'Stella', 'Velocity', 'Siena', 'Mercedes', 'Cheyenne', 'Carline', 'Aviara', 'Raven',
@@ -262,6 +284,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Axira', 'Trenna',
             // AUDIT-11 §15.
             'Brisk',
+            // AUDIT-12 §15.
+            'Tender', 'Axlet', 'Draisine', 'Railer', 'Flatcar', 'Dorit', 'Fiorella', 'Liesel',
         ],
     },
     // District 7 — Lumber: trees named straight off the hillside, plus
@@ -285,6 +309,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Aldren', 'Sylven', 'Torrel',
             // AUDIT-11 §15.
             'Hawthorn', 'Gorse', 'Cairn',
+            // AUDIT-12 §15.
+            'Hornbeam', 'Buckeye', 'Deodar', 'Kauri', 'Totara', 'Chinquapin',
         ],
         Female: [
             'Johanna', 'Knotwood', 'Willow', 'Larchen', 'Alderly', 'Leafwyn', 'Cedarlyn', 'Fern', 'Leaf', 'Cedarly',
@@ -302,6 +328,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Zirco', 'Undergrowth', 'Oakhew', 'Ossier', 'Quirin', 'Zephyrwood', 'Quillwood', 'Yarden', 'Iselwood',
             // AUDIT-11 §15.
             'Heath', 'Siskin', 'Caddis', 'Mayfly',
+            // AUDIT-12 §15.
+            'Tupelo', 'Catalpa', 'Sassafras', 'Paulownia', 'Cedrine', 'Rimu', 'Karri',
         ],
     },
     // District 8 — Textiles: fabric, thread, and the sewing table. Plain
@@ -325,6 +353,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Tavilin',
             // AUDIT-11 §15.
             'Abacus',
+            // AUDIT-12 §15.
+            'Loden', 'Paavo', 'Bertil',
         ],
         Female: [
             'Cecelia', 'Paylor', 'Wilma', 'Nan', 'Taffet', 'Lace', 'Damaris', 'Percale', 'Chiffon', 'Taffeta',
@@ -344,6 +374,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Wevra', 'Sereva', 'Looma', 'Hemra',
             // AUDIT-11 §15.
             'Tussah', 'Madder', 'Woad', 'Sepia',
+            // AUDIT-12 §15.
+            'Selvage', 'Mirela', 'Ragna', 'Sigrun',
         ],
     },
     // District 9 — Grain: the harvest and the mill. Bread words, field words,
@@ -366,7 +398,9 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             // AUDIT-9 stage D: vetted candidates from the audit's §11.
             'Barlen', 'Rillan',
             // AUDIT-11 §15.
-            'Millet', 'Teff', 'Barley', 'Rye', 'Kasha', 'Caraway', 'Chervil',
+            'Teff', 'Kasha', 'Caraway', 'Chervil',
+            // AUDIT-12 §15.
+            'Mashlum', 'Bulgur', 'Haycock', 'Groat', 'Triticale',
         ],
         Female: [
             'Grainne', 'Acacia', 'Bushra', 'Charlene', 'Cerealia', 'Garner', 'Sibella', 'Poppy', 'Ryetta', 'Saffron',
@@ -386,6 +420,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Harlowe', 'Ryeva',
             // AUDIT-11 §15.
             'Lovage', 'Borage', 'Clary',
+            // AUDIT-12 §15.
+            'Oatlet', 'Maslin', 'Freekeh', 'Fonio',
         ],
     },
     // District 10 — Livestock: herd, hide, and range. Ranch-hand real names
@@ -412,6 +448,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Brannoc', 'Herdan', 'Corven', 'Tallowen', 'Avren',
             // AUDIT-11 §15.
             'Colter', 'Hayward', 'Plowman', 'Ashby',
+            // AUDIT-12 §15.
+            'Dewlap', 'Fetlock', 'Tether', 'Cheviot', 'Romney', 'Dusan', 'Frode',
         ],
         Female: [
             'Brandy', 'Lassie', 'Fawn', 'Doe', 'Filly', 'Rodella', 'Sierra', 'Bryanna', 'Meadow', 'Dixie',
@@ -434,6 +472,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Marlowe',
             // AUDIT-11 §15.
             'Heifer', 'Ewe', 'Lambkin',
+            // AUDIT-12 §15.
+            'Heifrin', 'Belted', 'Texel', 'Tove', 'Aino',
         ],
     },
     // District 11 — Agriculture: orchards, row crops, and wildflowers, cut
@@ -460,6 +500,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Sowen', 'Arliss',
             // AUDIT-11 §15.
             'Hedger', 'Thatch', 'Wattle', 'Daub', 'Pell',
+            // AUDIT-12 §15.
+            'Pippin', 'Russet', 'Bramley', 'Codlin', 'Costard', 'Pearmain', 'Boysen', 'Millet', 'Barley', 'Rye',
         ],
         Female: [
             'Rue', 'Seeder', 'Blossom', 'Feverfew', 'Holly', 'Lily', 'Rose', 'Petal', 'Flora', 'Rosemary',
@@ -482,6 +524,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Pomelle', 'Sprigga',
             // AUDIT-11 §15.
             'Lark', 'Plover',
+            // AUDIT-12 §15.
+            'Loganberry', 'Espalier', 'Nonpareil', 'Reinette', 'Tayberry', 'Salal',
         ],
     },
     // District 12 — Coal mining, split by class. Seam names come from wild
@@ -509,6 +553,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Coalyn', 'Cindrel', 'Ashwen', 'Merrow',
             // AUDIT-11 §15.
             'Tarn', 'Pewter', 'Cooper', 'Wright', 'Roach',
+            // AUDIT-12 §15.
+            'Culm', 'Lignite', 'Shaftman', 'Onsetter', 'Sumpman', 'Headframe', 'Winder',
         ],
         Female: [
             'Katniss', 'Primrose', 'Maysilee', 'Ember', 'Eglantine', 'Hazel', 'Iris', 'Violet', 'Willow', 'Bramble',
@@ -531,6 +577,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Delva',
             // AUDIT-11 §15.
             'Loess', 'Sleet',
+            // AUDIT-12 §15.
+            'Tipple', 'Bituma', 'Pirkko', 'Runa', 'Svea',
         ],
     },
     // §BUG-5: these four shipped at 30 entries per gender against the original
@@ -761,6 +809,8 @@ export const NEUTRAL_NAMES: Record<number, string[]> = {
         'Niello', 'Emerault', 'Electrum', 'Opalis', 'Ormole', 'Verdite', 'Vermeilla', 'Ziris',
         // AUDIT-9 stage D: vetted candidates from the audit's §11.
         'Orelise', 'Vantelle', 'Zorielle',
+        'Ilse', // AUDIT-12 §15
+        'Oksana', // AUDIT-12 §15
     ],
     // 2 — masonry: the parts of a wall and the Romans who ordered it.
     2: ['Xanthus', 'Xantia', 'Ulpius', 'Urbica', 'Yardstone', 'Yokestone', 'Zenon', 'Zosima',
@@ -768,6 +818,8 @@ export const NEUTRAL_NAMES: Record<number, string[]> = {
         'Nervia', 'Nummus', 'Egeria', 'Eburnus', 'Obelisca', 'Ovilia', 'Vaultis', 'Vespera',
         // AUDIT-9 stage D: vetted candidates from the audit's §11.
         'Varric',
+        'Ivo', // AUDIT-12 §15
+        'Vidar', // AUDIT-12 §15
     ],
     // 3 — technology: the vocabulary of the bench, worn plain.
     3: ['Xenon', 'Xylo', 'Ultrix', 'Uplink', 'Yotta', 'Ytter', 'Zener', 'Zettar',
@@ -775,6 +827,8 @@ export const NEUTRAL_NAMES: Record<number, string[]> = {
         'Nibble', 'Nodal', 'Echolon', 'Ether', 'Ohmic', 'Optic', 'Vectrix', 'Vidicon',
         // AUDIT-9 stage D: vetted candidates from the audit's §11.
         'Kelbit', 'Nodel', 'Vexel', 'Orbin',
+        'Odile', // AUDIT-12 §15
+        'Zdenka', // AUDIT-12 §15
     ],
     // 4 — fishing: hull, tackle and the things in the water.
     4: ['Xebec', 'Xiphias', 'Undertide', 'Urchin', 'Yawler', 'Yardline', 'Zostera', 'Zander',
@@ -782,6 +836,8 @@ export const NEUTRAL_NAMES: Record<number, string[]> = {
         'Nereid', 'Netter', 'Ebbrise', 'Estuar', 'Oarline', 'Oysterel', 'Veer', 'Velan',
         // AUDIT-9 stage D: vetted candidates from the audit's §11.
         'Nerune', 'Veymar', 'Ondrel',
+        'Una', // AUDIT-12 §15
+        'Eilif', // AUDIT-12 §15
     ],
     // 5 — power: the grid's own words.
     5: ['Xanthic', 'Xelia', 'Ultravolt', 'Umbrion', 'Yttrium', 'Ylem', 'Zenithe', 'Zaria',
@@ -789,6 +845,8 @@ export const NEUTRAL_NAMES: Record<number, string[]> = {
         'Neonis', 'Nimbral', 'Emberlight', 'Electrine', 'Ohmes', 'Outage', 'Voltaic', 'Vanelight',
         // AUDIT-9 stage D: vetted candidates from the audit's §11.
         'Voltra', 'Edrin',
+        'Vesna', // AUDIT-12 §15
+        'Ines', // AUDIT-12 §15
     ],
     // 6 — transport: rail, road and air.
     6: ['Xing', 'Xela', 'Underpass', 'Upline', 'Yaw', 'Yardrail', 'Zephyrline', 'Zeppelin',
@@ -796,6 +854,8 @@ export const NEUTRAL_NAMES: Record<number, string[]> = {
         'Nomad', 'Nacelle', 'Expressway', 'Embark', 'Omnibus', 'Overland', 'Viaduct', 'Voyageur',
         // AUDIT-9 stage D: vetted candidates from the audit's §11.
         'Veylor', 'Orlan',
+        'Zelie', // AUDIT-12 §15
+        'Jarle', // AUDIT-12 §15
     ],
     // 7 — lumber: species and the parts of a tree.
     7: ['Xylem', 'Xanthium', 'Underwood', 'Upland', 'Yewbark', 'Yellowpine', 'Zelkow', 'Ziricote',
@@ -803,6 +863,8 @@ export const NEUTRAL_NAMES: Record<number, string[]> = {
         'Notch', 'Nurselog', 'Elmwood', 'Ebonwood', 'Oakenshaw', 'Osier', 'Veneer', 'Verdure',
         // AUDIT-9 stage D: vetted candidates from the audit's §11.
         'Oakenna',
+        'Eero', // AUDIT-12 §15
+        'Kaija', // AUDIT-12 §15
     ],
     // 8 — textiles: cloths, mostly, and the tools that make them.
     8: ['Xylon', 'Xantilly', 'Unspun', 'Underhem', 'Yarnwell', 'Yardage', 'Zibelin', 'Zigzag',
@@ -810,6 +872,8 @@ export const NEUTRAL_NAMES: Record<number, string[]> = {
         'Nankeen', 'Needlepoint', 'Eyelette', 'Ecru', 'Organzine', 'Oilcloth', 'Velouria', 'Voilette',
         // AUDIT-9 stage D: vetted candidates from the audit's §11.
         'Velisse',
+        'Elio', // AUDIT-12 §15
+        'Noor', // AUDIT-12 §15
     ],
     // 9 — grain: cultivars, the mill, and what comes off the field.
     9: ['Xanthan', 'Xanthea', 'Ullage', 'Upsheaf', 'Yeastling', 'Yielding', 'Zea', 'Zerna',
@@ -817,17 +881,20 @@ export const NEUTRAL_NAMES: Record<number, string[]> = {
         'Nubbin', 'Norin', 'Einkorne', 'Emmerwheat', 'Oatlin', 'Orzo', 'Vetchling', 'Vernal',
         // AUDIT-9 stage D: vetted candidates from the audit's §11.
         'Kernan', 'Oathel',
+        'Ingrid', // AUDIT-12 §15
+        'Olavi', // AUDIT-12 §15
     ],
     // 10 — livestock: ranch-hand names, the way the district's pools already lean.
     10: ['Xander', 'Xenia', 'Ute', 'Ullen', 'Yearman', 'Yuma', 'Zeburn', 'Zora',
         'Quirt', 'Quincy', 'Ira', 'Isom', 'Jess', 'Jubel', 'Kip', 'Kade',
-        'Nell', 'Nate', 'Elko', 'Enid', 'Orley', 'Oxbow', 'Vance', 'Verl'],
+        'Nell', 'Nate', 'Elko', 'Enid', 'Orley', 'Oxbow', 'Vance', 'Verl', 'Jorun', 'Veikko'],
     // 11 — agriculture: orchard, row crop and wildflower.
     11: ['Xeranth', 'Xylia', 'Umbel', 'Underleaf', 'Yampa', 'Yarrowen', 'Zinnial', 'Zephyranth',
         'Quincewood', 'Quickthorn', 'Isatis', 'Ivywood', 'Jonquil', 'Jujube', 'Kudzu', 'Kalewild',
         'Nettlewood', 'Nasturtium', 'Elder', 'Endivia', 'Orchardleigh', 'Okrel', 'Vervaine', 'Vinewood',
         // AUDIT-9 stage D: vetted candidates from the audit's §11.
         'Orlina', 'Virelle',
+        'Kasimir', // AUDIT-12 §15
     ],
     // 12 — coal: Seam weather and merchant-class plainness, both.
     12: ['Xara', 'Xen', 'Underbough', 'Usher', 'Yule', 'Yestin', 'Zev', 'Zola',
@@ -835,6 +902,7 @@ export const NEUTRAL_NAMES: Record<number, string[]> = {
         'Nessa', 'Nyle', 'Ellerwick', 'Eben', 'Orrin', 'Ottilie', 'Vesperine', 'Veritas',
         // AUDIT-9 stage D: vetted candidates from the audit's §11.
         'Emberin',
+        'Nils', // AUDIT-12 §15
     ],
     // 13 — graphite and munitions: the mineral index and the ordnance list.
     13: ['Xenolith', 'Xylonite', 'Uranite', 'Ulexite', 'Yttria', 'Ytterbite', 'Zincite', 'Zeolite',

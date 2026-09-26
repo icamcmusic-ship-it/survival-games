@@ -1,8 +1,8 @@
 import { Objective, Tribute } from '../models/types';
-import { OBJECTIVES, PLANNING, PROFICIENCY } from '../data/balance';
+import { AUDIT12_TRIBUTES, OBJECTIVES, PLANNING, PROFICIENCY } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { cycleOf, ensureMemory, rememberedBarren } from './memory';
-import { getZone, reachableZones } from './map';
+import { getZone, hopsTo, reachableZones, severedEdgeSet, zoneFeatures } from './map';
 import { profOf, trainProficiency } from './proficiency';
 import { fearOf } from './fear';
 
@@ -49,34 +49,72 @@ export function queueGoal(t: Tribute, goal: Objective) {
  * with an empty canteen, and you do not go hunting on an empty stomach.
  */
 export function prerequisiteFor(ctx: SimContext, t: Tribute, goal: Objective): Objective | undefined {
+    return errandChain(ctx, t, goal)[0];
+}
+
+/**
+ * AUDIT-12 §5: the errand dependency queue. Both needs, most urgent first —
+ * food then water when hunger is the deeper hole, water then food otherwise —
+ * so a tribute who is short of both walks a two-stop errand before the goal
+ * instead of fetching one and re-deriving the other from scratch.
+ */
+export function errandChain(ctx: SimContext, t: Tribute, goal: Objective): Objective[] {
     const needsWater = t.vitals.thirst >= PLANNING.prerequisiteThirst;
     const needsFood = t.vitals.hunger >= PLANNING.prerequisiteHunger;
-    if (!needsWater && !needsFood) return undefined;
+    if (!needsWater && !needsFood) return [];
     // A goal that *is* the errand needs no errand in front of it.
-    if (goal.kind === 'reach' && (goal.reason === 'water' || goal.reason === 'forage')) return undefined;
-    if (goal.kind === 'flee' || goal.kind === 'protect') return undefined;
+    if (goal.kind === 'reach' && (goal.reason === 'water' || goal.reason === 'forage')) return [];
+    if (goal.kind === 'flee' || goal.kind === 'protect') return [];
     // §16: resting is not a journey, so nothing can be put in front of it —
     // and an errand queued ahead of a `recover` would be the engine telling a
     // tribute with a broken arm to go for a walk first.
-    if (goal.kind === 'recover') return undefined;
+    if (goal.kind === 'recover') return [];
 
-    const reason = needsWater ? 'water' : 'forage';
-    const zone = bestZoneFor(ctx, t, reason);
-    if (!zone) return undefined;
-    return { kind: 'reach', zone, reason, expires: cycleOf(ctx.state) + OBJECTIVES.reachCycles };
+    const reasons: Array<'water' | 'forage'> = [];
+    const hungerDeeper = t.vitals.hunger - PLANNING.prerequisiteHunger > t.vitals.thirst - PLANNING.prerequisiteThirst;
+    if (needsFood && needsWater) reasons.push(...(hungerDeeper ? ['forage', 'water'] as const : ['water', 'forage'] as const));
+    else reasons.push(needsWater ? 'water' : 'forage');
+    const expires = cycleOf(ctx.state) + OBJECTIVES.reachCycles;
+    const chain: Objective[] = [];
+    let from = t.zone;
+    reasons.forEach(reason => {
+        const zone = bestZoneFor(ctx, t, reason, from);
+        if (!zone) return;
+        chain.push({ kind: 'reach', zone, reason, expires });
+        from = zone;
+    });
+    return chain;
 }
 
-function bestZoneFor(ctx: SimContext, t: Tribute, reason: 'water' | 'forage'): string | undefined {
-    const options = reachableZones(ctx.state.arena, t.zone, ctx.state.collapsedZones ?? []);
-    const scored = options
-        .map(z => ({
-            name: z.name,
-            score: reason === 'water'
-                ? (z.terrain === 'water' || z.terrain === 'wetland' ? 2 : 0) + z.resources
-                : z.resources - rememberedBarren(ctx.state, t, z.name),
-        }))
-        .sort((a, b) => b.score - a.score);
-    return scored[0]?.name;
+/*
+ * AUDIT-12 T5: an errand's destination is chosen the way every other
+ * `reach` is — real water (`zoneFeatures().waterSource`, which accepts a moor
+ * spring and rejects a brine sump), the current zone kept when it already
+ * serves, severed edges respected, and forage judged on what the tribute
+ * remembers of a zone rather than its live stock.
+ */
+function bestZoneFor(ctx: SimContext, t: Tribute, reason: 'water' | 'forage', from = t.zone): string | undefined {
+    const state = ctx.state;
+    const collapsed = state.collapsedZones ?? [];
+    const severed = severedEdgeSet(state);
+    const serves = (name: string) => {
+        const z = getZone(state.arena, name);
+        if (!z) return false;
+        return reason === 'water'
+            ? zoneFeatures(z).waterSource === true
+            : z.resources >= AUDIT12_TRIBUTES.errandMinResources && rememberedBarren(state, t, z.name) < AUDIT12_TRIBUTES.errandBarrenLine;
+    };
+    if (serves(from)) return from;
+    const scored = state.arena.zones
+        .filter(z => !collapsed.includes(z.name) && serves(z.name))
+        .map(z => ({ z, hops: hopsTo(state.arena, from, z.name, collapsed, severed) }))
+        .filter((m): m is { z: typeof m.z; hops: number } => m.hops !== undefined)
+        .sort((a, b) => a.hops - b.hops
+            || (reason === 'forage'
+                ? (b.z.resources - rememberedBarren(state, t, b.z.name)) - (a.z.resources - rememberedBarren(state, t, a.z.name))
+                : 0)
+            || (a.z.name < b.z.name ? -1 : 1));
+    return scored[0]?.z.name;
 }
 
 /**
@@ -246,7 +284,7 @@ export function layFalseTrail(ctx: SimContext, t: Tribute) {
 /** The zone a tribute would actually double back to, if they are being followed. */
 export function isBeingFollowed(ctx: SimContext, t: Tribute): boolean {
     return getAlive(ctx.state).some(o =>
-        o.id !== t.id && (o.shadowing?.targetId === t.id
+        o.id !== t.id && ((o.stance === 'Shadowing' && o.shadowing?.targetId === t.id)
             || (o.objective?.kind === 'hunt' && o.objective.targetId === t.id)
             || (o.objective?.kind === 'stalk' && o.objective.targetId === t.id)));
 }

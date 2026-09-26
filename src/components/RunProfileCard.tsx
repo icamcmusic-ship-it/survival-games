@@ -4,6 +4,7 @@ import { ordinal } from '../engine/gamesProfile';
 import { mutatorName } from '../data/mutators';
 import { directorTaste } from '../data/directors';
 import { CAMPAIGN_ARC } from '../data/balance';
+import { DeathMixTile } from './DeathMixTile';
 import { isFreshCampaign, rebellionLabel, rebellionOf } from '../engine/campaign';
 
 /** AUDIT-11 §12: a date-derived daily seed (`daily-YYYY-MM-DD`). */
@@ -79,6 +80,8 @@ export function RunProfileCard({ gameState }: { gameState: GameState }) {
                     </React.Fragment>
                 ))}
             </dl>
+            {/* AUDIT-12 §4: once the Games is over, what killed people. */}
+            {gameState.phase === 'ended' && <DeathMixTile gameState={gameState} />}
         </div>
     );
 }

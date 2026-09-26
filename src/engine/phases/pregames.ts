@@ -102,9 +102,12 @@ export function processSquare(ctx: SimContext) {
     // AUDIT-11 §12: the director's taste, stated where the briefing is read.
     // Their betrayal weight lands on the run's executed config, which is the
     // one lever every alliance system already reads.
-    const taste = directorTaste(headGamemaker.name);
-    ctx.state.config = { ...ctx.state.config, betrayalRate: ctx.state.config.betrayalRate * taste.betrayal };
-    ctx.logEvent(`Director's reputation: ${taste.label}. ${taste.blurb}`, [], { category: 'gamemaker' });
+    // AUDIT-12 E12: not under Vanilla rules — "the player's sliders, verbatim".
+    if (!ctx.state.config.vanillaRules) {
+        const taste = directorTaste(headGamemaker.name);
+        ctx.state.config = { ...ctx.state.config, betrayalRate: ctx.state.config.betrayalRate * taste.betrayal };
+        ctx.logEvent(`Director's reputation: ${taste.label}. ${taste.blurb}`, [], { category: 'gamemaker' });
+    }
     if (incumbent) {
         const year = (term?.runsServed ?? 0) + 1;
         ctx.logEvent(

@@ -2,7 +2,7 @@ import { weatherNoise } from './arenaDepth';
 import { GameState, Tribute } from '../models/types';
 import { SimContext } from './context';
 import { NOISE } from '../data/balance';
-import { getZone, zoneFeatures } from './map';
+import { getZone } from './map';
 import { noteHeard } from './memory';
 import { encumbranceOf } from './items';
 import { injuryGrade } from './wounds';
@@ -105,9 +105,3 @@ export function announceCrossing(
     });
 }
 
-/** Whether this run's arena carries sound at all — read by the guard. */
-export function arenaMeanAcoustics(state: GameState): number {
-    const zones = state.arena.zones;
-    if (zones.length === 0) return 1;
-    return zones.reduce((sum, z) => sum + (zoneFeatures(z).acoustics ?? 1), 0) / zones.length;
-}

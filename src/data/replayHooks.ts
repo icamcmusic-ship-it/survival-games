@@ -49,14 +49,15 @@ export function dailyArenaId(seed: string = dailySeed()): string {
  * Distinct from the presets, which are the four coherent *default* shapes a
  * Games comes in. A mutator is deliberately lopsided.
  */
-export interface Mutator {
+/** AUDIT-12 S4: renamed from `Mutator` — the deck in `mutators.ts` owns that name. */
+export interface Preset {
     id: string;
     name: string;
     blurb: string;
     config: Partial<GameConfig>;
 }
 
-export const MUTATORS: Mutator[] = [
+export const PRESETS: Preset[] = [
     {
         id: 'famine',
         name: 'Famine Year',
@@ -131,12 +132,12 @@ export const MUTATORS: Mutator[] = [
     },
 ];
 
-export function applyMutator(config: GameConfig, mutator: Mutator): GameConfig {
+export function applyPreset(config: GameConfig, mutator: Preset): GameConfig {
     return { ...config, ...mutator.config };
 }
 
 /** True when every field the mutator sets currently matches. */
-export function mutatorActive(config: GameConfig, mutator: Mutator): boolean {
+export function presetActive(config: GameConfig, mutator: Preset): boolean {
     return (Object.keys(mutator.config) as Array<keyof GameConfig>)
         .every(k => config[k] === mutator.config[k]);
 }

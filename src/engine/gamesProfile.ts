@@ -271,8 +271,10 @@ function applyMutators(c: GameConfig): GameConfig {
     let { sponsorGenerosity, hazardRate } = c;
     if (hasMutator(c, 'sponsor-drought')) sponsorGenerosity *= MUTATOR_TUNING.sponsorDrought;
     if (hasMutator(c, 'hazard-storm')) hazardRate *= MUTATOR_TUNING.hazardStorm;
-    const enableFeast = hasMutator(c, 'double-feasts') ? true : c.enableFeast;
-    return { ...c, sponsorGenerosity, hazardRate, enableFeast };
+    // AUDIT-12 E3: `double-feasts` doubles feasts that are happening. It does
+    // not overrule the player's own toggle or a `no-feast` calendar year —
+    // the simulator multiplies the cap only while `enableFeast` holds.
+    return { ...c, sponsorGenerosity, hazardRate };
 }
 
 function configForProfileInner(base: GameConfig, profile: GamesProfile): GameConfig {

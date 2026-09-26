@@ -856,6 +856,19 @@ export interface Tribute {
      * same stamp. Set once, where the bloodbath ends.
      */
     diedInBloodbath?: boolean;
+    /** AUDIT-12 §5: the pre-gong horn plan ('grab' | 'scatter' | 'run'). */
+    hornPlan?: 'grab' | 'scatter' | 'run';
+    /** AUDIT-12 T1: what they did at the gong (horn, edge, hunt, flee, wait, ally, freeze). */
+    gongDecision?: string;
+    /** AUDIT-12 §5: the cycle their current `reach` objective was committed to. */
+    committedSince?: number;
+    committedZone?: string;
+    /** AUDIT-12 §6: former allies this tribute has killed (the hollow victory, once each). */
+    hollowVictims?: string[];
+    /** AUDIT-12 §5: tiers (1-3) of the tiered earned traits (Bloodied, Unbroken). */
+    traitTiers?: Record<string, number>;
+    /** AUDIT-12 §5: consecutive cycles spent past the starving line. */
+    starvingCycles?: number;
     dayOfDeath?: number;
     zone: string;
     allianceId?: string;
@@ -2057,6 +2070,13 @@ export interface Alliance {
      * whoever took the extra. A grudge is a visible betrayal motive.
      */
     fairness?: { ate: Record<string, number>; grudges: Record<string, { againstId: string; amount: number }> };
+    /**
+     * AUDIT-12 §6: per-pair fairness ledger — `pairGrudges[holder][against]`.
+     * Survives a role change, unlike the single-target `fairness.grudges`.
+     */
+    pairGrudges?: Record<string, Record<string, number>>;
+    /** AUDIT-12 §6: a one-night shared-camp pact between loners (no roles, no cache). */
+    sharedCampUntil?: number;
 }
 
 /**
@@ -2764,6 +2784,8 @@ export interface Obligation {
      * never be the breach condition; this is.
      */
     rescueMissed?: boolean;
+    /** AUDIT-12 T11: consecutive cycles the ally was down a sector away and they stayed put. */
+    rescueMissedCycles?: number;
 }
 
 export type Phase = 'setup' | 'roster' | 'reaping'
@@ -3074,7 +3096,13 @@ export interface GameState {
     /** §9.4: remaining purse per sponsor bloc, seeded lazily from generosity. */
     sponsorBlocBudgets?: Record<string, number>;
     /** AUDIT-11 §8: audience segments (see engine/audienceSegments.ts). Absent on older saves. */
-    audience?: { bloodthirsty: number; romantic: number; underdog: number; logMark: number };
+    audience?: {
+        bloodthirsty: number; romantic: number; underdog: number; logMark: number;
+        /** AUDIT-12 S6: sequence number of the last log entry read (survives a truncated save). */
+        lastLogSeq?: number;
+        /** AUDIT-12 T10: deaths already scored as kills. */
+        countedDead?: string[];
+    };
     /** Day the most recent feast actually convened — guards against two feasts landing on the same day. */
     lastFeastDay?: number;
     /** Feasts already held this run, used to space them out. */
@@ -3823,6 +3851,23 @@ export interface GameState {
      * `engine/milestones.ts`.
      */
     milestones?: Record<string, { count: number; firstCycle: number; who?: string[] }>;
+    /**
+     * AUDIT-12 §14: small run-local facts the new achievements read, written by
+     * `engine/audit12Facts.ts` as each chronicle line is logged. Optional, so
+     * older saves load; bounded (ids and zone names, never per-line).
+     */
+    audit12Facts?: {
+        /** Tributes who stood in a zone while it was burning or collapsed. */
+        scarredGround?: string[];
+        /** tribute id -> times downed. */
+        downed?: Record<string, number>;
+        /** Weather fronts that arrived this run. */
+        fronts?: number;
+        /** tribute id -> zones where they took over an abandoned camp. */
+        campsFound?: Record<string, string[]>;
+        /** Tributes ambushed in a zone where they had taken over a camp. */
+        ambushedAtCamp?: string[];
+    };
 }
 
 export interface EventLog {
@@ -4032,6 +4077,8 @@ export type EventType =
     // AUDIT-11 §6: relationships and alliances.
     | 'role-kept' | 'role-neglected' | 'watch-failure' | 'unfair-split' | 'grudge-betrayal'
     | 'rival-thaw' | 'theft-witnessed' | 'romance-reveal' | 'grief-day' | 'station-bond'
+    // AUDIT-12 §6.
+    | 'night-theft' | 'hollow-victory' | 'shared-camp' | 'alliance-splinter'
     | 'sepsis-deepened'
     | 'sepsis-treated'
     | 'shelter-built'

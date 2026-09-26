@@ -74,7 +74,7 @@ import { ARENA_DEATH_BUDGET, BLOODBATH } from './data/balance';
 import { parseMutators } from './data/mutators';
 
 /** Routes kept inline on the phone header while a run exists. */
-const RUN_ROUTES: ViewName[] = ['roster', 'game', 'chronicle'];
+const RUN_ROUTES: ViewName[] = ['roster', 'game', 'debrief', 'chronicle'];
 
 export default function App() {
   const gameState = useStore(gameStore, s => s.gameState);
@@ -120,6 +120,9 @@ export default function App() {
   useEffect(() => {
     if (prevView.current === view) return;
     prevView.current = view;
+    // AUDIT-12 U6: a new screen starts at its top — except a deep link with a
+    // query (`#/chronicle?day=4`), which scrolls itself to its target.
+    if (!window.location.hash.includes('?')) window.scrollTo({ top: 0, behavior: 'auto' });
     let frames = 0;
     let raf = 0;
     const tryFocus = () => {
@@ -299,7 +302,9 @@ export default function App() {
     // exists while a cast is waiting to be confirmed. Everything else about
     // the cast is a tab inside the arena.
     { id: 'roster', label: 'Reaping', show: !!gameState && gameState.phase === 'reaping' },
-    { id: 'game', label: 'Arena', show: !!gameState && gameState.phase !== 'reaping' },
+    { id: 'game', label: 'Arena', show: !!gameState && gameState.phase !== 'reaping' && gameState.phase !== 'ended' && gameState.phase !== 'epilogue' },
+    // AUDIT-12 U13: the finished Games is the debrief, not the arena.
+    { id: 'debrief', label: 'Debrief', show: !!gameState && (gameState.phase === 'ended' || gameState.phase === 'epilogue') },
     { id: 'chronicle', label: 'Chronicle', show: !!gameState && gameState.phase !== 'reaping' },
     { id: 'howToPlay', label: 'How to Play', show: true },
     { id: 'hallOfFame', label: 'Hall of Fame', show: true },
@@ -504,7 +509,7 @@ export default function App() {
           <ChronicleScreen gameState={gameState} />
         )}
 
-        {view === 'game' && gameState && simulator && (
+        {(view === 'game' || view === 'debrief') && gameState && simulator && (
           gameState.phase === 'ended' ? (
             <EndScreen
               gameState={gameState}

@@ -46,6 +46,25 @@ export function predictionFilled(p: Prediction | undefined): boolean {
  * slip of the same shape would have scored, so a partial slip is not
  * penalised for picks the player never made.
  */
+/**
+ * AUDIT-12 S1: normalise a slip against the cast — drops ids not in the Games,
+ * blanks repeated final-eight picks (keeping the first slot), pads to size.
+ */
+export function sanitizePrediction(p: Prediction, castIds: Iterable<string>): Prediction {
+    const cast = new Set(castIds);
+    const ok = (id: string | undefined) => (id && cast.has(id) ? id : undefined);
+    const seen = new Set<string>();
+    const out: Prediction = { ...p, winnerId: ok(p.winnerId), firstDeathId: ok(p.firstDeathId), topKillerId: ok(p.topKillerId) };
+    if (p.finalEight) {
+        out.finalEight = p.finalEight.slice(0, PREDICTION.finalSize).map(id => {
+            if (!ok(id) || seen.has(id)) return '';
+            seen.add(id);
+            return id;
+        });
+    }
+    return out;
+}
+
 export function scorePrediction(state: GameState, p: Prediction | undefined): PredictionResult | undefined {
     if (!predictionFilled(p) || !p) return undefined;
     const tributes = state.tributes;
@@ -70,7 +89,14 @@ export function scorePrediction(state: GameState, p: Prediction | undefined): Pr
     }
     // The slip is a fixed eight-slot array; an empty slot ('') is skipped but
     // keeps every later pick in its own place.
-    const eight = (p.finalEight ?? []).slice(0, PREDICTION.finalSize);
+    // AUDIT-12 S1: an id counts once (its first slot) and only if it is in the cast.
+    const cast = new Set(tributes.map(t => t.id));
+    const seen = new Set<string>();
+    const eight = (p.finalEight ?? []).slice(0, PREDICTION.finalSize).map(id => {
+        if (!id || !cast.has(id) || seen.has(id)) return '';
+        seen.add(id);
+        return id;
+    });
     if (eight.some(id => !!id)) {
         let eightScore = 0;
         eight.forEach((id, i) => {

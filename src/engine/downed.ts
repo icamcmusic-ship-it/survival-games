@@ -250,7 +250,8 @@ export function tickDowned(ctx: SimContext) {
                 `The Gamemakers are done waiting on ${t.name}. Whatever was keeping them breathing in ${t.zone} stops.`
                 + (by ? ` The kill is credited to ${by.name}, who put them there and did not stay to watch.` : ''),
                 by ? [t.id, by.id] : [t.id],
-                { important: true, category: by ? 'kill' : 'death' }
+                // AUDIT-12 T10: say who acted; the cast order is victim-first.
+                { important: true, category: by ? 'kill' : 'death', actorId: by?.id }
             );
             bleedOut(ctx, t, name => `Killed by ${name}, who left them for dead`, t.downed!.cause, true);
             return;

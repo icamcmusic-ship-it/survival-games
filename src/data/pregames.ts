@@ -30,6 +30,97 @@ export const REAPING_CROWDS: Record<number, string> = {
     16: 'District 16 holds its reaping on the supply pier, because half the district is offshore and the other half is waiting for them. The names are read twice: once for the square, once over the radio.',
 };
 
+
+/**
+ * AUDIT-12 §10 (staleness): each square, four ways. The first entry of each
+ * pool is the line in `REAPING_CROWDS`; `engine/beatVariants.ts` swaps the
+ * logged line for a draw from the pool, through the recent-lines filter.
+ */
+export const REAPING_CROWD_VARIANTS: Record<number, string[]> = Object.fromEntries(
+    Object.entries({
+        1: [
+            "District 1 holds its reaping in the jewellers' square with bunting on every lamp. Parents point out the academy favourites to each other like racehorses.",
+            'The District 1 crowd dresses for the cameras. The front rows have been practising their applause since spring.',
+            'In District 1 the escort is cheered on the way up the steps. Nobody here thinks of the bowl as bad luck.',
+        ],
+        2: [
+            'District 2 stands under the mountain in perfect lines. The academy seniors at the front have already decided among themselves who will step forward.',
+            'The quarry whistles are silenced for the District 2 reaping. It is the only hour of the year the mountain is quiet.',
+            'District 2 watches the stage the way a garrison watches a parade ground. Volunteering here is a duty, and it is expected.',
+        ],
+        3: [
+            "District 3's square hums from the transformers behind the stage. The crowd is very still; every one of them has already calculated the odds.",
+            "District 3 gathers in its shift clothes, lanyards still on. The escort's microphone crackles and a dozen engineers wince at the same time.",
+            'Nobody in District 3 speaks while the bowl is carried out. Somebody in the back is quietly timing the whole ceremony.',
+        ],
+        4: [
+            'District 4 gathers on the harbour front with the boats tied up behind them. The gulls are louder than the anthem.',
+            'The District 4 square is full of nets hung up to dry and families standing in front of them. The academy kids stand in the sun and grin.',
+            'District 4 treats the reaping half as a festival and half as a funeral. The fishing crews keep their caps in their hands.',
+        ],
+        5: [
+            'District 5 stands in the hum of the dam, where you have to shout to be heard. The escort does not try.',
+            'The District 5 square is lit by floodlights that never go out. The crowd squints at the stage and waits.',
+            'District 5 gathers with the plant sirens silenced. The quiet is worse than the noise.',
+        ],
+        6: [
+            "District 6's reaping is held between two stopped trains. The engines tick as they cool, and nobody moves.",
+            'District 6 stands in the depot among the smell of diesel. A few of the older workers watch the tracks instead of the stage.',
+            'In District 6 the stage is a flatbed wagon. The crowd faces it the way they face everything: tired and unsurprised.',
+        ],
+        7: [
+            'District 7 gathers in a clearing that used to be forest. The stumps are the only seats, and nobody sits.',
+            'The District 7 square smells of pine resin and sweat. The loggers stand at the back with their arms folded.',
+            'District 7 brings its whole crew roster to the reaping and leaves the saws at the tree line. You can hear the forest behind the anthem.',
+        ],
+        8: [
+            'District 8 fills the square wall to wall, shoulder to shoulder. The looms are stopped for the day and the silence is strange.',
+            'The District 8 crowd is so tight that people breathe in time. Lint from the mills drifts across the stage like snow.',
+            'District 8 stands under a banner its own factories wove. Most of the people in the square could tell you exactly how many hours it took.',
+        ],
+        9: [
+            'District 9 stands between the silos in dust that gets into everything. The escort keeps a handkerchief over her mouth.',
+            'The District 9 reaping is held at the edge of the fields, and the wheat moves in the wind behind the stage like a crowd of its own.',
+            'District 9 gathers after the morning harvest shift, still covered in chaff. They stand and wait with the patience of people who work outdoors.',
+        ],
+        10: [
+            'District 10 stands along the stockyard rails. Cattle low somewhere behind the stage all the way through the anthem.',
+            'The District 10 crowd wears its work boots. Half of them will be back at the pens before the train has even left.',
+            "District 10 gathers on packed dirt under a very big sky. The escort's voice gets lost in it.",
+        ],
+        11: [
+            'District 11 is marched in from the orchards by the truckload. The Peacekeepers count heads twice.',
+            'The District 11 square is ringed with watchtowers. Nobody on the stage looks up at them and nobody in the crowd looks anywhere else.',
+            'District 11 gathers in the heat without shade. The children at the front have been standing since dawn.',
+        ],
+        12: [
+            'District 12 stands in coal dust in front of the Justice Building. The miners came straight from the lift and their faces are still black.',
+            'The District 12 crowd is small and thin, and it is very quiet. Everyone here knows exactly whose names were put in the bowl extra times for grain.',
+            "In District 12 the escort's shoes are the cleanest thing in the square. The Seam stands on one side and the merchants on the other.",
+        ],
+        13: [
+            'District 13 falls into formation without an order being given. The escort reads the names to rows of identical grey uniforms.',
+            'The District 13 reaping is held underground, in a hall built for drills. Nobody here has seen a reaping held outside.',
+            'District 13 stands in its ranks and does not react to the names. Reacting was trained out of them years ago.',
+        ],
+        14: [
+            'District 14 gathers on the salt flats in coats. Their breath hangs over the crowd in a single cloud.',
+            "The District 14 square is white with frost and salt. The escort's heels slip on the steps and nobody laughs.",
+            'District 14 stands in the cold house yard while the compressors hum behind it. Nobody here has ever been warm at a reaping.',
+        ],
+        15: [
+            'District 15 gathers in front of the furnaces, which are never allowed to go out. Everyone sweats through the anthem.',
+            'The District 15 square glitters with glass dust. The escort leaves footprints in it on the way to the bowl.',
+            'District 15 watches the stage through the heat shimmer from the works. The faces on the stage look like they are melting.',
+        ],
+        16: [
+            'District 16 gathers on the supply pier with the rigs on the horizon. Half the families are listening on the radio from out at sea.',
+            'The District 16 reaping is held between two storms. The escort reads fast so she can get back inside.',
+            'District 16 stands on wet planks with the tide coming in. Some of the names are read to families who are hundreds of miles offshore.',
+        ],
+    } as Record<string, string[]>).map(([d, extra]) => [Number(d), [REAPING_CROWDS[Number(d)], ...extra]]),
+);
+
 /*
  * §5 (requests): `REAPING_REACTIONS` lived here — three pools of thirty-odd
  * lines describing how each tribute took the news, drawn once per tribute and

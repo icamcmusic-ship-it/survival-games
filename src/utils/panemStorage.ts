@@ -589,6 +589,7 @@ function normalizePredictionCareer(raw: unknown): PredictionCareer | undefined {
         best: Math.max(0, asNum(p.best, 0)),
         winnersCalled: Math.max(0, asNum(p.winnersCalled, 0)),
         sharpCalls: Math.max(0, asNum(p.sharpCalls, 0)),
+        victorCallStreak: Math.max(0, asNum(p.victorCallStreak, 0)),
     };
 }
 
@@ -632,6 +633,8 @@ export interface PredictionCareer {
     winnersCalled: number;
     /** Slips that scored at least `PREDICTION.sharpShare` of their maximum. */
     sharpCalls: number;
+    /** AUDIT-12 §14 'Parlay': consecutive scored slips that named the victor. */
+    victorCallStreak?: number;
 }
 
 /** AUDIT-11 §8: one Games' leg of a parlay. */
@@ -745,6 +748,7 @@ export function careerTotals(records: PanemRecords): CareerTotals {
         predictionsScored: records.predictions?.scored ?? 0,
         victorsCalled: records.predictions?.winnersCalled ?? 0,
         sharpCalls: records.predictions?.sharpCalls ?? 0,
+        victorCallStreak: records.predictions?.victorCallStreak ?? 0,
         parlaysLanded: records.parlaysLanded ?? 0,
     };
     return totals;
@@ -1026,6 +1030,7 @@ export function commitRun(state: GameState): RunOutcome {
         p.totalScore += slip.score;
         p.best = Math.max(p.best, slip.score);
         if (slip.hits.includes('winner')) p.winnersCalled += 1;
+        p.victorCallStreak = slip.hits.includes('winner') ? (p.victorCallStreak ?? 0) + 1 : 0;
         if (slip.max > 0 && slip.score / slip.max >= PREDICTION.sharpShare) p.sharpCalls += 1;
         records.predictions = p;
     }

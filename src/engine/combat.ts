@@ -1,4 +1,4 @@
-import { deceptionEdge, weaponFails, weatherRangedPenalty } from './arenaDepth';
+import { deceptionEdge, dropPlan, weaponFails, weatherRangedPenalty } from './arenaDepth';
 import { arenaHasLaw } from './gamesProfile';
 import { targetDrawOf } from './targeting';
 import { DamageRecord, DeathCauseCode, Item, Tribute, attr } from '../models/types';
@@ -79,6 +79,10 @@ const DOWNABLE_DAMAGE: DamageRecord['kind'][] = ['tribute', 'mutt', 'arena', 'ha
  * the deaths that still land.
  */
 function strikeDown(ctx: SimContext, victim: Tribute, killer: Tribute, weapon?: Item) {
+    // AUDIT-12 E6: a killer who went down in the same exchange (a weapon that
+    // broke into them) is not standing over anybody. The ordinary funnel
+    // decides the ending, attributing the wound to them.
+    if (!isActive(killer)) { checkDeath(ctx, victim); return; }
     // §4.1: if their two groups had an agreement, this ends it for everybody
     // on both sides at once.
     noteBlocKill(ctx, killer, victim);
@@ -1079,6 +1083,9 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
         );
     }
     wearWeapon(weapon, ctx, attacker);
+    // AUDIT-12 E6: the weapon can break into the hand holding it and finish
+    // them. A dead or downed attacker trains nothing and frightens nobody.
+    if (!isActive(attacker)) { clampTribute(defender); return damage; }
     noteWound(attacker, defender);
     adjustRel(defender, attacker.id, -COMBAT.grudgeOnWound);
     // Losing an exchange to someone is how you learn to be afraid of them
@@ -1264,6 +1271,12 @@ export function resolveCombat(
             const loser = edge > 0 ? t2 : t1;
             const weapon = edge > 0 ? w1 : w2;
             landHit(ctx, winner, loser, Math.abs(edge), weapon, damageMultiplier);
+            // AUDIT-12 E6: the winner's weapon broke into them — the fight is over.
+            if (!isActive(winner)) {
+                if (loser.health <= 0) checkDeath(ctx, loser);
+                ended = true;
+                break;
+            }
             // CONTENT-04: situational exchange lines. A hit on someone already
             // barely standing reads differently than an opening blow, and a
             // rematch between two people who have done this before should say so.
@@ -1801,6 +1814,13 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
 export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, opts: { weapon?: Item; cause?: string; silent?: boolean } = {}) {
     const { weapon, cause, silent } = opts;
     if (victim.status === 'dead') return;
+    // AUDIT-12 E5: a wound outlives the one who gave it. A killer already dead
+    // before this cycle (not a mutual kill in the same exchange) gets no
+    // live-killer line, no kill credit and no sponsor or audience reaction —
+    // the victim dies of the wounds they were given.
+    const posthumousKiller = killer && killer.status !== 'alive'
+        && (killer.lastDamage?.cycle ?? cycleOf(ctx.state)) < cycleOf(ctx.state) ? killer : undefined;
+    if (posthumousKiller) killer = undefined;
     /*
      * REQUEST: the backstop for the fixed Games.
      *
@@ -1818,6 +1838,8 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
     enforceCapacity(victim);
     victim.health = 0;
     victim.dayOfDeath = ctx.state.day;
+    // AUDIT-12 E9: a corpse's plan is dead weight in every save and snapshot.
+    dropPlan(ctx.state, victim.id);
     /*
      * AUDIT-9 B16: the elimination *order*, which nothing recorded.
      *
@@ -2109,6 +2131,15 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
                 important: true, category: 'kill', actorId: killer.id,
                 fact: `${killer.name} killed ${victim.name} (${weapon?.name ?? 'unarmed'})`,
             });
+        }
+    } else if (posthumousKiller) {
+        victim.causeOfDeath = cause || victim.lastDamage?.cause || `Died of the wounds ${posthumousKiller.name} gave them`;
+        if (!silent) {
+            ctx.logEvent(
+                `${victim.name} dies of the wounds ${posthumousKiller.name} gave them. ${posthumousKiller.name} is not alive to know it.`,
+                [victim.id],
+                { important: true, category: 'death', zone: victim.zone, fact: `${victim.name} died — ${victim.causeOfDeath}` },
+            );
         }
     } else {
         victim.causeOfDeath = cause || victim.lastDamage?.cause || 'Died to environment';

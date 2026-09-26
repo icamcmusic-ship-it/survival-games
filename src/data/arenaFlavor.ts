@@ -1,7 +1,7 @@
 import { Arena, ArenaLawId, Attributes, Condition, DeathCauseCode, Item, Stance, Terrain, ZoneEffectKind } from '../models/types';
 import type { SanityBand } from '../engine/sanityBands';
 import { proceduralArenaFlavor } from './proceduralFlavor';
-import { EXTRA_ARENA_EVENTS, UNIVERSAL_EVENTS_GROUP6 } from './arenaEvents';
+import { EXTRA_ARENA_EVENTS, UNIVERSAL_EVENTS_GROUP6, UNIVERSAL_EVENTS_GROUP7 } from './arenaEvents';
 import { NEW_ARENA_FLAVOR } from './arenaFlavorNew';
 import { HIPPODROME_SET_FLAVOR } from './arenaFlavorSetHippodrome';
 
@@ -14883,6 +14883,8 @@ stampEventIds('generic', GENERIC_ARENA_FLAVOR.events);
 // AUDIT-11 §9/§10: the new universal causes and beats, folded in before the
 // ids are stamped so they get derived ids like every other shared event.
 UNIVERSAL_EVENTS.push(...UNIVERSAL_EVENTS_GROUP6);
+// AUDIT-12 §9/§10.
+UNIVERSAL_EVENTS.push(...UNIVERSAL_EVENTS_GROUP7);
 stampEventIds('universal', UNIVERSAL_EVENTS);
 
 export function arenaFlavor(arenaId: string, arena?: Arena): ArenaFlavor {

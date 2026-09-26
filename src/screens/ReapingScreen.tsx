@@ -15,6 +15,7 @@ import { standingLine } from '../engine/continuity';
 import { INTERVIEW_PERSONAS } from '../data/personas';
 import { InterviewPersona } from '../models/types';
 import { isVeteran } from '../engine/veterans';
+import { MUTATORS as MUTATOR_DECK } from '../data/mutators';
 
 export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, onReroll, onConfirm, onCoach, onRig }: {
     tributes: Tribute[],
@@ -65,6 +66,17 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
                 </p>
             </div>
 
+            {/* AUDIT-12 §4: the mutator cards this Games is played under. */}
+            {(gameState?.config.mutators?.length ?? 0) > 0 && (
+                <div className="panel p-3 flex flex-wrap gap-2 items-baseline" data-testid="reaping-mutators">
+                    <span className="eyebrow">Mutators in play</span>
+                    {gameState!.config.mutators!.map(id => {
+                        const m = MUTATOR_DECK.find(x => x.id === id);
+                        return <span key={id} className="chip chip-accent" title={m?.blurb}>{m?.name ?? id}</span>;
+                    })}
+                </div>
+            )}
+
             {/* §2.10: the run's identity in one place, before a single line of
                 chronicle has been written. The player used to piece this
                 together from scattered log lines, and two of these settings
@@ -112,7 +124,7 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
                 feed nobody reads before the arena opens. */}
             {continuity && (continuity.grudgeLine || Object.keys(continuity.standings).length > 0 || veteranCount > 0) && (
                 <div className="panel p-4 space-y-2 animate-riseIn" style={{ borderColor: 'var(--gold)', borderWidth: 3 }}>
-                    <div className="eyebrow" style={{ color: 'var(--gold)' }}>Your Panem remembers</div>
+                    <div className="eyebrow" style={{ color: 'var(--gold-text)' }}>Your Panem remembers</div>
                     {continuity.grudgeLine && (
                         <p className="text-label leading-relaxed text-[var(--ink)]">
                             <strong>Grudge {continuity.grudge}/3.</strong> {continuity.grudgeLine}
@@ -260,13 +272,13 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
                                             <span className="ml-1.5 chip chip-gold" role="group" aria-label="A past victor from your Hall of Fame, reaped again." title="A past victor from your Hall of Fame, reaped again.">Victor</span>
                                         )}
                                         {t.fanFavourite && (
-                                            <span className="ml-1.5 text-[var(--gold)]" role="group" aria-label="A Capitol favourite before the Games have even begun." title="A Capitol favourite before the Games have even begun.">★</span>
+                                            <span className="ml-1.5 text-[var(--gold-text)]" role="group" aria-label="A Capitol favourite before the Games have even begun." title="A Capitol favourite before the Games have even begun.">★</span>
                                         )}
                                     </div>
                                     <div className="eyebrow mt-0.5">
                                         {t.gender}
                                         {t.volunteered && (
-                                            <span className="ml-1.5 text-[var(--gold)]">· Volunteer</span>
+                                            <span className="ml-1.5 text-[var(--gold-text)]">· Volunteer</span>
                                         )}
                                     </div>
                                     {t.reapingNote && (

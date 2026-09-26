@@ -38,54 +38,59 @@ export interface DirectorTaste {
     sponsor: number;
 }
 
+/**
+ * AUDIT-12 S3: tastes span 0.6–1.8 so each one moves its metric well clear of
+ * run-to-run noise (the 0.95–1.15 band was invisible). AUDIT-12 S2: the
+ * signature→taste map below no longer contradicts itself.
+ */
 const TASTES: Record<DirectorTasteId, DirectorTaste> = {
     'mutt-lover': {
         id: 'mutt-lover', label: 'mutt-lover',
         blurb: 'Releases mutts whenever there is an excuse; the closing arena is hungrier than usual.',
-        mutts: 1.15, fire: 1, weather: 0.85, betrayal: 1, sponsor: 1,
+        mutts: 1.8, fire: 1, weather: 0.7, betrayal: 1, sponsor: 0.8,
     },
     'fire-lover': {
         id: 'fire-lover', label: 'fire-lover',
         blurb: 'When the booth reaches for the weather, it reaches for heat.',
-        mutts: 1, fire: 2, weather: 0.9, betrayal: 1, sponsor: 1,
+        mutts: 1, fire: 1.8, weather: 0.7, betrayal: 1, sponsor: 1,
     },
     'alliance-breaker': {
         id: 'alliance-breaker', label: 'alliance-breaker',
         blurb: 'Packs are discouraged: betrayals come easier and the crowd is turned on its favourites.',
-        mutts: 1, fire: 1, weather: 1, betrayal: 1.1, sponsor: 1,
+        mutts: 1, fire: 1, weather: 1, betrayal: 1.6, sponsor: 0.8,
     },
     'weather-obsessed': {
         id: 'weather-obsessed', label: 'weather-obsessed',
         blurb: 'Every unscheduled beat is a front; the climate budget is spent on purpose.',
-        mutts: 0.95, fire: 1.3, weather: 2, betrayal: 1, sponsor: 1,
+        mutts: 0.8, fire: 1.2, weather: 1.8, betrayal: 1, sponsor: 1,
     },
     'sponsor-friendly': {
         id: 'sponsor-friendly', label: 'sponsor-friendly',
         blurb: 'Lets the parachutes through: sponsors are more generous and supply drops more common.',
-        mutts: 0.95, fire: 1, weather: 0.9, betrayal: 1, sponsor: 1.05,
+        mutts: 0.7, fire: 1, weather: 0.8, betrayal: 0.8, sponsor: 1.7,
     },
     showrunner: {
         id: 'showrunner', label: 'showrunner',
         blurb: 'Wants set pieces: crowd-turning beats and bounties over quiet attrition.',
-        mutts: 1, fire: 1.2, weather: 1, betrayal: 1.05, sponsor: 1,
+        mutts: 1.2, fire: 1.4, weather: 1, betrayal: 1.3, sponsor: 1,
     },
     'hands-off': {
         id: 'hands-off', label: 'hands-off',
         blurb: 'Intervenes as little as possible and lets the field do the work.',
-        mutts: 0.95, fire: 1, weather: 0.9, betrayal: 1, sponsor: 1,
+        mutts: 0.6, fire: 0.8, weather: 0.6, betrayal: 1, sponsor: 1,
     },
 };
 
 const BY_SIGNATURE: Record<GamemakerSignature, DirectorTasteId> = {
     'release-mutts': 'mutt-lover',
-    'cull-the-weak': 'mutt-lover',
-    'seal-the-horn': 'mutt-lover',
+    'cull-the-weak': 'fire-lover',
+    'seal-the-horn': 'showrunner',
     'hunt-the-favourite': 'fire-lover',
     'punish-alliances': 'alliance-breaker',
-    'call-a-truce': 'alliance-breaker',
+    'call-a-truce': 'sponsor-friendly',
     'weather-front': 'weather-obsessed',
     'night-without-end': 'weather-obsessed',
-    'poison-the-wells': 'weather-obsessed',
+    'poison-the-wells': 'alliance-breaker',
     'flood-the-low': 'weather-obsessed',
     'spare-the-young': 'sponsor-friendly',
     'arm-the-underdog': 'sponsor-friendly',

@@ -60,6 +60,7 @@
     "test:replayability": "tsx scripts/check-replayability.ts",
     "test:warnings": "tsx scripts/check-warnings.ts",
     "test:review-fixes": "tsx scripts/check-review-fixes.ts",
+    "test:audit12": "tsx scripts/check-audit12.ts",
     "funnel": "tsx scripts/funnel.ts",
     "cohorts": "tsx scripts/cohorts.ts",
     "catalog": "tsx scripts/catalog.ts",

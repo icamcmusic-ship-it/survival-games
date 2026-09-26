@@ -180,3 +180,17 @@ export function resetChronicleFilters(): void {
         followOnly: false,
     });
 }
+
+/**
+ * AUDIT-12 S7: follow-cam pins belong to one Games. Tribute ids (`d3-male`)
+ * are reused run to run, so a pin carried into the next seed would silently
+ * follow a stranger. Called whenever a run starts; a resume of the same seed
+ * keeps its pins.
+ */
+let pinnedSeed: string | null = null;
+export function scopeFollowCamToSeed(seed: string): void {
+    if (pinnedSeed !== null && pinnedSeed !== seed) {
+        setChronicle({ pinnedIds: [], followOnly: false });
+    }
+    pinnedSeed = seed;
+}

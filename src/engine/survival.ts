@@ -1,5 +1,5 @@
 import { Tribute, attr } from '../models/types';
-import { ARENA_LAWS, CAREER_APPETITE, ZONES, POISONING, FATIGUE_MISTAKES, SANITY_BANDS, DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TOOLS, TRAIT_EFFECTS, UNIVERSAL_DEATHS, VITALS, WATER, SITUATIONAL_KIT } from '../data/balance';
+import { ARENA_LAWS, CAREER_APPETITE, ZONES, POISONING, FATIGUE_MISTAKES, SANITY_BANDS, DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TOOLS, TRAIT_EFFECTS, UNIVERSAL_DEATHS, VITALS, WATER, SITUATIONAL_KIT , AUDIT12_TRIBUTES } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { adjustRel, getRel } from './relationships';
 import { samePlace } from './verticality';
@@ -267,8 +267,14 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
     // §3.1: condition is a starvation buffer. A Padded tribute goes hungry for
     // longer before the arena starts taking health for it; a Wasted one has
     // spent that buffer already, which is precisely when they most need it.
+    if (t.vitals.hunger <= VITALS.starvingThreshold + starvationBuffer(t)) t.starvingCycles = 0;
     if (t.vitals.hunger > VITALS.starvingThreshold + starvationBuffer(t)) {
-        if (applyDamage(ctx, t, VITALS.starvingDamage, { cause: 'Died of starvation', kind: 'status', code: 'starvation' })) {
+        // AUDIT-12 §5: hunger that bites. A body that has had nothing for days
+        // pays more for each further cycle, not the same small toll forever.
+        t.starvingCycles = (t.starvingCycles ?? 0) + 1;
+        const bite = Math.min(AUDIT12_TRIBUTES.starvingDamageCap,
+            VITALS.starvingDamage + (t.starvingCycles - 1) * AUDIT12_TRIBUTES.starvingDamagePerCycle);
+        if (applyDamage(ctx, t, bite, { cause: 'Died of starvation', kind: 'status', code: 'starvation' })) {
             reliefFor(t, 'hunger');
         }
         // Going properly hungry and coming out the other side teaches a thing.

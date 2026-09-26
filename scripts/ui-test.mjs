@@ -144,7 +144,7 @@ await step('confirm reaping lands on the chronicle, ready to start', async () =>
   await page.getByRole('heading', { name: /the chronicle/i }).waitFor();
   // The empty state, and the control that starts the run.
   await page.getByText(/the cast is confirmed and the record is empty/i).waitFor();
-  await page.getByRole('button', { name: /hold the reaping/i }).waitFor();
+  await page.getByRole('button', { name: /go to the square/i }).waitFor();
   // AUDIT-6 §1.4: and the pager does not claim to be showing page one of none.
   const body = await page.locator('footer').first().innerText();
   if (/\b1 \/ 0\b/.test(body)) throw new Error('pager still reads "1 / 0" with no pages');
@@ -152,7 +152,7 @@ await step('confirm reaping lands on the chronicle, ready to start', async () =>
 
 // AUDIT-6 §1.1: the pre-Games are staged through the chronicle, one named
 // button per phase, rather than a single "begin training".
-const PRE_GAMES = /hold the reaping|board the train|run the parade|open the training floor|training day \d|read the scores|start the interviews|sound the gong|run the bloodbath/i;
+const PRE_GAMES = /hold the reaping|go to the square|board the train|run the parade|open the training floor|training day \d|read the scores|start the interviews|sound the gong|run the bloodbath/i;
 
 await step('the pre-Games advance one named stage at a time', async () => {
   let stages = 0;
@@ -755,7 +755,10 @@ const censusAt = () => page.evaluate(() => {
   let total = 0, under44 = 0, under24 = 0, inlineExempt = 0;
   const big = [], small = [];
   document.querySelectorAll('button, a[href], [role=button], input, select, [role=tab]').forEach(el => {
-    const r = el.getBoundingClientRect();
+    // AUDIT-12 U12: a checkbox or radio wrapped in its label is hit through
+    // the label, so the label is the target that is measured.
+    const host = el.matches('input[type=checkbox], input[type=radio]') ? (el.closest('label') ?? el) : el;
+    const r = host.getBoundingClientRect();
     if (r.width === 0 || r.height === 0) return;
     total++;
     const min = Math.min(r.width, r.height);
@@ -915,8 +918,7 @@ await step('the arena and the tribute sheet both fit a 380px phone', async () =>
  */
 const CONTRAST_EXEMPT = /^(chip-|badge-)/;
 
-await step('text contrast meets WCAG AA on rendered styles', async () => {
-  const bad = await page.evaluate(() => {
+const contrastFailures = () => page.evaluate(() => {
     const lum = ([r, g, b]) => {
       const f = c => { c /= 255; return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4); };
       return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
@@ -954,12 +956,48 @@ await step('text contrast meets WCAG AA on rendered styles', async () => {
     }
     return out;
   });
+
+await step('text contrast meets WCAG AA on rendered styles', async () => {
+  const bad = await contrastFailures();
   const real = bad.filter(b => !CONTRAST_EXEMPT.test(b.cls));
   if (real.length) {
     throw new Error(`${real.length} element(s) under AA contrast, worst: `
       + real.sort((a, b) => a.ratio - b.ratio).slice(0, 4)
         .map(b => `${b.ratio}:1 (needs ${b.need}) "${b.text}" [${b.cls}]`).join(' | '));
   }
+});
+
+/*
+ * AUDIT-12 §4 (U1/U5/U8): the same AA check with the dark theme stamped on,
+ * across the screens that carry the gold band, the red Proceed buttons and
+ * the alliance chips. Every one of those was readable in light and not dark.
+ */
+await step('dark mode text contrast meets WCAG AA', async () => {
+  const setTheme = t => page.evaluate(theme => { document.documentElement.dataset.theme = theme; }, t);
+  const failures = [];
+  const check = async where => {
+    await page.waitForTimeout(150);
+    const bad = (await contrastFailures()).filter(b => !CONTRAST_EXEMPT.test(b.cls));
+    bad.sort((x, y) => x.ratio - y.ratio).slice(0, 3)
+      .forEach(b => failures.push(`${where}: ${b.ratio}:1 (needs ${b.need}) "${b.text}" [${b.cls}]`));
+  };
+  await setTheme('dark');
+  try {
+    await check('current screen');
+    for (const [where, hash, heading] of [
+      ['setup', '/', /may the odds/i],
+      ['hall of fame', '/hall-of-fame', /hall of fame/i],
+      ['how to play', '/how-to-play', /rules of the thing/i],
+    ]) {
+      await page.evaluate(h => { window.location.hash = h; }, hash);
+      await page.getByRole('heading', { name: heading }).first().waitFor();
+      await setTheme('dark');
+      await check(where);
+    }
+  } finally {
+    await setTheme('light');
+  }
+  if (failures.length) throw new Error(`${failures.length} dark-mode AA failure(s): ${failures.slice(0, 6).join(' | ')}`);
 });
 
 await step('a dialog returns focus to whatever opened it', async () => {

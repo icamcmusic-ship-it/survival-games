@@ -11,7 +11,7 @@ import { AMBIENT_TEXTS, BORDER_TEXTS, DYNAMIC_AMBIENT_TEXTS, ENCOUNTER_TEXTS, SU
 import { arenaFlavor } from '../../data/arenaFlavor';
 import { applyDamage, checkDeath, resolveGroupCombat } from '../combat';
 import { processSponsors } from '../sponsors';
-import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, severEdge, depleteZone, edgeKey, travelCost, applyEdgeToll, edgeTimeCost, hasForceField, zoneSightlines, zoneFeatures, tickHiddenEdges, tickGarrisons, tickOpeningEdges, restoreEdge } from '../map';
+import { zoneNames, getZone, reachableZones, depletionOf, regenerateZones, nearestSafeZone, noteTraffic, decayTraffic, severedEdgeSet, severEdge, depleteZone, edgeKey, travelCost, applyEdgeToll, edgeTimeCost, hasForceField, zoneSightlines, zoneFeatures, tickHiddenEdges, tickGarrisons, tickOpeningEdges, repairStrandedZones, restoreEdge } from '../map';
 import { enforceCapacity, giveItem } from '../items';
 import {
     addZoneThreat, advanceCycle, checkIntelLies, cycleOf, noteRivalSighting, noteSighting, shareScoutSighting, tickIntelSharing } from '../memory';
@@ -650,6 +650,8 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
      * their sponsors came through.
      */
     resolveParachutes(ctx);
+    // AUDIT-12 E1: whatever cut a route this cycle, nobody starts the next one boxed in.
+    repairStrandedZones(ctx);
 
     // The anthem closes the night. Every tribute learns exactly who died today,
     // wherever they were standing when it happened — which is the single most
@@ -793,7 +795,7 @@ function maintainMovingArena(ctx: SimContext) {
 // every single cycle. Memoised on the context itself (see collapseOrder on
 // SimContext) instead of a module-level cache: that scopes it to exactly one
 // run, with nothing to invalidate and no size cap to tune.
-function buildCollapseOrder(ctx: SimContext): string[] {
+export function buildCollapseOrder(ctx: SimContext): string[] {
     if (ctx.collapseOrder) return ctx.collapseOrder;
     const order = computeCollapseOrder(ctx);
     ctx.collapseOrder = order;
@@ -1854,11 +1856,13 @@ function resolveEncounters(
             const multiplier = (1 + (ctx.state.day - escalatedSince) * ESCALATION.hazardMultiplierPerDay) * gm.hazardMultiplier;
             eventChance = Math.min(ESCALATION.hazardCeiling, eventChance * multiplier);
             // AUDIT-11 §12: a mutt-loving director's closing arena is hungrier.
-            muttChance = Math.min(ESCALATION.hazardCeiling, muttChance * multiplier * directorTaste(ctx.state.headGamemaker).mutts);
+            // AUDIT-12 E12: taste and the campaign arc stay out of Vanilla rules.
+            const tasteMutts = ctx.state.config.vanillaRules ? 1 : directorTaste(ctx.state.headGamemaker).mutts;
+            muttChance = Math.min(ESCALATION.hazardCeiling, muttChance * multiplier * tasteMutts);
         }
         // AUDIT-11 §12: the campaign's rebellion meter — the Capitol answers
         // unrest with a crueller arena. 1 with no campaign behind the run.
-        const cruelty = capitolCruelty(ctx.state.campaign);
+        const cruelty = ctx.state.config.vanillaRules ? 1 : capitolCruelty(ctx.state.campaign);
         eventChance *= cruelty;
         muttChance *= cruelty;
         eventChance = Math.min(ENCOUNTERS.hazardCeiling, eventChance * ctx.state.config.hazardRate);

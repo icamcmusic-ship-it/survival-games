@@ -24,7 +24,7 @@ import { areLovers, maintainPerformance, allied, isHostileTo } from './alliance'
 import { nursingPatients } from './stance';
 import { incurDebt } from './debts';
 import { DEBTS } from '../data/balance';
-import { giveItem, hasTool, itemPhrase, mintItem, spoilageBonus } from './items';
+import { consumeOne, giveItem, hasTool, itemPhrase, mintItem, spoilageBonus } from './items';
 import { clampTribute } from './vitals';
 import { attemptFieldDressing, clearBleeding, healInjury, injure, injuryGrade, openWound, shouldDressWound } from './wounds';
 import { profOf, trainProficiency, observeProficiency } from './proficiency';
@@ -35,7 +35,7 @@ import { resolveMuttAttack as resolveMuttAttackImpl } from './mutts';
 import { hasEffect, severRandomEdge, startZoneEffect } from './zoneEffects';
 import { arenaHasLaw } from './gamesProfile';
 import { traitMod } from '../data/traits';
-import { OBJECTIVES, QUALITY_BIAS } from '../data/balance';
+import { AUDIT12_TRIBUTES, OBJECTIVES, QUALITY_BIAS } from '../data/balance';
 import { isAggressiveStance, isDefensiveStance, isEvasiveStance } from '../data/stances';
 import { exhaustedHere, freshGround, isBeingFollowed, layFalseTrail, noteForageFailure, noteForageSuccess } from './intent';
 import { loseSanity } from './sanityBands';
@@ -654,10 +654,28 @@ function isDesperate(ctx: SimContext, t: Tribute, other: Tribute): boolean {
     return ctx.rng.chance(Math.min(0.95, chance));
 }
 
+/**
+ * AUDIT-12 T3: a shared meal eats something. One food item from whichever of
+ * them has one; with nothing to share it is company, not calories, and the
+ * relief is scaled down.
+ */
+function shareMealBetween(t: Tribute, other: Tribute) {
+    const food = consumeOne(t, i => i.type === 'food') ?? consumeOne(other, i => i.type === 'food');
+    const relief = ENCOUNTER_BRANCH.sharedMealRelief * (food ? 1 : AUDIT12_TRIBUTES.emptyMealRelief);
+    t.vitals.hunger = Math.max(0, t.vitals.hunger - relief);
+    other.vitals.hunger = Math.max(0, other.vitals.hunger - relief);
+}
+
 /** A pair who happen to be standing in the same zone with time on their hands. */
 export function resolvePairEncounter(ctx: SimContext, t: Tribute, other: Tribute) {
     const inSameAlliance = allied(t, other);
-    const relationship = getRel(t, other.id);
+    // AUDIT-12 T4: a meeting is only as warm as its colder side. A hunter who
+    // hates `t` is not pulled into a shared meal because `t` likes them.
+    const relationship = Math.min(getRel(t, other.id), getRel(other, t.id));
+    const huntingEachOther = (t.objective?.kind === 'hunt' && t.objective.targetId === other.id)
+        || (other.objective?.kind === 'hunt' && other.objective.targetId === t.id);
+    const eitherAggressive = isAggressiveStance(t.stance) || isAggressiveStance(other.stance);
+    const friendly = relationship > ENCOUNTER_BRANCH.friendlyRegard && !huntingEachOther && !eitherAggressive;
     const vars = { t1: t.name, t2: other.name, zone: t.zone };
     noteContact(ctx.state, t, other);
 
@@ -711,16 +729,14 @@ export function resolvePairEncounter(ctx: SimContext, t: Tribute, other: Tribute
             // tryParley returns null here only when one of them has just gone
             // back on their word. The knife is the point of doing that.
             resolveCombat(ctx, t, other);
-        } else if (relationship > ENCOUNTER_BRANCH.friendlyRegard) {
+        } else if (friendly) {
             // Still on good terms underneath the agreement: they eat together.
-            t.vitals.hunger = Math.max(0, t.vitals.hunger - ENCOUNTER_BRANCH.sharedMealRelief);
-            other.vitals.hunger = Math.max(0, other.vitals.hunger - ENCOUNTER_BRANCH.sharedMealRelief);
+            shareMealBetween(t, other);
             adjustMutual(ctx.state, t, other, ENCOUNTER_BRANCH.sharedMealRegard);
         }
-    } else if (relationship > ENCOUNTER_BRANCH.friendlyRegard) {
+    } else if (friendly) {
         ctx.logEvent(fill(ctx.pickText(ENCOUNTER_TEXTS.shareResources), vars), [t.id, other.id], { category: 'alliance' });
-        t.vitals.hunger = Math.max(0, t.vitals.hunger - ENCOUNTER_BRANCH.sharedMealRelief);
-        other.vitals.hunger = Math.max(0, other.vitals.hunger - ENCOUNTER_BRANCH.sharedMealRelief);
+        shareMealBetween(t, other);
         adjustMutual(ctx.state, t, other, ENCOUNTER_BRANCH.sharedMealRegard);
         maintainPerformance(t, other.id, ROMANCE.performedUpkeep);
         maintainPerformance(other, t.id, ROMANCE.performedUpkeep);
@@ -734,7 +750,7 @@ export function resolvePairEncounter(ctx: SimContext, t: Tribute, other: Tribute
             { type: 'desperation-fights', important: true, category: 'combat' }
         );
         resolveCombat(ctx, t, other);
-    } else if (isAggressiveStance(t.stance) || isAggressiveStance(other.stance) || relationship < ENCOUNTER_BRANCH.hostileRegard) {
+    } else if (isAggressiveStance(t.stance) || isAggressiveStance(other.stance) || relationship < ENCOUNTER_BRANCH.hostileRegard || huntingEachOther) {
         // Even a hostile meeting can end in a negotiation rather than a fight,
         // if neither of them likes the odds enough to start one.
         if (!tryParley(ctx, t, other)) resolveCombat(ctx, t, other);
@@ -790,7 +806,7 @@ function attemptForage(
         return false;
     }
     if (!ctx.rng.chance(chance)) {
-        depleteZone(ctx.state, t.zone, ZONES.depletionPerAttempt);
+        depleteZone(ctx.state, t.zone, ZONES.depletionPerAttempt * AUDIT12_TRIBUTES.forageDepletionScale);
         // §3.2: repeated failure in the same place is a fact about the place,
         // and eventually a decision rather than a modifier. See `exhaustedHere`.
         noteForageFailure(t, t.zone);
@@ -823,7 +839,8 @@ function attemptForage(
     noteForageSuccess(t, t.zone);
     // §3.10: anybody standing here watched them do it.
     observeProficiency(ctx, t, 'forage');
-    depleteZone(ctx.state, t.zone, ZONES.depletionPerForage);
+    // AUDIT-12 §5 hunger that bites: ground is stripped faster than it regrows.
+    depleteZone(ctx.state, t.zone, ZONES.depletionPerForage * AUDIT12_TRIBUTES.forageDepletionScale);
     ctx.logEvent(
         fill(ctx.pickText(flavor.actions.forage), { tribute: t.name, zone: t.zone, item: itemPhrase(fresh) }),
         [t.id],
@@ -878,7 +895,7 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
     // A net in still water is not foraging, it is fishing, and it works.
     const fishing = hasTool(t, 'fishing')
         && (zone?.terrain === 'water' || zone?.terrain === 'wetland');
-    const baseForageChance = ZONES.baseForageChance
+    const rawForageChance = ZONES.baseForageChance
         + (fishing ? ZONES.fishingBonus : 0)
         // §11.5: a light after dark turns groping into searching.
         + (arenaIsDark(ctx.state) && hasTool(t, 'light') ? TOOLS.lightNightForageBonus : 0)
@@ -893,6 +910,10 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
         // §3.8: sleep debt, finally spending. Someone who has not properly
         // slept in days walks past the things they are looking for.
         - sleepForagePenalty(t);
+    // AUDIT-12 §5 hunger that bites: stripped ground is harder to search at
+    // all, not merely less rewarding — the whole roll scales with what is left.
+    const baseForageChance = rawForageChance
+        * (1 - depletionOf(ctx.state, t.zone) * AUDIT12_TRIBUTES.depletionForagePenalty);
 
     // §6.4: anyone holding a clean blade and something to coat it with takes
     // the opportunity — nightlock spoils, and a poisoned edge is the outer

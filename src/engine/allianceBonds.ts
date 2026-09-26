@@ -1,12 +1,16 @@
 import { Alliance, GameState, Tribute } from '../models/types';
-import { ALLIANCE_BONDS } from '../data/balance';
+import { ALLIANCE_BONDS, AUDIT12_TRIBUTES } from '../data/balance';
 import { ARCHETYPES } from '../data/archetypes';
 import { traitMod } from '../data/traits';
 import { SimContext } from './context';
-import { allianceOf, allianceRecords, membersOf } from './alliance';
+import { allianceOf, allianceRecords, allied, membersOf } from './alliance';
 import { adjustRel, adjustTrust, getRel, setRel } from './relationships';
-import { cycleOf } from './memory';
+import { cycleOf, raiseSuspicion } from './memory';
+import { loseSanity } from './sanityBands';
+import { grantTruce } from './parley';
 import { clampTribute } from './vitals';
+import { isActive } from './downed';
+import { consumeOne } from './items';
 
 /**
  * AUDIT-11 §6: relationships and alliances.
@@ -100,15 +104,36 @@ function runRoleDuties(ctx: SimContext, record: Alliance, camp: Tribute[]) {
  * short-changed member remembers, and it is written down.
  */
 function shareMeal(ctx: SimContext, record: Alliance, camp: Tribute[]) {
-    const provider = camp.find(m => m.id === (record.roles?.quartermaster ?? record.roles?.muscle ?? record.leaderId));
+    // AUDIT-12 E4: the first *living, present* holder of the job, not the
+    // first id on the list — a dead quartermaster used to cancel every meal.
+    const provider = [record.roles?.quartermaster, record.roles?.muscle, record.leaderId]
+        .map(id => camp.find(m => m.id === id))
+        .find((m): m is Tribute => !!m);
     if (!provider) return;
+    // AUDIT-12 T13 / T3: a meal is only a duty when there is food to deal out,
+    // and dealing it out uses some.
+    const hasFood = record.sharedCache.some(i => i.type === 'food') || provider.inventory.some(i => i.type === 'food');
+    if (!hasFood) return;
     const fairness = record.fairness ?? (record.fairness = { ate: {}, grudges: {} });
     const others = camp.filter(m => m.id !== provider.id);
     const treachery = Math.max(0, treacheryOf(provider)) * 10;
     const greedy = treachery > 0
-        && ctx.rng.chance(ALLIANCE_BONDS.greedBase + treachery * ALLIANCE_BONDS.greedPerTreachery);
+        && ctx.rng.chance(Math.min(AUDIT12_TRIBUTES.greedChanceCap,
+            ALLIANCE_BONDS.greedBase + treachery * ALLIANCE_BONDS.greedPerTreachery));
+    const cacheIdx = record.sharedCache.findIndex(i => i.type === 'food');
+    if (cacheIdx >= 0) {
+        const item = record.sharedCache[cacheIdx];
+        if (item.stack !== undefined && item.stack > 1) item.stack -= 1;
+        else record.sharedCache.splice(cacheIdx, 1);
+    } else {
+        consumeOne(provider, i => i.type === 'food');
+    }
+    const portion = AUDIT12_TRIBUTES.campMealPortion / Math.max(1, camp.length - 1);
     if (!greedy) {
-        camp.forEach(m => { fairness.ate[m.id] = (fairness.ate[m.id] ?? 0) + 1; });
+        camp.forEach(m => {
+            fairness.ate[m.id] = (fairness.ate[m.id] ?? 0) + 1;
+            m.vitals.hunger = Math.max(0, m.vitals.hunger - portion);
+        });
         judge(ctx, record, provider, others, 'provider', true);
         return;
     }
@@ -119,11 +144,19 @@ function shareMeal(ctx: SimContext, record: Alliance, camp: Tribute[]) {
         fairness.ate[m.id] = (fairness.ate[m.id] ?? 0) + (m.id === provider.id ? 2 : 1);
     });
     fairness.ate[short.id] = fairness.ate[short.id] ?? 0;
+    camp.forEach(m => {
+        if (m.id !== short.id) m.vitals.hunger = Math.max(0, m.vitals.hunger - portion);
+    });
     short.vitals.hunger += ALLIANCE_BONDS.shortHunger;
     provider.vitals.hunger -= ALLIANCE_BONDS.greedyHunger;
     clampTribute(short); clampTribute(provider);
     const prior = fairness.grudges[short.id];
-    const amount = (prior?.againstId === provider.id ? prior.amount : 0) + ALLIANCE_BONDS.grudgePerSplit;
+    // AUDIT-12 §6: the per-pair ledger. A grudge is held against a person,
+    // not against whoever holds the ladle, so it survives a role change.
+    const pairs = record.pairGrudges ?? (record.pairGrudges = {});
+    const row = pairs[short.id] ?? (pairs[short.id] = {});
+    row[provider.id] = (row[provider.id] ?? 0) + ALLIANCE_BONDS.grudgePerSplit;
+    const amount = row[provider.id];
     fairness.grudges[short.id] = { againstId: provider.id, amount };
     adjustRel(short, provider.id, -ALLIANCE_BONDS.grudgeRegard);
     judge(ctx, record, provider, others, 'provider', false);
@@ -142,9 +175,10 @@ function shareMeal(ctx: SimContext, record: Alliance, camp: Tribute[]) {
 export function tickAllianceBonds(ctx: SimContext) {
     Object.values(allianceRecords(ctx.state)).forEach(record => {
         if (record.id.startsWith('lovers-')) return;
-        const members = membersOf(ctx.state, record.id).filter(m => m.status === 'alive');
+        // AUDIT-12 T9: a downed member does no duty and deals out no meal.
+        const members = membersOf(ctx.state, record.id).filter(m => m.status === 'alive' && isActive(m));
         if (members.length < 2) return;
-        const campZone = record.campZone ?? members.find(m => m.id === record.leaderId)?.zone;
+        const campZone = record.campZone ?? (members.find(m => m.id === record.leaderId) ?? members[0])?.zone;
         const camp = members.filter(m => m.zone === campZone);
         if (camp.length < 2) return;
         runRoleDuties(ctx, record, camp);
@@ -175,13 +209,19 @@ export function watchFails(ctx: SimContext, record: Alliance, watcher: Tribute, 
 
 /** Grudge `holder` carries against `targetId` from unfair splits, in their own group. */
 export function grudgeAgainst(state: GameState, holder: Tribute, targetId: string): number {
-    const g = allianceOf(state, holder.allianceId)?.fairness?.grudges[holder.id];
+    const record = allianceOf(state, holder.allianceId);
+    const pair = record?.pairGrudges?.[holder.id]?.[targetId];
+    if (pair !== undefined) return pair;
+    const g = record?.fairness?.grudges[holder.id];
     return g && g.againstId === targetId ? g.amount : 0;
 }
 
 /** Total grudge `holder` carries in their current group. */
 export function grudgeTotal(state: GameState, holder: Tribute): number {
-    return allianceOf(state, holder.allianceId)?.fairness?.grudges[holder.id]?.amount ?? 0;
+    const record = allianceOf(state, holder.allianceId);
+    const row = record?.pairGrudges?.[holder.id];
+    if (row) return Object.values(row).reduce((a, b) => a + b, 0);
+    return record?.fairness?.grudges[holder.id]?.amount ?? 0;
 }
 
 /** Whether a betrayal just chosen is the fairness ledger coming due; logs it if so. */
@@ -216,6 +256,8 @@ export function witnessTheft(ctx: SimContext, thief: Tribute, witnesses: Tribute
     const seen = witnesses.filter(w => w.id !== thief.id && w.status === 'alive' && w.zone === thief.zone);
     if (seen.length === 0) return;
     seen.forEach(w => setRel(w, thief.id, Math.min(getRel(w, thief.id), ALLIANCE_BONDS.theftRivalRegard)));
+    // AUDIT-12 §6: witnessed deceit is evidence, not only a grudge.
+    seen.forEach(w => raiseSuspicion(w, thief.id, AUDIT12_TRIBUTES.deceitSuspicion));
     ctx.logEvent(
         `${seen.map(w => w.name).join(' and ')} ${seen.length === 1 ? 'is' : 'are'} not asleep. ${seen.length === 1 ? 'They watch' : 'They watch'} ${thief.name} go through the pile, say nothing, and from that night on ${thief.name} is not an ally who left — they are a rival.`,
         [thief.id, ...seen.map(w => w.id)],
@@ -305,4 +347,91 @@ export function noteStationMates(ctx: SimContext, groups: Iterable<Tribute[]>) {
 /** Shared station days between two tributes. */
 export function stationBondOf(a: Tribute, b: Tribute): number {
     return Math.min(a.stationMates?.[b.id] ?? 0, b.stationMates?.[a.id] ?? 0);
+}
+
+/**
+ * AUDIT-12 §6: the hollow victory. Killing somebody you once kept a camp with
+ * costs sanity, and it follows the killer: everybody else who was in a group
+ * with both of them knows what it means, and suspects them for it.
+ */
+export function tickHollowVictories(ctx: SimContext) {
+    const byId = new Map(ctx.state.tributes.map(t => [t.id, t] as const));
+    ctx.state.tributes.forEach(victim => {
+        if (victim.status !== 'dead') return;
+        const killer = victim.lastDamage?.sourceId ? byId.get(victim.lastDamage.sourceId) : undefined;
+        if (!killer || killer.id === victim.id || killer.status !== 'alive') return;
+        if (killer.hollowVictims?.includes(victim.id)) return;
+        const wasAlly = (killer.formerAllies ?? []).includes(victim.id)
+            || allied(killer, victim);
+        if (!wasAlly) return;
+        killer.hollowVictims = [...(killer.hollowVictims ?? []), victim.id];
+        loseSanity(killer, AUDIT12_TRIBUTES.hollowVictorySanity);
+        clampTribute(killer);
+        const knowers = ctx.state.tributes.filter(o => o.status === 'alive' && o.id !== killer.id
+            && ((o.formerAllies ?? []).includes(victim.id) || allied(o, victim)));
+        knowers.forEach(o => raiseSuspicion(o, killer.id, AUDIT12_TRIBUTES.hollowVictorySuspicion));
+        ctx.logEvent(
+            `${killer.name} has ${victim.name}'s blood on them, and ${victim.name} once slept a watch away from them. `
+            + 'It does not feel like winning. It keeps not feeling like winning.',
+            [killer.id, victim.id],
+            { type: 'hollow-victory', important: true, category: 'sanity', zone: killer.zone, actorId: killer.id }
+        );
+    });
+}
+
+/**
+ * AUDIT-12 §6: loner support. Two tributes with nobody who meet in the same
+ * zone at nightfall, neither hunting the other, can strike a one-night shared
+ * camp — a truce with a shared watch, no roles, no cache. And a truce is
+ * transitive for one step: the loner who has a truce with both of two
+ * strangers sitting at the same fire brings them into it (a truce chain).
+ */
+export function tickLonerCamps(ctx: SimContext) {
+    const state = ctx.state;
+    if (state.phase !== 'night') return;
+    const cycle = cycleOf(state);
+    const loners = state.tributes.filter(t => t.status === 'alive' && !t.allianceId && isActive(t));
+    const byZone = new Map<string, Tribute[]>();
+    loners.forEach(t => byZone.set(t.zone, [...(byZone.get(t.zone) ?? []), t]));
+    const hunting = (a: Tribute, b: Tribute) =>
+        (a.objective?.kind === 'hunt' && a.objective.targetId === b.id)
+        || (b.objective?.kind === 'hunt' && b.objective.targetId === a.id);
+    const truced = (a: Tribute, b: Tribute) => (a.truces?.[b.id] ?? -1) > cycle;
+    byZone.forEach((here, zone) => {
+        if (here.length < 2) return;
+        // Truce chains first: A–B and B–C at one fire makes A–C.
+        here.forEach(b => here.forEach(a => here.forEach(c => {
+            if (a.id >= c.id || a.id === b.id || c.id === b.id) return;
+            if (!truced(a, b) || !truced(b, c) || truced(a, c) || hunting(a, c)) return;
+            if (!ctx.rng.chance(AUDIT12_TRIBUTES.truceChainChance)) return;
+            grantTruce(ctx, a, c, AUDIT12_TRIBUTES.sharedCampCycles, 'brokered');
+            ctx.logEvent(
+                `${b.name} has an understanding with ${a.name} and another with ${c.name}, and in ${zone} that turns out to be enough for the three of them to share a fire.`,
+                [b.id, a.id, c.id],
+                { type: 'shared-camp', category: 'alliance', zone }
+            );
+        })));
+        // Then the one-night pact between two who have nobody.
+        const pool = [...here].sort((x, y) => (x.id < y.id ? -1 : 1));
+        for (let i = 0; i + 1 < pool.length; i++) {
+            const a = pool[i];
+            const b = pool.slice(i + 1).find(o => !hunting(a, o) && !truced(a, o)
+                && Math.min(getRel(a, o.id), getRel(o, a.id)) >= AUDIT12_TRIBUTES.sharedCampRegard);
+            if (!b) continue;
+            const hermit = ARCHETYPES[a.archetype].caution + ARCHETYPES[b.archetype].caution;
+            if (!ctx.rng.chance(AUDIT12_TRIBUTES.sharedCampChance + Math.max(0, hermit) * 0.2)) continue;
+            grantTruce(ctx, a, b, AUDIT12_TRIBUTES.sharedCampCycles, 'mutual-threat');
+            [a, b].forEach(m => {
+                m.sleepDebt = Math.max(0, (m.sleepDebt ?? 0) - AUDIT12_TRIBUTES.sharedCampDebtRepaid);
+                adjustTrust(m, (m === a ? b : a).id, AUDIT12_TRIBUTES.sharedCampTrust);
+            });
+            ctx.logEvent(
+                `${a.name} and ${b.name}, each alone, end up on either side of the same fire in ${zone}. `
+                + 'Nothing is agreed except that tonight one of them sleeps while the other watches, and then they swap.',
+                [a.id, b.id],
+                { type: 'shared-camp', category: 'alliance', zone }
+            );
+            pool.splice(pool.indexOf(b), 1);
+        }
+    });
 }

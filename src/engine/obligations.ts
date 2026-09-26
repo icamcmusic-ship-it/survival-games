@@ -1,6 +1,6 @@
 import { GameState, Obligation, Tribute } from '../models/types';
 import { SimContext, getAlive } from './context';
-import { OBLIGATIONS } from '../data/balance';
+import { AUDIT12_TRIBUTES, OBLIGATIONS } from '../data/balance';
 import { cycleOf } from './memory';
 import { adjustRel, adjustTrust, getRel } from './relationships';
 import { hasTruce } from './parley';
@@ -210,7 +210,14 @@ export function tickObligations(ctx: SimContext) {
         if (o.kind === 'rescue' && from && to && from.status === 'alive' && to.status === 'alive'
             && isDowned(to) && isActive(from) && !samePlace(state.arena, from, to)
             && (hopsTo(state.arena, from.zone, to.zone, state.collapsedZones ?? [], severedEdgeSet(state)) ?? Infinity) <= 1) {
-            o.rescueMissed = true;
+            // AUDIT-12 T11: one cycle is not a choice — it takes a cycle to
+            // hear and move. Two or more cycles of staying put is.
+            o.rescueMissedCycles = (o.rescueMissedCycles ?? 0) + 1;
+            if (o.rescueMissedCycles >= AUDIT12_TRIBUTES.rescueMissCycles) o.rescueMissed = true;
+        } else if (o.kind === 'rescue' && to && !isDowned(to)) {
+            // Back on their feet (whoever got them there): the miss is moot.
+            o.rescueMissedCycles = 0;
+            o.rescueMissed = false;
         }
 
         // The person it was owed to is dead: nothing left to owe — unless they

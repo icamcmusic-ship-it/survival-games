@@ -1,7 +1,7 @@
 import { ARENA_REVEALS } from '../data/arenaReveals';
 import React, { useMemo, useState } from 'react';
 import { ARENAS, STARTER_ARENA_IDS, DEFAULT_GAME_CONFIG } from '../data/constants';
-import { MUTATORS, applyMutator, dailyArenaId, dailyConfig, dailySeed, featuredArena, mutatorActive } from '../data/replayHooks';
+import { PRESETS as QUICK_PRESETS, applyPreset, dailyArenaId, dailyConfig, dailySeed, featuredArena, presetActive } from '../data/replayHooks';
 import { GameConfig } from '../models/types';
 import { Play, ChevronDown, ChevronRight, ArrowRight, History, Lock } from 'lucide-react';
 import { gameActions, gameStore, readHallOfFame, readSavedRun } from '../store/gameStore';
@@ -794,17 +794,17 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                 {tab === 'rules' && (
                     <div>
                 <div className="p-5 space-y-2">
-                    <span className="eyebrow">Mutators</span>
+                    <span className="eyebrow">Quick presets</span>
                     <p className="text-micro text-[var(--color-ink-500)]">
-                        One click for a whole lopsided year. Nothing here is a new rule — each one is a combination of the settings below.
+                        One click for a whole lopsided year. Nothing here is a new rule — each one is a combination of the settings below. (The mutator deck, which does add rules, is on the Tributes tab.)
                     </p>
                     <div className="grid sm:grid-cols-2 gap-2 mt-2">
-                        {MUTATORS.map(m => {
-                            const on = mutatorActive(config, m);
+                        {QUICK_PRESETS.map(m => {
+                            const on = presetActive(config, m);
                             return (
                                 <button
                                     key={m.id}
-                                    onClick={() => setConfig(c => applyMutator(c, m))}
+                                    onClick={() => setConfig(c => applyPreset(c, m))}
                                     aria-pressed={on}
                                     aria-label={`${m.name}${on ? ' — active' : ''}`}
                                     className={`text-left p-3 border-2 transition-colors ${
@@ -1382,7 +1382,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                     <span className="flex gap-2">
                                         <button type="button" className="btn btn-sm btn-ghost"
                                             onClick={() => setConfig(c => ({ ...c, mutators: drawMutators(`${Date.now()}-${Math.random()}`) }))}>
-                                            Draw {MUTATORS_PER_GAMES}
+                                            {(config.mutators?.length ?? 0) > 0 ? `Redraw ${MUTATORS_PER_GAMES}` : `Draw ${MUTATORS_PER_GAMES}`}
                                         </button>
                                         <button type="button" className="btn btn-sm btn-ghost" disabled={!(config.mutators?.length)}
                                             onClick={() => setConfig(c => ({ ...c, mutators: undefined }))}>
@@ -1390,7 +1390,8 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                         </button>
                                     </span>
                                 </div>
-                                <div className="flex flex-wrap gap-2">
+                                {/* AUDIT-12 U7: each card carries its blurb; a full hand says so instead of disabling silently. */}
+                                <div className="grid sm:grid-cols-2 gap-2">
                                     {MUTATOR_DECK.map(m => {
                                         const on = config.mutators?.includes(m.id) ?? false;
                                         const full = (config.mutators?.length ?? 0) >= MUTATORS_PER_GAMES;
@@ -1398,25 +1399,27 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                             <button
                                                 key={m.id}
                                                 type="button"
-                                                className="seg-item text-left"
+                                                className="seg-item mutator-card text-left"
                                                 aria-pressed={on}
                                                 disabled={!on && full}
+                                                title={!on && full ? `Hand full — unpick a card to swap in ${m.name}` : undefined}
                                                 onClick={() => setConfig(c => {
                                                     const cur = c.mutators ?? [];
-                                                    const next = on ? cur.filter(x => x !== m.id) : [...cur, m.id];
+                                                    const next = on ? cur.filter(x => x !== m.id) : [...new Set([...cur, m.id])];
                                                     return { ...c, mutators: next.length > 0 ? next : undefined };
                                                 })}
                                             >
-                                                {m.name}
+                                                <span className="block text-xs font-bold">{m.name}{on && <span className="ml-2 text-micro font-mono uppercase">Picked</span>}</span>
+                                                <span className="block text-micro font-normal normal-case tracking-normal text-[var(--color-ink-500)] mt-0.5">{m.blurb}</span>
                                             </button>
                                         );
                                     })}
                                 </div>
-                                {(config.mutators?.length ?? 0) > 0 && (
-                                    <p className="text-micro text-[var(--color-ink-500)]">
-                                        {config.mutators!.map(id => MUTATOR_DECK.find(m => m.id === id)?.blurb).join(' ')}
-                                    </p>
-                                )}
+                                <p className="text-micro text-[var(--color-ink-500)]" data-testid="mutators-note" aria-live="polite">
+                                    {(config.mutators?.length ?? 0) >= MUTATORS_PER_GAMES
+                                        ? `${MUTATORS_PER_GAMES} of ${MUTATORS_PER_GAMES} picked — unpick one to swap. Drawing replaces both.`
+                                        : `${config.mutators?.length ?? 0} of ${MUTATORS_PER_GAMES} picked.${(config.mutators?.length ?? 0) > 0 ? ' Drawing replaces your pick.' : ''}`}
+                                </p>
                             </div>
                             <div className="flex flex-wrap gap-5 pt-1">
                                 {/* §18 (requests): one victor, guaranteed. */}

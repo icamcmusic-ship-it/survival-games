@@ -2,7 +2,7 @@ import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useDialogFocus } from '../ui/useDialogFocus';
 import { GameState } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
-import { ViewName, gameActions } from '../store/gameStore';
+import { ViewName, gameActions, gameStore } from '../store/gameStore';
 import { navigate, routeIsAvailable } from '../store/router';
 import { chronicleStore, setChronicle } from '../store/chronicleStore';
 import { useStore } from '../store/createStore';
@@ -25,7 +25,10 @@ import { resumeWithRecap, setUi } from '../ui/uiStore';
  *  - results grouped by kind with the match highlighted.
  */
 
-type Kind = 'action' | 'tribute' | 'zone' | 'log';
+type Kind = 'nav' | 'action' | 'tribute' | 'zone' | 'log';
+
+/** AUDIT-12 §4: the order groups are shown in, so each group is one block. */
+const KIND_ORDER: Kind[] = ['action', 'nav', 'tribute', 'zone', 'log'];
 
 type Result = {
     id: string;
@@ -40,6 +43,7 @@ type Result = {
 const MAX_PER_KIND = 6;
 
 const GROUP_LABEL: Record<Kind, string> = {
+    nav: 'Go to',
     action: 'Actions',
     tribute: 'Tributes',
     zone: 'Sectors',
@@ -70,6 +74,7 @@ export function CommandPalette({ gameState, onSelectTribute }: {
     const listId = useId();
     const chron = useStore(chronicleStore, s => s);
     const spoilerSafe = useStore(prefsStore, p => p.spoilerSafe);
+    const currentView = useStore(gameStore, s => s.view);
 
     useEffect(() => {
         const onKey = (e: KeyboardEvent) => {
@@ -93,8 +98,16 @@ export function CommandPalette({ gameState, onSelectTribute }: {
 
         // ---------- actions: available with or without a run ----------
         const actions: Result[] = [];
+        // AUDIT-12 U10 / §4: the screen you are on is marked, not offered as a
+        // destination.
         const view = (id: ViewName, label: string, keywords = '') => {
-            if (routeIsAvailable(id)) actions.push({ id: `v-${id}`, kind: 'action', label, keywords, run: () => go(id) });
+            if (!routeIsAvailable(id)) return;
+            const here = id === currentView;
+            actions.push({
+                id: `v-${id}`, kind: 'nav', label, keywords,
+                detail: here ? 'you are here' : undefined,
+                run: () => { if (!here) go(id); },
+            });
         };
 
         if (gameState) {
@@ -125,14 +138,18 @@ export function CommandPalette({ gameState, onSelectTribute }: {
                     });
                 }
             }
+            // AUDIT-12 U9: "next" is next. Unfocused, it starts from the first
+            // death and says so; on the last death it is not offered at all.
             const deaths = gameState.log.filter(l => l.category === 'death' || l.category === 'kill');
             const atDeath = deaths.findIndex(l => l.id === chron.focusLogId);
-            const nextDeath = deaths[atDeath === -1 ? 0 : Math.min(deaths.length - 1, atDeath + 1)];
+            const nextAt = atDeath === -1 ? 0 : atDeath + 1;
+            const nextDeath = deaths[nextAt];
             if (nextDeath && inRun && !spoilerSafe) {
                 actions.push({
                     id: 'v-next-death', kind: 'action',
-                    label: 'Jump to the next death',
-                    detail: `${nextDeath.day === 0 ? nextDeath.phase : `day ${nextDeath.day}`} · D`,
+                    label: atDeath === -1 ? 'Jump to the first death' : 'Jump to the next death',
+                    detail: `${nextAt + 1} of ${deaths.length} · ${nextDeath.day === 0 ? nextDeath.phase : `day ${nextDeath.day}`} · D`,
+                    keywords: 'next death kill cannon',
                     run: () => {
                         setChronicle({ focusLogId: nextDeath.id });
                         go('chronicle', `day=${nextDeath.day}&phase=${encodeURIComponent(nextDeath.phase)}`);
@@ -141,20 +158,23 @@ export function CommandPalette({ gameState, onSelectTribute }: {
             }
             view('roster', 'Go to the reaping', 'roster cast');
             view('game', 'Go to the arena', 'standings map');
+            view('debrief', 'Go to the debrief', 'end what-if results victor');
             view('chronicle', 'Go to the chronicle', 'log read');
         }
         slots.forEach((slot, i) => {
             if (!slot) return;
             const n = (i + 1) as 1 | 2 | 3;
+            // AUDIT-12 U10: a slot holding the run already on screen resumes nothing.
+            if (gameState && slot.seed === gameState.seed && slot.day === gameState.day && slot.phase === gameState.phase) return;
             actions.push({
-                id: `resume-${n}`, kind: 'action',
+                id: `resume-${n}`, kind: 'nav',
                 label: n === 1 ? 'Resume the autosaved run' : `Resume save slot ${n}`,
                 detail: `${slot.day === 0 ? slot.phase : `Day ${slot.day} — ${slot.phase}`} · ${slot.alive} alive · seed ${slot.seed}`,
                 keywords: 'load continue save slot',
                 run: () => { void resumeWithRecap(n); },
             });
         });
-        actions.push({ id: 'v-new', kind: 'action', label: 'Start a new game', keywords: 'setup arena seed', run: () => go('setup') });
+        actions.push({ id: 'v-new', kind: 'nav', label: 'Start a new game', keywords: 'setup arena seed', run: () => go('setup') });
         view('hallOfFame', 'Go to the hall of fame', 'victors archive records');
         view('howToPlay', 'How to play', 'help rules');
         actions.push({ id: 'v-settings', kind: 'action', label: 'Open settings', keywords: 'theme sound units preferences', run: () => setUi({ settingsOpen: true }) });
@@ -165,11 +185,13 @@ export function CommandPalette({ gameState, onSelectTribute }: {
             run: () => setPrefs({ spoilerSafe: !spoilerSafe }),
         });
 
+        const byKind = (a: Result, b: Result) => KIND_ORDER.indexOf(a.kind) - KIND_ORDER.indexOf(b.kind);
+        actions.sort(byKind);
         if (!needle) return actions;
 
         const out: Result[] = actions
             .filter(a => a.label.toLowerCase().includes(needle) || (a.keywords ?? '').includes(needle))
-            .slice(0, MAX_PER_KIND);
+            .slice(0, MAX_PER_KIND * 2);
         if (!gameState) return out;
 
         gameState.tributes
@@ -212,7 +234,7 @@ export function CommandPalette({ gameState, onSelectTribute }: {
             }));
         }
         return out;
-    }, [query, gameState, onSelectTribute, chron, slots, spoilerSafe]);
+    }, [query, gameState, onSelectTribute, chron, slots, spoilerSafe, currentView]);
 
     // U9: keep the active option in view.
     useEffect(() => {

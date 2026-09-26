@@ -43,6 +43,12 @@ const RULES: Array<[DeathCauseCode, RegExp]> = [
     ['nightlock', /nightlock/i],
     ['self-inflicted', /rather than keep playing|went out to the caller/i],
 
+    // AUDIT-12 E14: shapes that carry a zone name. Zone names say "Frozen",
+    // "Ash", "Fire" — so these match first, before the body rules can read
+    // the place as the cause.
+    ['fall', /^fell in .+ when .+ went|^dragged down in .+ by what they would not let go of/i],
+    ['border', /^crushed as .+ closed$/i],
+
     // --- another tribute ---
     ['tribute', /^Killed by |confusion of a group fight/i],
     // A wound somebody opened is a tribute-attributed bleed; untreated wounds
@@ -63,11 +69,13 @@ const RULES: Array<[DeathCauseCode, RegExp]> = [
     ['asphyxiation', /choked|suffocated|smoke/i],
 
     // --- the arena ---
-    ['border', /border|force field/i],
+    // AUDIT-12 E14: "Crushed as X closed" is the border closing over a chokepoint —
+    // matched here, before `collapse` and its roof-and-wall wording.
+    ['border', /border|force field|closed$|as .+ closed/i],
     ['mutt', /torn apart by|stampede|devoured by/i],
     ['drowning', /drown|into the sump|flooding|went under/i],
-    ['collapse', /buried in the collapse|brought down by the roof|calving|shifting wall|closed$|as .+ closed/i],
-    ['fall', /^fell |could not make the climb|ground gave way|down an open shaft|down with the (bench|terrace)|when the anchor went/i],
+    ['collapse', /buried in the collapse|brought down by the roof|calving|shifting wall/i],
+    ['fall', /^fell |could not make the climb|ground gave way|down an open shaft|down with the (bench|terrace)|^fell in .+ when .+ went/i],
     ['trap', /deadfall|their own snare|abandoned pit/i],
     ['machinery', /machinery|taken by the ride|pressure pod|steel-jawed/i],
     ['gamemaker', /gamemaker|caught by the clock|defying the|off the plate before the gong/i],

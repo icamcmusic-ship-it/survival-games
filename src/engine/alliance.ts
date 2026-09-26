@@ -1,6 +1,6 @@
 import { traitMod } from '../data/traits';
 import { ARCHETYPES } from '../data/archetypes';
-import { Alliance, EventType, GameState, Item, Tribute } from '../models/types';
+import { Alliance, AllianceRole, EventType, GameState, Item, Tribute } from '../models/types';
 import { ALLIANCES, PROFICIENCY, RELATIONSHIPS, ROMANCE } from '../data/balance';
 import { announceCharter, rollCharter } from './allianceCharter';
 import { SimContext, getAlive } from './context';
@@ -657,10 +657,46 @@ export function pruneDeadAlliances(ctx: SimContext) {
     const records = ctx.state.alliances;
     if (!records) return;
     Object.keys(records).forEach(id => {
-        if (membersOf(ctx.state, id).length > 0) return;
-        recordAllianceState(ctx.state, records[id]);
-        distributeCache(ctx, records[id], []);
+        const record = records[id];
+        if (!record) return;
+        const living = membersOf(ctx.state, id);
+        if (living.length > 0) {
+            if (living.length >= 2) repairStructure(ctx, record, living);
+            return;
+        }
+        recordAllianceState(ctx.state, record);
+        distributeCache(ctx, record, []);
         delete records[id];
+    });
+}
+
+/**
+ * AUDIT-12 E4 / E16: a dead or departed leader or role holder is replaced at
+ * the end of the phase they left in, not whenever the next alliance phase
+ * happens to reach `reconcileAlliances`. The succession itself is the same
+ * one `reconcileAlliances` runs (heir, favourite, contested split), so the
+ * beats are unchanged — they just land on time. Roles are re-dealt only where
+ * the holder is gone; everybody who still holds a job keeps it.
+ */
+function repairStructure(ctx: SimContext, record: Alliance, living: Tribute[]) {
+    if (!living.some(m => m.id === record.leaderId)) {
+        resolveSuccession(ctx, record, living);
+    }
+    const members = membersOf(ctx.state, record.id);
+    if (members.length < 2 || !record.roles) return;
+    const ids = new Set(members.map(m => m.id));
+    const roles = record.roles;
+    const stale = (Object.keys(roles) as AllianceRole[]).filter(role => {
+        const holder = roles[role];
+        return !!holder && !ids.has(holder);
+    });
+    if (stale.length === 0) return;
+    const leader = members.find(m => m.id === record.leaderId) ?? pickLeader(members);
+    const fresh = assignRoles(members, leader) ?? {};
+    stale.forEach(role => {
+        const next = fresh[role];
+        if (next) roles[role] = next;
+        else delete roles[role];
     });
 }
 

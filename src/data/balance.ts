@@ -10330,3 +10330,115 @@ export const AUDIT11_EVENTS = {
     /** Added to each lethal event's dodge difficulty (or the default). */
     dodgeDifficultyBonus: 3,
 } as const;
+
+/* ========================================================================
+ * AUDIT-12 §3.2 / §5 / §6 — tribute, alliance and side-system knobs.
+ * Appended block; owned by the tributes/alliances workstream.
+ * ====================================================================== */
+export const AUDIT12_TRIBUTES = {
+    /** T1: the run-down now runs after the scrum; floor ∝ shortfall² × proximity. */
+    runDownFloor: 0.35,
+    /** T1: runners caught at the horn are capped at this share of the death target. */
+    runDownTargetShare: 0.35,
+    /** T1: the scrum leaves (runner share of the field × this) of the target to the run-down. */
+    runDownReservePerRunner: 1.2,
+    /** T1: scale on the proximity/agility catch term (the chase after the scrum). */
+    runDownChaseScale: 1.8,
+    /** §5 horn plans: fight-chance shift for a grab-and-go / straight-run plan. */
+    hornPlanGrabFight: 0.12,
+    hornPlanRunFight: 0.12,
+    /** §5 horn plans: exposure to the run-down for each plan (scatter = 1). */
+    hornPlanGrabExposure: 1.25,
+    hornPlanRunExposure: 0.55,
+    /** §5 horn plans: chance a grab-and-go runner leaves with something. */
+    hornPlanGrabItem: 0.55,
+    /** §5 horn plans: pull toward a straight run when a pact partner waits. */
+    hornPlanPartnerRun: 0.3,
+    hornPlanNoise: 0.6,
+    /** T3: hunger relief of a friendly meal with no food item to share (fraction). */
+    emptyMealRelief: 0.5,
+    /** T13: greed chance ceiling for a treacherous provider. */
+    greedChanceCap: 0.5,
+    /** T3/T13: hunger one food item relieves, split over the camp's portions. */
+    campMealPortion: 24,
+    /** §6 watch: treachery a sleeper needs to use a failed watch. */
+    nightTheftTreachery: 0.2,
+    /** §6 watch: chance they act on it. */
+    nightTheftChance: 0.45,
+    /** §6 watch: base chance each other sleeper wakes and sees it. */
+    nightTheftSeen: 0.25,
+    /** §6: suspicion a witnessed deceit (theft, lure) adds. */
+    deceitSuspicion: 30,
+    /** §5 zone depletion: multiplier on per-forage and per-attempt depletion. */
+    forageDepletionScale: 3,
+    /** §5: share of a zone's depletion taken off the whole forage roll there. */
+    depletionForagePenalty: 0.8,
+    /** §5 hunger that bites: starvation damage grows per consecutive starving cycle, to a cap. */
+    starvingDamagePerCycle: 5,
+    starvingDamageCap: 30,
+    /** T14: pack value (by impression) that reads as "carrying supplies". */
+    ladenLootImpression: 18,
+    /** T5 / §5 errands: printed yield a forage errand's destination must have. */
+    errandMinResources: 0.45,
+    /** T5 / §5 errands: remembered barrenness above which a zone is not worth the walk. */
+    errandBarrenLine: 0.5,
+    /** T12 loner fear curve: fear weight in a loner's face-off score. */
+    lonerFearWeight: 1.5,
+    /** T12: share of the fleeFear→huntAbandonFear band past which a loner hides. */
+    lonerHideBand: 0.55,
+    lonerHideCycles: 2,
+    /** T12: stealth at which a frightened loner lies in wait instead of parleying. */
+    lonerAmbushStealth: 6,
+    /** §5 commitment by caution: archetype caution at/above which a reach is kept past expiry. */
+    committedCaution: 0.3,
+    /** §5: caution at/below which a reach is dropped the moment a hostile is present. */
+    recklessCaution: -0.1,
+    /** §5: cycles a cautious tribute will keep extending one reach, and by how much each time. */
+    commitmentMaxCycles: 8,
+    commitmentExtension: 2,
+    /** T11: cycles an ally must lie down a sector away before a rescue promise counts as missed. */
+    rescueMissCycles: 2,
+    /** §6 splinters: smallest group that can split on trust, and the trust gap it needs. */
+    splinterMinSize: 4,
+    splinterTrustGap: 15,
+    /** §6 hollow victory: sanity lost for killing a former ally, and suspicion it earns among those who knew. */
+    hollowVictorySanity: 18,
+    hollowVictorySuspicion: 20,
+    /** §6 loner support: one-night shared camp between two loners. */
+    sharedCampChance: 0.25,
+    sharedCampRegard: -5,
+    sharedCampCycles: 2,
+    sharedCampDebtRepaid: 1,
+    sharedCampTrust: 4,
+    /** §6 truce chains: chance a shared truce partner brings two strangers into one truce. */
+    truceChainChance: 0.5,
+    /** §5 earned traits: kills for Bloodied (I), then kills for II and III. */
+    bloodiedKills: 2,
+    bloodiedTierKills: [4, 6] as readonly number[],
+    /** §5 earned traits: days survived unhurt for Unbroken (I), then II and III. */
+    unbrokenDays: 10,
+    unbrokenTierDays: [13, 16] as readonly number[],
+} as const;
+
+// ============================================================================
+// AUDIT-12 (UI agent): knobs for the debrief and broadcast-bar additions.
+// Display thresholds only — no simulation path reads these.
+// ============================================================================
+export const AUDIT12_UI = {
+    /** §4 what-if: the branch counts the debrief offers (8 is `WHAT_IF.branches`). */
+    whatIfBranchOptions: [8, 16, 32] as readonly number[],
+    /** §4 audience chip: the loudest segment is named only once it is this loud (0-100). */
+    audienceChipMin: 25,
+    /** S8 wound ledger: a wound worth counting as serious, in health. */
+    seriousWound: 4,
+} as const;
+
+// ============================================================================
+// AUDIT-12 (engine agent): arena, rules and combat fixes.
+// ============================================================================
+export const AUDIT12_ARENA = {
+    /** §8.10: smoke in an enclosed-ignition room that is burning, per cycle, for everybody inside. */
+    enclosedSmokeDamage: 9,
+    /** §8.10: fatigue the smoke adds on top. */
+    enclosedSmokeFatigue: 8,
+} as const;

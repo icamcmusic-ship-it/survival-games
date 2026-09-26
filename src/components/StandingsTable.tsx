@@ -120,7 +120,9 @@ export const StandingsTable = React.memo(function StandingsTable({
                     Living only
                 </label>
             </div>
-            <div className="overflow-x-auto custom-scrollbar">
+            {/* AUDIT-12 §4: the Tribute column is pinned and the far edge fades,
+                so a phone reader never loses whose row they are on. */}
+            <div className="overflow-x-auto custom-scrollbar standings-scroll">
                 <table className="w-full text-xs border-collapse">
                     <thead>
                         <tr>
@@ -141,7 +143,7 @@ export const StandingsTable = React.memo(function StandingsTable({
                                         aria-sort={active ? (sort.desc ? 'descending' : 'ascending') : 'none'}
                                         // §2: sticky, so the columns are still
                                         // named twenty-four rows down.
-                                        className={`sticky top-0 z-10 p-1 text-left border-b-2 border-[var(--color-ink-800)] ${col.numeric ? 'text-right' : ''}`}
+                                        className={`sticky top-0 z-10 p-1 text-left border-b-2 border-[var(--color-ink-800)] ${col.numeric ? 'text-right' : ''} ${col.id === 'name' ? 'standings-pin z-20' : ''}`}
                                         style={{ background: 'var(--paper)' }}
                                     >
                                         <button
@@ -201,7 +203,7 @@ export const StandingsTable = React.memo(function StandingsTable({
                                             >▼</span>
                                         )}
                                     </td>
-                                    <td className="p-1">
+                                    <td className="p-1 standings-pin">
                                         <button
                                             onClick={() => onSelectTribute(t.id)}
                                             className={`tap-target-cell font-bold text-left hover:text-[var(--red)] ${dead ? 'line-through' : ''}`}

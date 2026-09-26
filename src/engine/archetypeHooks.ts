@@ -1,18 +1,18 @@
 import { samePlace } from './verticality';
-import { EventType, Item, Objective, Tribute } from '../models/types';
+import { EventType, GameState, Item, Objective, Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { severRandomEdge } from './zoneEffects';
 import { ARCHETYPE_HOOKS, EARNED_TRAIT_RULES, HUNTING, MEMORY, ZONES } from '../data/balance';
 import { earnTrait } from './earnedTraits';
 import { SimContext, getAlive } from './context';
 import { notorietyOf } from './notoriety';
-import { improveRead } from './memory';
+import { improveRead, impressionOf } from './memory';
 import { getRel, adjustMutual, adjustRel } from './relationships';
 import { addFear } from './fear';
 import { addExcitement } from './audience';
 import { grantTruce, truceLedger } from './parley';
 import { witnessKindness } from './rapport';
-import { giveItem, inventoryValue } from './items';
+import { giveItem } from './items';
 import { healInjury, clearBleeding } from './wounds';
 import { clampTribute } from './vitals';
 import { trainProficiency } from './proficiency';
@@ -84,27 +84,35 @@ export function objectiveBiasFor(t: Tribute, kind: Objective['kind']): number {
  * richest pack in the arena — and a Zealot wants whoever is hardest, because
  * that is the point they are making.
  */
-export function targetPreferenceScore(t: Tribute, candidate: Tribute, hopsAway: number): number {
+export function targetPreferenceScore(state: GameState, t: Tribute, candidate: Tribute, hopsAway: number): number {
     const pref = ARCHETYPES[t.archetype].targetPreference;
     const w = ARCHETYPE_HOOKS.targetPreferenceWeight;
+    // AUDIT-12 T6: belief, not the live sheet. Somebody standing in the same
+    // zone is read as they are; anybody else as the hunter last saw them,
+    // decayed toward the prior.
+    const seen = impressionOf(state, t, candidate);
+    const present = candidate.zone === t.zone;
     switch (pref) {
         case 'weakest':
-            return (100 - candidate.health) * w;
+            return (100 - seen.health) * w;
         case 'strongest':
-            return candidate.health * ARCHETYPE_HOOKS.strongestHealthWeight + candidate.trainingScore * ARCHETYPE_HOOKS.strongestPerTrainingPoint;
+            return seen.health * ARCHETYPE_HOOKS.strongestHealthWeight + candidate.trainingScore * ARCHETYPE_HOOKS.strongestPerTrainingPoint;
         case 'nearest':
             return -hopsAway * ARCHETYPE_HOOKS.nearestPerHop;
         case 'richest':
-            return Math.min(ARCHETYPE_HOOKS.richestCap, inventoryValue(candidate) * ARCHETYPE_HOOKS.richestPerValue);
+            return Math.min(ARCHETYPE_HOOKS.richestCap, seen.loot * ARCHETYPE_HOOKS.richestPerValue);
         case 'rival':
             return Math.max(0, -getRel(t, candidate.id)) * w;
         /*
          * §8.2: what an opportunist reads. Not "who has the least health" —
          * that is `weakest` and it cannot tell a tribute who was never touched
          * from one who has been patched up four times — but "who is visibly
-         * coming apart": open wounds, bleeding, and being on the ground.
+         * coming apart": open wounds, bleeding, and being on the ground. Only
+         * visible from the same zone; from further off it is the remembered
+         * condition, which is all a far-off hunter has.
          */
         case 'mostWounded': {
+            if (!present) return ((100 - seen.health) / 25) * ARCHETYPE_HOOKS.woundedPerInjury * seen.confidence;
             const wounds = Object.values(candidate.injuries).filter(Boolean).length;
             return wounds * ARCHETYPE_HOOKS.woundedPerInjury
                 + (candidate.injuries.bleeding ? ARCHETYPE_HOOKS.woundedBleedingBonus : 0)
@@ -113,12 +121,12 @@ export function targetPreferenceScore(t: Tribute, candidate: Tribute, hopsAway: 
         /*
          * §8.2: some tributes pick by reputation rather than by opportunity —
          * the counterpart to `targetDraw` from the hunter's side of the
-         * clearing. Notoriety is what the arena is saying about somebody;
-         * kills and training score are what it is saying it about.
+         * clearing. Notoriety is what the arena is saying about somebody (and
+         * already carries their kills, as far as the arena has heard of them);
+         * the training score was read out on television.
          */
         case 'mostFamous':
             return notorietyOf(t, candidate.id) * ARCHETYPE_HOOKS.famousPerNotoriety
-                + candidate.kills * ARCHETYPE_HOOKS.famousPerKill
                 + candidate.trainingScore * ARCHETYPE_HOOKS.famousPerTrainingPoint;
         default:
             return 0;

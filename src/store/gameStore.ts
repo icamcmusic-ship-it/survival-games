@@ -1,6 +1,6 @@
 import { InterviewPersona, GameState, GameConfig, HallOfFameEntry, CampaignSnapshot, InterventionRecord, Prediction } from '../models/types';
 import { givenName, legacyReapingDue, rebellionCallsQuell } from '../engine/campaign';
-import { scorePrediction } from '../engine/prediction';
+import { sanitizePrediction, scorePrediction } from '../engine/prediction';
 import { noteRunLines, readStaleLines } from '../utils/staleLines';
 import { PARLAY } from '../data/balance';
 import { balanceFingerprint, balanceMatches } from '../engine/balanceFingerprint';
@@ -21,8 +21,9 @@ import { createStore } from './createStore';
 import { PanemRecords, campaignSnapshotOf, RunOutcome, addPatronDistrict, buyArena, clearPanem, commitRun, dropPatronDistrict, noteBankroll, noteStipendTaken, openParlay, readPanem, setParlayLeg, settleParlay } from '../utils/panemStorage';
 import type { SponsorResult } from '../engine/playerSponsor';
 import { readPrefs } from './prefsStore';
+import { scopeFollowCamToSeed } from './chronicleStore';
 import { seatVeterans } from '../engine/veterans';
-import { COIN_ECONOMY, VETERANS } from '../data/balance';
+import { AUDIT12_UI, COIN_ECONOMY, VETERANS } from '../data/balance';
 
 /**
  * PERF: the engine is loaded on demand.
@@ -62,7 +63,7 @@ export function prefetchEngine() {
     void loadEngine().catch(() => { /* the real load path reports failures */ });
 }
 
-export type ViewName = 'setup' | 'roster' | 'game' | 'chronicle' | 'hallOfFame' | 'howToPlay';
+export type ViewName = 'setup' | 'roster' | 'game' | 'debrief' | 'chronicle' | 'hallOfFame' | 'howToPlay';
 
 /**
  * `Bet` and `SavedRun` are declared in `utils/saveMigrations` (with the schema
@@ -757,7 +758,7 @@ export const gameActions = {
         if (!gameState || !simulator || !sideBettingOpen(gameState.phase)) return false;
         const live = simulator.getState();
         if (prediction === null) delete live.prediction;
-        else live.prediction = prediction;
+        else live.prediction = sanitizePrediction(prediction, live.tributes.map(t => t.id));
         gameActions.syncFromSimulator();
         persistRun();
         return true;
@@ -910,6 +911,7 @@ export const gameActions = {
         autosaveNote = saved.note;
         const { Simulator } = await loadEngine();
         const { gameState } = saved;
+        scopeFollowCamToSeed(gameState.seed);
         /*
          * Batch 6: a run resumed under a different balance is a hybrid, and
          * the chronicle is the place to say so.
@@ -1000,10 +1002,20 @@ export const gameActions = {
         };
     },
 
-    whatIfCheckpoints(): Array<{ index: number; day: number; phase: GameState['phase'] }> {
+    whatIfCheckpoints(): Array<{ index: number; day: number; phase: GameState['phase']; victorHealthAfter: number | null }> {
         const arena = new Set<GameState['phase']>(['day', 'night', 'feast']);
+        const { gameState } = gameStore.getState();
+        const victorIds = new Set((gameState?.tributes ?? []).filter(t => t.status === 'alive').map(t => t.id));
+        // AUDIT-12 §4: the victor's health once the phase after each checkpoint
+        // had run — the lowest is their closest call, and the debrief's default.
+        const healthAfter = (i: number): number | null => {
+            const after = rewindStack[i + 1] ?? gameState;
+            if (!after || victorIds.size === 0) return null;
+            const hp = after.tributes.filter(t => victorIds.has(t.id)).map(t => t.health);
+            return hp.length > 0 ? Math.min(...hp) : null;
+        };
         return rewindStack
-            .map((snap, index) => ({ index, day: snap.day, phase: snap.phase }))
+            .map((snap, index) => ({ index, day: snap.day, phase: snap.phase, victorHealthAfter: healthAfter(index) }))
             .filter(c => arena.has(c.phase));
     },
 
@@ -1014,7 +1026,7 @@ export const gameActions = {
      * count moves; a debrief is several seconds of simulation and must not
      * look like a hang.
      */
-    async runWhatIf(index: number, onProgress?: (done: number, total: number) => void) {
+    async runWhatIf(index: number, onProgress?: (done: number, total: number) => void, branchCount?: number) {
         const { gameState } = gameStore.getState();
         const checkpoint = rewindStack[index];
         if (!gameState || !checkpoint) return null;
@@ -1031,12 +1043,14 @@ export const gameActions = {
         // had the same interventions rather than one that had them and it did
         // not.
         const planned = playerInterventionsAfter(checkpoint, gameState);
+        // AUDIT-12 §4: 8, 16 or 32 branches, the player's choice.
+        const count = branchCount && AUDIT12_UI.whatIfBranchOptions.includes(branchCount) ? branchCount : WHAT_IF.branches;
         const ends: GameState[] = [];
-        for (let k = 0; k < WHAT_IF.branches; k++) {
+        for (let k = 0; k < count; k++) {
             await new Promise(resolve => setTimeout(resolve, 0));
             if (stale()) return null;
             ends.push(playBranch(checkpoint, String(k), planned));
-            onProgress?.(k + 1, WHAT_IF.branches);
+            onProgress?.(k + 1, count);
         }
         return summariseBranches(checkpoint, gameState, ends, planned.length);
     },
@@ -1195,6 +1209,7 @@ export const gameActions = {
         clearSavedRun();
         clearRewind();
         autosaveNote = undefined;
+        scopeFollowCamToSeed(seed);
 
         const { Simulator, resolveArenaForRun, generateTributes, gamesProfileFor, configForProfile } = await loadEngine();
 
@@ -1459,6 +1474,25 @@ export const gameActions = {
         }
 
         gameActions.syncFromSimulator();
+    },
+
+    /**
+     * AUDIT-12 §4: "Skip to the gong". Runs every pre-Games stage still ahead
+     * — reaping ceremony, train, parade, training, scores, interviews — and
+     * stops with the gong itself unsounded, so the bloodbath is still the
+     * player's own press. Each stage is the same `nextPhase` a click runs.
+     */
+    skipToGong(): boolean {
+        const PRE = new Set(['setup', 'roster', 'reaping', 'square', 'train', 'parade', 'training', 'training1', 'training2', 'training3', 'scores']);
+        let guard = 0;
+        let moved = false;
+        while (guard++ < 20) {
+            const { simulator } = gameStore.getState();
+            if (!simulator || !PRE.has(simulator.getState().phase)) break;
+            gameActions.nextPhase();
+            moved = true;
+        }
+        return moved;
     },
 
     /**

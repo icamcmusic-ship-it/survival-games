@@ -805,7 +805,7 @@ export const QUIRKS: Quirk[] = [
         ],
     },
     {
-        label: 'never sits with their back to a door',
+        label: 'always keeps a wall behind them',
         lines: [
             '{name} moves twice in {zone} before settling, until the only way in is in front of them.',
             'There is a wall at {name}\'s back in {zone}. There is always a wall at {name}\'s back.',
@@ -841,7 +841,7 @@ export const QUIRKS: Quirk[] = [
         ],
     },
     {
-        label: 'hoards cordage',
+        label: 'unpicks cloth for thread',
         lines: [
             '{name} picks up a length of something stringy in {zone} and adds it to the bundle. The bundle is now most of their pack.',
             'In {zone} {name} unpicks a bit of cloth for the thread. They have no immediate use for the thread.',
@@ -877,7 +877,7 @@ export const QUIRKS: Quirk[] = [
         ],
     },
     {
-        label: 'sharpens the same stick',
+        label: 'whittles one stick down to nothing',
         lines: [
             '{name} takes the stick out in {zone} and puts an edge on it that was already there.',
             'In {zone} {name} whittles the point of a stick they have been whittling since day one. It is very sharp and very short.',
@@ -895,7 +895,7 @@ export const QUIRKS: Quirk[] = [
         ],
     },
     {
-        label: 'wears a dead tribute\'s token',
+        label: 'carries a stranger\'s token',
         lines: [
             '{name} touches the thing at their throat in {zone}. It was not theirs at the start.',
             'In {zone} {name} takes out a token that belonged to somebody who is in the sky now, and holds it, and puts it back.',
@@ -913,7 +913,7 @@ export const QUIRKS: Quirk[] = [
         ],
     },
     {
-        label: 'names their weapon',
+        label: 'talks to their blade',
         lines: [
             '{name} says something to the blade in {zone} before putting it away. It has a name. They have not told anyone the name.',
             'In {zone} {name} cleans the weapon and talks to it, low, the way you would to a dog.',
@@ -1088,19 +1088,19 @@ export const QUIRK_MODS: Record<string, Partial<Record<TraitMod, number>>> = {
     'won\'t say the word "arena"': { resolveDrift: 0.15, sanityDrain: -0.05 },
     'measures time in shifts': { fatigueDay: -0.6, fatigueNight: -0.6 },
     'sleeps with a knife in their fist': { awarenessNight: 0.3, sanityRecovery: -1 },
-    'never sits with their back to a door': { ambush: -0.03, awareness: 0.3 },
+    'always keeps a wall behind them': { ambush: -0.03, awareness: 0.3 },
     'talks to the dead by name': { griefResist: 0.15, sanityDrain: 0.05 },
     'rations by the mouthful': { hungerDrain: -1.0 },
     'whistles when scared': { concealment: -0.03, fearGain: -0.05 },
-    'hoards cordage': { trapSkill: 0.15, capacity: 1 },
+    'unpicks cloth for thread': { trapSkill: 0.15, capacity: 1 },
     'checks the sky for cameras': { sponsorTrust: -0.2, excitement: 0.05 },
     'keeps score on their arm': { killSanity: -0.1, resolveDrift: 0.1 },
     'apologises to the arena': { forage: 0.05, sanityRecovery: 1 },
-    'sharpens the same stick': { meleePower: 0.2 },
+    'whittles one stick down to nothing': { meleePower: 0.2 },
     'counts exits before sitting down': { retreat: 0.04 },
-    'wears a dead tribute\'s token': { griefResist: 0.2, targetDraw: 0.3 },
+    'carries a stranger\'s token': { griefResist: 0.2, targetDraw: 0.3 },
     'eats with their boots on and laced': { awareness: 0.2, fatigueDay: 0.5 },
-    'names their weapon': { combatPower: 0.2, excitement: 0.05 },
+    'talks to their blade': { combatPower: 0.2, excitement: 0.05 },
     'sleeps in shifts with nobody': { awarenessNight: 0.6, fatigueNight: 1.0 },
     'presses flowers in their pack': { resolveDrift: 0.15, sponsorAppeal: 0.3 },
     'salutes the cannon': { griefResist: 0.1, sponsorTrust: 0.2 },

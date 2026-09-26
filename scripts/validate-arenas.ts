@@ -22,6 +22,8 @@ import { generateArena, PROCEDURAL_BIOME_COUNT } from '../src/engine/arenaGenera
 import { zoneFeatures } from '../src/engine/map';
 import { proceduralArenaFlavor } from '../src/data/proceduralFlavor';
 import { arenaHasLaw } from '../src/engine/gamesProfile';
+import { hasActs } from '../src/engine/arenaDepth';
+import { strandedZones } from '../src/engine/arenaRules';
 
 const problems: string[] = [];
 /** §5.12: things worth saying out loud that are not build failures. */
@@ -440,6 +442,34 @@ if (GENERIC_ARENA_FLAVOR.events.length < 1) problems.push('generic flavour has n
             }
         }
         notes.push(`stacked laws ${key}: played to completion in ${id} (${live.day} days, ${live.log.length} log lines)`);
+    });
+}
+
+/**
+ * AUDIT-12 E1 / §8.9: the strand invariant, played out. An arena act cuts the
+ * edges around its terrain; it must never leave a live zone with no way out.
+ */
+{
+    ARENAS.filter(a => hasActs(a.id)).forEach(arena => {
+        for (let i = 0; i < 4; i++) {
+            const seed = `strand-${arena.id}-${i}`;
+            const gamesProfile = gamesProfileFor(seed);
+            const tributes = generateTributes(seed, DEFAULT_GAME_CONFIG, arena.zones[0].name, gamesProfile.castShape);
+            const state = {
+                seed, arena, tributes, phase: 'day', day: 1, log: [], gamemakerMode: false,
+                config: DEFAULT_GAME_CONFIG, baseConfig: DEFAULT_GAME_CONFIG, gamesProfile,
+                logCounter: 0, feastsHeld: 0, cycle: 0,
+            } as unknown as GameState;
+            const sim = new Simulator(state);
+            const live = sim.getState();
+            const stranded = new Set<string>();
+            let guard = 400;
+            while (guard-- > 0) {
+                if (!sim.processTurn()) break;
+                strandedZones(live).forEach(z => stranded.add(z));
+            }
+            if (stranded.size > 0) problems.push(`${arena.id} (${seed}): stranded zone(s) ${[...stranded].join(', ')} — no open edge`);
+        }
     });
 }
 

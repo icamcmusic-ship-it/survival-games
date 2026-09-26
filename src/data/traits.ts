@@ -264,7 +264,8 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         info: 'Simply faster than the rest of the field. Gets clear of a losing fight, travels at night, and crosses ground for less.',
         // §8 (audit): `nightMovement` had no read site, so this was a single
         // retreat modifier — the weakest rollable trait in the game.
-        mods: { retreat: -0.06, nightMovement: 1.5, fatigueDay: -1 },
+        // AUDIT-12 T7: the sign was wrong — a positive retreat is what "gets clear" means.
+        mods: { retreat: 0.08, nightMovement: 1.5, fatigueDay: -1 },
     },
     'Night-Sighted': {
         info: 'Sees in the dark. The night is not the handicap for them that it is for everyone else.',
@@ -793,7 +794,8 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         earned: true,
         mods: { treachery: 0.3, allianceAffinity: -0.4, trustGain: -0.3 },
     },
-    'Fire-Walker': {
+    // AUDIT-12 T16: was 'Fire-Walker', which collided with the reaping trait 'Firewalker'.
+    'Flame-Tested': {
         info: 'Earned walking out of a burning sector twice. Fire has stopped being a reason to go around.',
         earned: true,
         mods: { burnResist: 0.5, targetDraw: 0.5 },

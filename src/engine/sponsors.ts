@@ -167,8 +167,11 @@ export function processSponsors(ctx: SimContext) {
         }
         // AUDIT-11 §8/§12: the Head Gamemaker's taste, and the campaign — a
         // restless Panem makes sponsors wary; a district's standing warms them.
-        generosity *= directorTaste(ctx.state.headGamemaker).sponsor
-            * campaignSponsorMultiplier(ctx.state.campaign, t.district);
+        // AUDIT-12 E12: neither applies under Vanilla rules.
+        if (!ctx.state.config.vanillaRules) {
+            generosity *= directorTaste(ctx.state.headGamemaker).sponsor
+                * campaignSponsorMultiplier(ctx.state.campaign, t.district);
+        }
         if (!ctx.rng.chance(giftChance(t, generosity, ctx.state.day))) return;
 
         const tier = rollGiftTier(ctx, t);

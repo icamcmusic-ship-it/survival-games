@@ -1,3 +1,4 @@
+import { accusersOf } from '../engine/accusations';
 import { PERSONA_BLOC_AFFINITY, PERSONA_FAMILY, PERSONA_FAMILY_LABEL } from '../data/personas';
 import React, { useId, useMemo, useState } from 'react';
 import { Hint } from './Hint';
@@ -19,7 +20,7 @@ import { RelationshipGraph } from './RelationshipGraph';
 import { Explainer } from './Explainer';
 import { objectiveLabel } from '../engine/objectives';
 import { traitInfo } from '../data/traitInfo';
-import { MapPin, Users, X, Heart } from 'lucide-react';
+import { MapPin, Users, X, Heart, MoreHorizontal } from 'lucide-react';
 import { craftOf, legacyOf } from '../data/districts';
 import { conditionOf, displayName } from '../engine/items';
 import { sponsorCost, sponsorableItems } from '../engine/playerSponsor';
@@ -159,7 +160,7 @@ function SponsorPanel({ tribute, gameState }: { tribute: Tribute; gameState: Gam
                                         : `${item.name}, ${cost} — you cannot afford this`}
                                 >
                                     <span className="text-sm text-[var(--ink)] truncate">{item.name}</span>
-                                    <span className="text-mini font-mono flex-none" style={{ color: affordable ? 'var(--gold)' : 'var(--color-ink-500)' }}>
+                                    <span className="text-mini font-mono flex-none" style={{ color: affordable ? 'var(--gold-text)' : 'var(--color-ink-500)' }}>
                                         {cost}
                                     </span>
                                 </button>
@@ -168,7 +169,7 @@ function SponsorPanel({ tribute, gameState }: { tribute: Tribute; gameState: Gam
                     </div>
                 </>
             )}
-            {message && <p className="text-sm mt-2 text-[var(--gold)]">{message}</p>}
+            {message && <p className="text-sm mt-2 text-[var(--gold-text)]">{message}</p>}
         </section>
     );
 }
@@ -389,9 +390,33 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
     // declaration. Putting it on the tribute sheet would spoil the only twist
     // the mechanic exists to create.
 
+    const compareSelect = (idFor: string, cls: string) => (
+        <select
+                            id={idFor}
+                            className={cls}
+                            value={onCompare ? '' : compareId}
+                            onChange={e => {
+                                const id = e.target.value;
+                                if (onCompare) { if (id) onCompare(id); }
+                                else setCompareId(id);
+                            }}
+                            aria-label="Compare with another tribute"
+                        >
+                            <option value="">Compare with…</option>
+                            {[...gameState.tributes]
+                                .filter(o => o.id !== tribute.id)
+                                .sort((a, b) => Number(a.status === 'dead') - Number(b.status === 'dead')
+                                    || a.district - b.district
+                                    || a.name.localeCompare(b.name))
+                                .map(o => (
+                                    <option key={o.id} value={o.id}>{o.name} (D{o.district}){o.status === 'dead' ? ' †' : ''}</option>
+                                ))}
+                        </select>
+    );
+
     return (
         <div
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fadeIn"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-fadeIn"
             onClick={onClose}
             role="dialog"
             aria-modal="true"
@@ -401,7 +426,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                 content on a 380px phone. The sheet is the surface a player
                 spends the whole run in, so it gets the phone's width back and
                 takes the desktop padding from `sm:` up. */}
-            <div ref={panelRef} tabIndex={-1} className="panel p-4 sm:p-6 max-w-3xl w-full sheet-maxh overflow-y-auto overscroll-contain custom-scrollbar animate-riseIn" onClick={e => e.stopPropagation()}>
+            <div ref={panelRef} tabIndex={-1} className="panel tribute-sheet p-4 sm:p-6 max-w-3xl w-full sheet-maxh overflow-y-auto overscroll-contain custom-scrollbar animate-riseIn" onClick={e => e.stopPropagation()}>
                 <div className="flex justify-between items-start mb-3 gap-4">
                     <div className="min-w-0">
                         <h3 className="display-title text-2xl">
@@ -491,27 +516,15 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                         {/* AUDIT-11 §4: one "Compare with" control. With a
                             host that owns the full comparison view it opens
                             that; otherwise it shows the inline side-by-side. */}
-                        <select
-                            id="compare-with"
-                            className="field text-xs w-auto max-w-[9.5rem] sm:max-w-none"
-                            value={onCompare ? '' : compareId}
-                            onChange={e => {
-                                const id = e.target.value;
-                                if (onCompare) { if (id) onCompare(id); }
-                                else setCompareId(id);
-                            }}
-                            aria-label="Compare with another tribute"
-                        >
-                            <option value="">Compare with…</option>
-                            {[...gameState.tributes]
-                                .filter(o => o.id !== tribute.id)
-                                .sort((a, b) => Number(a.status === 'dead') - Number(b.status === 'dead')
-                                    || a.district - b.district
-                                    || a.name.localeCompare(b.name))
-                                .map(o => (
-                                    <option key={o.id} value={o.id}>{o.name} (D{o.district}){o.status === 'dead' ? ' †' : ''}</option>
-                                ))}
-                        </select>
+                        {/* AUDIT-12 U4 / §4: on a phone Compare moves into an
+                            overflow menu so the header chips keep their row. */}
+                        <span className="hidden sm:inline-flex">{compareSelect('compare-with', 'field text-xs w-auto')}</span>
+                        <details className="sheet-overflow sm:hidden relative">
+                            <summary className="btn btn-sm btn-ghost list-none" aria-label="More actions"><MoreHorizontal className="w-4 h-4" /></summary>
+                            <div className="sheet-overflow-menu panel p-2">
+                                {compareSelect('compare-with-mobile', 'field text-xs w-full')}
+                            </div>
+                        </details>
                         <button onClick={onClose} className="btn btn-sm btn-ghost" aria-label="Close">
                             <X className="w-4 h-4" />
                         </button>
@@ -734,7 +747,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                 {/* A5: four tabs instead of fifteen sections in one column. */}
                 {/* AUDIT-11 U18: complete ARIA tabs — roving tabindex, arrow
                     keys, Home/End, and a labelled tabpanel. */}
-                <div className="seg mb-4 w-full" role="tablist" aria-label="Tribute sheet sections"
+                <div className="seg sheet-tabs mb-4 w-full" role="tablist" aria-label="Tribute sheet sections"
                     onKeyDown={e => {
                         const ids = TABS.map(([id]) => id);
                         const at = ids.indexOf(tab);
@@ -794,7 +807,7 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                     {tab === 'overview' && <>
                     <section>
                         <h4 className="panel-title mb-2">Condition</h4>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-2">
                             <VitalBar label="Health" value={tribute.health} invert />
                             <VitalBar
                                 label="Sanity"
@@ -896,6 +909,15 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                                 )}
                             </div>
                         )}
+                    {/* AUDIT-12 S8: how many of the living believe this tribute has killed. */}
+                        {(() => {
+                            const n = accusersOf(gameState, tribute.id);
+                            return n > 0 ? (
+                                <p className="text-micro text-[var(--color-ink-500)] mt-2" data-testid="accusers-line">
+                                    {n} of the living {n === 1 ? 'believes' : 'believe'} they have killed.
+                                </p>
+                            ) : null;
+                        })()}
                     </section>
 
                     <section>
