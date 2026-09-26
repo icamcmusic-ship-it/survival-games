@@ -1,5 +1,5 @@
 import { Terrain, Tribute, attr } from '../models/types';
-import { afterForage, anglingForage, neverPoisonous } from './audit13Content';
+import { afterForage, anglingForage, neverPoisonous, noteStitched } from './audit13Content';
 import { noteParleyFailed } from './traitHooks';
 import { adaptArenaEvent, applyEventMechanic } from './season/eventMechanics';
 import { mentorWarningBonus } from './season/carry';
@@ -1088,6 +1088,8 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
         if (ally) {
             if (ally.injuries.bleeding && ctx.rng.chance(STANCE_MODES.nursing.staunchBase + profOf(t, 'medicine') * STANCE_MODES.nursing.staunchPerMedicine)) {
                 clearBleeding(ally);
+                // AUDIT-13 N1: a Stitch-Fingered staunch is a clean one.
+                noteStitched(ctx, t, ally);
                 // B3-03: the fact, beside the sentence about it.
                 noteMilestone(ctx, 'bleeding-stopped', [t.id, ally.id]);
                 ctx.logEvent(`${t.name} gets ${ally.name}'s bleeding stopped in ${t.zone}.`, [t.id, ally.id], { category: 'injury', zone: t.zone });

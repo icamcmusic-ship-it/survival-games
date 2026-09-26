@@ -138,9 +138,13 @@ export function onAudit13Death(ctx: SimContext, victim: Tribute, killer?: Tribut
     });
 }
 
-/** Mourning's precondition: a death they grieve, in reach, inside the window. */
+/**
+ * Mourning's precondition: a death they grieve, in reach, inside the window —
+ * and not already spending a grief day (`griefStance`), which is the same
+ * loss taken the other way and forces its own posture.
+ */
 export function mourningAvailable(ctx: SimContext, t: Tribute): boolean {
-    return !!t.mourning && cycleOf(ctx.state) - t.mourning.cycle <= C.mourningWindow;
+    return !!t.mourning && !t.griefDay && cycleOf(ctx.state) - t.mourning.cycle <= C.mourningWindow;
 }
 
 // ---------------------------------------------------------------------------

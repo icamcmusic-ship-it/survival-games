@@ -424,11 +424,12 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
     /*
      * AUDIT-13 §16 N35-N37. Regrouping: in a group and none of it here.
      * Mourning: a death they grieve, in or next to this zone, inside the
-     * window. Sheltering: weather on them or coming, and the skill to get
+     * window, and nobody hostile here. Sheltering: weather on them or coming, and the skill to get
      * under something. The payoffs are in `audit13Content.ts`.
      */
     Regrouping: (ctx, t) => stickyHold(t, 'Regrouping') || regroupingAvailable(ctx, t),
-    Mourning: (ctx, t) => stickyHold(t, 'Mourning') || mourningAvailable(ctx, t),
+    // Nobody sits down with a body while somebody hostile is standing over it.
+    Mourning: (ctx, t, sig) => stickyHold(t, 'Mourning') || (sig.hostile === 0 && mourningAvailable(ctx, t)),
     Sheltering: (ctx, t) => stickyHold(t, 'Sheltering') || shelteringAvailable(ctx, t),
 
     /*

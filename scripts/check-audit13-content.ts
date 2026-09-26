@@ -14,6 +14,8 @@ import { TRAIT_DEFS } from '../src/data/traits';
 import { QUIRKS, QUIRK_MODS } from '../src/data/quirks';
 import { ARCHETYPES } from '../src/data/archetypes';
 import { STANCE_PROFILES } from '../src/data/stances';
+import { noteStitched, stitchedInfectionScale } from '../src/engine/audit13Content';
+import { SimContext } from '../src/engine/context';
 
 const RUNS = Number(process.env.AUDIT13_CONTENT_RUNS ?? 120);
 const arenaIds = [...ARENAS.map(a => a.id), 'procedural'];
@@ -85,7 +87,19 @@ NEW_STANCES.forEach(s => guard((stanceCycles[s] ?? 0) > 0, `stance ${s} is taken
 SIGNATURE_EVENTS.forEach(e => guard((events[e] ?? 0) > 0, `set piece ${e} fires`, `${events[e] ?? 0}`));
 NEW_SKILLS.forEach(k => guard((skillPeak[k] ?? 0) > 0, `skill ${k} is trained`, `peak ${(skillPeak[k] ?? 0).toFixed(2)}`));
 guard(luckSpent > 0, 'N12 Borrowed Luck spends', `${luckSpent}`);
-guard(stitched > 0, 'N1 a Stitch-Fingered dressing lands', `${stitched}`);
+// N1 needs a Stitch-Fingered holder, a bleeding ally and a dressing that
+// takes, all at once: about one in a hundred runs. Reported from the sweep,
+// asserted directly.
+console.log(`  info  N1 Stitch-Fingered dressings in the sweep         ${stitched}`);
+{
+    const state = initialRunState({ seed: 'A13C-stitch', arenaId: arenaIds[0], config: DEFAULT_GAME_CONFIG });
+    const ctx = { state } as unknown as SimContext;
+    const [medic, patient] = state.tributes;
+    medic.traits = [...medic.traits, 'Stitch-Fingered'];
+    noteStitched(ctx, medic, patient);
+    guard(stitchedInfectionScale(ctx, patient) < 1 && stitchedInfectionScale(ctx, medic) === 1,
+        'N1 a Stitch-Fingered dressing keeps a wound clean', `scale ${stitchedInfectionScale(ctx, patient)}`);
+}
 guard(heartened > 0, 'N2 a Loud Heart steadies an ally', `${heartened} tribute-cycles`);
 guard(keepsakes > 0, 'N32 a keepsake is kept', `${keepsakes}`);
 guard(mourning > 0 && hearths > 0 && beacons > 0 && crowned > 0, 'N23/N24/N28/N36 state is reached',

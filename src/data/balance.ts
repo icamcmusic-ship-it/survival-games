@@ -10907,9 +10907,12 @@ export const AUDIT12_WAVE2_TRIBUTES = {
     /** Forger: bonus durability on what they make. */
     forgerDurability: 15,
     /** Gambler: the most the fight may look like, and the day the wager is on the board. */
-    // AUDIT-13 A17: 0.4 -> 0.47 and day 2 -> 1; the wager fired 10.9% at n=1,600.
-    gamblerOddsMax: 0.47,
-    gamblerMinDay: 1,
+    // AUDIT-13 A17 proposed 0.47 and day 1 (the wager fired 10.9% at
+    // n=1,600). Tried: it fires ~30%, but every extra wager is a losing fight
+    // and the full-field run length in test:sim fell under its 10-day floor
+    // (9.95 against 10.01), so both stay until the run-length floor has room.
+    gamblerOddsMax: 0.4,
+    gamblerMinDay: 2,
     gamblerExcitement: 25,
     /** Gambler: what a visible weapon adds to how a bettor prices a fighter. */
     gamblerArmedWorth: 3,
@@ -11155,7 +11158,7 @@ export const AUDIT13_CONTENT = {
     ashLungSmokeScale: 0.5,
     /** N11 Hunger-Sharp: hunger at or over which it bites, the power it buys, and the Hunting pull. */
     hungerSharpFrom: 30,
-    hungerSharpPower: 1,
+    hungerSharpPower: 0.7,
     hungerSharpHunting: 0.8,
     /** N13 Bitter Root: chance a find sours in the mouth, and the sanity it costs. */
     bitterRootChance: 0.2,
@@ -11232,16 +11235,16 @@ export const AUDIT13_CONTENT = {
     mourningWindow: 3,
     /** N36: regard for the dead at or over which it is mourning rather than merely grief. */
     mourningRegard: 20,
-    mourningBase: 7,
+    mourningBase: 8.5,
     mourningAwareness: 0.5,
     mourningSanity: 4,
     /** N37 Sheltering: shelter skill needed, score, exposure kept, the costs, and the tracker who still finds them. */
     shelteringSkillMin: 0.15,
     shelteringPerCarpentry: 0.1,
-    shelteringBase: 6.8,
+    shelteringBase: 7.3,
     shelteringNightBonus: 1,
     shelteringExposureScale: 0.5,
-    shelteringHunger: 1,
-    shelteringFatigue: 1,
+    shelteringHunger: 0.5,
+    shelteringFatigue: 0.5,
     shelteringTrackedLevel: 3,
 } as const;
