@@ -1385,7 +1385,10 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
         const rawDamage = finalists
             ? Math.min(ESCALATION.finalistCollapseDamage, Math.max(0, t.health - 1))
             : ESCALATION.collapseDamageBase + Math.max(0, ctx.state.day - startDay) * ESCALATION.collapseDamagePerDay;
-        const damage = capped ? Math.min(rawDamage, Math.max(0, t.health - 1)) : rawDamage;
+        // AUDIT-13 B1: before the border has started, a set-piece closure
+        // (convergence, `earlyCollapse`) herds rather than wounds — those
+        // announcements never promised a wall, only a destination.
+        const damage = !escalated ? 0 : capped ? Math.min(rawDamage, Math.max(0, t.health - 1)) : rawDamage;
         const safeZones = allZoneNames.filter(z => !collapsedList.includes(z));
         // Nearest reachable safe zone via the adjacency graph, not an
         // arbitrary index — a tribute should not teleport across the arena,
@@ -1421,6 +1424,12 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
                 { important: true, zone: trappedZone, category: 'hazard' }
             );
             clampTribute(t);
+        } else if (damage <= 0) {
+            ctx.logEvent(
+                `${trappedZone} is closed with ${t.name} still in it, and the Gamemakers move them on: they end up in ${newSafeZone}.`,
+                [t.id],
+                { type: 'border-collapse', zone: newSafeZone, category: 'hazard' }
+            );
         } else {
             applyDamage(ctx, t, damage, { cause, kind: 'arena', code: 'border' });
             ctx.logEvent(

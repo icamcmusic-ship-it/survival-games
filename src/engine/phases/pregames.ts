@@ -253,7 +253,8 @@ export function processSquare(ctx: SimContext) {
     // applies to everybody; only the narration is capped.
     const featured = new Set([
         ...cast.filter(t => t.volunteered),
-        ...ctx.rng.shuffle(cast.filter(t => !t.volunteered)),
+        // Its own stream, so choosing who is filmed moves nothing else in the run.
+        ...new RNG(`${ctx.state.seed}-goodbye-featured`).shuffle(cast.filter(t => !t.volunteered)),
     ].slice(0, AUDIT13_ARENA.goodbyeFeatured).map(t => t.id));
     const unfeatured: string[] = [];
     cast.forEach(t => {

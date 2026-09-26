@@ -64,12 +64,12 @@ export function arenaArcStage(state: GameState): 'quiet' | 'signature' | 'finale
 }
 
 /**
- * W13: whether the Hiding stance (Evasive) gets the arena's night bonus. The
+ * W13: whether the Hiding stance gets the arena's night bonus. The
  * bonus is general — the dark is the dark — but arenas whose night rule is
  * loud (a mimic, rides waking) give less of it.
  */
 export function nightHideBonus(state: GameState, t: Tribute, dark: boolean): number {
-    if (!dark || t.stance !== 'Evasive') return 0;
+    if (!dark || t.stance !== 'Hiding') return 0;
     const rule = NIGHT_RULES[state.arena.id];
     return rule === 'wake' || rule === 'mimic'
         ? AUDIT13_ARENA.nightHidingBonus * 0.5

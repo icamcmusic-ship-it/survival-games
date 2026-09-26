@@ -10924,7 +10924,7 @@ export const AUDIT13_ARENA = {
     nightRuleChance: 0.6,
     nightColdFatigue: 10,
     nightSanity: 3,
-    /** W13: concealment bonus for the Hiding stance (Evasive) in the dark. */
+    /** W13: concealment bonus for the Hiding stance in the dark. */
     nightHidingBonus: 0.06,
     /** W15: the arena arc. Days 1..quiet are quiet; from finale on it mutates once. */
     arcQuietUntilDay: 3,
