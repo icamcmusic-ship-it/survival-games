@@ -2308,7 +2308,15 @@ export const ESCALATION = {
      * border closes on an accelerated schedule: this many extra zones go out
      * of bounds per cycle on top of the ordinary collapse.
      */
-    convergeExtraZonesPerCycle: 1,
+    /*
+     * AUDIT-13 B2: 1 -> 0. The extra per-cycle closure only ever worked for the
+     * cycles before the border started, because the border's rebuild handed
+     * every convergence closure back. With the closures now permanent the
+     * convergence ring (the horn and its neighbours) plus the ordinary border
+     * is already the squeeze; keeping the extra sector on top cut full-field
+     * runs from 11.7 to 9.5 days in the soak.
+     */
+    convergeExtraZonesPerCycle: 0,
     /** Everyone driven into the convergence zone finds everyone else: encounter odds inside it. */
     convergeEncounterChance: 0.85,
     /**
@@ -10337,8 +10345,7 @@ export const AUDIT11_EVENTS = {
     dodgeDifficultyBonus: 3,
 } as const;
 
-/* ========================================================================
- * AUDIT-12 §3.2 / §5 / §6 — tribute, alliance and side-system knobs.
+/* ================================================================= * AUDIT-12 §3.2 / §5 / §6 — tribute, alliance and side-system knobs.
  * Appended block; owned by the tributes/alliances workstream.
  * ====================================================================== */
 export const AUDIT12_TRIBUTES = {
@@ -10913,4 +10920,49 @@ export const AUDIT13_SIDE = {
     /** P8: incidents kept per arena, and the threat a scarred zone carries from the first day. */
     scarsPerArena: 2,
     scarThreat: 12,
+} as const;
+
+/**
+ * AUDIT-13 §8 W1/W2/W9/W11–W16 and B6: the arena as something that changes,
+ * and the handful of fixes that came with it. Read by `arenaDynamics.ts`,
+ * `rescueLine.ts`, `stealth.ts`, `encounters.ts` and `pregames.ts`.
+ */
+export const AUDIT13_ARENA = {
+    /** W9: goodbye-room scenes the broadcast narrates; the rest share one line. */
+    goodbyeFeatured: 7,
+    /** W1/W2: rescue attempts on a downed tribute on flat ground are this much rarer. */
+    flatRescueScale: 0.5,
+    /** W11: forage multiplier by zone state. */
+    zoneForage: { intact: 1, damaged: 0.85, ruined: 0.6, flooded: 0.7, burning: 0.3, ash: 0.45, regrowth: 1.15 },
+    /** W11: concealment added by zone state (rubble hides, ash and fire do not). */
+    zoneHide: { intact: 0, damaged: 0.02, ruined: 0.06, flooded: -0.08, burning: -0.12, ash: -0.15, regrowth: 0.05 },
+    /** W11: chance non-signature arena damage moves a zone on (signature damage always does). */
+    damageAdvanceChance: 0.35,
+    burningCycles: 2,
+    ashCycles: 4,
+    regrowthCycles: 6,
+    floodCycles: 3,
+    /** W12: chance a chain starts in a cycle with none running. */
+    chainStartChance: 0.08,
+    /** W12: cycles between chain steps. */
+    chainStepCycles: 2,
+    /** W12: chance of moving to step 2, then step 3 — each weighted by the last. */
+    chainAdvanceChance: [0.55, 0.7],
+    /** W12: fatigue the middle step costs everyone. */
+    chainMidFatigue: 6,
+    /** W13: chance the arena's night rule acts on a given night. */
+    nightRuleChance: 0.6,
+    nightColdFatigue: 10,
+    nightSanity: 3,
+    /** W13: concealment bonus for the Hiding stance in the dark. */
+    nightHidingBonus: 0.06,
+    /** W15: the arena arc. Days 1..quiet are quiet; from finale on it mutates once. */
+    arcQuietUntilDay: 3,
+    arcFinaleFromDay: 8,
+    finaleRuinedZones: 2,
+    /** W16: deaths in a zone before it weighs on whoever stays there. */
+    hauntedSiteDeaths: 2,
+    hauntedSanity: 1,
+    /** B6: days a corpse keeps its kit before it is left as a cache. */
+    corpseKitDays: 2,
 } as const;

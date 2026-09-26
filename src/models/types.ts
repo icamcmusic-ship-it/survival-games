@@ -41,6 +41,9 @@ export type InterviewPersona =
  * `stanceFamily()` in `data/stances.ts`, which maps each new stance onto the
  * one of the original three it behaves like.
  */
+/** AUDIT-13 W11: the state machine a zone moves through. */
+export type ZoneStateKind = 'intact' | 'damaged' | 'ruined' | 'flooded' | 'burning' | 'ash' | 'regrowth';
+
 export type Stance =
     | 'Aggressive'
     | 'Defensive'
@@ -3648,6 +3651,16 @@ export interface GameState {
      * cycle; a run now has a season.
      */
     climateDrift?: { toward: 'heat' | 'cold' | 'wet' | 'dry'; progress: number };
+    /** AUDIT-13 W11: zones that have been through something. Absent means intact. */
+    zoneStates?: Record<string, { kind: ZoneStateKind; since: number }>;
+    /** AUDIT-13 W12: the three-step weather chain in progress, if any. */
+    weatherChain?: { name: string; step: number; cycle: number };
+    weatherChainsCompleted?: number;
+    /** AUDIT-13 W16: deaths per zone, and which bodies have been counted. */
+    deathSites?: Record<string, number>;
+    deathSitesNoted?: string[];
+    /** AUDIT-13 W15: the arena's day-8 finale mutation has happened. */
+    arenaFinaleMutated?: boolean;
     /** §5.3: consecutive cycles the audience's excitement has sat flat. */
     excitementFlatCycles?: number;
     /** §5.3: last cycle's excitement total, so "flat" can mean unchanged. */
@@ -3838,6 +3851,8 @@ export interface GameState {
         workerIds: string[];
         /** The cycle it was last touched, so an abandoned site reads as one. */
         lastCycle: number;
+        /** AUDIT-13 B5: the `lastCycle` the decay line was logged for, so it is said once per abandonment. */
+        decayNotedFor?: number;
     }>;
     gamemakerCommands?: number;
     /**

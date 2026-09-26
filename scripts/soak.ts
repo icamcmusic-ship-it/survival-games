@@ -426,6 +426,7 @@ for (let i = 0; i < 400; i++) {
   let sawRecovery = false;
   const startingOdds = new Map<string, number>();
   const gongPct = new Map<string, number>();
+  let convergenceClosed: string[] | undefined;
 
   let killLogMark = 0;
   let deadAtLastSample = new Set<string>();
@@ -459,6 +460,25 @@ for (let i = 0; i < 400; i++) {
     }
     killLogMark = state.log.length;
     deadAtLastSample = new Set(state.tributes.filter(t => t.status === 'dead').map(t => t.id));
+    /*
+     * AUDIT-13 B1: nobody living and on their feet stands in a closed zone at
+     * the end of a phase — convergence and `earlyCollapse` used to close
+     * sectors around people and leave them there.
+     */
+    const closedNow = state.collapsedZones ?? [];
+    state.tributes.forEach(t => {
+      if (t.status === 'alive' && !t.downed && closedNow.includes(t.zone)) {
+        note(`${seed}: ${t.name} is alive in collapsed zone ${t.zone} (day ${state.day} ${state.phase})`);
+      }
+    });
+    /*
+     * AUDIT-13 B2: a convergence closure is never reopened by the border. The
+     * forced-finale stage is the one zone allowed back.
+     */
+    if (state.convergenceDay !== undefined && convergenceClosed === undefined) convergenceClosed = [...closedNow];
+    (convergenceClosed ?? []).forEach(z => {
+      if (!closedNow.includes(z) && z !== state.finaleZone) note(`${seed}: convergence closure ${z} reopened (day ${state.day} ${state.phase})`);
+    });
     Object.keys(state.eventLastFired ?? {}).forEach(id => eventIdsFired.add(id));
     if (Object.keys(state.garrisonedEdges ?? {}).length > 0) { garrisonCycles++; sawGarrison = true; }
     Object.values(state.zoneEffects ?? {}).forEach(list =>

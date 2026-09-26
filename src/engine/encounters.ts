@@ -44,6 +44,7 @@ import { isAggressiveStance, isDefensiveStance, isEvasiveStance } from '../data/
 import { exhaustedHere, freshGround, isBeingFollowed, layFalseTrail, noteForageFailure, noteForageSuccess } from './intent';
 import { loseSanity } from './sanityBands';
 import { noteMilestone } from './milestones';
+import { zoneForageScale } from './arenaDynamics';
 
 export function fill(template: string, vars: Record<string, string>): string {
     return Object.entries(vars).reduce(
@@ -831,7 +832,8 @@ function attemptForage(
         noteForageFailure(t, t.zone);
         return false;
     }
-    if (!ctx.rng.chance(chance)) {
+    // AUDIT-13 W11: burned, flooded or ruined ground feeds nobody as well.
+    if (!ctx.rng.chance(chance * zoneForageScale(ctx.state, t.zone))) {
         depleteZone(ctx.state, t.zone, ZONES.depletionPerAttempt * AUDIT12_TRIBUTES.forageDepletionScale);
         // §3.2: repeated failure in the same place is a fact about the place,
         // and eventually a decision rather than a modifier. See `exhaustedHere`.

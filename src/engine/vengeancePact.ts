@@ -128,7 +128,8 @@ export function tickVengeancePacts(ctx: SimContext) {
                 ctx.logEvent(
                     `${names.join(' and ')} swore this together and are both in the sky now. `
                     + `${target.name} will never know how close it came, or that it was coming at all.`,
-                    [...pact.memberIds, pact.targetId],
+                    // AUDIT-13 B5: the living subject first; the sworn are being remembered.
+                    [pact.targetId, ...pact.memberIds],
                     { type: 'vengeance-outlived', important: true, category: 'alliance' }
                 );
             }
