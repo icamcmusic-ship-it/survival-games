@@ -1,5 +1,7 @@
 import { GameState, Prediction, PredictionResult, Tribute } from '../models/types';
-import { PREDICTION } from '../data/balance';
+import { AUDIT12_WAVE3, PREDICTION } from '../data/balance';
+import { CAUSE_FAMILY, deathCodeOf } from './causes';
+import { isUpsetVictor } from './season/upset';
 
 /**
  * AUDIT-11 §12: prediction mode.
@@ -32,9 +34,13 @@ export function topKillersOf(tributes: Tribute[]): Tribute[] {
     return most === 0 ? [] : tributes.filter(t => t.kills === most);
 }
 
+/** AUDIT-12 wave 3: the families a first-death-cause pick may name. */
+export const FIRST_DEATH_CAUSES: ReadonlyArray<NonNullable<Prediction['firstDeathCause']>> = ['tribute', 'body', 'arena', 'mutt', 'gamemaker'];
+
 /** True when a slip has at least one pick on it. */
 export function predictionFilled(p: Prediction | undefined): boolean {
-    return !!p && (!!p.winnerId || !!p.firstDeathId || !!p.topKillerId || (p.finalEight ?? []).some(id => !!id));
+    return !!p && (!!p.winnerId || !!p.firstDeathId || !!p.topKillerId || (p.finalEight ?? []).some(id => !!id)
+        || !!p.firstDeathCause || !!p.endDayPick);
 }
 
 /**
@@ -55,6 +61,12 @@ export function sanitizePrediction(p: Prediction, castIds: Iterable<string>): Pr
     const ok = (id: string | undefined) => (id && cast.has(id) ? id : undefined);
     const seen = new Set<string>();
     const out: Prediction = { ...p, winnerId: ok(p.winnerId), firstDeathId: ok(p.firstDeathId), topKillerId: ok(p.topKillerId) };
+    // AUDIT-12 wave 3: the cause pick is a family, the over/under needs a line.
+    if (p.firstDeathCause && !FIRST_DEATH_CAUSES.includes(p.firstDeathCause)) delete out.firstDeathCause;
+    if (p.endDayPick && (p.endDayPick !== 'over' && p.endDayPick !== 'under' || !(typeof p.endDayLine === 'number' && p.endDayLine >= 1))) {
+        delete out.endDayPick;
+        delete out.endDayLine;
+    }
     if (p.finalEight) {
         out.finalEight = p.finalEight.slice(0, PREDICTION.finalSize).map(id => {
             if (!ok(id) || seen.has(id)) return '';
@@ -107,6 +119,25 @@ export function scorePrediction(state: GameState, p: Prediction | undefined): Pr
         });
         score += eightScore;
         if (eightScore > 0) hits.push('final-eight');
+    }
+    // AUDIT-12 wave 3 §11: how the first tribute died, by family.
+    const W = AUDIT12_WAVE3.prediction;
+    if (p.firstDeathCause) {
+        max += W.causePoints;
+        const first = firstDeathOf(tributes);
+        if (first && CAUSE_FAMILY[deathCodeOf(first)] === p.firstDeathCause) { score += W.causePoints; hits.push('first-death-cause'); }
+    }
+    // The day the Games end, over or under the line. Landing on it is a push: no points either way.
+    if (p.endDayPick && typeof p.endDayLine === 'number') {
+        max += W.overUnderPoints;
+        const won = p.endDayPick === 'over' ? state.day > p.endDayLine : state.day < p.endDayLine;
+        if (won) { score += W.overUnderPoints; hits.push('end-day'); }
+    }
+    // Called the upset: the victor named was a no-kill or thin-district crown.
+    if (p.winnerId && hits.includes('winner') && victors.some(v => v.id === p.winnerId && isUpsetVictor(v))) {
+        max += W.upsetPoints;
+        score += W.upsetPoints;
+        hits.push('upset');
     }
     return { score, max, hits };
 }

@@ -1,11 +1,12 @@
 import { Tribute, attr } from '../models/types';
+import { rationMeal, rationingDrain } from './traitHooks';
 import { ARENA_LAWS, CAREER_APPETITE, ZONES, POISONING, FATIGUE_MISTAKES, SANITY_BANDS, DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TOOLS, TRAIT_EFFECTS, UNIVERSAL_DEATHS, VITALS, WATER, SITUATIONAL_KIT , AUDIT12_TRIBUTES } from '../data/balance';
 import { SimContext, getAlive } from './context';
 import { adjustRel, getRel } from './relationships';
 import { samePlace } from './verticality';
 import { resolveTreatmentScarcity } from './triage';
 import { applyDamage, checkDeath } from './combat';
-import { climateOf } from './climate';
+import { climateIsOwn, climateOf } from './climate';
 import { applyExposure } from './exposure';
 import { getZone, zoneFeatures } from './map';
 import { hasEffect } from './zoneEffects';
@@ -168,6 +169,8 @@ function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
 
     // Traits, as one table read rather than a growing chain of includes().
     hunger += traitMod(t, 'hungerDrain');
+    // AUDIT-12 §16: the Rationing skill.
+    hunger -= rationingDrain(t);
     thirst += traitMod(t, 'thirstDrain');
     fatigue += time === 'night' ? traitMod(t, 'fatigueNight') : traitMod(t, 'fatigueDay');
     // Younger tributes burn through rations faster and sleep worse.
@@ -566,7 +569,10 @@ function consumeSupplies(ctx: SimContext, t: Tribute) {
         }
     }
     if (t.vitals.hunger > VITALS.eatThreshold) {
-        const food = consumeOne(t, i => i.type === 'food');
+        // AUDIT-12 §16: a Rationer eats half and keeps the other half.
+        const food = rationMeal(ctx, t) === 'saved'
+            ? t.inventory.find(i => i.type === 'food')
+            : consumeOne(t, i => i.type === 'food');
         if (food) {
             // §6.3: the same ration cooked over a fire goes further — hot
             // food is one of the things a fire is actually for.
@@ -1177,7 +1183,10 @@ export function processVitals(ctx: SimContext, time: 'day' | 'night') {
         // The arena's standing weather, through the same path as a Gamemaker storm.
         const climate = climateOf(ctx.state.arena.id);
         const exposure = climate?.exposure?.(time);
+        const woundBefore = t.lastDamage;
         if (exposure) applyExposure(ctx, t, exposure);
+        // AUDIT-12 §8.2: a climate no other arena has is this arena's own cause.
+        if (t.lastDamage && t.lastDamage !== woundBefore && climateIsOwn(ctx.state.arena.id)) t.lastDamage.signature = true;
         if (t.status !== 'alive') return;
 
         // Standing with the Capitol drifts by temperament as well as by events.

@@ -2,7 +2,8 @@ import { scarCoverShift, weatherConcealment } from './arenaDepth';
 import { profOf, trainProficiency } from './proficiency';
 import { Tribute, Zone } from '../models/types';
 import { zoneFeatures } from './map';
-import { CRAFTING, INVENTORY, PROFICIENCY, STANCE_MODES, STEALTH } from '../data/balance';
+import { AUDIT12_WAVE2_TRIBUTES, CRAFTING, INVENTORY, PROFICIENCY, STANCE_MODES, STEALTH } from '../data/balance';
+import { ambushSkillShift, lureAmbushBonus } from './traitHooks';
 import { SimContext, getAlive } from './context';
 import { traitMod } from '../data/traits';
 import { concealmentModifier, effectiveIntelligence } from './physique';
@@ -81,6 +82,8 @@ export function concealment(
     // ...and Tending is standing still with both hands busy, which is the
     // opposite trade and roughly the same size.
     if (t.stance === 'Tending') value += STANCE_MODES.tending.concealmentBonus;
+    // AUDIT-12 §16: Hiding is going to ground on purpose.
+    if (t.stance === 'Hiding') value += AUDIT12_WAVE2_TRIBUTES.hidingConcealmentBonus;
 
     // A fire is warmth, hot food and a beacon. Camouflage is the reverse trade.
     if (camp?.fire) value -= CRAFTING.fireConcealmentPenalty;
@@ -298,6 +301,8 @@ export function rollAmbush(ctx: SimContext, attacker: Tribute, defender: Tribute
         chance += STEALTH.waitingAmbushBonus;
     }
     chance += traitMod(attacker, 'ambush');
+    // AUDIT-12 T15 / §16: a Mimic's lure, the Ambush skill, and a Scout-Runner's warning.
+    chance += lureAmbushBonus(ctx, attacker, defender) + ambushSkillShift(ctx, attacker, defender);
     if (isAggressiveStance(defender.stance)) chance -= 0.1;
 
     return ctx.rng.chance(Math.max(0, Math.min(STEALTH.maxAmbushChance, chance)));

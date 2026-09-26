@@ -239,3 +239,13 @@ const CLIMATES: Record<string, ClimateProfile> = {
 export function climateOf(arenaId: string): ClimateProfile | undefined {
     return CLIMATES[arenaId];
 }
+
+/**
+ * AUDIT-12 §8.2: a climate no other arena shares is one of this arena's own
+ * causes — the Floe's black-sea cold is nowhere else in Panem.
+ */
+export function climateIsOwn(arenaId: string): boolean {
+    const mine = CLIMATES[arenaId];
+    if (!mine) return false;
+    return Object.values(CLIMATES).filter(p => p === mine).length === 1;
+}

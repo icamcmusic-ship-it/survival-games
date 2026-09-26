@@ -3575,7 +3575,7 @@ export const ACHIEVEMENTS: Achievement[] = [
     {
         id: 'the-whole-menagerie',
         name: 'The Whole Menagerie',
-        hint: 'See every mutt in an arena\'s roster loosed in a single Games.',
+        hint: 'See every mutt in an arena\'s roster loosed in a single Games, and at least one of them kill.',
         category: 'oddity',
         rarity: 'common',
         test: state => {
@@ -3589,12 +3589,17 @@ export const ACHIEVEMENTS: Achievement[] = [
             const roster = state.arena.mutts ?? [];
             if (roster.length < 2) return false;
             const met = new Set(state.muttsSeen ?? []);
-            return roster.every(m => met.has(m));
+            // AUDIT-12 wave 2: with every roster now at least four deep this
+            // unlocked on exactly the runs 'the-whole-bestiary' did. A
+            // menagerie is also the animals *winning* once: a mutt has to
+            // have killed somebody.
+            return roster.every(m => met.has(m)) && causeDeaths(state, 'mutt') >= 1;
         },
         nearMiss: state => {
             const roster = state.arena.mutts ?? [];
             const met = new Set(state.muttsSeen ?? []);
             const seen = roster.filter(m => met.has(m)).length;
+            if (roster.length >= 2 && seen === roster.length && causeDeaths(state, 'mutt') === 0) return 'every mutt was loosed, and not one of them killed anybody';
             return roster.length >= 2 && seen === roster.length - 1 ? `${seen} of the arena's ${roster.length} mutts were loosed — one never left its pen` : undefined;
         },
     },

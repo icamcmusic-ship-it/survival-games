@@ -1,5 +1,5 @@
 import { InterviewPersona, GameState, GameConfig, HallOfFameEntry, CampaignSnapshot, InterventionRecord, Prediction } from '../models/types';
-import { givenName, legacyReapingDue, rebellionCallsQuell } from '../engine/campaign';
+import { givenName, legacyReapingDue } from '../engine/campaign';
 import { sanitizePrediction, scorePrediction } from '../engine/prediction';
 import { noteRunLines, readStaleLines } from '../utils/staleLines';
 import { PARLAY } from '../data/balance';
@@ -23,7 +23,11 @@ import type { SponsorResult } from '../engine/playerSponsor';
 import { readPrefs } from './prefsStore';
 import { scopeFollowCamToSeed } from './chronicleStore';
 import { seatVeterans } from '../engine/veterans';
-import { AUDIT12_UI, COIN_ECONOMY, VETERANS } from '../data/balance';
+import { AUDIT12_UI, AUDIT12_WAVE3, COIN_ECONOMY, VETERANS } from '../data/balance';
+import { directorEffectLine } from '../engine/season/directorEffect';
+import { gauntletScoreOf } from '../engine/season/gauntlet';
+import { killLedgerOf } from '../engine/season/killLedger';
+import { setApprenticeshipChoice } from '../utils/panemStorage';
 
 /**
  * PERF: the engine is loaded on demand.
@@ -237,6 +241,8 @@ function writeSave() {
         // together. See `SavedRun.balanceFingerprint`.
         balanceFingerprint: balanceFingerprint(),
         note: autosaveNote,
+        // AUDIT-12 wave 3: dropped with the rewind tail when space runs out.
+        ...(reapingState && rewindDepth > 0 ? { reaping: reapingState } : {}),
     } as SavedRun);
 
     // Each checkpoint is a whole state, so the rewind tail is the most
@@ -340,6 +346,9 @@ function pushRewind(state: GameState) {
     if (rewindStack.length > REWIND_CAP) rewindStack.shift();
 }
 
+/** AUDIT-12 wave 3: the run at its reaping, for the reaping counterfactuals. */
+let reapingState: GameState | null = null;
+
 function clearRewind() {
     rewindStack = [];
     // AUDIT-11 E11: anything still holding a reference to the old ring (an
@@ -422,6 +431,16 @@ function saveHallOfFame(state: GameState): WriteResult {
         winnerEndHealth: winner?.health ?? 0,
         // AUDIT-11 §12: the player's slip, scored.
         prediction: scorePrediction(state, state.prediction),
+        // AUDIT-12 wave 3: who the victor killed and how, what they carried
+        // home (a later Games' old victor's cache), a gauntlet's score, and
+        // what the director measurably did to these Games.
+        ...(winner && killLedgerOf(state, winner.id).length > 0 ? { killLedger: killLedgerOf(state, winner.id) } : {}),
+        ...(winner && winner.inventory.length > 0 ? { winnerItems: [...new Set(winner.inventory.map(i => i.id))].slice(0, 12) } : {}),
+        ...(() => {
+            const score = gauntletScoreOf(state, scorePrediction(state, state.prediction));
+            return score !== undefined ? { gauntlet: { mutators: [...(state.config.mutators ?? [])], score } } : {};
+        })(),
+        ...(directorEffectLine(state) ? { directorEffect: directorEffectLine(state) } : {}),
         tributeSummaries: state.tributes.map(t => ({
             name: t.name,
             district: t.district,
@@ -523,7 +542,11 @@ function settleBook(state: GameState) {
     // here rather than in `commitRun` because this is where the wallet lives,
     // and behind the same `betsResolved` guard as everything else on this path
     // so a re-render can never pay for the same discoveries twice.
-    const earned = lastRunOutcome?.achievementCoins ?? 0;
+    // AUDIT-12 wave 3 §12.8: called the upset — the slip named a no-kill or
+    // thin-district victor, and they came home.
+    const upset = scorePrediction(state, state.prediction)?.hits.includes('upset') ? AUDIT12_WAVE3.prediction.upsetCoins : 0;
+    if (upset > 0) side.lines.push(`You called the upset. The Capitol's bookmakers pay ${upset} coins to anybody who saw it coming.`);
+    const earned = (lastRunOutcome?.achievementCoins ?? 0) + upset;
     if (side.winnings + earned > 0) gameActions.setCoins(coinsAtStart + side.winnings + earned);
     const achievementLine = earned > 0
         ? [`The Capitol pays ${earned} Capitol Coins for ${lastRunOutcome!.newAchievements.length} first-time achievement${lastRunOutcome!.newAchievements.length === 1 ? '' : 's'}.`]
@@ -908,6 +931,7 @@ export const gameActions = {
         // it. A save from before the stack was persisted has none, and resumes
         // exactly as it used to.
         restoreRewind(saved.rewind);
+        reapingState = saved.reaping ?? null;
         autosaveNote = saved.note;
         const { Simulator } = await loadEngine();
         const { gameState } = saved;
@@ -1053,6 +1077,42 @@ export const gameActions = {
             onProgress?.(k + 1, count);
         }
         return summariseBranches(checkpoint, gameState, ends, planned.length);
+    },
+
+    /** AUDIT-12 wave 3: whether the reaping counterfactuals can run for this Games. */
+    canRunReapingWhatIf(): boolean {
+        const { gameState } = gameStore.getState();
+        return !!gameState && !!reapingState && reapingState.seed === gameState.seed;
+    },
+
+    /**
+     * AUDIT-12 wave 3 §11: "X was never reaped" and "this alliance never
+     * formed", both played from the reaping with the player's own
+     * interventions replayed. Yields between branches like `runWhatIf`.
+     */
+    async runReapingWhatIf(kind: 'never-reaped' | 'no-alliance', subjectId: string, onProgress?: (done: number, total: number) => void) {
+        const { gameState } = gameStore.getState();
+        const reaping = reapingState;
+        if (!gameState || !reaping || reaping.seed !== gameState.seed) return null;
+        const { neverReaped, allianceNeverFormed } = await loadEngine();
+        await new Promise(resolve => setTimeout(resolve, 0));
+        if (gameStore.getState().gameState !== gameState) return null;
+        onProgress?.(0, 1);
+        if (kind === 'never-reaped') {
+            const r = neverReaped(reaping, gameState, subjectId);
+            onProgress?.(1, 1);
+            return r ?? null;
+        }
+        const record = gameState.alliances?.[subjectId];
+        if (!record) return null;
+        const r = allianceNeverFormed(reaping, gameState, record.memberIds, record.name ?? subjectId);
+        onProgress?.(1, 1);
+        return r ?? null;
+    },
+
+    /** AUDIT-12 wave 3 §11: the player chooses what a district's next tribute is taught. */
+    chooseApprenticeship(district: number, skill: string | null) {
+        gameStore.setState({ panem: setApprenticeshipChoice(district, skill) });
     },
 
     /** Whether a step back is currently possible. */
@@ -1225,9 +1285,18 @@ export const gameActions = {
         const pinnedQuell = pinnedQuellId === undefined ? undefined : (pinnedQuellId === null ? null : QUELLS.find(q => q.id === pinnedQuellId) ?? null);
         // AUDIT-11 §12: a campaign in open unrest gets a Quell — announced on
         // the setup screen a season ahead, since it is read from the same book.
-        const campaignNow = pinnedCampaign ?? campaignSnapshotOf(gameStore.getState().panem);
-        const rebellionQuell = pinnedQuell === undefined && config.vanillaRules !== true && rebellionCallsQuell(campaignNow);
-        const gamesProfile = gamesProfileFor(safeSeed, forceQuell || rebellionQuell, pinnedQuell, config.vanillaRules === true);
+        const campaignNow = pinnedCampaign ?? campaignSnapshotOf(gameStore.getState().panem, readHallOfFame());
+        /*
+         * AUDIT-12 wave 3 §11: the Quell is announced a season ahead. The
+         * record book names the Quell and the Games it falls on when the
+         * rebellion reaches the Quell line; that Games is pinned to it, and
+         * the one before it is told what is coming.
+         */
+        const announced = campaignNow.ledger?.announcedQuell;
+        const announcedQuell = pinnedQuell === undefined && config.vanillaRules !== true && announced && announced.forRun === campaignNow.runs + 1
+            ? QUELLS.find(q => q.id === announced.quellId)
+            : undefined;
+        const gamesProfile = gamesProfileFor(safeSeed, forceQuell || !!announcedQuell, announcedQuell ?? pinnedQuell, config.vanillaRules === true);
         // 'random-hidden': a real arena, still resolved deterministically from
         // the seed (a shared seed reproduces the same Games) — the pick just
         // isn't the player's to make, and its identity stays out of the UI
@@ -1375,6 +1444,7 @@ export const gameActions = {
             campaign: panemNow,
         };
 
+        reapingState = snapshotState(initialState);
         gameStore.setState({
             gameState: initialState,
             simulator: new Simulator(initialState),
@@ -1425,6 +1495,7 @@ export const gameActions = {
         delete newState.veteransSeated;
         delete newState.prediction;
 
+        reapingState = snapshotState(newState);
         gameStore.setState({ gameState: newState, simulator: new Simulator(newState) });
         persistRun();
     },

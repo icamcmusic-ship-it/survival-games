@@ -155,6 +155,19 @@ export interface ArenaEventDef {
     chain?: string;
     /** §7e: names everyone who saw it, whether or not the event itself touched them. */
     witnesses?: boolean;
+    /**
+     * AUDIT-12 §8.2: this is the arena's own death, not the shared pool's.
+     * Stamped onto the wound (`DamageRecord.signature`) so the per-arena
+     * death-mix guard can count it. Every lethal event in an arena's own pack
+     * is tagged at load (below); the universal pool never is.
+     */
+    signature?: boolean;
+    /**
+     * AUDIT-12 §8.4: the line the arena gives one cycle before this hazard
+     * lands, when it is telegraphed (`engine/arenaWave2.ts`). `{zone}` is
+     * filled. Absent, a generic warning is used.
+     */
+    warnText?: string;
 }
 
 export interface ArenaActions {
@@ -14879,6 +14892,10 @@ function stampEventIds(arenaId: string, events: ArenaEventDef[]) {
 }
 
 for (const [id, pack] of Object.entries(ARENA_FLAVOR)) stampEventIds(id, pack.events);
+// AUDIT-12 §8.2: an arena's own lethal events are its signature deaths.
+for (const pack of Object.values(ARENA_FLAVOR)) {
+    pack.events.forEach(e => { if ((e.damage ?? 0) > 0 && e.signature === undefined) e.signature = true; });
+}
 stampEventIds('generic', GENERIC_ARENA_FLAVOR.events);
 // AUDIT-11 §9/§10: the new universal causes and beats, folded in before the
 // ids are stamped so they get derived ids like every other shared event.

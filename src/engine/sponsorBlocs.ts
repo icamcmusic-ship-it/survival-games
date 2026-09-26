@@ -96,7 +96,8 @@ export function drawFromBloc(ctx: SimContext, t: Tribute, cost: number): Sponsor
     const purse = budgets(ctx);
     const scored = SPONSOR_BLOCS
         .filter(b => (purse[b.id] ?? 0) >= cost * 0.5)
-        .map(b => ({ b, weight: blocWeight(ctx.state, t, b) }));
+        // AUDIT-12 wave 3: patron's regret — a bloc that just watched its tribute die gives less readily.
+        .map(b => ({ b, weight: blocWeight(ctx.state, t, b) * (ctx.state.season?.blocRegret?.[b.id] ?? 1) }));
     if (scored.length === 0) return undefined;
     let roll = ctx.rng.nextFloat() * scored.reduce((sum, s) => sum + s.weight, 0);
     for (const s of scored) {

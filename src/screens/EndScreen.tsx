@@ -8,6 +8,7 @@ import { ReplayFallenStrip } from '../components/ReplayFallenStrip';
 import { ChronicleExport } from '../components/ChronicleExport';
 import { VictorArc } from '../components/VictorArc';
 import { WhatIfPanel } from '../components/WhatIfPanel';
+import { EndSeasonPanel } from '../components/SeasonPanels';
 import { RunProfileCard } from '../components/RunProfileCard';
 import { TributeModal } from '../components/TributeModal';
 import { Trophy, MapPin, Swords, Skull, RotateCcw, Repeat, Award } from 'lucide-react';
@@ -412,6 +413,8 @@ export function EndScreen({
                     <RunProfileCard gameState={gameState} />
 
                     <WhatIfPanel gameState={gameState} onOpenTribute={setSelectedTributeId} />
+                    {/* AUDIT-12 wave 3: director effect, victor's tour, apprenticeships. */}
+                    <EndSeasonPanel gameState={gameState} />
 
                     <div className="panel p-5 space-y-3">
                         <h3 className="panel-title flex items-center gap-2 border-b border-[var(--color-ink-800)] pb-2">

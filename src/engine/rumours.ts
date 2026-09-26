@@ -21,6 +21,8 @@
  * Distinct from §3.5's notoriety, which is reputation *about people* and is a
  * scalar. This is content, and it can be checked.
  */
+import { isRumourMonger, isSaltTongued } from '../data/traits';
+import { AUDIT12_WAVE2_TRIBUTES } from '../data/balance';
 import { GameState, Tribute } from '../models/types';
 import { RUMOURS } from '../data/balance';
 import { SimContext, getAlive } from './context';
@@ -232,10 +234,15 @@ function tell(state: GameState, teller: Tribute, listener: Tribute, rumourId: st
 export function tradeRumours(ctx: SimContext, a: Tribute, b: Tribute) {
     const state = ctx.state;
     const swap = (from: Tribute, to: Tribute) => {
-        heard(from).forEach(id => {
+        let passed = 0;
+        [...heard(from)].forEach(id => {
             if (!ctx.rng.chance(RUMOURS.passOnChance)) return;
             tell(state, from, to, id);
+            passed++;
         });
+        // AUDIT-12 §16: a Rumour-Monger never leaves a meeting without passing one on.
+        const held = heard(from);
+        if (passed === 0 && isRumourMonger(from) && held.length > 0) tell(state, from, to, held[0]);
     };
     swap(a, b);
     swap(b, a);
@@ -322,7 +329,10 @@ export function checkRumours(ctx: SimContext) {
                 );
                 return;
             }
-            const planted = rumour.plantedById === source.id;
+            // AUDIT-12 T15: a Salt-Tongued planter is caught half as often —
+            // the lie reads as an honest mistake they were only passing on.
+            const planted = rumour.plantedById === source.id
+                && !(isSaltTongued(source) && ctx.rng.chance(AUDIT12_WAVE2_TRIBUTES.saltTonguedEscape));
             adjustRel(t, source.id, -(planted ? RUMOURS.plantedRegardCost : RUMOURS.repeatedRegardCost));
             raiseSuspicion(t, source.id, planted ? RUMOURS.plantedSuspicion : RUMOURS.repeatedSuspicion);
             ctx.logEvent(

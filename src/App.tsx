@@ -71,7 +71,7 @@ import { useStore } from './store/createStore';
 import { prefsStore } from './store/prefsStore';
 import { DEFAULT_GAME_CONFIG } from './data/constants';
 import { ARENA_DEATH_BUDGET, BLOODBATH } from './data/balance';
-import { parseMutators } from './data/mutators';
+import { parseMutators, GAUNTLET_MAX_MUTATORS } from './data/mutators';
 
 /** Routes kept inline on the phone header while a run exists. */
 const RUN_ROUTES: ViewName[] = ['roster', 'game', 'debrief', 'chronicle'];
@@ -228,7 +228,9 @@ export default function App() {
         enableHallucinations: boolParam('enableHallucinations', DEFAULT_GAME_CONFIG.enableHallucinations ?? true),
         enableBreakdowns: boolParam('enableBreakdowns', DEFAULT_GAME_CONFIG.enableBreakdowns ?? true),
         // AUDIT-11 §12: the mutator cards. Absent on older links: none.
-        mutators: parseMutators(params.get('mutators')),
+        mutators: parseMutators(params.get('mutators'), params.get('gauntlet') === '1' ? GAUNTLET_MAX_MUTATORS : undefined),
+        // AUDIT-12 wave 3: a gauntlet link carries its stack.
+        ...(params.get('gauntlet') === '1' ? { gauntlet: true } : {}),
       };
       // A shared link pins the run's exact Quarter Quell (or explicit lack of
       // one) so it replays the same Games it was copied from — the same

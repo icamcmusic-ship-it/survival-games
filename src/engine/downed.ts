@@ -392,7 +392,15 @@ export function tickDowned(ctx: SimContext) {
                 const witnesses = here.filter(o => o.id !== decider.id);
                 if (ctx.rng.chance(Math.max(0, Math.min(1, chance)))) {
                     decider.finishedDowned = [...(decider.finishedDowned ?? []), t.id];
-                    finish(ctx, t, `Killed by ${decider.name} while they lay unconscious`, decider);
+                    // AUDIT-12 §7: name what finished them. The execution line was
+                    // the largest single source of "bare-hand" kills in the
+                    // metrics table (27% of them) while the executioner was
+                    // usually holding something.
+                    const blade = decider.inventory.filter(i => i.type === 'weapon')
+                        .sort((a, b) => (b.damage ?? 0) - (a.damage ?? 0))[0];
+                    finish(ctx, t, blade
+                        ? `Killed by ${decider.name} while they lay unconscious (${blade.name})`
+                        : `Killed by ${decider.name} while they lay unconscious`, decider);
                     // Finishing the helpless is not fighting, and the zone knows it.
                     witnesses.forEach(w => {
                         addFear(w, decider.id, DOWNED.executeFear, decider);

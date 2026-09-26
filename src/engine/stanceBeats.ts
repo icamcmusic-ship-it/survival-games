@@ -1,4 +1,6 @@
 import { Tribute } from '../models/types';
+import { lootChanceBonus } from './traitHooks';
+import { trainProficiency } from './proficiency';
 import { SimContext, getAlive } from './context';
 import { HUNTING, STANCE_MODES } from '../data/balance';
 import { resolveCombat } from './combat';
@@ -88,6 +90,8 @@ function tickShadow(ctx: SimContext, t: Tribute) {
     // The free hit is modelled as a betrayal-shaped opener: `resolveCombat`
     // treats that as an ambush unconditionally, which is exactly the earned
     // outcome here without duplicating the ambush maths.
+    // AUDIT-12 §16: and it is what the Ambush skill is learned from.
+    trainProficiency(t, 'ambush', ctx);
     resolveCombat(ctx, t, quarry, false, true);
 }
 
@@ -129,7 +133,8 @@ function tickDesperate(ctx: SimContext, t: Tribute) {
 function tickScavenge(ctx: SimContext, t: Tribute) {
     const bodies = ctx.state.tributes.filter(o => o.status === 'dead' && o.zone === t.zone && o.inventory.length > 0);
     if (bodies.length === 0) return;
-    if (!ctx.rng.chance(STANCE_MODES.scavenging.bodyStripChance)) return;
+    // AUDIT-12 T15 / §16: Pack Rat, and the Scavenging skill the stance uses.
+    if (!ctx.rng.chance(STANCE_MODES.scavenging.bodyStripChance + lootChanceBonus(t, true))) return;
 
     const body = bodies[0];
     const spoils = body.inventory;
@@ -142,6 +147,7 @@ function tickScavenge(ctx: SimContext, t: Tribute) {
     body.inventory = dropped;
     const taken = spoils.filter(i => !dropped.includes(i));
     t.corpsesLooted = (t.corpsesLooted ?? 0) + 1;
+    if (taken.length > 0) trainProficiency(t, 'scavenging', ctx);
     ctx.logEvent(
         taken.length > 0
             ? `${t.name} works over what is left of ${body.name} in ${t.zone} and comes away with ${taken.map(i => i.name).join(', ')}. They do not look at the face.`

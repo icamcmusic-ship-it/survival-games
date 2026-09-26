@@ -1,4 +1,6 @@
 import { samePlace } from './verticality';
+import { AUDIT12_WAVE2_TRIBUTES } from '../data/balance';
+import { forgeWeapon, gamblerWager, guardianStand, scoutSighting, turncoatCoup } from './traitHooks';
 import { EventType, GameState, Item, Objective, Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { severRandomEdge } from './zoneEffects';
@@ -1234,6 +1236,19 @@ export const SIGNATURES: Record<string, Signature> = {
         t.sponsorTrust = Math.min(100, t.sponsorTrust + ARCHETYPE_HOOKS.signatureTrust);
         return true;
     },
+
+    // AUDIT-12 §16: the five new archetypes' set pieces live in traitHooks.ts.
+    scoutSighting,
+    turncoatCoup,
+    guardianStand,
+    forgeWeapon,
+    gamblerWager: (ctx, t) => gamblerWager(ctx, t, (a, b) => {
+        // The line as a bettor reads it: health and training, the same reading
+        // the target picker uses for "who is the stronger person here".
+        const worth = (x: Tribute) => x.health / 10 + x.trainingScore
+            + (x.inventory.some(i => i.type === 'weapon') ? AUDIT12_WAVE2_TRIBUTES.gamblerArmedWorth : 0);
+        return worth(a) / Math.max(1, worth(a) + worth(b));
+    }),
 };
 
 /**

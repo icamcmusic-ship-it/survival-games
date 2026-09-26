@@ -1,4 +1,8 @@
-import { CampaignFeud, CampaignSnapshot } from '../models/types';
+import { CampaignFeud, CampaignSnapshot, HallOfFameEntry } from '../models/types';
+import { SeasonLedger } from '../models/seasonTypes';
+import { campaignLedgerOf, normalizeSeasonLedger } from './seasonLedger';
+import { foldSeasonLedger } from '../engine/season/fold';
+import { gauntletScoreOf } from '../engine/season/gauntlet';
 import { foldCampaignArc } from '../engine/campaign';
 import { scorePrediction } from '../engine/prediction';
 import { PARLAY, PREDICTION } from '../data/balance';
@@ -226,6 +230,13 @@ export interface PanemRecords {
     seedsCompleted?: string[];
     /** AUDIT-11 §14: consecutive finished runs without a Career victor, for `meta-no-career-season`. */
     nonCareerStreak?: number;
+    /**
+     * AUDIT-12 wave 3: the season ledger — apprenticeships, reunions,
+     * rivalries, nemeses, arena mastery, the museum, story chains, seasons,
+     * the prediction bankroll, the announced Quell. See `models/seasonTypes.ts`.
+     * Normalised on every read by `normalizeSeasonLedger`.
+     */
+    ledger?: SeasonLedger;
 }
 
 /** One district's victory, stamped so it reads as a specific thing that happened. */
@@ -559,6 +570,8 @@ export const PANEM_SPEC: StorageSpec<PanemRecords> = {
                     return [{ coins, run: asNum(x.run, 0), seed: typeof x.seed === 'string' ? x.seed : '', date: typeof x.date === 'string' ? x.date : '' }];
                 }).slice(0, PARLAY.leaderboardSize)
                 : undefined,
+            // AUDIT-12 wave 3: the season ledger. Absent on older stores.
+            ledger: r.ledger !== undefined ? normalizeSeasonLedger(r.ledger) : undefined,
         };
     },
 };
@@ -1022,6 +1035,18 @@ export function commitRun(state: GameState): RunOutcome {
     records.districtReputation = arc.districtReputation;
     records.feuds = arc.feuds;
 
+    // AUDIT-12 wave 3: the season ledger moves on by one Games.
+    {
+        const slip = scorePrediction(state, state.prediction);
+        records.ledger = foldSeasonLedger(records.ledger, state, {
+            run: records.runs,
+            rebellion: records.rebellion ?? 0,
+            slip,
+            upsetCalled: !!slip?.hits.includes('upset'),
+            gauntletScore: gauntletScoreOf(state, slip),
+        });
+    }
+
     // AUDIT-11 §12: the prediction slip, scored.
     const slip = scorePrediction(state, state.prediction);
     if (slip) {
@@ -1154,7 +1179,7 @@ export function clearPanem(): void {
  * spread, which keeps the snapshot small enough to travel in a share link and
  * makes it obvious when a new continuity feature widens what a seed depends on.
  */
-export function campaignSnapshotOf(records: PanemRecords): CampaignSnapshot {
+export function campaignSnapshotOf(records: PanemRecords, archive: HallOfFameEntry[] = []): CampaignSnapshot {
     return {
         runs: records.runs,
         victors: records.victors,
@@ -1172,6 +1197,8 @@ export function campaignSnapshotOf(records: PanemRecords): CampaignSnapshot {
         rebellion: records.rebellion,
         districtReputation: records.districtReputation,
         feuds: records.feuds,
+        // AUDIT-12 wave 3: the season ledger slice, and the old victor's cache.
+        ...(() => { const ledger = campaignLedgerOf(records.ledger, archive); return ledger ? { ledger } : {}; })(),
     };
 }
 
@@ -1231,6 +1258,28 @@ export function noteBankroll(coins: number, seed: string): PanemRecords {
         .sort((a, b) => b.coins - a.coins)
         .slice(0, PARLAY.leaderboardSize);
     records.bankrollBoard = board;
+    writePanem(records);
+    return records;
+}
+
+/**
+ * AUDIT-12 wave 3 §11: the player's apprenticeship choice for one district —
+ * which of the skills its tributes were taught (or best at) in the last Games
+ * the district's next tribute walks in knowing. `null` clears it. Stored in
+ * the season ledger and consumed at that district's next reaping.
+ */
+export function setApprenticeshipChoice(district: number, skill: string | null): PanemRecords {
+    const records = readPanem();
+    const ledger = { ...(records.ledger ?? {}) };
+    const apprenticeships = { ...(ledger.apprenticeships ?? {}) };
+    if (skill === null) delete apprenticeships[district];
+    else {
+        const offer = ledger.apprenticeOffers?.[district];
+        if (!offer || !offer.skills.includes(skill)) return records;
+        apprenticeships[district] = { skill, fromName: offer.teacher, run: records.runs };
+    }
+    ledger.apprenticeships = apprenticeships;
+    records.ledger = ledger;
     writePanem(records);
     return records;
 }

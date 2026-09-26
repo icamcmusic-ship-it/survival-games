@@ -1,9 +1,11 @@
 import { SimContext } from '../context';
+import { tickSeason } from '../season/tick';
 import { processSpoilage, processVitals } from '../survival';
 import { tickDowned } from '../downed';
 import { tickRescueAftermath, tickRescueLines } from '../rescueLine';
 import { enforceCapacity } from '../items';
 import { decayMemories, decayRelationships, decaySuspicion } from '../memory';
+import { tickTraitHooks } from '../traitHooks';
 import { decayFear } from '../fear';
 import { decayAllianceRegard, decayTrust } from '../relationships';
 import { tickForecasts } from '../hazardChain';
@@ -68,6 +70,10 @@ export function postActionUpkeep(ctx: SimContext) {
      * cycle, or the chain can only ever fire on people who were going to be
      * saved anyway.
      */
+    // AUDIT-12 T15 / §16: the per-cycle trait hooks (Mimic lure, Bone-Setter
+    // splint, the cost of Hiding), ahead of the rescue window so a lure that
+    // puts somebody down leaves them inside it.
+    tickTraitHooks(ctx);
     tickRescueLines(ctx);
     tickDowned(ctx);
     // ...and the beat a cycle or two later that reads what actually happened.
@@ -130,6 +136,7 @@ export function worldClockUpkeep(ctx: SimContext) {
     tickForecasts(ctx);
     tickExposure(ctx);
     tickZoneEffects(ctx);
+    tickSeason(ctx); // AUDIT-12 wave 3: directors, mutators, story chains, sponsors' regret
 }
 
 /** Stage 4: everything that fades on the cycle clock. */

@@ -20,3 +20,6 @@ export { tributeOdds } from './odds';
 export { BRANCHABLE, playBranch, playerInterventionsAfter, summariseBranches } from './whatIf';
 export type { WhatIfResult } from './whatIf';
 export { WHAT_IF } from '../data/balance';
+// AUDIT-12 wave 3: the reaping counterfactuals.
+export { allianceNeverFormed, neverReaped } from './season/whatIfBranches';
+export type { CounterfactualResult } from './season/whatIfBranches';

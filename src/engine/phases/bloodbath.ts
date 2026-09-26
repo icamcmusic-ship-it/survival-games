@@ -1,4 +1,5 @@
 import { ARENA_REVEALS } from '../../data/arenaReveals';
+import { noteRetreatFailed, runDownCatchScale } from '../traitHooks';
 import { dreadOf } from '../intent';
 import { targetDrawOf } from '../targeting';
 import { SimContext, getAlive } from '../context';
@@ -661,6 +662,8 @@ export function processBloodbath(ctx: SimContext) {
         const arch = ARCHETYPES[t.archetype];
         const eagerness = arch.disengage === 'unworthy' ? 0 : arch.aggression;
         fightChance += eagerness - arch.caution * 0.5;
+        // AUDIT-12 §7: an archetype's own reading of the horn, where it has one.
+        fightChance += arch.hornFight ?? 0;
         // The persona sold on the interview couch is a promise the crowd — and
         // everyone else on the plates — remembers.
         fightChance += personaThreat(t) * 0.6;
@@ -983,8 +986,10 @@ export function processBloodbath(ctx: SimContext) {
             BLOODBATH.runDownChance * AUDIT12_TRIBUTES.runDownChaseScale * (1 + shortfall * BLOODBATH.runDownCatchUp)
                 * proximity * Math.max(0.3, 1 - t.attributes.agility / 12),
             shortfall * shortfall * proximity * AUDIT12_TRIBUTES.runDownFloor,
-        ));
+        )) * runDownCatchScale(t);
+        // AUDIT-12 §16: Plate-Sprinter and the Evasion skill are both "not caught".
         if (!ctx.rng.chance(caught)) return;
+        noteRetreatFailed(ctx, t);
         const hunter = ctx.rng.pickOrUndefined(hunters.filter(h => h.status === 'alive' && h.id !== t.id));
         if (!hunter) return;
         /*

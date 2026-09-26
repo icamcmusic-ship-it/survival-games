@@ -108,8 +108,22 @@ export const NEUTRAL_TASTE: DirectorTaste = {
     id: 'hands-off', label: 'undeclared', blurb: '', mutts: 1, fire: 1, weather: 1, betrayal: 1, sponsor: 1,
 };
 
+/**
+ * AUDIT-12 wave 3 S3 guard: `check-director-tastes` pins every director to one
+ * taste (or to neutral) to measure it. Headless harnesses only — nothing in
+ * the app sets it.
+ */
+let tasteOverride: DirectorTasteId | 'neutral' | undefined;
+export function setDirectorTasteOverride(id: DirectorTasteId | 'neutral' | undefined): void {
+    tasteOverride = id;
+}
+
+export const DIRECTOR_TASTE_IDS = Object.keys(TASTES) as DirectorTasteId[];
+
 /** The taste of the named Head Gamemaker (neutral when none is appointed). */
 export function directorTaste(headGamemaker: string | undefined): DirectorTaste {
+    if (tasteOverride === 'neutral') return NEUTRAL_TASTE;
+    if (tasteOverride) return TASTES[tasteOverride];
     if (!headGamemaker) return NEUTRAL_TASTE;
     return TASTES[BY_SIGNATURE[gamemakerProfile(headGamemaker).signature]];
 }

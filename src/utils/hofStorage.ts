@@ -153,6 +153,27 @@ export function normalizeEntry(raw: unknown): HallOfFameEntry | null {
         tributeSummaries: summaries,
         // AUDIT-11 §12: the scored prediction slip, when there was one.
         prediction: normalizePredictionResult(r.prediction),
+        // AUDIT-12 wave 3: the victor's kill ledger, their kit, a gauntlet's
+        // score and the director's measured effect. All optional.
+        killLedger: Array.isArray(r.killLedger)
+            ? (r.killLedger as unknown[]).flatMap(k => {
+                if (!k || typeof k !== 'object') return [];
+                const e = k as Record<string, unknown>;
+                return typeof e.victim === 'string'
+                    ? [{ victim: e.victim, district: asNumber(e.district), day: asNumber(e.day), how: asString(e.how, 'killed') }]
+                    : [];
+            }).slice(0, 30)
+            : undefined,
+        winnerItems: Array.isArray(r.winnerItems) ? r.winnerItems.filter((t): t is string => typeof t === 'string').slice(0, 12) : undefined,
+        gauntlet: r.gauntlet && typeof r.gauntlet === 'object' && Number.isFinite((r.gauntlet as Record<string, unknown>).score)
+            ? {
+                score: asNumber((r.gauntlet as Record<string, unknown>).score),
+                mutators: Array.isArray((r.gauntlet as Record<string, unknown>).mutators)
+                    ? ((r.gauntlet as Record<string, unknown>).mutators as unknown[]).filter((m): m is string => typeof m === 'string').slice(0, 4)
+                    : [],
+            }
+            : undefined,
+        directorEffect: typeof r.directorEffect === 'string' ? r.directorEffect.slice(0, 120) : undefined,
     };
 }
 

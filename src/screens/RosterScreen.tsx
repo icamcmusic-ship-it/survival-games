@@ -261,7 +261,7 @@ export function RosterPanel({
                         })}
                     </div>
                     <p className="text-micro text-[var(--color-ink-500)] italic">
-                        First blood and top-three are named markets — the buttons on each tribute card below place those.
+                        First blood, top-three and first-to-the-mutts are named markets — the buttons on each tribute card below place those.
                     </p>
                 </div>
             )}
@@ -477,6 +477,15 @@ export function RosterPanel({
                                                 aria-label={`Top 3 — side bet that this tribute is among the last three standing (${sideStake} coins)`}
                                             >
                                                 Top 3
+                                            </button>
+                                            {/* AUDIT-12 wave 3: the named mutt market. */}
+                                            <button
+                                                onClick={() => stake('first-mutt-kill', t.id)}
+                                                disabled={coins < sideStake || sideBets.some(b => b.kind === 'first-mutt-kill')}
+                                                className="btn btn-sm"
+                                                aria-label={`1st mutt — side bet that this tribute is the first a mutt kills (${sideStake} coins)`}
+                                            >
+                                                1st mutt
                                             </button>
                                             {currentBet > 0 && (
                                                 <button onClick={() => clearBet(t)} className="btn btn-sm" aria-label="Clear — refund this wager">Clear</button>

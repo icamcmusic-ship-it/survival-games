@@ -1,4 +1,5 @@
 import { GameState, Obligation, Tribute } from '../models/types';
+import { oathHolds } from './traitHooks';
 import { SimContext, getAlive } from './context';
 import { AUDIT12_TRIBUTES, OBLIGATIONS } from '../data/balance';
 import { cycleOf } from './memory';
@@ -174,6 +175,8 @@ export function keep(ctx: SimContext, o: Obligation, line: string) {
  * somebody who was able to come, and they did not.
  */
 function breakRescue(ctx: SimContext, o: Obligation, from: Tribute, to: Tribute) {
+    // AUDIT-12 T15: an Oathkeeper cannot break it — they run the sector instead.
+    if (oathHolds(ctx, o, from, to)) return;
     o.status = 'broken';
     from.faithBroken = (from.faithBroken ?? 0) + 1;
     if (to.status === 'alive') adjustRel(to, from.id, -OBLIGATIONS.brokenRegard);
@@ -325,6 +328,9 @@ export function tickObligations(ctx: SimContext) {
                 breakRescue(ctx, o, from, to);
                 return;
             }
+            // AUDIT-12 T15: an Oathkeeper who could keep it keeps it, even out
+            // of the last ration they have.
+            if (couldHave && oathHolds(ctx, o, from, to)) return;
             /*
              * §12: three outcomes, not two.
              *

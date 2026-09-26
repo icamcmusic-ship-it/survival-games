@@ -1,4 +1,5 @@
 import { dreadOf } from '../intent';
+import { oathRefusesBetrayal } from '../traitHooks';
 import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { GameState, Tribute } from '../../models/types';
@@ -460,7 +461,8 @@ export function processAlliances(ctx: SimContext) {
         // §3.2 (audit): before the ordinary roll, anybody who has decided an
         // ally is about to turn on them gets to turn first.
         const first = preemptiveBetrayer(ctx, members);
-        if (first) {
+        // AUDIT-12 T15: an Oathkeeper does not strike first, and pays for wanting to.
+        if (first && !oathRefusesBetrayal(ctx, first[0])) {
             resolveBetrayal(ctx, first[0], first[1], members, 'preempt');
             return;
         }
@@ -471,6 +473,7 @@ export function processAlliances(ctx: SimContext) {
 
         if (ctx.rng.chance(betrayalThreshold)) {
             const betrayer = pickBetrayer(ctx, members);
+            if (oathRefusesBetrayal(ctx, betrayer)) return;
             const victim = pickBetrayalTarget(ctx, betrayer, members);
 
             if (victim) {

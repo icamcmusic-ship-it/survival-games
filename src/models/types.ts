@@ -64,7 +64,10 @@ export type Stance =
     | 'Baiting'
     // Audit 5 §12: two more conditional stances — tending an ally, and walking a pack's perimeter.
     | 'Nursing'
-    | 'Patrolling';
+    | 'Patrolling'
+    // AUDIT-12 §16: going to ground on purpose, and talking first.
+    | 'Hiding'
+    | 'Parleying';
 
 export type ArchetypeId =
     | 'career' | 'strategist' | 'survivalist' | 'protector' | 'trickster' | 'wildcard' | 'underdog'
@@ -119,7 +122,9 @@ export type ArchetypeId =
      */
     | 'cartographer' | 'debtor' | 'forecaster' | 'understudy' | 'archivist' | 'quiet'
     // AUDIT-11 §16: the pilot four.
-    | 'hermit' | 'showrunner' | 'healer-pacifist' | 'engineer';
+    | 'hermit' | 'showrunner' | 'healer-pacifist' | 'engineer'
+    // AUDIT-12 §16: five more, each with a signature of its own.
+    | 'scout-runner' | 'turncoat' | 'guardian' | 'forger' | 'gambler';
 
 export interface Attributes {
     strength: number;
@@ -310,7 +315,16 @@ export type Proficiency = 'forage' | 'melee' | 'ranged' | 'medicine' | 'tracking
      *    half got one in the batch above.
      */
     | 'firecraft' | 'waterlore' | 'herbalism' | 'knots' | 'camouflage'
-    | 'throwing' | 'sprinting' | 'scavenging' | 'deception' | 'vigilance';
+    | 'throwing' | 'sprinting' | 'scavenging' | 'deception' | 'vigilance'
+    /*
+     * AUDIT-12 §16: five more (`scavenging` and `signalling` already existed
+     * and gained the §16 read sites instead). `evasion` is breaking contact
+     * *and staying broken* — the retreat roll and the horn run-down;
+     * `rationing` is eating less than you want; `salvage` is getting into what
+     * somebody else packed away; `ambush` is the Shadowing payoff as a craft;
+     * `animalHandling` is the missing AUDIT-11 skill.
+     */
+    | 'evasion' | 'rationing' | 'salvage' | 'ambush' | 'animalHandling';
 
 /** Why a tribute is walking somewhere. Drives the chronicle copy as well as the route. */
 export type ObjectiveReason = 'water' | 'shelter' | 'feast' | 'ally' | 'forage'
@@ -1539,6 +1553,25 @@ export interface Tribute {
      * a free ambush — the payoff `unseenStreak` never had.
      */
     shadowing?: { targetId: string; cycles: number };
+    /*
+     * AUDIT-12 wave 2 (T15 / §16): per-tribute state the trait and archetype
+     * hooks in `engine/traitHooks.ts` keep. All optional; older saves read as
+     * "never happened".
+     */
+    /** Homebody: the zone of the first camp they ever pitched. */
+    firstCampZone?: string;
+    /** Mimic: a lure thrown this cycle — the next ambush on this target is set up. */
+    lure?: { targetId: string; cycle: number };
+    /** Cornered Rat: the cycle a retreat last failed them. */
+    retreatFailedCycle?: number;
+    /** Bone-Setter: sites already splinted once this run. */
+    splinted?: string[];
+    /** Rationer: the other half of the last ration is still in the pack. */
+    halfRation?: boolean;
+    /** Scout-Runner: warned of an ambush until this cycle. */
+    ambushWarnedUntil?: number;
+    /** Parleying: talks that failed this run. */
+    parleysFailed?: number;
     /** A1: cycles the tribute has been dug in — read by the Fortified payoffs. */
     fortifiedCycles?: number;
     /**
@@ -2277,6 +2310,8 @@ export interface ZoneEffect {
     source?: HazardSource;
     /** The tribute whose fault it was, where one is known. */
     byId?: string;
+    /** AUDIT-12 §8.2: started by the arena's own rule; its wounds are the arena's own. */
+    signature?: boolean;
 }
 
 /** AUDIT-9 stage C §5: where a hazard came from. */
@@ -2952,9 +2987,12 @@ export interface GameConfig {
      * replays carry them; absent on older configs, which is no mutators.
      */
     mutators?: string[];
+    /** AUDIT-12 wave 3 §11: gauntlet mode — up to four mutators, scored into the Hall of Fame. */
+    gauntlet?: boolean;
 }
 
 import type { GamesProfile } from '../engine/gamesProfile';
+import type { CampaignLedger, KillLedgerEntry, SeasonRunState } from './seasonTypes';
 import type { WeatherFront } from '../engine/weatherFront';
 
 export interface GameState {
@@ -3243,6 +3281,8 @@ export interface GameState {
     staleLines?: string[];
     /** AUDIT-11 §12: ids of Hall of Fame victors reaped again as legacy tributes. */
     legacyTributeIds?: string[];
+    /** AUDIT-12 wave 3: in-run bookkeeping for the side features. See `models/seasonTypes.ts`. */
+    season?: SeasonRunState;
     /**
      * AUDIT-9 §5: how many structures have come down this Games.
      *
@@ -4088,6 +4128,9 @@ export type EventType =
     | 'rival-thaw' | 'theft-witnessed' | 'romance-reveal' | 'grief-day' | 'station-bond'
     // AUDIT-12 §6.
     | 'night-theft' | 'hollow-victory' | 'shared-camp' | 'alliance-splinter'
+    // AUDIT-12 wave 2: trait hooks and the §16 archetypes.
+    | 'mimic-lure' | 'twitchy-hit' | 'oath-kept' | 'self-splint' | 'parley-failed'
+    | 'scout-warning' | 'turncoat-coup' | 'guardian-stand' | 'forged-weapon' | 'gambler-wager'
     | 'sepsis-deepened'
     | 'sepsis-treated'
     | 'shelter-built'
@@ -4220,6 +4263,14 @@ export interface HallOfFameEntry {
     tributeSummaries?: TributeHoFSummary[];
     /** AUDIT-11 §12: the player's scored prediction slip for this Games. */
     prediction?: PredictionResult;
+    /** AUDIT-12 wave 3 §11: who the victor killed, and how. */
+    killLedger?: KillLedgerEntry[];
+    /** AUDIT-12 wave 3 §11: catalogue ids the victor was carrying, for a later old victor's cache. */
+    winnerItems?: string[];
+    /** AUDIT-12 wave 3 §11: a gauntlet run's mutator stack and score. */
+    gauntlet?: { mutators: string[]; score: number };
+    /** AUDIT-12 wave 3 §11: the director's measured effect line. */
+    directorEffect?: string;
 }
 
 /**
@@ -4255,6 +4306,8 @@ export interface CampaignSnapshot {
     districtReputation?: Record<number, number>;
     /** AUDIT-11 §8: victors who carry a grudge against another district's victor. */
     feuds?: CampaignFeud[];
+    /** AUDIT-12 wave 3: the season ledger slice this run is played under. See `models/seasonTypes.ts`. */
+    ledger?: CampaignLedger;
 }
 
 /** AUDIT-11 §8: a feud between two victors, carried into the districts they mentor. */
@@ -4274,6 +4327,11 @@ export interface Prediction {
     topKillerId?: string;
     /** Up to eight tribute ids, ranked: index 0 is the predicted victor. */
     finalEight?: string[];
+    /** AUDIT-12 wave 3 §11: the family of the first death (`CAUSE_FAMILY`). */
+    firstDeathCause?: 'tribute' | 'body' | 'arena' | 'mutt' | 'gamemaker';
+    /** AUDIT-12 wave 3 §11: the "day the Games end" over/under, and the line it was struck at. */
+    endDayPick?: 'over' | 'under';
+    endDayLine?: number;
 }
 
 /** AUDIT-11 §12: a scored prediction slip, as archived. */

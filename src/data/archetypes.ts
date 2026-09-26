@@ -128,6 +128,15 @@ export interface ArchetypeDef {
      * is how it stayed invisible.
      */
     disengage?: 'unworthy';
+    /**
+     * AUDIT-12 §7: a straight offset on the chance of going for the horn at
+     * the gong, for archetypes whose temperament and whose horn behaviour are
+     * not the same thing (the Hermit's aggression is about people, and it
+     * still charged the Cornucopia).
+     */
+    hornFight?: number;
+    /** AUDIT-12 §7: extra retreat chance while carrying no weapon. */
+    unarmedRetreat?: number;
     /** Sponsor-facing: how the Capitol markets them. */
     tagline?: string;
 }
@@ -370,7 +379,9 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'underdog',
         name: 'Underdog',
         description: 'Overlooked and underestimated. Survives on grit, luck, and the crowd\'s sympathy.',
-        statBias: { charisma: 1, stealth: 1, endurance: 1 },
+        // AUDIT-12 §7: + agility 1 (3.7-3.8% at n=4,800 across three sweeps).
+        statBias: { charisma: 1, stealth: 1, endurance: 1, agility: 1 },
+
         preferredTraits: ['Light Sleeper', 'Nimble', 'Scavenger', 'Skittish'],
         aggression: -0.15,
         allianceAffinity: 0.2,
@@ -404,7 +415,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         hatesArchetypes: ['career'],
         tagline: 'Written off.',
         // Audit 4 §8.3: Overlooked is the entire premise; the field spends its attention elsewhere.
-        targetDraw: -1.5,
+        // AUDIT-12 §7: -1.5 -> -2 (3.7% at n=4,800, the largest sample under the field).
+        targetDraw: -2,
         // Audit 4 §8.3: Nobody has ever told them they would be fine.
         fearScale: 1.1,
     },
@@ -817,7 +829,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'opportunist',
         name: 'Opportunist',
         description: 'Has no plan and does not need one. Takes whatever the last ten minutes just made available, and is never where they were.',
-        statBias: { agility: 2, stealth: 1 },
+        // AUDIT-12 §7: agility 2 -> 1 (8.9%, top of the table at n=1,600).
+        statBias: { agility: 1, stealth: 1 },
         preferredTraits: ['Nimble', 'Treacherous', 'Silver-Tongued', 'Unlucky'],
         aggression: 0.1,
         allianceAffinity: 0.05,
@@ -835,7 +848,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         // faster than anyone. They are afraid and it makes them quicker.
         fearScale: 1.1,
         tagline: 'Something will come up.',
-        targetDraw: 0.5,
+        // AUDIT-12 §7: 0.5 -> 1.5 (top of the table at n=1,600 and n=4,800).
+        targetDraw: 1.5,
     },
     tracker: {
         id: 'tracker',
@@ -880,7 +894,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
          */
         statBias: { charisma: 3, willpower: 2, endurance: 1 },
         preferredTraits: ['Pacifist', 'Softhearted', 'Peacemaker', 'Charismatic'],
-        aggression: -0.35,
+        // AUDIT-12 §7: -0.35 -> -0.2, Desperate 0.8 -> 0.3.
+        aggression: -0.2,
         allianceAffinity: 0.45,
         treachery: -0.3,
         caution: 0.2,
@@ -896,7 +911,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
          * has run out of people to talk to is the most frightening version of
          * themselves, and that is a beat the archetype could never reach.
          */
-        stanceBias: { Defensive: 0.6, Aggressive: -0.4, Evasive: 0.2, Desperate: 0.8 },
+        stanceBias: { Defensive: 0.6, Aggressive: -0.4, Evasive: 0.2, Desperate: 0.3 },
         objectiveBias: { protect: 0.5, survive: 0.4 },
         targetPreference: 'nearest',
         // §8.1: as with the Underdog — the archetype's whole argument is that
@@ -948,7 +963,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         // the thing coming toward them.
         fearScale: 0.75,
         tagline: 'Not through here.',
-        targetDraw: 0.5,
+        // AUDIT-12 §7: 0.5 -> 0.
+        targetDraw: 0,
     },
 
     /**
@@ -1071,8 +1087,9 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         signature: 'duellistChallenge',
         hatesArchetypes: ['career', 'opportunist', 'ghost', 'scholar'],
         tagline: 'One of us. Not four of you.',
-        targetDraw: 2.5,
-        fearScale: 0.7,
+        targetDraw: 3,
+        // AUDIT-12 §7: 0.7 -> 0.8 (7.3-7.4% at n=4,800, top of the field twice).
+        fearScale: 0.8,
     },
 
     /**
@@ -1306,8 +1323,10 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'hermit',
         name: 'Hermit',
         description: 'Refuses every hand offered. Walks away from the Cornucopia, camps as deep as the map allows, and intends to win by being the last person anybody thought about.',
-        statBias: { endurance: 2, stealth: 1, charisma: -2 },
+        // AUDIT-12 §7: charisma -2 -> -1, endurance 2 -> 3, and it stays off the horn.
+        statBias: { endurance: 3, stealth: 1, charisma: -1 },
         preferredTraits: ['Homebody', 'Unremarkable', 'Quiet Room', 'Forgets Faces'],
+        hornFight: -0.15,
         aggression: -0.2,
         allianceAffinity: -0.4,
         treachery: 0,
@@ -1319,7 +1338,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         riskCurve: 'late-blooming',
         signature: 'quietWork',
         tagline: 'The arena forgets them.',
-        targetDraw: -2,
+        // AUDIT-12 §7: -2 -> -2.5.
+        targetDraw: -2.5,
         fearScale: 0.9,
     },
     showrunner: {
@@ -1357,6 +1377,11 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         hatesArchetypes: ['mercenary', 'captor'],
         targetPreference: 'weakest',
         riskCurve: 'flat',
+        // AUDIT-12 §7: full caution at the horn, and quicker out of a fight
+        // they have nothing to hold it with.
+        hornFight: -0.2,
+        unarmedRetreat: 0.1,
+
         signature: 'medicTriage',
         tagline: 'Saves the enemy too.',
         // AUDIT-11: the one tribute who treats everybody is the last one
@@ -1385,6 +1410,112 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         tagline: 'The arena is a machine. Machines break.',
         targetDraw: 0,
         fearScale: 0.95,
+    },
+    /*
+     * AUDIT-12 §16: five more, each with a signature of its own rather than a
+     * borrowed one (see `engine/traitHooks.ts`).
+     */
+    'scout-runner': {
+        id: 'scout-runner',
+        name: 'Scout-Runner',
+        description: 'Walks the edge of wherever their people are, and comes back at a run with what is on the other side of the ridge.',
+        statBias: { agility: 1, stealth: 1, endurance: 1 },
+        preferredTraits: ['Plate-Sprinter', 'Fleet', 'Long Sight', 'Last-Light'],
+        aggression: -0.05,
+        allianceAffinity: 0.3,
+        treachery: -0.1,
+        caution: 0.3,
+        stanceBias: { Patrolling: 0.8, Evasive: 0.2, Aggressive: -0.3 },
+        objectiveBias: { reach: 0.3, protect: 0.2 },
+        hatesArchetypes: ['saboteur'],
+        targetPreference: 'nearest',
+        riskCurve: 'flat',
+        signature: 'scoutSighting',
+        tagline: 'Saw them first.',
+        targetDraw: 0,
+        fearScale: 0.95,
+    },
+    turncoat: {
+        id: 'turncoat',
+        name: 'Turncoat',
+        description: 'Joins early and joins warmly, and is waiting for the day the group is worth more to them than the person running it.',
+        statBias: { charisma: 2, intelligence: 1 },
+        preferredTraits: ['Silver-Tongued', 'Treacherous', 'Salt-Tongued', 'Rumour-Monger'],
+        aggression: 0.1,
+        allianceAffinity: 0.4,
+        treachery: 0.3,
+
+        caution: 0.1,
+        stanceBias: { Defensive: 0.3, Shadowing: 0.2 },
+        objectiveBias: { hold: 0.3, survive: 0.2 },
+        hatesArchetypes: ['diplomat', 'protector'],
+        targetPreference: 'richest',
+        riskCurve: 'late-blooming',
+        signature: 'turncoatCoup',
+        tagline: 'Everybody\'s friend until the morning after.',
+        targetDraw: 0,
+        fearScale: 1,
+    },
+    guardian: {
+        id: 'guardian',
+        name: 'Warden-of-the-Weak',
+        description: 'Goes looking for the strongest person in the arena, and stands between them and whoever they were about to finish.',
+        statBias: { strength: 2, endurance: 1, willpower: 1 },
+        preferredTraits: ['Heavy Bones', 'Shield-Wise', 'Oathkeeper', 'Long Memory'],
+        aggression: 0.15,
+        allianceAffinity: 0.35,
+        treachery: -0.3,
+        caution: 0.05,
+        stanceBias: { Nursing: 0.5, Defensive: 0.3, Hunting: 0.2 },
+        objectiveBias: { protect: 0.6, hunt: 0.1 },
+        hatesArchetypes: ['captor', 'opportunist'],
+        targetPreference: 'strongest',
+        riskCurve: 'flat',
+        signature: 'guardianStand',
+        tagline: 'Through me first.',
+        targetDraw: 0.5,
+        fearScale: 0.85,
+    },
+    forger: {
+        id: 'forger',
+        name: 'Forger',
+        description: 'Leaves the horn to the others and makes their own. Stone, bone and whatever the arena left lying around, turned into something that holds an edge.',
+        statBias: { strength: 1, intelligence: 2 },
+        preferredTraits: ['Trapper', 'Knot-Tier', 'Steady Hand', 'Pack Rat'],
+        aggression: 0.05,
+        allianceAffinity: 0,
+        treachery: 0,
+        caution: 0.2,
+        stanceBias: { Fortified: 0.4, Defensive: 0.3 },
+        objectiveBias: { hold: 0.3, survive: 0.2 },
+        hatesArchetypes: ['career'],
+        targetPreference: 'nearest',
+        riskCurve: 'late-blooming',
+        signature: 'forgeWeapon',
+        hornFight: -0.15,
+        tagline: 'Made, not found.',
+        targetDraw: -0.5,
+        fearScale: 1,
+    },
+    gambler: {
+        id: 'gambler',
+        name: 'Gambler',
+        description: 'Reads the odds on every fight, knows exactly what the sponsors are paying for, and takes the bad bet on camera because that is where the money is.',
+        statBias: { charisma: 2, agility: 1 },
+        preferredTraits: ['Crowd-Pleaser', "Sponsor's Pet", 'Cold Opener', 'Unlucky'],
+        aggression: 0.1,
+        allianceAffinity: 0.05,
+        treachery: 0.15,
+        caution: -0.05,
+        stanceBias: { Aggressive: 0.3, Baiting: 0.3 },
+        objectiveBias: { hunt: 0.2, reach: 0.2 },
+        hatesArchetypes: ['strategist'],
+        targetPreference: 'mostFamous',
+        riskCurve: 'late-blooming',
+        signature: 'gamblerWager',
+        tagline: 'The long odds pay.',
+        targetDraw: 0.5,
+        fearScale: 0.9,
     },
 };
 
@@ -1492,6 +1623,12 @@ const BASE_WEIGHTS: ArchetypeWeights = {
     showrunner: 0.6,
     'healer-pacifist': 0.6,
     engineer: 0.6,
+    // AUDIT-12 §16.
+    'scout-runner': 0.6,
+    turncoat: 0.6,
+    guardian: 0.6,
+    forger: 0.6,
+    gambler: 0.6,
 };
 
 /** Career districts train for it; everyone else is shaped by their industry. */

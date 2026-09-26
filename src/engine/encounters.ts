@@ -1,4 +1,8 @@
 import { Terrain, Tribute, attr } from '../models/types';
+import { noteParleyFailed } from './traitHooks';
+import { adaptArenaEvent, applyEventMechanic } from './season/eventMechanics';
+import { mentorWarningBonus } from './season/carry';
+import { stampEventSignature, telegraphDodgeBonus } from './arenaWave2';
 import { arenaIsDark } from './arenaRules';
 import { ITEMS } from '../data/constants';
 import { ACTION_BUDGET, HAZARD_CHAIN, BLEEDING, COMPOSURE, CRAFTING, DESPERATION, ENCOUNTERS, ENCOUNTER_BRANCH, ESCALATION, HUNTING, MEMORY, POISONING, PROFICIENCY, ROMANCE, SANITY_BANDS, TOOLS, VITALS, ZONES, STANCE_MODES } from '../data/balance';
@@ -121,8 +125,11 @@ function rollEscape(ctx: SimContext, t: Tribute, event: ArenaEventDef, isBoon: b
         return true;
     }
 
-    if (event.dodgeStat) {
-        const roll = t.attributes[event.dodgeStat] + ctx.rng.nextInt(0, 4) - penalty;
+    // AUDIT-12 §8.4: a telegraphed hazard is easier to be elsewhere for.
+    // AUDIT-12 wave 3: and a victor-mentor who won somewhere like this said what to watch for.
+    const warned = telegraphDodgeBonus(t, event) + (isBoon ? 0 : mentorWarningBonus(ctx.state, t));
+    if (event.dodgeStat || warned > 0) {
+        const roll = t.attributes[event.dodgeStat ?? 'agility'] + ctx.rng.nextInt(0, 4) - penalty + warned;
         if (roll > difficulty) {
             log(event.escapeText);
             return true;
@@ -200,7 +207,10 @@ function applyEventTo(ctx: SimContext, t: Tribute, event: ArenaEventDef, narrate
 
     if (rollEscape(ctx, t, event, isBoon)) return false;
 
-    if (event.damage) applyDamage(ctx, t, bracedDamage(t, event), { cause: event.cause, code: event.code, kind: 'hazard' });
+    if (event.damage) {
+        applyDamage(ctx, t, bracedDamage(t, event), { cause: event.cause, code: event.code, kind: 'hazard' });
+        stampEventSignature(ctx, t, event);
+    }
     if (event.heal) t.health = Math.min(100, t.health + event.heal);
     if (event.bleeding) openWound(t, BLEEDING.hazardSeverity);
     if (event.poisoned) injure(t, 'poisoned');
@@ -232,10 +242,12 @@ function applyEventTo(ctx: SimContext, t: Tribute, event: ArenaEventDef, narrate
 }
 
 /** Applies one arena-specific event to a tribute, honouring their dodge stat. */
-export function applyArenaEvent(ctx: SimContext, t: Tribute, event: ArenaEventDef) {
+export function applyArenaEvent(ctx: SimContext, t: Tribute, authored: ArenaEventDef) {
+    const event = adaptArenaEvent(ctx, authored); // AUDIT-12 wave 3: the run's own cache contents
     ctx.state.eventLastFired = { ...(ctx.state.eventLastFired ?? {}), [eventKey(event)]: cycleOf(ctx.state) };
     const isBoon = (event.heal ?? 0) > 0 || (event.quench ?? 0) > 0 || (event.feed ?? 0) > 0;
     if (!applyEventTo(ctx, t, event, true)) return;
+    applyEventMechanic(ctx, t, event); // AUDIT-12 wave 3: §10 beats with real consequences
 
     // ARENA-03: hazards used to touch exactly one tribute and nothing else —
     // never a whole zone, never the graph, never anything that outlasted the
@@ -740,6 +752,15 @@ export function resolvePairEncounter(ctx: SimContext, t: Tribute, other: Tribute
         adjustMutual(ctx.state, t, other, ENCOUNTER_BRANCH.sharedMealRegard);
         maintainPerformance(t, other.id, ROMANCE.performedUpkeep);
         maintainPerformance(other, t.id, ROMANCE.performedUpkeep);
+    } else if (t.stance === 'Parleying' || other.stance === 'Parleying') {
+        // AUDIT-12 §16: a tribute in the Parleying stance opens every hostile
+        // meeting with an offer. A failed talk is a fight, and a fright.
+        const talker = t.stance === 'Parleying' ? t : other;
+        const listener = talker === t ? other : t;
+        if (!tryParley(ctx, talker, listener)) {
+            noteParleyFailed(ctx, talker, listener);
+            resolveCombat(ctx, t, other);
+        }
     } else if (isDesperate(ctx, t, other)) {
         // Ordered ahead of the hostile-meeting branch on purpose: a tribute
         // past caring is not going to be talked out of anything, so routing

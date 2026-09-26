@@ -1,4 +1,5 @@
 import { deathCodeOf } from '../causes';
+import { ledgerQuestions } from '../season/interview';
 import { revealRomances } from '../allianceBonds';
 import { SimContext, getAlive } from '../context';
 import { EpilogueQA, EventLog, Tribute } from '../../models/types';
@@ -466,6 +467,7 @@ export function processEpilogue(ctx: SimContext) {
             tone,
         });
     }
+    qas.push(...ledgerQuestions(ctx, winner)); // AUDIT-12 wave 3: the scar, the kill ledger, the nemesis
     qas.forEach(qa => {
         if (qa.tone || !qa.answer.startsWith(`${winner.name}:`)) return;
         qa.tone = tone;

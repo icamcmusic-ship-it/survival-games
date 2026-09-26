@@ -1,4 +1,5 @@
 import { craftKit, followPlan, tickArenaDepth } from '../arenaDepth';
+import { arenaHazardForBorder, borderCapReached } from '../arenaWave2';
 import { directorTaste } from '../../data/directors';
 import { capitolCruelty } from '../campaign';
 import { SimContext, getAlive } from '../context';
@@ -51,6 +52,7 @@ import { climateOf } from '../climate';
 import { tributeOdds } from '../odds';
 import { runArenaSignature } from '../arenaSignature';
 import { runGamemakerSignature } from '../gamemakerAgency';
+import { mutatorMuttFactor } from '../season/mutatorRules';
 import { tickWeatherFront } from '../weatherFront';
 import { tickZoneControl } from '../zoneControl';
 import { resolveBreakdowns, tickResolve } from '../resolve';
@@ -1352,9 +1354,14 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
         // the killing blow itself; 7.75% of runs used to end with no victor,
         // most of them to this exact damage source.
         const finalists = getAlive(ctx.state).length <= ESCALATION.finalistCount;
-        const damage = finalists
+        // AUDIT-12 §8.1: past its per-Games cap the wall herds and bloodies
+        // but no longer kills; the closing ground fires the arena's own
+        // hazard instead (below).
+        const capped = !finalists && borderCapReached(ctx.state);
+        const rawDamage = finalists
             ? Math.min(ESCALATION.finalistCollapseDamage, Math.max(0, t.health - 1))
             : ESCALATION.collapseDamageBase + (ctx.state.day - startDay) * ESCALATION.collapseDamagePerDay;
+        const damage = capped ? Math.min(rawDamage, Math.max(0, t.health - 1)) : rawDamage;
         const safeZones = allZoneNames.filter(z => !collapsedList.includes(z));
         // Nearest reachable safe zone via the adjacency graph, not an
         // arbitrary index — a tribute should not teleport across the arena,
@@ -1380,7 +1387,8 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
         // 1 + itself — and then read the generic "pushed along in front of it"
         // line immediately after a line insisting there is no such version.
         if (inAChokepoint && !finalists) {
-            applyDamage(ctx, t, Math.round(damage * ESCALATION.chokepointCrushMultiplier), { cause, kind: 'arena', code: 'border' });
+            const crush = Math.round(damage * ESCALATION.chokepointCrushMultiplier);
+            applyDamage(ctx, t, capped ? Math.min(crush, Math.max(0, t.health - 1)) : crush, { cause, kind: 'arena', code: 'border' });
             openWound(t, BLEEDING.hazardSeverity);
             ctx.logEvent(
                 `${trappedZone} is not somewhere anybody rides out a collapse. The walls of it come together with ${t.name} still inside, `
@@ -1399,10 +1407,11 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
                 { type: 'border-collapse', important: true, zone: newSafeZone, category: 'hazard' }
             );
         }
+        const ownCause = capped ? arenaHazardForBorder(ctx, t, trappedZone) : undefined;
         t.zone = newSafeZone;
         enterVerticalZone(ctx.state.arena, t);
         addZoneThreat(ctx.state, t, trappedZone, MEMORY.deathThreat);
-        checkDeath(ctx, t, cause);
+        checkDeath(ctx, t, ownCause ?? cause);
     });
 
     return true;
@@ -1864,7 +1873,7 @@ function resolveEncounters(
         // unrest with a crueller arena. 1 with no campaign behind the run.
         const cruelty = ctx.state.config.vanillaRules ? 1 : capitolCruelty(ctx.state.campaign);
         eventChance *= cruelty;
-        muttChance *= cruelty;
+        muttChance *= cruelty * mutatorMuttFactor(ctx.state.config); // AUDIT-12 wave 3: `mutts-only-kills`
         eventChance = Math.min(ENCOUNTERS.hazardCeiling, eventChance * ctx.state.config.hazardRate);
         muttChance = Math.min(ENCOUNTERS.hazardCeiling, muttChance * ctx.state.config.hazardRate);
 

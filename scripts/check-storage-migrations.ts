@@ -17,8 +17,9 @@ import assert from 'node:assert/strict';
 import { HOF_SPEC } from '../src/utils/hofStorage';
 import { PANEM_SPEC } from '../src/utils/panemStorage';
 import { COINS_SPEC, CONFIG_SPEC, FILTERS_SPEC, readCoins } from '../src/utils/prefsStorage';
-import { CONFIG_KEYS, REWIND_PERSIST, SAVED_RUN_SPEC, normalizeConfig, normalizeTribute } from '../src/utils/saveMigrations';
+import { CONFIG_KEYS, REWIND_PERSIST, SAVED_RUN_SPEC, normalizeConfig, normalizePrediction, normalizeTribute } from '../src/utils/saveMigrations';
 import { normalizeEntry } from '../src/utils/hofStorage';
+import { campaignLedgerOf, normalizeCampaignLedger, normalizeSeasonLedger } from '../src/utils/seasonLedger';
 import { DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { GameConfig } from '../src/models/types';
 import { SHARE_OMITS, shareParams } from '../src/components/ShareButton';
@@ -334,6 +335,24 @@ test('v0 Panem keeps patronage and gamemaker records the old reader dropped', ()
     assert.equal(envelopeVersion(STORAGE_KEYS.panem), PANEM_SPEC.version);
 });
 
+const FULL_LEDGER = {
+    apprenticeships: { 3: { skill: 'forage', fromName: 'Wiress', run: 2 } },
+    apprenticeOffers: { 3: { skills: ['forage', 'carpentry'], teacher: 'Beetee', run: 2 } },
+    reunions: [{ a: 3, b: 7, count: 2, run: 4 }],
+    veteranRespect: { 4: 2 },
+    rivalries: [{ aDistrict: 2, bDistrict: 11, heat: 3.5, lastRun: 4 }],
+    nemeses: [{ name: 'Cato', district: 2, victimDistricts: [3, 11], kills: 5, run: 4, arenaName: 'Reef' }],
+    arenaMastery: { reef: { runs: 3, crowns: 2, longest: 14, victors: ['Rue', 'Cato'] } },
+    museum: { reef: [{ name: 'Glimmer', district: 1, cause: 'Drowned', code: 'drowning', day: 4, run: 3 }] },
+    storyChains: { reef: { chainId: 'the-signal', step: 2, run: 4, completed: 1 } },
+    season: { number: 2, played: 3, points: { 2: 10, 11: 7.5 }, mutator: 'no-night', nextMutator: 'water-ration', champions: [{ number: 1, district: 2 }] },
+    predictionBank: { bankroll: 31, streak: 2, bestStreak: 3, upsetsCalled: 1, causeCalls: 2, overUnderCalls: 1 },
+    gauntletBest: { score: 540, mutators: ['no-night', 'water-ration'], seed: 'G', date: 'd' },
+    announcedQuell: { forRun: 14, quellId: 'the-reflection', announcedAfter: 12 },
+    mentorArenas: { 11: { arenaId: 'reef', arenaName: 'Reef', terrain: 'water', bestSkill: 'swimming' } },
+    upsetRewards: 1,
+};
+
 /*
  * AUDIT-6 §9.3: the whole-record round trip.
  *
@@ -377,6 +396,8 @@ test('no field of a written Panem record is lost on a round trip', () => {
         victorDistrictStreak: 2,
         headGamemakerTerm: { name: 'Seneca', runsServed: 2 },
         recentRuns: [{ seed: 'S1', arenaName: 'A', day: 9, victorName: 'Rue', victorDistrict: 11, victorArchetype: 'underdog', victorKills: 0, deaths: 23 }],
+        // AUDIT-12 wave 3: the season ledger, every field populated.
+        ledger: FULL_LEDGER,
     };
     raw().set(STORAGE_KEYS.panem, JSON.stringify({ v: PANEM_SPEC.version, data: full }));
     const back = readStored(PANEM_SPEC)! as unknown as Record<string, unknown>;
@@ -385,6 +406,62 @@ test('no field of a written Panem record is lost on a round trip', () => {
     Object.keys(full).forEach(k => {
         assert.deepEqual(back[k], full[k], `Panem field ${k} changed on a round trip`);
     });
+});
+
+/*
+ * AUDIT-12 wave 3: the season ledger is a new record-book field and a new
+ * campaign-link field. It must round-trip whole, repair junk member by member
+ * rather than dropping the ledger, and old stores must read as no ledger.
+ */
+test('a v0 Panem record with no ledger reads as no ledger', () => {
+    raw().set(STORAGE_KEYS.panem, JSON.stringify({ v: PANEM_SPEC.version, data: { runs: 2, victors: 2, unlocked: [], bests: {} } }));
+    assert.equal(readStored(PANEM_SPEC)!.ledger, undefined);
+});
+
+test('a damaged season ledger is repaired field by field', () => {
+    const back = normalizeSeasonLedger({
+        apprenticeships: { 3: { skill: 'forage', fromName: 'Wiress', run: 2 }, x: 5, 4: { skill: 7 } },
+        reunions: [{ a: 3, b: 7, count: 2, run: 4 }, 'junk', { a: 'x' }],
+        rivalries: 'nope',
+        season: { number: 'two', played: 3, points: { 2: 10, 4: 'x' } },
+        predictionBank: { bankroll: -5, streak: 2 },
+        announcedQuell: { forRun: 9 },
+    })!;
+    assert.deepEqual(back.apprenticeships, { 3: { skill: 'forage', fromName: 'Wiress', run: 2 } });
+    assert.equal(back.reunions?.length, 1);
+    assert.equal(back.rivalries, undefined);
+    assert.deepEqual(back.season?.points, { 2: 10 });
+    assert.equal(back.season?.number, 1);
+    assert.equal(back.predictionBank?.bankroll, 0);
+    assert.equal(back.announcedQuell, undefined, 'a Quell announcement with no Quell is dropped');
+});
+
+test('the campaign-link ledger slice round-trips and drops what a run never reads', () => {
+    const slice = campaignLedgerOf(FULL_LEDGER as never)!;
+    assert.deepEqual(normalizeCampaignLedger(JSON.parse(JSON.stringify(slice))), slice);
+    assert.equal((slice as Record<string, unknown>).museum, undefined, 'the museum is not simulation input');
+});
+
+test('a Hall of Fame entry keeps its kill ledger, kit, gauntlet and director effect', () => {
+    const entry = normalizeEntry({
+        id: 'k', seed: 'S', arenaName: 'A', winnerName: 'Rue', winnerDistrict: 11, kills: 2, date: '2020-01-01T00:00:00.000Z',
+        killLedger: [{ victim: 'Cato', district: 2, day: 5, how: 'Killed by Rue' }, { nope: 1 }],
+        winnerItems: ['medkit', 3, 'knife'],
+        gauntlet: { score: 540, mutators: ['no-night', 'water-ration'] },
+        directorEffect: 'director effect: +2 mutt deaths vs baseline',
+    })!;
+    assert.deepEqual(entry.killLedger, [{ victim: 'Cato', district: 2, day: 5, how: 'Killed by Rue' }]);
+    assert.deepEqual(entry.winnerItems, ['medkit', 'knife']);
+    assert.deepEqual(entry.gauntlet, { score: 540, mutators: ['no-night', 'water-ration'] });
+    assert.equal(entry.directorEffect, 'director effect: +2 mutt deaths vs baseline');
+});
+
+test('a prediction slip keeps its cause pick and over/under, and drops a malformed one', () => {
+    assert.deepEqual(normalizePrediction({ winnerId: 'a', firstDeathCause: 'mutt', endDayPick: 'over', endDayLine: 11 }),
+        { winnerId: 'a', firstDeathId: undefined, topKillerId: undefined, firstDeathCause: 'mutt', endDayPick: 'over', endDayLine: 11 });
+    const bad = normalizePrediction({ firstDeathCause: 'boredom', endDayPick: 'over' })!;
+    assert.equal(bad.firstDeathCause, undefined);
+    assert.equal(bad.endDayPick, undefined);
 });
 
 test('feed filters and setup config round-trip and repair partial v0 data', () => {
@@ -464,6 +541,7 @@ const FULL_CONFIG: Required<GameConfig> = {
     ageMean: 15,
     ageSpread: 2.5,
     mutators: ['blind-night', 'hazard-storm'],
+    gauntlet: true,
 };
 
 test('CONFIG_KEYS covers every field on GameConfig', () => {

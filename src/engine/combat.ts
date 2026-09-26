@@ -33,7 +33,8 @@ import { dominantSideCost, effectiveAgility, grappleResistance, injuryAbsorption
 import { addExcitement } from './audience';
 import { traitMod } from '../data/traits';
 import { earnTrait } from './earnedTraits';
-import { PREGAMES } from '../data/balance';
+import { PREGAMES, AUDIT12_WAVE2_TRIBUTES } from '../data/balance';
+import { evasionRetreat, lootChanceBonus, noteRetreatFailed, onCannon, traitPowerHooks, twitchyAllyHit } from './traitHooks';
 import { armourOf, effectiveDamage, encumbranceOf, wearArmour } from './items';
 import { isAggressiveStance, isEvasiveStance } from '../data/stances';
 import { loseSanity } from './sanityBands';
@@ -819,6 +820,10 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
         power += readOf(t, opponent.id) * ARCHETYPE_HOOKS.archivistReadPower;
     }
 
+    // AUDIT-12 T15 / §16: Homebody on first-camp ground, Night Owl after dark,
+    // and the Cornered Rat after a retreat that did not work.
+    power += traitPowerHooks(ctx, t);
+
     return power;
 }
 
@@ -930,6 +935,10 @@ function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, round
     // A §8: somebody in shock is not weighing anything. They break off.
     if (inShock(ctx, t)) chance += COMBAT.retreatLosingBonus;
     chance += traitMod(t, 'retreat');
+    // AUDIT-12 §16: the Evasion skill.
+    chance += evasionRetreat(t);
+    // AUDIT-12 §7: an archetype that will not fight bare-handed.
+    if (!t.inventory.some(i => i.type === 'weapon')) chance += arch.unarmedRetreat ?? 0;
     // A §4: the same composite the stance table reads. A tribute with nothing
     // left to lose and a shrinking field stands; one with a full pack on day
     // nine at half health takes the exit.
@@ -1301,6 +1310,9 @@ export function resolveCombat(
         if (round <= noRetreatRounds) continue;
         const t1Flees = wantsToRetreat(ctx, t1, -edge, round, t2);
         const t2Flees = wantsToRetreat(ctx, t2, edge, round, t1);
+        // AUDIT-12 §16: losing, badly hurt, and the roll says stay — cornered.
+        if (!t1Flees && edge < 0 && t1.health < AUDIT12_WAVE2_TRIBUTES.corneredRatHealth) noteRetreatFailed(ctx, t1);
+        if (!t2Flees && edge > 0 && t2.health < AUDIT12_WAVE2_TRIBUTES.corneredRatHealth) noteRetreatFailed(ctx, t2);
         if (t1Flees && t2Flees) {
             ctx.logEvent(
                 fill(ctx.pickText(DUEL_TEXTS.mutualBreak), { t1: t1.name, t2: t2.name, zone: t1.zone }),
@@ -1330,6 +1342,8 @@ export function resolveCombat(
             if (ctx.rng.chance(partingChance)) {
                 const parting = bestWeapon(stayer);
                 landHit(ctx, stayer, fleer, 2, parting);
+                // AUDIT-12 §16: a retreat that cost a blow is one that failed.
+                noteRetreatFailed(ctx, fleer);
                 if (fleer.health <= 0) {
                     strikeDown(ctx, fleer, stayer, parting);
                     ended = true;
@@ -1339,6 +1353,8 @@ export function resolveCombat(
             // Clean away is the lesson; the share above is what the attempt
             // was worth whether or not it cost them a hit on the way out.
             trainProficiency(fleer, 'sprinting', ctx);
+            // AUDIT-12 §16: and staying away is the Evasion skill.
+            trainProficiency(fleer, 'evasion', ctx);
             ctx.logEvent(
                 fill(ctx.pickText(DUEL_TEXTS.retreat), { fleer: fleer.name, stayer: stayer.name, zone: stayer.zone }),
                 [fleer.id, stayer.id],
@@ -1494,6 +1510,8 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
     // removed from the live arrays mid-fight but were still on their side.
     const origPack = new Set(packSide.map(t => t.id));
     const origOther = new Set(otherSide.map(t => t.id));
+    // AUDIT-12 T15: Twitchy Trigger rolls once per brawl.
+    const twitchyRolled = new Set<string>();
 
     // Rivalry bookkeeping: each pair that actually trades blows in this brawl
     // records one fight with each other — once per engagement, like a duel,
@@ -1578,7 +1596,11 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
             }
         }
 
-        const lead = attackers.reduce((best, a) =>
+        // AUDIT-12 T15: and a Twitchy Trigger in a crowd hits their own side.
+        twitchyAllyHit(ctx, attackers, fighters.length, twitchyRolled);
+        if (!attackers.some(isActive)) continue;
+
+        const lead = attackers.filter(isActive).reduce((best, a) =>
             (combatPower(ctx, a, bestWeapon(a)) > combatPower(ctx, best, bestWeapon(best)) ? a : best));
         // A pack fight feeds the same rivalry ledger a duel does — the pair
         // actually trading blows remember it, which is what rematch study,
@@ -2061,6 +2083,8 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             let lootChance = LOOTING.baseChance
                 + ARCHETYPES[killer.archetype].aggression * LOOTING.perAggression
                 + traitMod(killer, 'scavenge')
+                // AUDIT-12 T15 / §16: Pack Rat, and the Scavenging skill.
+                + lootChanceBonus(killer, false)
                 + (desperate ? LOOTING.desperateBonus : 0)
                 - onlookers * LOOTING.perOnlooker
                 - (killer.injuries.bleeding ? LOOTING.bleedingPenalty : 0);
@@ -2268,6 +2292,8 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
     ctx.state.recentCannonZones = (ctx.state.recentCannonZones ?? [])
         .filter(c => c.cycle === cycle)
         .concat({ zone: victim.zone, cycle });
+    // AUDIT-12 T15: the Cannon-Counter hears it and is steadier for it.
+    onCannon(ctx, victim);
 
     // 'The Bounty Quell': collecting the named quarry is a standing sponsor
     // stream, not a one-off gift — maintainBounty (dayNight.ts) names a new

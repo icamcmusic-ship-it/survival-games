@@ -1,4 +1,5 @@
 import { Alliance, GameState, Tribute } from '../models/types';
+import { neverGreedy, watchFailScale } from './traitHooks';
 import { ALLIANCE_BONDS, AUDIT12_TRIBUTES } from '../data/balance';
 import { ARCHETYPES } from '../data/archetypes';
 import { traitMod } from '../data/traits';
@@ -117,7 +118,8 @@ function shareMeal(ctx: SimContext, record: Alliance, camp: Tribute[]) {
     const fairness = record.fairness ?? (record.fairness = { ate: {}, grudges: {} });
     const others = camp.filter(m => m.id !== provider.id);
     const treachery = Math.max(0, treacheryOf(provider)) * 10;
-    const greedy = treachery > 0
+    // AUDIT-12 §16: a Rationer deals out the food and never takes two shares.
+    const greedy = treachery > 0 && !neverGreedy(provider)
         && ctx.rng.chance(Math.min(AUDIT12_TRIBUTES.greedChanceCap,
             ALLIANCE_BONDS.greedBase + treachery * ALLIANCE_BONDS.greedPerTreachery));
     const cacheIdx = record.sharedCache.findIndex(i => i.type === 'food');
@@ -194,7 +196,8 @@ export function watchFails(ctx: SimContext, record: Alliance, watcher: Tribute, 
     const chance = ALLIANCE_BONDS.watchFailBase
         + (watcher.sleepDebt ?? 0) * ALLIANCE_BONDS.watchFailPerDebt
         + Math.max(0, watcher.vitals.fatigue - ALLIANCE_BONDS.watchFailFatigueLine) * ALLIANCE_BONDS.watchFailPerFatigue;
-    const failed = ctx.rng.chance(chance);
+    // AUDIT-12 T15: Heavy Sleeper nods off; Night Owl does not.
+    const failed = ctx.rng.chance(chance * watchFailScale(watcher));
     note(record, watcher.id, !failed);
     if (!failed) return false;
     sleepers.forEach(s => adjustTrust(s, watcher.id, -ALLIANCE_BONDS.watchFailTrustLoss));

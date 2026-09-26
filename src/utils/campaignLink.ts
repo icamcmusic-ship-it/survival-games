@@ -1,4 +1,5 @@
 import { CampaignSnapshot } from '../models/types';
+import { normalizeCampaignLedger } from './seasonLedger';
 
 /**
  * AUDIT-9 B06: a campaign snapshot, small enough to put in a URL.
@@ -298,6 +299,9 @@ export function decodeCampaignResult(raw: string | null): CampaignDecode {
         }
         if (feuds.length) snapshot.feuds = feuds;
     }
+    // AUDIT-12 wave 3: the season ledger slice, validated like everything else here.
+    const ledger = normalizeCampaignLedger(r.ledger);
+    if (ledger) snapshot.ledger = ledger;
 
     return { status: 'ok', snapshot };
 }

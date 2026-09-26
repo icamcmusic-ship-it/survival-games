@@ -1,4 +1,6 @@
 import React from 'react';
+import { directorEffectLine } from '../engine/season/directorEffect';
+import { stackDifficulty } from '../engine/season/gauntlet';
 import { GameState } from '../models/types';
 import { ordinal } from '../engine/gamesProfile';
 import { mutatorName } from '../data/mutators';
@@ -48,6 +50,9 @@ export function RunProfileCard({ gameState }: { gameState: GameState }) {
         // AUDIT-11 §12: the daily, the director's taste and the campaign arc.
         ...(isDailySeed(gameState.seed) ? [['Daily seed', gameState.seed.slice('daily-'.length), true] as [string, React.ReactNode, boolean]] : []),
         ...(gameState.headGamemaker ? [['Director', directorTaste(gameState.headGamemaker).label, false] as [string, React.ReactNode, boolean]] : []),
+        // AUDIT-12 wave 3: what the director measurably did.
+        ...(directorEffectLine(gameState) ? [['Director effect', directorEffectLine(gameState)!.replace(/^director effect: /, ''), true] as [string, React.ReactNode, boolean]] : []),
+        ...(gameState.config.gauntlet ? [['Gauntlet', `stack difficulty ${stackDifficulty(gameState.config.mutators)}`, true] as [string, React.ReactNode, boolean]] : []),
         ...(!isFreshCampaign(gameState.campaign) ? [['Rebellion', `${Math.round(rebellionOf(gameState.campaign))} — ${rebellionLabel(rebellionOf(gameState.campaign))}`, rebellionOf(gameState.campaign) >= CAMPAIGN_ARC.restlessAt] as [string, React.ReactNode, boolean]] : []),
         ...(gameState.legacyTributeIds?.length ? [['Legacy tribute', gameState.tributes.filter(t => gameState.legacyTributeIds!.includes(t.id)).map(t => `${t.name} (D${t.district})`).join(', '), true] as [string, React.ReactNode, boolean]] : []),
     ];

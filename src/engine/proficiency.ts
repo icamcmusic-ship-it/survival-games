@@ -81,6 +81,12 @@ const ARCHETYPE_SPECIALITY: Record<ArchetypeId, Proficiency> = {
     showrunner: 'deception',
     'healer-pacifist': 'medicine',
     engineer: 'knots',
+    // AUDIT-12 §16.
+    'scout-runner': 'evasion',
+    turncoat: 'deception',
+    guardian: 'intimidation',
+    forger: 'crafting',
+    gambler: 'readingPeople',
     // AUDIT-9 stage D: the walk is the job.
     courier: 'pacing',
 };
@@ -550,6 +556,12 @@ const TEACH_PHRASE: Record<Proficiency, string> = {
     scavenging: 'to look at what is under the thing rather than at the thing',
     deception: 'to say the small true part out loud and let them build the rest of it',
     vigilance: 'to watch the gaps between the trees rather than the trees',
+    // AUDIT-12 §16
+    evasion: 'to break the line of sight first and the distance second',
+    rationing: 'to eat half now and wrap the other half before the hunger argues',
+    salvage: 'that the stash is never in the pack, it is under the thing the pack sat on',
+    ambush: 'to let them walk past the spot and take them from the side they just checked',
+    animalHandling: 'to stand side-on and never look it in the eye',
 };
 
 /**

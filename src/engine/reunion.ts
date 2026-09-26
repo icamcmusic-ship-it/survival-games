@@ -1,4 +1,5 @@
 import { SimContext, getAlive } from './context';
+import { trainProficiency } from './proficiency';
 import { samePlace } from './verticality';
 import { cycleOf } from './memory';
 import { adjustRel, adjustTrust } from './relationships';
@@ -6,6 +7,7 @@ import { REUNION } from '../data/balance';
 import { noteMilestone } from './milestones';
 import { allied } from './alliance';
 import { isVeteran } from './veterans';
+import { pairKey, seasonOf } from './season/runState';
 
 /**
  * AUDIT-10 B5-01: real reunions.
@@ -52,9 +54,15 @@ export function tickReunions(ctx: SimContext) {
             adjustRel(t, other.id, REUNION.regard);
             adjustTrust(t, other.id, REUNION.trust);
             t.vitals.sanity = Math.min(100, t.vitals.sanity + REUNION.sanityRelief);
+            // AUDIT-12 §16: finding each other again is what Signalling is for.
+            trainProficiency(t, 'signalling', ctx);
             if (t.id > other.id) return;
 
             noteMilestone(ctx, 'reunion', [t.id, other.id]);
+            // AUDIT-12 wave 3: the reunion is written to the campaign, by district pair.
+            const pairs = seasonOf(ctx.state).reunionPairs ?? (seasonOf(ctx.state).reunionPairs = []);
+            const key = pairKey(t.district, other.district);
+            if (!pairs.includes(key)) pairs.push(key);
             const apart = now - last;
             ctx.logEvent(
                 `${t.name} and ${other.name} find each other again in ${t.zone} after ${apart} cycles apart. `
@@ -81,6 +89,9 @@ export function tickVeteranMoments(ctx: SimContext) {
         const rookie = alive.find(o => o.id !== vet.id && !isVeteran(seated, o) && samePlace(ctx.state.arena, vet, o));
         if (!rookie) return;
         ctx.state.veteranMoments = [...(ctx.state.veteranMoments ?? []), vet.id];
+        // AUDIT-12 wave 3: and the veteran's district carries it into the next reaping.
+        const vets = seasonOf(ctx.state).veteranDistricts ?? (seasonOf(ctx.state).veteranDistricts = []);
+        if (!vets.includes(vet.district)) vets.push(vet.district);
         adjustRel(rookie, vet.id, REUNION.veteranRegard);
         ctx.logEvent(
             `${rookie.name} watches ${vet.name} check the wind, the ground and the tree line in the order the ${vet.veteranOf ?? 'last'} Games taught them, `

@@ -1,4 +1,5 @@
 import { scarBlocks } from './arenaDepth';
+import { noteArenaInjuries } from './arenaWave2';
 import { GameState, Terrain, Tribute, ZoneEffect, ZoneEffectKind } from '../models/types';
 import { injure, openWound } from './wounds';
 import { BLEEDING, TERRAIN_DRYNESS as TERRAIN_DRYNESS_TABLE, ZONE_EFFECTS } from '../data/balance';
@@ -365,7 +366,23 @@ function severityOf(ctx: SimContext, effect: ZoneEffect): number {
     return (effect.severity ?? 1) * (vocab?.severityMult ?? 1);
 }
 
+/**
+ * AUDIT-12 §8.2: an effect the arena's own rule started (`ZoneEffect.signature`,
+ * set by `stampSignature`) wounds as the arena's own — the fire the kiln lit is
+ * the kiln's death, not the generic fire's.
+ */
 function applyEffectTick(ctx: SimContext, zoneName: string, effect: ZoneEffect, occupants: Tribute[]) {
+    if (!effect.signature) return applyEffectTickInner(ctx, zoneName, effect, occupants);
+    const before = occupants.map(t => t.lastDamage);
+    const hurt = occupants.map(t => ({ ...t.injuries }));
+    applyEffectTickInner(ctx, zoneName, effect, occupants);
+    occupants.forEach((t, i) => {
+        if (t.lastDamage && t.lastDamage !== before[i]) t.lastDamage.signature = true;
+        noteArenaInjuries(ctx.state, t, hurt[i]);
+    });
+}
+
+function applyEffectTickInner(ctx: SimContext, zoneName: string, effect: ZoneEffect, occupants: Tribute[]) {
     const severity = severityOf(ctx, effect);
     occupants.forEach(t => {
         // The occupant list is snapshotted once per zone, before any of its

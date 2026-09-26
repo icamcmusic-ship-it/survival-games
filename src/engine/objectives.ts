@@ -1,4 +1,5 @@
 import { targetDrawOf } from './targeting';
+import { hiddenFromHunt } from './traitHooks';
 import { GameState, Objective, Tribute, Zone } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
 import { AUDIT12_TRIBUTES, ENDGAME, ESCALATION, PERCEPTION, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, MEMORY, MOVEMENT, OBJECTIVES, PLANNING, REPUTATION_TARGETING, RISK, STANDING_GOAL } from '../data/balance';
@@ -583,7 +584,9 @@ function chooseObjective(
             && !allied(o, t)
             && rememberedRivals(state, t, o.zone) > 0
             && cyclesSinceContact(state, t, o.id) <= MEMORY.sightingLifetime
-            && fearOf(t, o.id) < OBJECTIVES.huntAbandonFear);
+            && fearOf(t, o.id) < OBJECTIVES.huntAbandonFear
+            // AUDIT-12 §16: somebody Hiding is off the list unless they are tracked.
+            && !hiddenFromHunt(t, o));
         // A standing truce is worth most exactly here — deciding who to go
         // looking for. It used to be consulted only in `resolvePairEncounter`,
         // so a truce held during a chance meeting and was silently irrelevant

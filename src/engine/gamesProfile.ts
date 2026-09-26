@@ -5,7 +5,7 @@ import {
     Quell, QUELLS, Wildcard, WildcardDef, WILDCARDS, WildcardKind,
 } from '../data/gamesProfile';
 import { GAMES_PROFILE, QUELL_MECHANICS } from '../data/balance';
-import { MUTATOR_TUNING, hasMutator } from '../data/mutators';
+import { MUTATOR_TUNING, hasMutator, mutatorGrantsLaw } from '../data/mutators';
 
 /**
  * REPLAY-01: rolling a run's identity, once, from its seed.
@@ -329,7 +329,8 @@ export function wildcardIs(state: GameState, kind: WildcardKind): boolean {
  * arena that wants to be both a blackout *and* a no-healing arena can say so.
  */
 export function arenaHasLaw(state: GameState, law: ArenaLawId): boolean {
-    return state.arena.law === law || (state.arena.laws?.includes(law) ?? false);
+    return state.arena.law === law || (state.arena.laws?.includes(law) ?? false)
+        || mutatorGrantsLaw(state.config, law); // AUDIT-12 wave 3: no-night, silent cannons, one-way roads
 }
 
 /** Every standing law this arena is running under, deduped. */

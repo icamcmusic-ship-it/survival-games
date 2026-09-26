@@ -1,4 +1,6 @@
 import { announceFeastTheme } from './phases/feast';
+import { addCruelty, fairnessAllows } from './season/cruelty';
+import { answerLoudestSegment, crowdIsBored } from './season/crowd';
 import { ITEMS } from '../data/constants';
 import { GAMEMAKER_AGENCY, QUALITY_BIAS } from '../data/balance';
 import { gamemakerProfile } from '../data/gamemakers';
@@ -135,12 +137,23 @@ export function runGamemakerSignature(ctx: SimContext) {
     const grudge = ctx.state.continuity?.grudge ?? 0;
     if (ctx.state.day < GAMEMAKER_AGENCY.earliestDay - grudge * CONTINUITY.grudgeEarlierDays) return;
 
-    const bored = ctx.state.audienceInterest !== undefined
-        && ctx.state.audienceInterest < GAMEMAKER_AGENCY.boredomThreshold;
+    /*
+     * AUDIT-12 wave 3 §11/§13: boredom is read off the crowd's segments, not
+     * the single `audienceInterest` scalar. A crowd with no heat left in any
+     * segment is bored; the unprompted draw is unchanged, so a run whose crowd
+     * is warm plays exactly as it did.
+     */
+    const bored = crowdIsBored(ctx.state);
     if (!bored && !ctx.rng.chance(GAMEMAKER_AGENCY.unpromptedChance + grudge * CONTINUITY.grudgeUnpromptedBonus)) return;
+    // The fairness guard: a booth that has already leaned this hard waits.
+    if (!fairnessAllows(ctx.state)) return;
 
     const profile = gamemakerProfile(ctx.state.headGamemaker);
     ctx.state.gamemakerSignatureFired = true;
+    addCruelty(ctx.state, 'signature', `${ctx.state.headGamemaker ?? 'the Head Gamemaker'}'s signature`);
+    // The loudest segment gets a turn of its own first: blood for the
+    // bloodthirsty, a table for the romantics, a gift for the underdog fans.
+    answerLoudestSegment(ctx);
     ctx.logEvent(profile.signatureLine, [], { type: 'gamemaker-signatures', important: true, category: 'gamemaker' });
 
     switch (profile.signature) {

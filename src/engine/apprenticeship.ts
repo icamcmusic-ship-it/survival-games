@@ -4,6 +4,7 @@ import { profOf, trainProficiency } from './proficiency';
 import { samePlace } from './verticality';
 import { getRel, adjustRel } from './relationships';
 import { APPRENTICESHIP } from '../data/balance';
+import { seasonOf } from './season/runState';
 
 
 /**
@@ -49,6 +50,10 @@ export function offerApprenticeship(ctx: SimContext, learner: Tribute, skill: Pr
     trainProficiency(learner, skill, ctx, APPRENTICESHIP.learnerShare);
     // Explaining a thing is how you find out whether you understood it.
     trainProficiency(teacher, skill, ctx, APPRENTICESHIP.teacherShare);
+    // AUDIT-12 wave 3: offered to the player at the end of the Games — which
+    // skill the learner's district passes on to its next tribute.
+    const lessons = seasonOf(ctx.state).apprenticeLessons ?? (seasonOf(ctx.state).apprenticeLessons = []);
+    if (!lessons.some(l => l.district === learner.district && l.skill === skill)) lessons.push({ district: learner.district, skill, teacher: teacher.name });
     adjustRel(learner, teacher.id, APPRENTICESHIP.regard);
     adjustRel(teacher, learner.id, APPRENTICESHIP.regard);
 

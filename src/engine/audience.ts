@@ -18,3 +18,18 @@ export function addExcitement(t: Tribute, amount: number) {
     // also make a penalty hurt more.
     t.excitementRating += amount > 0 ? amount * scale : amount;
 }
+
+/**
+ * AUDIT-12 wave 3 §11/§13: excitement fades.
+ *
+ * `excitementRating` only ever went up, so a tribute who had one good day in
+ * the bloodbath stayed the crowd's favourite for the rest of the Games. It
+ * now decays toward zero each simulated turn — a share kept, so a tribute the
+ * cameras keep finding stays hot and one who has gone quiet cools.
+ */
+export function decayExcitement(tributes: Tribute[], keep: number) {
+    tributes.forEach(t => {
+        if (t.status !== 'alive' || t.excitementRating <= 0) return;
+        t.excitementRating = Math.round(t.excitementRating * keep * 100) / 100;
+    });
+}

@@ -12,6 +12,9 @@ import { deathCodeOf } from '../src/engine/causes';
 import { isActive } from '../src/engine/downed';
 import { TRAIT_DEFS } from '../src/data/traits';
 import { victorsOf } from '../src/utils/notables';
+import * as fs from 'fs';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
 
 const RUNS = Number(process.env.AUDIT12_RUNS ?? 150);
 const arenaIds = [...ARENAS.map(a => a.id), 'procedural'];
@@ -32,6 +35,7 @@ const archN: Record<string, number> = {};
 const NEW_TYPES: string[] = ['night-theft', 'hollow-victory', 'shared-camp', 'alliance-splinter'];
 const beat: Record<string, number> = {};
 const archW: Record<string, number> = {};
+const beatW2: Record<string, number> = {};
 
 function sampleRoles(state: GameState) {
     const byId = new Map(state.tributes.map(t => [t.id, t] as const));
@@ -81,6 +85,7 @@ for (let i = 0; i < RUNS; i++) {
         if (state.phase === 'day' || state.phase === 'night') sampleRoles(state);
     }
     state.log.forEach(l => { if (l.type && NEW_TYPES.includes(l.type)) beat[l.type] = (beat[l.type] ?? 0) + 1; });
+    state.log.forEach(l => { if (l.type) beatW2[l.type] = (beatW2[l.type] ?? 0) + 1; });
     state.tributes.forEach(t => {
         archN[t.archetype] = (archN[t.archetype] ?? 0) + 1;
         if (t.status !== 'dead') return;
@@ -124,6 +129,32 @@ guard(!!fleet && (fleet.mods?.retreat ?? 0) > 0, 'T7 Fleet retreat is positive',
 const names = Object.keys(TRAIT_DEFS).map(t => t.toLowerCase().replace(/[^a-z]/g, ''));
 const dupes = names.filter((n, i) => names.indexOf(n) !== i);
 guard(dupes.length === 0, 'T16 no folded trait-name collisions', dupes.join(', ') || 'none');
+
+// AUDIT-12 wave 2 (T15): every AUDIT-11 §16 trait now has an engine hook.
+// The predicates live in data/traits.ts; each must be read outside it.
+{
+    const engineDir = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', 'src', 'engine');
+    const corpus: string[] = [];
+    (function walk(dir: string) {
+        fs.readdirSync(dir, { withFileTypes: true }).forEach(e => {
+            const full = path.join(dir, e.name);
+            if (e.isDirectory()) walk(full);
+            else if (/\.ts$/.test(e.name)) corpus.push(fs.readFileSync(full, 'utf8'));
+        });
+    })(engineDir);
+    const text = corpus.join('\n');
+    const hooks: Array<[string, string]> = [
+        ['Mimic', 'isMimic'], ['Twitchy Trigger', 'hasTwitchyTrigger'], ['Homebody', 'isHomebody'],
+        ['Forgets Faces', 'forgetsFaces'], ['Oathkeeper', 'isOathkeeper'], ['Heavy Sleeper', 'isHeavySleeper'],
+        ['Bone-Setter', 'isBoneSetter'], ['Cannon-Counter', 'countsCannons'], ['Salt-Tongued', 'isSaltTongued'],
+        ['Pack Rat', 'isPackRat'], ['Night Owl', 'isNightOwl'],
+    ];
+    const dead = hooks.filter(([, p]) => !text.includes(p.startsWith("'") ? p : `${p}(`)).map(([n]) => n);
+    guard(dead.length === 0, 'T15 AUDIT-11 §16 traits have engine hooks', dead.join(', ') || 'all 11');
+    const w2 = ['mimic-lure', 'twitchy-hit', 'parley-failed', 'scout-warning', 'forged-weapon'];
+    const missing = w2.filter(k => (beatW2[k] ?? 0) === 0);
+    guard(missing.length === 0, 'wave 2 trait/archetype beats fire', missing.join(', ') || w2.map(k => `${k} ${beatW2[k]}`).join(', '));
+}
 
 console.log(failures === 0 ? 'AUDIT-12 checks passed.' : `${failures} AUDIT-12 check(s) failed.`);
 process.exit(failures === 0 ? 0 : 1);
