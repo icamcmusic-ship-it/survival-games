@@ -4,9 +4,9 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { GameState, Tribute } from '../../models/types';
 import { ARCHETYPES, archetypeCompatibility } from '../../data/archetypes';
-import { RESPECT, ALLIANCES, PERCEPTION, BETRAYAL, OBJECTIVES, PROFICIENCY, PROTECTOR_BOND, QUELL_MECHANICS, RELATIONSHIPS, ROMANCE, SUSPICION } from '../../data/balance';
+import { RESPECT, ALLIANCES, AUDIT13_CAREERS, PERCEPTION, BETRAYAL, OBJECTIVES, PROFICIENCY, PROTECTOR_BOND, QUELL_MECHANICS, RELATIONSHIPS, ROMANCE, SUSPICION } from '../../data/balance';
 import { profOf, trainProficiency } from '../proficiency';
-import { applyDamage, checkDeath } from '../combat';
+import { applyDamage, checkDeath, resolveCombat } from '../combat';
 import { clampTribute } from '../vitals';
 import { ALLIANCE_TEXTS, BETRAYAL_AFTERMATH_TEXTS, PROTECTOR_BOND_TEXTS, ROMANCE_BOND_TEXTS, ROMANCE_TEXTS } from '../../data/flavorText';
 import { adjustRel, getRel, trustOf } from '../relationships';
@@ -424,6 +424,44 @@ export function processAlliances(ctx: SimContext) {
                     { type: 'solo-departures', important: true, category: 'alliance' }
                 );
             });
+        });
+    }
+
+    refresh();
+    // 1d'. AUDIT-13 K6: the pack that got through the horn whole.
+    //
+    // Careers surviving the Cornucopia (K1-K5) is the fix; Careers therefore
+    // winning more is not. The source material's answer is the pack turning
+    // on itself once the easy prey is gone, and until now the pack's own clock
+    // (`careerSchismEarliestCycle`) held it together into the final eight.
+    // From day three the least-bound Career walks out on bad terms — and the
+    // people they walk out on are the best-armed tributes in the arena and
+    // standing next to them.
+    // A walkout happens in daylight, with the pack watching — once a day, not
+    // twice, so it reads as a decision rather than as churn.
+    if (ctx.state.day >= AUDIT13_CAREERS.packFractureFromDay && ctx.state.phase === 'day') {
+        alliances.forEach((members, id) => {
+            if (!id.startsWith('career-pack')) return;
+            const live = members.filter(m => m.status === 'alive' && m.allianceId === id);
+            if (live.length < 2 || !ctx.rng.chance(AUDIT13_CAREERS.packFractureChance)) return;
+            const bound = (m: Tribute) => live.reduce((sum, o) => sum + (o.id === m.id ? 0 : getRel(m, o.id)), 0);
+            const leaver = [...live].sort((a, b) => bound(a) - bound(b))[0];
+            const others = live.filter(o => o.id !== leaver.id);
+            delete leaver.allianceId;
+            others.forEach(o => {
+                adjustRel(o, leaver.id, -AUDIT13_CAREERS.packFractureRegard);
+                adjustRel(leaver, o.id, -AUDIT13_CAREERS.packFractureRegard);
+            });
+            ctx.logEvent(
+                `${leaver.name} has been sleeping with one eye on ${others.map(o => o.name).join(' and ')} for two nights. `
+                + `In ${leaver.zone} they take their share and go, and nobody in the pack pretends it was friendly.`,
+                [leaver.id, ...others.map(o => o.id)],
+                { type: 'career-defections', important: true, category: 'alliance' }
+            );
+            // Walking out armed past the people you trained with is not a
+            // thing the pack lets go without a word. Somebody goes after them.
+            const chaser = others.find(o => o.zone === leaver.zone);
+            if (chaser && ctx.rng.chance(AUDIT13_CAREERS.packFractureFightChance)) resolveCombat(ctx, chaser, leaver, false, false, AUDIT13_CAREERS.packFractureLockedRounds);
         });
     }
 

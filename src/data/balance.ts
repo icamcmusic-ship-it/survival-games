@@ -1806,7 +1806,10 @@ export const BLOODBATH = {
      * separate duels can produce four. Ganging up is more frightening and less
      * productive, which is a real thing about packs and not a bug.
      */
-    packGangUpChance: 0.6,
+    // AUDIT-13 K2: 0.8. The throughput note above is why the pack kills
+    // fewer this way; the point now is that it also dies less — four on one is
+    // the safest place a Career can be at the horn.
+    packGangUpChance: 0.8,
     /**
      * §23 (requests): extra damage a Career lands inside the killing zone, on
      * top of `killingZoneDamage`. They trained for this specific sixty
@@ -5944,8 +5947,8 @@ export const ALLIANCES = {
     floorPactRegard: 32,
     schismEarliestCycle: 4,
     schismFieldShare: 0.7,
-    careerSchismEarliestCycle: 9,
-    careerSchismFactor: 0.3,
+    careerSchismEarliestCycle: 6,
+    careerSchismFactor: 0.8,
     /** Suspicion/fear across the faction line that counts as a real grievance. */
     schismGrievanceSuspicion: 22,
     schismGrievanceFear: 18,
@@ -10965,4 +10968,67 @@ export const AUDIT13_ARENA = {
     hauntedSanity: 1,
     /** B6: days a corpse keeps its kit before it is left as a cache. */
     corpseKitDays: 2,
+} as const;
+
+/**
+ * AUDIT-13 §3.1 K1-K6 and §5 T5-T8: Careers at the horn, and what they are
+ * afraid of. Guarded by `test:audit13-careers`.
+ *
+ * The requirement: Careers died at the horn far too often, volunteers exactly
+ * as often as the reaped, and volunteers were frightened of outsiders. The
+ * horn is fixed here; the Career victor share that buys is paid back mid-game
+ * by the pack's own fracture, not by making the horn dangerous again.
+ */
+export const AUDIT13_CAREERS = {
+    /**
+     * K3: how much of a fright an outsider puts into a Career actually sticks.
+     * Trained for years for this; volunteers, who asked to be here, least of
+     * all. A reaped Career gets about half the discount (K5).
+     */
+    volunteerOutsiderFearScale: 0.2,
+    reapedOutsiderFearScale: 0.65,
+    /** K4 (a): fear and notoriety of an outsider as retreat terms, scaled. */
+    volunteerOutsiderRetreatScale: 0.15,
+    reapedOutsiderRetreatScale: 0.6,
+    /** K4 (b): the Career term (was 0.1), and the nerve of packmates in the zone. */
+    careerRetreatRelief: 0.2,
+    packInZoneRetreatRelief: 0.1,
+    /**
+     * K1: an outsider in the scrum steers away from the pack. Weight
+     * multiplier = max(floor, base + perStrength * (strength - 5)), then
+     * scaled up by grudge.
+     */
+    outsiderAvoidBase: 0.4,
+    outsiderAvoidPerStrength: 0.1,
+    outsiderAvoidFloor: 0.2,
+    /** K2: the pack goes through a target together, all of it (<= 4). */
+    packGangUpMax: 4,
+    /** K2: scrum-pick weight of a packmate, against ~1-3 for anybody else. */
+    packmateTargetWeight: 0.01,
+    /**
+     * T7: fear resolved by the fact of the person — watching a feared rival
+     * drop below `bleedHealth`, and winning an exchange against them.
+     */
+    sawThemBleedFear: 15,
+    bleedHealth: 40,
+    survivedThemFear: 10,
+    /**
+     * T8: the regard at which a dead tribute counts as "one of theirs" — the
+     * floor the Career pack is seeded at.
+     */
+    friendRegard: 45,
+    /**
+     * K6 balance: the pack's fracture after the horn. From this day, per
+     * day phase, the least-bound Career walks out, at this cost in regard both
+     * ways. This is the lever the horn fix is paid for with.
+     */
+    packFractureFromDay: 3,
+    packFractureChance: 0.35,
+    packFractureRegard: 30,
+    /** ...and how often a packmate standing there goes after them. */
+    packFractureFightChance: 0.8,
+    /** Rounds of that fight in which neither can break off: it is settled. */
+    packFractureLockedRounds: 3,
+    /** Hunt-target score an outsider adds for a Career with no packmate left. */
+    strayCareerHuntBonus: 45,
 } as const;

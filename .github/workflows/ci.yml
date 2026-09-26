@@ -91,6 +91,9 @@ jobs:
       # rather than dead, and two of them were dead when written.
       - run: npm run test:batch4
       - run: npm run test:audit10-fixes
+      # AUDIT-13 K6: Careers at the horn (volunteers <= 12%, all <= 15%), and
+      # the fear and retreat numbers that used to put them there.
+      - run: npm run test:audit13-careers
       # AUDIT-10 batch 2: the shared legal-action contract. "Validated twice"
       # is not something a reader can check by inspection.
       - run: npm run test:actions
