@@ -1046,7 +1046,12 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
     const hold = (STANCE_PROFILES[t.stance]?.minHold ?? STANCE.minHold)
         + Math.floor((t.stanceChurn ?? 0) * STANCE.churnHoldPerSwitch)
         + sleepStanceHold(t);
-    if (!emergency && t.stanceHeld < hold) {
+    // AUDIT-12: the hold is against flicker between close options, not a
+    // licence to keep a stance the scorer now ranks outside its top few —
+    // that is the scorer being ignored, and `test:decisions` guards it.
+    const incumbentRank = ranked.findIndex(([s]) => s === t.stance);
+    const stillContending = incumbentRank >= 0 && incumbentRank < DECISION_TRACE.topN;
+    if (!emergency && stillContending && t.stanceHeld < hold) {
         noteHeld(`they have only just committed to ${t.stance.toLowerCase()} and switching again this soon is not worth it`);
         t.stanceHeld += 1;
         // Tenure accrues on every cycle the tribute actually spends in the
