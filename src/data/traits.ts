@@ -1271,7 +1271,7 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     },
     'Drowned Once': {
         info: 'Went under once, as a child, and came up. Will not cross water unless the ground behind them is going, and feels the cold less than most.',
-        mods: { water: -1.5, coldResist: 0.15 },
+        mods: { water: -1, coldResist: 0.15 },
     },
     'Mud-Skinned': {
         info: 'Grew up in the reeds. Harder to see, and twice as hard in marsh or wetland — but not choosy about what gets in the mouth.',

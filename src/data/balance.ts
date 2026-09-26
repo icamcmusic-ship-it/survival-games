@@ -10881,7 +10881,9 @@ export const AUDIT12_WAVE2_TRIBUTES = {
     hidingThirst: 2,
     /** Parleying: the risk tolerance at or under which talking comes first. */
     parleyingRiskMax: -0.15,
-    parleyingBase: 4.4,
+    // AUDIT-13 §16: 4.4 -> 4.8. Regrouping and Mourning compete for the same
+    // cycles and took Parleying to 1.3%, the rarest stance.
+    parleyingBase: 4.8,
     parleyingPerCharisma: 0.12,
     /** Parleying: fear each failed talk adds. */
     parleyingFailFear: 12,
@@ -11186,8 +11188,8 @@ export const AUDIT13_CONTENT = {
 
     // ---- archetypes ------------------------------------------------------
     /** N23 Firekeeper: nights a fire must burn, the chance they light one, the hearth's length, and its gifts. */
-    firekeeperNights: 2,
-    firekeeperLightChance: 0.35,
+    firekeeperNights: 1,
+    firekeeperLightChance: 0.6,
     hearthCycles: 6,
     hearthFatigue: 2,
     hearthColdResist: 0.2,
@@ -11196,10 +11198,12 @@ export const AUDIT13_CONTENT = {
     crownLeadership: 1,
     crownSponsorShare: 0.5,
     /** N25 Ratcatcher: live traps the vermin sweep needs, and what it feeds. */
-    pestSweepTraps: 2,
+    pestSweepTraps: 1,
+    /** N25: with no line down, the animal-handling level that does it by hand. */
+    pestSweepHandling: 1,
     pestSweepFeed: 15,
     /** N26 Pilgrim: pull toward the landmark, and the resolve and sponsor trust arriving buys. */
-    pilgrimPull: 3,
+    pilgrimPull: 6,
     pilgrimResolve: 0.5,
     pilgrimSponsor: 10,
     /** N27 Mourner: grief resistance lost, power against an ally's killer, sanity a vigil restores. */
@@ -11228,7 +11232,7 @@ export const AUDIT13_CONTENT = {
     mourningWindow: 3,
     /** N36: regard for the dead at or over which it is mourning rather than merely grief. */
     mourningRegard: 20,
-    mourningBase: 8,
+    mourningBase: 7,
     mourningAwareness: 0.5,
     mourningSanity: 4,
     /** N37 Sheltering: shelter skill needed, score, exposure kept, the costs, and the tracker who still finds them. */

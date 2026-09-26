@@ -619,7 +619,9 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'diplomat',
         name: 'Diplomat',
         description: 'Talks people out of it. Brokers truces between others as easily as for themselves — and their death dissolves every one of them.',
-        statBias: { charisma: 3, intelligence: 1, endurance: 1 },
+        // AUDIT-13 A20: re-measured 3.03% (worst guarded row) once Parleying
+        // became its home; the rest of the proposal follows.
+        statBias: { charisma: 3, intelligence: 1, endurance: 2 },
         preferredTraits: ['Charismatic', 'Strategist'],
         aggression: -0.25,
         allianceAffinity: 0.35,
@@ -636,7 +638,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         hatesArchetypes: ['zealot'],
         tagline: 'Nobody has to die today.',
         // Audit 4 §8.3: Hard to justify to a group that has been talking to them all week.
-        targetDraw: -0.5,
+        targetDraw: -1.0,
         fearScale: 1.0,
     },
     scholar: {
@@ -1604,7 +1606,9 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'pilgrim',
         name: 'Pilgrim',
         description: 'Named a place in the arena at the reaping and swore to stand in it. Walks there whatever it costs, and is harder to stop once they have.',
-        statBias: { willpower: 2, endurance: 1 },
+        // Measured 2.6-3.0% at n=1,600 on willpower 2 / endurance 1: the walk
+        // is the whole character, and it needs the legs for it.
+        statBias: { willpower: 2, endurance: 2 },
         preferredTraits: ['Devout', 'Steadfast', 'Wanderlust'],
         aggression: -0.2,
         allianceAffinity: 0.05,
@@ -1624,7 +1628,9 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'mourner',
         name: 'Mourner',
         description: 'Feels every death in the arena more than they should. Sits with the bodies of the people they lost, gets up steadier, and goes looking for whoever did it.',
-        statBias: { willpower: 1, charisma: 1 },
+        // Measured 2.8-3.0% at n=1,600 without the endurance: grief costs
+        // them more than anybody, so the body has to carry it.
+        statBias: { willpower: 1, charisma: 1, endurance: 1 },
         preferredTraits: ['Softhearted', 'Grudge-Keeper', 'Loyal'],
         aggression: 0,
         allianceAffinity: 0.3,
@@ -1644,7 +1650,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         id: 'lamplighter',
         name: 'Lamplighter',
         description: "Walks ahead of their people and marks the safe way through: cut bark, stacked stones, a strip of cloth where the ground gives. Anybody who follows the marks walks through the arena's worst untouched.",
-        statBias: { intelligence: 2 },
+        statBias: { intelligence: 2, endurance: 1 },
         preferredTraits: ['Reads Ground', 'Long Sight', 'Weather-Nose'],
         aggression: -0.05,
         allianceAffinity: 0.25,

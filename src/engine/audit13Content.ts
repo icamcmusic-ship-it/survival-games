@@ -47,6 +47,8 @@ export function tickAudit13Content(ctx: SimContext) {
         if (!isActive(t)) return;
         if (t.archetype === 'firekeeper') tendFire(ctx, t, night);
         if (t.archetype === 'pilgrim' && !t.pilgrimZone) pickLandmark(ctx, t);
+        // Arriving is a fact the moment it happens; the set piece is the camera finding it.
+        if (t.archetype === 'pilgrim' && t.pilgrimZone === t.zone) t.pilgrimArrived = true;
         if (t.crownedId) crownShare(ctx, t);
         if (night) hearthWarmth(ctx, t, cycle);
         if (t.stance === 'Mourning') keepVigil(t);
@@ -66,11 +68,17 @@ function tendFire(ctx: SimContext, t: Tribute, night: boolean) {
     if (night && hasCamp(ctx, t, 'fire')) t.fireNights = (t.fireNights ?? 0) + 1;
 }
 
-/** N26: the landmark is fixed once, the first cycle they are in the arena. */
+/**
+ * N26: the landmark is fixed once, the first cycle they are in the arena —
+ * one of the sectors that can be seen from the plates, because a vow is made
+ * about a place you can point at.
+ */
 function pickLandmark(ctx: SimContext, t: Tribute) {
-    const zones = ctx.state.arena.zones.slice(1).filter(z => !(ctx.state.collapsedZones ?? []).includes(z.name));
+    const horn = ctx.state.arena.zones[0];
+    const collapsed = ctx.state.collapsedZones ?? [];
+    const zones = (horn?.adjacent ?? []).filter(z => !collapsed.includes(z));
     const pick = ctx.rng.pickOrUndefined(zones);
-    if (pick) t.pilgrimZone = pick.name;
+    if (pick) t.pilgrimZone = pick;
 }
 
 /** N24: a crowned ally still standing beside them is sponsor attention shared. */
@@ -518,11 +526,14 @@ export function pestSweep(ctx: SimContext, t: Tribute): boolean {
         );
         return true;
     }
-    if (lines.length < C.pestSweepTraps) return false;
+    // With no line down, a handler who knows animals works with their hands.
+    if (lines.length < C.pestSweepTraps && profOf(t, 'animalHandling') < C.pestSweepHandling) return false;
     t.vitals.hunger = Math.max(0, t.vitals.hunger - C.pestSweepFeed);
     trainProficiency(t, 'animalHandling', ctx);
     ctx.logEvent(
-        `${t.name} walks the whole trapline before dawn and comes back with a string of things nobody else in the arena would have thought to eat.`,
+        lines.length >= C.pestSweepTraps
+            ? `${t.name} walks the whole trapline before dawn and comes back with a string of things nobody else in the arena would have thought to eat.`
+            : `${t.name} spends the grey hour before dawn turning over logs in ${t.zone}, and comes back with a string of things nobody else in the arena would have thought to eat.`,
         [t.id],
         { type: 'pest-sweep', important: true, category: 'survival', zone: t.zone }
     );
@@ -531,13 +542,12 @@ export function pestSweep(ctx: SimContext, t: Tribute): boolean {
 
 /** N26 Pilgrim: standing, at last, where they said they would stand. */
 export function pilgrimArrival(ctx: SimContext, t: Tribute): boolean {
-    if (!t.pilgrimZone || t.zone !== t.pilgrimZone) return false;
-    t.pilgrimArrived = true;
+    if (!t.pilgrimZone || !t.pilgrimArrived) return false;
     t.sponsorTrust = Math.min(100, t.sponsorTrust + C.pilgrimSponsor);
     addExcitement(t, C.pilgrimSponsor);
     trainProficiency(t, 'weathercraft', ctx);
     ctx.logEvent(
-        `${t.name} reaches ${t.zone} and stops. They told the cameras at the reaping they would stand here, and nobody believed them, and here they are.`,
+        `${t.name} has stood in ${t.pilgrimZone}. They told the cameras at the reaping they would, and nobody believed them, and the footage is being played in every district tonight.`,
         [t.id],
         { type: 'pilgrim-arrival', important: true, category: 'survival', zone: t.zone }
     );

@@ -494,7 +494,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Bait and Switch',
         hint: 'See a tribute who has worked the Baiting stance kill somebody with a trap.',
         category: 'combat',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: state => state.tributes.some(k => (k.trapKills ?? 0) >= 1 && usedStance(k, 'Baiting')),
         nearMiss: state => (state.tributes.some(k => (k.trapKills ?? 0) >= 1)
             ? 'A trap killed somebody, but its setter had never been Baiting'
@@ -667,7 +667,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Caught Out',
         hint: 'See a planted rumour exposed as false by somebody who went and looked.',
         category: 'social',
-        rarity: 'rare',
+        rarity: 'common',
         // Audit 3 §1.6: an exposed claim is retired from the pool, so reading
         // the pool at the end was reading for the one thing that is removed.
         test: state => state.plantedRumourExposed === true,
@@ -772,7 +772,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Mercy and the Knife',
         hint: 'Crown a victor who both finished somebody bleeding out and spared somebody else.',
         category: 'combat',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: (_s, v) => !!v && (v.finishedDowned?.length ?? 0) > 0 && (v.sparedDowned?.length ?? 0) > 0,
     },
     {
@@ -914,13 +914,15 @@ export const ACHIEVEMENTS: Achievement[] = [
     {
         id: 'unfilmed',
         name: 'Unfilmed',
-        hint: 'Crown a victor who went eight or more cycles without being seen by anybody.',
+        // AUDIT-13 §16: eight -> five. Regrouping and Mourning put more of the
+        // field back in company, and 500 seeded runs now peak at five in a victor.
+        hint: 'Crown a victor who went five or more cycles without being seen by anybody.',
         category: 'oddity',
         rarity: 'legendary',
-        test: (_s, v) => !!v && (v.unseenStreak ?? 0) >= 8,
+        test: (_s, v) => !!v && (v.unseenStreak ?? 0) >= 5,
         nearMiss: (_s, v) => {
             const n = v?.unseenStreak ?? 0;
-            return n >= 5 && n < 8 ? `${v!.name} went ${n} cycles unseen — ${8 - n} short` : undefined;
+            return n >= 3 && n < 5 ? `${v!.name} went ${n} cycles unseen — ${5 - n} short` : undefined;
         },
     },
     {
@@ -967,11 +969,13 @@ export const ACHIEVEMENTS: Achievement[] = [
         // three times more foraging than the calendar allows.
         // AUDIT-13 §10: four. The new boons feed tributes that used to have
         // to forage, and 500 seeded runs no longer crown a five-forage victor.
-        hint: 'Crown a victor who successfully foraged four or more times.',
+        // AUDIT-13 §16: three. Angling and the Ratcatcher's sweep feed people
+        // outside the forage roll, and 500 runs now peak at three in a victor.
+        hint: 'Crown a victor who successfully foraged three or more times.',
         category: 'survival',
         rarity: 'legendary',
-        test: (_s, v) => !!v && (v.forageSuccesses ?? 0) >= 4,
-        nearMiss: (_s, v) => { const n = v?.forageSuccesses ?? 0; return n >= 2 && n < 4 ? `${v!.name} foraged successfully ${n} times — ${4 - n} short` : undefined; },
+        test: (_s, v) => !!v && (v.forageSuccesses ?? 0) >= 3,
+        nearMiss: (_s, v) => { const n = v?.forageSuccesses ?? 0; return n >= 2 && n < 3 ? `${v!.name} foraged successfully ${n} times — ${3 - n} short` : undefined; },
     },
     {
         id: 'the-whole-bestiary',
@@ -1024,7 +1028,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Quartermaster',
         hint: 'Crown a victor who held a named alliance role for ten cycles or more.',
         category: 'social',
-        rarity: 'rare',
+        rarity: 'common',
         test: (_s, v) => !!v && (v.roleCycles ?? 0) >= 10,
         nearMiss: (_s, v) => (v && (v.roleCycles ?? 0) >= 6 && (v.roleCycles ?? 0) < 10)
             ? `${v.name} held a role for ${v.roleCycles} cycles — ${10 - (v.roleCycles ?? 0)} short`
@@ -2082,7 +2086,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // fired for anybody. 2.5 is the top of what the system produces.
         hint: 'Crown a victor who trained their field medicine past competent.',
         category: 'survival',
-        rarity: 'common',
+        rarity: 'rare',
         // AUDIT-13 H2: "any tribute" fired in 77.8% of runs; the victor is the one who has to have it.
         test: (_s, v) => !!v && (v.proficiencies?.medicine ?? 0) >= 2.5,
         nearMiss: state => {
@@ -2461,7 +2465,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // of it.
         hint: 'See one tribute personally set a zone burning, flooding or worse through their own actions.',
         category: 'arena',
-        rarity: 'rare',
+        rarity: 'common',
         test: state => state.tributes.some(t => (t.zoneEffectsCaused ?? 0) >= 1),
         nearMiss: state => state.log.some(e => /\bfire\b|\bflood\b/i.test(e.text))
             ? undefined
@@ -2794,7 +2798,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'A Strange Year',
         hint: 'See a Games in which two or more once-only arena events fired.',
         category: 'oddity',
-        rarity: 'common',
+        rarity: 'rare',
         test: state => (state.firedEvents?.length ?? 0) >= 2,
         nearMiss: state => (state.firedEvents?.length ?? 0) === 1 ? 'one once-only event fired — a Strange Year has two' : undefined,
     },
@@ -3418,7 +3422,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Long Way Was Right',
         hint: 'Crown a victor who worked against a hazard and outlived the ones who did not.',
         category: 'survival',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: (state, v) => !!v && state.log.some(e =>
             e.type === 'hazard-mitigated' && e.tributesInvolved.includes(v.id)),
     },
@@ -3856,7 +3860,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Held the Door',
         hint: 'Crown a Warden — the tribute who finds the one way through and stands in it.',
         category: 'reaping',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: (_s, v) => !!v && v.archetype === 'warden',
     },
     {
@@ -3872,7 +3876,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Not By Their Hand',
         hint: 'Crown a Penitent — a tribute who came in having already decided what they would not do.',
         category: 'reaping',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: (_s, v) => !!v && v.archetype === 'penitent',
     },
     {
@@ -3880,7 +3884,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Fed the Arena',
         hint: 'Crown a Forager, who never needed anybody to die first.',
         category: 'reaping',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: (_s, v) => !!v && v.archetype === 'forager',
     },
     {
@@ -4040,7 +4044,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         // disqualify it, and this reached 0.6% of 500 runs once §3.5 gave
         // `stealth`, `carpentry`, `navigation` and `intimidation` a way up
         // from their floors. Sub-1% and real is exactly what 'legendary' is for.
-        rarity: 'rare',
+        rarity: 'common',
         test: (_s, v) => !!v && Object.values(v.proficiencies ?? {}).some(n => (n ?? 0) >= 6),
         nearMiss: (_s, v) => {
             const best = Math.max(0, ...Object.values(v?.proficiencies ?? {}).map(n => n ?? 0));
@@ -4316,7 +4320,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'The Toll Road',
         hint: 'See the arena\'s hard edges crossed eight times or more in one Games.',
         category: 'arena',
-        rarity: 'possible',
+        rarity: 'legendary',
         test: state => Object.values(state.edgeCrossings ?? {}).reduce((a, b) => a + b, 0) >= 8,
         nearMiss: state => {
             const n = Object.values(state.edgeCrossings ?? {}).reduce((a, b) => a + b, 0);
@@ -5065,7 +5069,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Nothing Left',
         hint: 'Crown a victor whose body had wasted by the end.',
         category: 'survival',
-        rarity: 'legendary',
+        rarity: 'rare',
         test: (_s, v) => !!v && (v.condition === 'Wasted' || v.condition === 'Skeletal'),
         nearMiss: (_s, v) => (v?.condition === 'Lean' ? 'the victor finished Lean, one band up' : undefined),
     },
@@ -5142,7 +5146,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Twice Frozen',
         hint: 'Crown a victor who took frostbite in two separate cycles.',
         category: 'survival',
-        rarity: 'rare',
+        rarity: 'legendary',
         test: (_s, v) => !!v && (v.frostbitesTaken ?? 0) >= 2,
         nearMiss: (_s, v) => ((v?.frostbitesTaken ?? 0) === 1 ? 'the victor was frostbitten once' : undefined),
     },
@@ -5589,7 +5593,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         id: 'a8-broke-off-and-came-back',
         name: 'Broke Off, Came Back',
         hint: 'Crown a victor who ran from the same rival twice before it was settled.',
-        category: 'combat', rarity: 'rare',
+        category: 'combat', rarity: 'legendary',
         test: (_s, v) => !!v && Object.values(v.memory?.rivals ?? {}).some(r => (r.timesFled ?? 0) >= 2),
         nearMiss: (_s, v) => (Object.values(v?.memory?.rivals ?? {}).some(r => (r.timesFled ?? 0) === 1)
             ? 'they broke off once and came back for it' : undefined),
@@ -6418,7 +6422,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Dead Air',
         hint: 'Sit through two full days after day four without a single cannon.',
         category: 'oddity',
-        rarity: 'rare',
+        rarity: 'common',
         test: state => longestSilence(state) >= 2,
         nearMiss: state => longestSilence(state) === 1 ? 'one silent day after day four, not two' : undefined,
     },
@@ -6482,7 +6486,7 @@ export const ACHIEVEMENTS: Achievement[] = [
         name: 'Stormchaser',
         hint: 'Crown a victor who lived through three or more weather fronts.',
         category: 'arena',
-        rarity: 'common',
+        rarity: 'rare',
         test: (state, v) => !!v && frontsSeen(state) >= A12_STORMCHASER_FRONTS,
         nearMiss: state => frontsSeen(state) === A12_STORMCHASER_FRONTS - 1 ? 'two weather fronts, one short' : undefined,
     },
