@@ -33,6 +33,8 @@ export function addCruelty(state: GameState, kind: CrueltyKind, why: string): vo
     const s = seasonOf(state);
     const amount = AMOUNT[kind];
     s.cruelty = Math.min(100, Math.round(((s.cruelty ?? 0) + amount) * 10) / 10);
+    // AUDIT-13 §14: the high-water mark, for Bread and Circuses.
+    s.crueltyPeak = Math.max(s.crueltyPeak ?? 0, s.cruelty);
     const log = s.crueltyLog ?? (s.crueltyLog = []);
     log.push({ cycle: state.cycle ?? 0, amount, why });
     if (log.length > C.logCap) log.splice(0, log.length - C.logCap);

@@ -1,6 +1,8 @@
 import { GameState, PredictionResult, Tribute } from '../../models/types';
 import { MuseumPiece, SeasonLedger } from '../../models/seasonTypes';
-import { AUDIT12_WAVE3, CAMPAIGN_ARC, PREDICTION } from '../../data/balance';
+import { AUDIT12_WAVE3, AUDIT13_SIDE, CAMPAIGN_ARC, PREDICTION } from '../../data/balance';
+import { STORY_CHAIN_META } from '../../data/replayCards';
+import { foldArenaScars, foldLegacyDrift, scoreDraft } from './replayability';
 import { QUELLS } from '../../data/gamesProfile';
 import { drawMutators } from '../../data/mutators';
 import { CAUSE_FAMILY, deathCodeOf } from '../causes';
@@ -144,13 +146,26 @@ export function foldSeasonLedger(prev: SeasonLedger | undefined, state: GameStat
     }
 
     // Story chain progress, kept per arena.
+    // AUDIT-13 S1: keyed the way `chainFor` reads it (`mapId ?? id`). This
+    // was keyed by the arena's name, so an unfinished chain never resumed and
+    // a finished one never rotated; progress under the old key is read once
+    // and moved.
     if (s.story) {
-        const prior = L.storyChains?.[key];
+        const chainKey = state.arena.mapId ?? state.arena.id;
+        const prior = L.storyChains?.[chainKey] ?? L.storyChains?.[key];
         const done = s.story.step >= W.story.steps;
-        L.storyChains = {
-            ...(L.storyChains ?? {}),
-            [key]: { chainId: s.story.chainId, step: done ? 0 : s.story.step, run, completed: (prior?.completed ?? 0) + (done ? 1 : 0) },
-        };
+        const chains = { ...(L.storyChains ?? {}) };
+        if (chainKey !== key) delete chains[key];
+        chains[chainKey] = { chainId: s.story.chainId, step: done ? 0 : s.story.step, run, completed: (prior?.completed ?? 0) + (done ? 1 : 0) };
+        L.storyChains = chains;
+        // ...and a story told in full goes in the arena's museum room.
+        if (done) {
+            const title = STORY_CHAIN_META.find(c => c.id === s.story!.chainId)?.title ?? s.story.chainId;
+            const museum = { ...(L.museum ?? {}) };
+            museum[key] = [{ name: title, district: 0, cause: `${title}, told in full`, code: 'story-chain', day: s.story.lastDay, run }, ...(museum[key] ?? [])]
+                .slice(0, AUDIT12_WAVE3.museum.perArena);
+            L.museum = museum;
+        }
     }
 
     // Seasons: points per district, a champion every `length` Games, and the
@@ -172,6 +187,11 @@ export function foldSeasonLedger(prev: SeasonLedger | undefined, state: GameStat
             champions: [...(champ ? [{ number: season.number, district: Number(champ[0]) }] : []), ...(season.champions ?? [])].slice(0, 10),
         };
     }
+    // AUDIT-13 §14 (Three Crowns): crowns per district inside this season.
+    const crowns = { ...(L.seasonCrowns ?? {}) };
+    winners.forEach(w => { crowns[w.district] = (crowns[w.district] ?? 0) + 1; });
+    L.bestSeasonCrowns = Math.max(L.bestSeasonCrowns ?? 0, ...Object.values(crowns), 0);
+    L.seasonCrowns = next.number !== season.number ? {} : crowns;
     L.season = next;
 
     // The prediction bankroll and streak, across saves.
@@ -185,6 +205,24 @@ export function foldSeasonLedger(prev: SeasonLedger | undefined, state: GameStat
         if (x.slip.hits.includes('first-death-cause')) bank.causeCalls += 1;
         if (x.slip.hits.includes('end-day')) bank.overUnderCalls += 1;
         L.predictionBank = bank;
+        // AUDIT-13 S7: the season bankroll. The first slip of a season buys in
+        // from the slip bankroll; every slip after moves the season's net;
+        // closing the season writes it to the leaderboard.
+        let sb = L.seasonBank && L.seasonBank.number === season.number ? L.seasonBank : undefined;
+        if (!sb) {
+            const buyIn = Math.min(AUDIT13_SIDE.seasonBuyIn, bank.bankroll);
+            bank.bankroll -= buyIn;
+            sb = { number: season.number, buyIn, net: 0, games: 0 };
+        }
+        sb = { ...sb, net: sb.net + x.slip.score - W.prediction.slipStake, games: sb.games + 1 };
+        if (next.number !== season.number) {
+            bank.bankroll += Math.max(0, sb.buyIn + sb.net);
+            L.seasonBoard = [...(L.seasonBoard ?? []), { number: sb.number, net: sb.net }]
+                .sort((a, b) => b.net - a.net || a.number - b.number).slice(0, AUDIT13_SIDE.seasonBoardCap);
+            delete L.seasonBank;
+        } else {
+            L.seasonBank = sb;
+        }
     }
     if (x.upsetCalled) L.upsetRewards = (L.upsetRewards ?? 0) + 1;
     if (x.gauntletScore !== undefined && (!L.gauntletBest || x.gauntletScore > L.gauntletBest.score)) {
@@ -198,6 +236,15 @@ export function foldSeasonLedger(prev: SeasonLedger | undefined, state: GameStat
     if (!L.announcedQuell && x.rebellion >= CAMPAIGN_ARC.quellAt && !state.gamesProfile?.quell) {
         const quell = new RNG(`${state.seed}-announced-quell-${run}`).pick(QUELLS);
         L.announcedQuell = { forRun: run + 2, quellId: quell.id, announcedAfter: run };
+    }
+
+    // AUDIT-13 P3/P8/P6: legacy drift, arena scars and the draft.
+    L.legacyDrift = foldLegacyDrift(L.legacyDrift, state);
+    L.arenaScars = foldArenaScars(L.arenaScars, state, run);
+    const draft = scoreDraft(state);
+    if (draft) {
+        L.draftsPlayed = (L.draftsPlayed ?? 0) + 1;
+        if (!L.draftBest || draft.score > L.draftBest.score) L.draftBest = { score: draft.score, max: draft.max, key: state.seed };
     }
 
     // Mentors: each crowned victor's own arena and best skill, for their successors.

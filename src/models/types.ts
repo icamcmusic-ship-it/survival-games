@@ -2989,6 +2989,10 @@ export interface GameConfig {
     mutators?: string[];
     /** AUDIT-12 wave 3 §11: gauntlet mode — up to four mutators, scored into the Hall of Fame. */
     gauntlet?: boolean;
+    /** AUDIT-13 P1: a scenario card (`engine/season/scenarios.ts`) applied at the reaping. */
+    scenario?: string;
+    /** AUDIT-13 P4: the recap voice the fixed beats are re-skinned in. Prose only. */
+    commentator?: string;
 }
 
 import type { GamesProfile } from '../engine/gamesProfile';
@@ -3273,6 +3277,17 @@ export interface GameState {
      * bloodbath and scored when the Games end. Read by nothing in the engine.
      */
     prediction?: Prediction;
+    /**
+     * AUDIT-13 P6: the player's draft — up to four tribute ids picked before
+     * the bloodbath, scored on where they finish. Read by nothing in the engine.
+     */
+    draft?: string[];
+    /**
+     * AUDIT-13 S6: the player's Capitol Coins when the Games began, so an
+     * achievement about not spending can tell "could not afford a gift" from
+     * "chose not to". Snapshotted by the store; absent headless.
+     */
+    playerPurseAtStart?: number;
     /**
      * AUDIT-11 §12: hashes of flavour templates this player has seen in recent
      * sessions, snapshotted at creation so a save resumes with the same wording.

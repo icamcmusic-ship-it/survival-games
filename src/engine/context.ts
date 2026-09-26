@@ -236,7 +236,7 @@ export function createContext(state: GameState, rng: RNG): SimContext {
         logEvent(rawText, tributesInvolved, options, zone) {
             // AUDIT-12 §10: the fixed 99-100 % beats rotate through variant
             // pools, drawn via `pickText` so the recent-lines filter applies.
-            const text = rotateFixedBeat(pool => ctx.pickText(pool), rawText);
+            const text = rotateFixedBeat(pool => ctx.pickText(pool), rawText, ctx.state.config.commentator);
             // Legacy call shape: logEvent(text, ids, important, zone)
             const opts: LogOptions = typeof options === 'boolean'
                 ? { important: options, zone }

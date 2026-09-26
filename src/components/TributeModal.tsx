@@ -35,6 +35,7 @@ import { STANCE_PROFILES, STANCES } from '../data/stances';
 import { believedRumours } from '../engine/rumours';
 import { notorietyOf } from '../engine/notoriety';
 import { isVeteran } from '../engine/veterans';
+import { returningBadges } from '../engine/season/surfaced';
 import { charterSummary } from '../engine/allianceCharter';
 import { quirkEffect } from '../data/quirks';
 import { DayPanel } from './DayPanel';
@@ -457,6 +458,16 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                                     and sponsor trust, and a floor on their training score.
                                 </Explainer>
                             )}
+                            {/* AUDIT-13 S2: the record book's carry-over, on the tribute it touches. One chip, the detail in its explainer. */}
+                            {(() => {
+                                const badges = returningBadges(gameState, tribute);
+                                if (badges.length === 0) return null;
+                                return (
+                                    <Explainer align="left" label={<span className="chip chip-gold" data-testid="carry-over-badge">{badges[0]}</span>} title="From earlier Games">
+                                        {badges.join('. ')}. Carried in from your record book at the reaping.
+                                    </Explainer>
+                                );
+                            })()}
                             <Explainer
                                 align="left"
                                 label={<span className="chip chip-accent">{archetype.name}</span>}

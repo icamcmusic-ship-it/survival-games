@@ -10727,8 +10727,8 @@ export const AUDIT12_WAVE3 = {
         killPoints: 0.5,
     },
     museum: {
-        /** Pieces kept per arena. */
-        perArena: 5,
+        /** Pieces kept per arena. AUDIT-13 §14: 10 (was 5), so a full wing (`a13-museum-wing`) can exist. */
+        perArena: 10,
     },
     mastery: {
         victorsKept: 5,
@@ -10883,4 +10883,34 @@ export const AUDIT12_WAVE2_TRIBUTES = {
     gamblerExcitement: 25,
     /** Gambler: what a visible weapon adds to how a bettor prices a fighter. */
     gamblerArmedWorth: 3,
+} as const;
+
+/**
+ * AUDIT-13 §11-§14: side systems surfaced, and the replayability layer on top
+ * of the season ledger. Presentation and meta-game knobs: a Games played
+ * without a record book behind it reads none of them except the scenario
+ * cards the player picks.
+ */
+export const AUDIT13_SIDE = {
+    /** S3: Games in one arena for bronze, silver and gold mastery. */
+    masteryTiers: [1, 3, 5] as readonly number[],
+    /** S4: a bloc's regret below this multiplier is worth a line in the sponsor panel. */
+    regretShownBelow: 0.95,
+    /** S5: dailies kept in the history, newest first. */
+    dailyHistoryCap: 30,
+    /** S7: slip points a season's bankroll is bought into with, and seasons kept on the leaderboard. */
+    seasonBuyIn: 10,
+    seasonBoardCap: 8,
+    /** P3: legacy drift a crown adds, the share kept each Games, and the drift one tier step takes. */
+    legacyCrownDrift: 1,
+    legacyKeep: 0.9,
+    legacyTierStep: 2,
+    /** P6: tributes a draft holds, and points by finishing place (index 0 is the victor). */
+    draftSize: 4,
+    draftPoints: [10, 6, 4, 3, 2, 1] as readonly number[],
+    /** P7: victors a victor-return Quell seats from the player's Hall of Fame. */
+    victorReturnSeats: 4,
+    /** P8: incidents kept per arena, and the threat a scarred zone carries from the first day. */
+    scarsPerArena: 2,
+    scarThreat: 12,
 } as const;

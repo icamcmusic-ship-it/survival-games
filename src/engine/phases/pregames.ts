@@ -14,6 +14,7 @@ import { resolveContinuity, standingEffect, standingLine } from '../continuity';
 import { addNotoriety } from '../notoriety';
 import { applyCampaignArc, campaignOf } from '../campaign';
 import { applyLedgerAtReaping } from '../season/carry';
+import { applyScenario } from '../season/scenarios';
 import { directorTaste } from '../../data/directors';
 import { ordinal } from '../gamesProfile';
 import { loseSanity } from '../sanityBands';
@@ -158,6 +159,7 @@ export function processSquare(ctx: SimContext) {
         adjustRel(a, b.id, Math.min(0, regard - getRel(a, b.id)));
         adjustRel(b, a.id, Math.min(0, regard - getRel(b, a.id)));
     }).forEach(line => ctx.logEvent(line.text, line.ids, { important: true, category: 'system' }));
+    applyScenario(ctx, cast); // AUDIT-13 P1: the scenario card, before the ledger reads the cast
     applyLedgerAtReaping(ctx, cast); // AUDIT-12 wave 3: apprenticeships, reunions, rivalries, nemeses
 
     // §10.4: the small continuity thread. Somebody from this district died in

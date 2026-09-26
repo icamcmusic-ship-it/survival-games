@@ -16,6 +16,7 @@ import { INTERVIEW_PERSONAS } from '../data/personas';
 import { InterviewPersona } from '../models/types';
 import { isVeteran } from '../engine/veterans';
 import { MUTATORS as MUTATOR_DECK } from '../data/mutators';
+import { DraftPanel, ReturningStrip } from '../components/ReturningStrip';
 
 export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, onReroll, onConfirm, onCoach, onRig }: {
     tributes: Tribute[],
@@ -143,6 +144,10 @@ export function ReapingScreen({ tributes, arenaName, seed, profile, gameState, o
                     )}
                 </div>
             )}
+
+            {/* AUDIT-13 S2/P6: what the record book carried in, and the draft. */}
+            {gameState && <ReturningStrip gameState={gameState} />}
+            {gameState && <DraftPanel gameState={gameState} />}
 
             {/* §6.10: coaching. The store action and both engine read sites
                 existed; no control ever reached them. */}
