@@ -8,6 +8,7 @@ import { giveItem, itemPhrase, itemPoolFor, mintItem } from '../items';
 import { startZoneEffect } from '../zoneEffects';
 import { campaignOf } from '../campaign';
 import { seasonOf, sideRng } from './runState';
+import { storyChainIndex } from '../../data/replayCards';
 
 /**
  * AUDIT-12 wave 3 §12.4: arena-level story chains.
@@ -96,11 +97,10 @@ export const STORY_CHAINS: StoryChain[] = [
     },
     {
         id: 'the-frozen-pool', title: 'The Frozen Pool',
-        effect: 'frozen',
         steps: [
             { kind: 'threat', text: z => `The water in ${z} has a skin of ice on it in the morning. It is not that cold.` },
             { kind: 'threat', text: (z, w) => `${w} breaks the ice in ${z} with a heel and it is thicker than yesterday. The Gamemakers are doing this.` },
-            { kind: 'effect', text: z => `${z} freezes over in an hour, all of it, with a sound like a shot.` },
+            { kind: 'reward', text: (z, w) => `${w} cuts down through the ice in ${z} to what the Gamemakers froze into it.` },
         ],
     },
     {
@@ -156,11 +156,10 @@ export const STORY_CHAINS: StoryChain[] = [
     },
     {
         id: 'the-poisoned-well', title: 'The Poisoned Well',
-        effect: 'contaminated',
         steps: [
             { kind: 'threat', text: z => `The water in ${z} tastes of metal this morning.` },
             { kind: 'threat', text: (z, w) => `${w} finds a dead animal at the water's edge in ${z}, and then another.` },
-            { kind: 'effect', text: z => `The water in ${z} turns a colour water should not be. Nobody drinks there again.` },
+            { kind: 'reward', text: (z, w) => `${w} follows the dead animals upstream in ${z} to a sealed crate leaking into the water, and takes what is still dry inside it.` },
         ],
     },
 ];
@@ -177,7 +176,7 @@ export function chainFor(state: GameState): { chain: StoryChain; step: number } 
     const completed = saved?.completed ?? 0;
     const unfinished = saved && saved.step > 0 && saved.step < S.steps ? saved : undefined;
     const chain = (unfinished && STORY_CHAINS.find(c => c.id === unfinished.chainId))
-        ?? STORY_CHAINS[(hash(arenaKey(state)) + completed) % STORY_CHAINS.length];
+        ?? STORY_CHAINS[storyChainIndex(hash(arenaKey(state)), completed, STORY_CHAINS.length)];
     return { chain, step: unfinished ? unfinished.step : 0 };
 }
 

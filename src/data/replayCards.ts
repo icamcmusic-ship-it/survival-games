@@ -119,3 +119,15 @@ export const STORY_CHAIN_META: ReadonlyArray<{ id: string; title: string }> = [
     { id: 'the-tally-stones', title: 'The Tally Stones' },
     { id: 'the-poisoned-well', title: 'The Poisoned Well' },
 ];
+
+/**
+ * AUDIT-14 F3: which chain an arena plays next. An arena works through the
+ * original five first, in the rotation it always had (so a fresh career plays
+ * exactly the Games it did before), and only once it has finished five does
+ * the rotation widen to every chain.
+ */
+export const ORIGINAL_STORY_CHAINS = 5;
+export function storyChainIndex(arenaHash: number, completed: number, total: number): number {
+    const pool = completed < ORIGINAL_STORY_CHAINS ? Math.min(ORIGINAL_STORY_CHAINS, total) : total;
+    return (arenaHash + completed) % pool;
+}
