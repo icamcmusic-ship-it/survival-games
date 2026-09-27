@@ -82,10 +82,11 @@ export function betrayalIntent(ctx: SimContext, members: Tribute[]): boolean {
             victim.relationsArc.watchful = undefined;
             if (ctx.rng.chance(AUDIT14_RELATIONS.watchfulPreempt)) {
                 m.relationsArc!.betrayalIntent = undefined;
+                // The warning resolves on screen: the tell is answered, first.
                 ctx.logEvent(
                     `${victim.name} has been watching ${m.name} watch them for a day. ${victim.name} does not wait for the rest of it.`,
-                    [victim.id, m.id],
-                    { type: 'preemptive-betrayals', important: true, category: 'betrayal', zone: m.zone },
+                    [m.id, victim.id],
+                    { type: 'betrayal-stood-down', important: true, category: 'betrayal', zone: m.zone },
                 );
                 resolveBetrayal(ctx, victim, m, members, 'preempt');
                 return true;
@@ -424,7 +425,8 @@ function slowBurn(ctx: SimContext, declare: (a: Tribute, b: Tribute) => void) {
             // A rescue or a shared watch: the camp is the watch rota.
             const record = allianceOf(ctx.state, a.allianceId);
             if (!record) continue;
-            if (!ctx.rng.chance(Math.min(1, AUDIT13_RELATIONS.romanceRampChance * (hasStoodBy(a, b.id) || hasStoodBy(b, a.id) ? 2 : 1)))) continue;
+            // A night the watch is shared counts; one it is not neither adds nor breaks the run.
+            if (!ctx.rng.chance(Math.min(1, AUDIT14_RELATIONS.slowBurnNightChance * (hasStoodBy(a, b.id) || hasStoodBy(b, a.id) ? 1.5 : 1)))) continue;
             const ra = (arcOf(a).rapport ??= {});
             const rb = (arcOf(b).rapport ??= {});
             ra[b.id] = (ra[b.id] ?? 0) + 1;

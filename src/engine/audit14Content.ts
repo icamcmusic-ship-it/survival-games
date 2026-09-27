@@ -1,13 +1,13 @@
 import { Item, Proficiency, Tribute, Zone } from '../models/types';
 import { SimContext, getAlive } from './context';
-import { AUDIT14_CONTENT as C } from '../data/balance';
+import { AUDIT14_CONTENT as C, STANCE_MODES } from '../data/balance';
 import { ITEMS, IMPROVISED_ITEMS } from '../data/constants';
 import { craftOf } from '../data/districts';
 import {
     drownedOnce, hasHandMeDown, hasIronLungs, hasSharpElbows, hasShortFuse, hasSoftStep, isFeverProof,
     isHornShy, isLateBloomer, isQuickStudy, isRearguard, isSoreLoser, isTrapwise, sleepsLight,
 } from '../data/traits';
-import { cycleOf, ensureMemory, improveRead, noteRivalSighting, rememberedRivals, swearVengeance } from './memory';
+import { cycleOf, ensureMemory, hasVengeanceAgainst, improveRead, noteRivalSighting, rememberedRivals } from './memory';
 import { allianceOf, allied } from './alliance';
 import { isActive, isDowned } from './downed';
 import { getZone, hopsTo, reachableZones, severedEdgeSet } from './map';
@@ -19,6 +19,7 @@ import { dropParachute } from './parachutes';
 import { resolveCombat } from './combat';
 import { getMark, setMark } from './arenaRules';
 import { forceStance } from './stance';
+import { isAggressiveStance } from '../data/stances';
 import { adjustRel } from './relationships';
 import { carryCapacity, giveItem, mintItem } from './items';
 
@@ -232,10 +233,14 @@ export function afterFight(ctx: SimContext, a: Tribute, b: Tribute, note: FightN
         // S3 / S2: the fight's own ending picks the posture — the one who got
         // clear hurt is withdrawing; the one who watched them go, bleeding,
         // may go after them. Reactions, like the break-off Evasive in a brawl.
-        if (ran && me.health < C.retreatingHealth && isActive(me) && me.stance !== 'Desperate') {
+        if (ran && me.health < C.retreatingHealth && me.health >= STANCE_MODES.desperate.healthThreshold
+            && isActive(me) && me.stance !== 'Desperate') {
             forceStance(me, 'Retreating', 'lost the fight and is getting clear', true);
         } else if (me.quarryFled?.id === them.id && me.quarryFled.cycle === cycle && isActive(me)
-            && me.health >= C.retreatingHealth && ctx.rng.chance(C.trailingForceChance)) {
+            && isAggressiveStance(me.stance)
+            // A sworn enemy is never let walk away bleeding.
+            && me.health >= C.retreatingHealth
+            && (hasVengeanceAgainst(me, them.id) || ctx.rng.chance(C.trailingForceChance))) {
             forceStance(me, 'BloodTrailing', 'following the blood', true);
         }
         // K2: won it without finishing it.
@@ -515,7 +520,8 @@ export function trailingQuarry(ctx: SimContext, t: Tribute): Tribute | undefined
 /** S3's precondition: lost the last fight, hurt, and somewhere to go. */
 export function retreatingAvailable(ctx: SimContext, t: Tribute): boolean {
     if (t.lostFightAt === undefined || cycleOf(ctx.state) - t.lostFightAt > C.retreatingWindow) return false;
-    if (t.health >= C.retreatingHealth) return false;
+    // Below Desperate's line it is not a withdrawal any more; that ground is Desperate's.
+    if (t.health >= C.retreatingHealth || t.health < STANCE_MODES.desperate.healthThreshold) return false;
     const collapsed = ctx.state.collapsedZones ?? [];
     return reachableZones(ctx.state.arena, t.zone, collapsed, severedEdgeSet(ctx.state)).some(z => z.name !== t.zone);
 }
@@ -679,7 +685,6 @@ export function lastRites(ctx: SimContext, t: Tribute): boolean {
     if (killer && killer.id !== t.id) {
         noteRivalSighting(t, killer.id, ctx.state, killer);
         improveRead(t, killer.id, C.lastRitesRead);
-        if (getRel(t, body.id) > 0 && !allied(killer, t)) swearVengeance(t, killer.id);
     }
     ctx.logEvent(
         killer && killer.id !== t.id

@@ -11124,13 +11124,13 @@ export const AUDIT13_RELATIONS = {
     lastOfDistrictBeatField: 6,
     /**
      * R5: allies of an age (both >= `romanceMinAge`, within `romanceAgeGap`)
-     * sharing a camp build rapport, a cycle at a time with `romanceRampChance`;
-     * at `romanceRampCycles` shared cycles, with mutual regard at least
+     * sharing a camp build rapport, a night at a time (AUDIT-14 E19: consecutive
+     * shared nights, `AUDIT14_RELATIONS.slowBurnNightChance`); at
+     * `romanceRampCycles` of them, with mutual regard at least
      * `romanceRegard`, it is declared. The crowd pays extra for a slow burn.
      */
     romanceMinAge: 15,
     romanceAgeGap: 2,
-    romanceRampChance: 0.12,
     romanceRampCycles: 5,
     romanceRegard: 55,
     romanceSponsorBonus: 10,
@@ -11332,6 +11332,12 @@ export const AUDIT14_RELATIONS = {
     // ---- §3 T14: the partner search, while it is worth doing.
     /** Days the search stays open. */
     partnerSearchDays: 4,
+    /**
+     * E19: chance a night at the same fire is a shared watch. The old per-cycle
+     * roll (`romanceRampChance`) counted days too; on nights alone it has to
+     * be a good deal likelier or the run of nights never completes.
+     */
+    slowBurnNightChance: 0.48,
     /** Regard each gains on finding the other. */
     partnerMeetRegard: 10,
 } as const;
@@ -11482,7 +11488,7 @@ export const AUDIT14_CONTENT = {
 
     // ---- A34: the Hermit's isolate objective.
     /** Objective tier (as the other rungs in `OBJECTIVES`). */
-    isolateTier: 5,
+    isolateTier: 22,
     isolateCycles: 4,
     /** Company in the current zone at which a Hermit goes looking for emptier ground. */
     isolateCrowd: 1,

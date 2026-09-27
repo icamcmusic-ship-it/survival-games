@@ -157,7 +157,8 @@ export const STANCE_PROFILES: Record<Stance, StanceProfile> = {
      */
     Rallying: {
         id: 'Rallying', label: 'Rallying', family: 'defensive',
-        conditional: true, minHold: 2,
+        // A call takes time to be answered.
+        conditional: true, minHold: 3,
         blurb: 'Leading a group that has come apart. Stands where they are and calls them in — steadier for every one who arrives, and easy to find for anybody else listening.',
     },
     BloodTrailing: {

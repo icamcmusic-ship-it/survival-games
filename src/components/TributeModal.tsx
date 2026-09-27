@@ -50,6 +50,9 @@ const PROFICIENCY_LABELS: Record<string, string> = {
     // AUDIT-13 §16 N17-N22.
     angling: 'Angling', mimicry: 'Mimicry', bartering: 'Bartering', weathercraft: 'Weathercraft',
     teaching: 'Teaching', resting: 'Resting',
+    // AUDIT-14 §7 K1-K8.
+    poisoncraft: 'Poisoncraft', feinting: 'Feinting', disarming: 'Disarming', shelterwright: 'Shelterwright',
+    triage: 'Triage', bracing: 'Bracing', scentcraft: 'Scentcraft', caching: 'Caching',
 };
 
 /** A5: four tabs, defaulting to Overview. */

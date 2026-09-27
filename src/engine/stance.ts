@@ -4,7 +4,7 @@ import { cannotPatrol, hungerSharpHunting, mourningAvailable, regroupingAvailabl
 import { griefStance } from './allianceBonds';
 import { ARCHETYPES } from '../data/archetypes';
 import { DECISION_TRACE, FEAR, RISK, RIVAL_READ, STANCE, STANCE_HOLD, STANCE_MODES, STEALTH, VITALS } from '../data/balance';
-import { STANCES, STANCE_PROFILES } from '../data/stances';
+import { STANCES, STANCE_PROFILES, isAggressiveStance } from '../data/stances';
 import { SimContext } from './context';
 import { sleepStanceHold } from './survival';
 import { cycleOf, cyclesSinceContact, ensureMemory, readOf, rivalRecord } from './memory';
@@ -451,7 +451,10 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
      * payoffs are in `audit14Content.ts`.
      */
     Rallying: (ctx, t, sig) => stickyHold(t, 'Rallying') || (!armedHostileHere(t, sig.occupants) && rallyingAvailable(ctx, t)),
-    BloodTrailing: (ctx, t) => !!trailingQuarry(ctx, t),
+    // Only somebody already pressing follows the blood: a trail picked up
+    // out of Scavenging or Mourning was one more change of posture on a
+    // short life (the soak's thrash guard found both).
+    BloodTrailing: (ctx, t) => isAggressiveStance(t.stance) && !!trailingQuarry(ctx, t),
     // Somebody past caring (Desperate's own test) is not withdrawing, they are done.
     Retreating: (ctx, t, sig) => !sig.broken && retreatingAvailable(ctx, t),
     Sheltering: (ctx, t, sig) => stickyHold(t, 'Sheltering')
@@ -933,11 +936,19 @@ export function forceStance(t: Tribute, stance: Stance, reason = 'imposed by an 
     // `isBeingFollowed` and the pursuit read to count.
     if (stance !== 'Shadowing') t.shadowing = undefined;
     if (t.stance === stance) { t.stanceHeld = 0; return true; }
+    // AUDIT-14 S3: somebody already withdrawing who breaks off again is still
+    // withdrawing — the brawl's break-off Evasive does not flip them out of
+    // Retreating and back (the soak's thrash guard caught the loop).
+    if (reaction && stance === 'Evasive' && t.stance === 'Retreating') { t.stanceHeld = 0; return true; }
     // Returns whether the posture actually changed. It has to: every caller
     // narrates the beat it is forcing — a surrender, a walk into the open, an
     // oath — and a silent refusal here printed all three over a tribute who
     // never moved.
     if ((t.stanceChurn ?? 0) >= STANCE.churnMax) return false;
+    // AUDIT-14: an event's posture does not overrule a reaction still being
+    // held (a break-off getting clear): the second forced flip in two cycles
+    // was the thrash the soak kept finding.
+    if (!reaction && (t.stanceHeld ?? 0) < 0) return false;
     t.stance = stance;
     // AUDIT-13: a reaction is held a little past the ordinary minimum — see
     // `STANCE.reactionHold`. Counted as negative tenure so the hold, the
