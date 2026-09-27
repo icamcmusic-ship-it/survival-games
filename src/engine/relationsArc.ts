@@ -211,7 +211,7 @@ function slowBurn(ctx: SimContext, declare: (a: Tribute, b: Tribute) => void) {
     for (let i = 0; i < alive.length; i++) {
         for (let j = i + 1; j < alive.length; j++) {
             const a = alive[i], b = alive[j];
-            if (!a.allianceId || a.allianceId !== b.allianceId || a.allianceId.startsWith('lovers-')) continue;
+            if (!allied(a, b) || a.allianceId?.startsWith('lovers-')) continue;
             if (isStarCrossed(a) || isStarCrossed(b) || a.zone !== b.zone) continue;
             if (a.age < AUDIT13_RELATIONS.romanceMinAge || b.age < AUDIT13_RELATIONS.romanceMinAge || Math.abs(a.age - b.age) > AUDIT13_RELATIONS.romanceAgeGap) continue;
             // A rescue or a shared watch: the camp is the watch rota.

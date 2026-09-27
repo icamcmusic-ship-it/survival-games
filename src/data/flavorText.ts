@@ -2431,6 +2431,9 @@ export const GONG_DECISIONS = {
         '{tribute} puts themself between {other} and the charge, and takes the first shove meant for them.',
         '{tribute} and {other} leave the ring together, {tribute} walking backwards, watching everything that moves.',
         '{tribute} reaches {other} and does not let anybody closer than arm’s length until they are clear.',
+        '{tribute} spends the first minute of the Games facing outwards, with {other} at their back.',
+        '{tribute} lets {horn} go without a look. {other} is the only thing in the ring worth guarding.',
+        '{tribute} catches {other} by the collar as they stumble off the plate and does not let go until the trees.',
     ],
 } as const;
 
