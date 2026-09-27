@@ -51,9 +51,9 @@ async function main() {
         const s = out.snapshot as unknown as Record<string, unknown>;
         assert.deepEqual(s.patronDistricts, [3, 14, 16]);
         assert.deepEqual((s.recentRuns as Array<{ victorDistrict?: number }>)[0], { victorDistrict: 16 });
-        if (s.lastVictorDistrict !== undefined) assert.equal(s.lastVictorDistrict, 16);
-        if (s.districtCrowns) assert.ok(14 in (s.districtCrowns as object), 'D14 crown kept');
-        if (s.districtReputation) assert.ok(15 in (s.districtReputation as object), 'D15 reputation kept');
+        assert.equal(s.lastVictorDistrict, 16);
+        assert.ok(14 in ((s.districtCrowns ?? {}) as object), 'D14 crown kept');
+        assert.ok(15 in ((s.districtReputation ?? {}) as object), 'D15 reputation kept');
     });
 
     await test('S2: null map entries in the record book are dropped, not rendered', () => {
