@@ -17,6 +17,7 @@ import assert from 'node:assert/strict';
 import { HOF_SPEC } from '../src/utils/hofStorage';
 import { PANEM_SPEC } from '../src/utils/panemStorage';
 import { decodeCampaignResult, encodeCampaign } from '../src/utils/campaignLink';
+import { RECENT_LINES_SPEC, readStaleLines } from '../src/utils/staleLines';
 import { COINS_SPEC, CONFIG_SPEC, FILTERS_SPEC, readCoins } from '../src/utils/prefsStorage';
 import { CONFIG_KEYS, REWIND_PERSIST, SAVED_RUN_SPEC, normalizeConfig, normalizePrediction, normalizeTribute } from '../src/utils/saveMigrations';
 import { normalizeEntry } from '../src/utils/hofStorage';
@@ -714,6 +715,20 @@ test('AUDIT-14 U2: a saved run keeps its undo high-water mark; older saves read 
     assert.equal(readStored(SAVED_RUN_SPEC)!.seenAhead, 2);
     seedLegacy(STORAGE_KEYS.savedRun, { ...legacySave(), seenAhead: 'x' });
     assert.equal(readStored(SAVED_RUN_SPEC)!.seenAhead, undefined);
+});
+
+test('AUDIT-14 P7: the recent-lines store migrates v1 and remembers by run as well as by day', () => {
+    // A v1 store: hash -> day, no run memory. Reads cleanly, keeps its days.
+    seedLegacy(STORAGE_KEYS.recentLines, { seen: { abc: 1, bad: 'x' } });
+    const v1 = readStored(RECENT_LINES_SPEC)!;
+    assert.deepEqual(v1.seen, { abc: 1 });
+    assert.equal(v1.seenRun, undefined);
+    // Five runs a day apart... at day 0: a line seen in the last STALE_LINES.windowRuns
+    // runs is stale even when its day is long past the day window.
+    writeStored(RECENT_LINES_SPEC, { seen: { old: 0, recent: 0 }, seenRun: { old: 1, recent: 9 }, run: 10 });
+    const stale = readStaleLines();
+    assert.ok(stale.includes('recent'), 'a line from the last few runs is still stale');
+    assert.ok(!stale.includes('old'), 'a line from long ago, days and runs both, is forgotten');
 });
 
 test('AUDIT-14 S1: a D16 campaign round-trips through a run link', () => {

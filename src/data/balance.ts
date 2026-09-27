@@ -10210,8 +10210,17 @@ export const CAMPAIGN_ARC = {
 export const STALE_LINES = {
     /** Days a seen template counts as stale. */
     windowDays: 3,
-    /** Most template hashes remembered. */
-    cap: 800,
+    /**
+     * Most template hashes remembered. AUDIT-14 P7: was 800, which one run
+     * (about 1,200-1,500 templates) overflowed on its own.
+     */
+    cap: 6000,
+    /**
+     * AUDIT-14 P7: a template also stays stale for this many runs, however
+     * few days they were spread over. A heavy player replays several times a
+     * day, and a window keyed on days alone forgot nothing for them.
+     */
+    windowRuns: 5,
 } as const;
 
 /**

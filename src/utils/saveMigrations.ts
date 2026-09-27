@@ -827,7 +827,7 @@ export function normalizeGameState(raw: unknown): GameState | null {
         lastPickedText: asObjMap<string>(r.lastPickedText),
         // AUDIT-11 §12: the stale-line snapshot, the prediction slip and the
         // legacy tributes. Absent on older saves, and absent stays absent.
-        staleLines: Array.isArray(r.staleLines) ? asStrArray(r.staleLines).slice(0, 2000) : undefined,
+        staleLines: Array.isArray(r.staleLines) ? asStrArray(r.staleLines).slice(0, 6000) : undefined,
         prediction: normalizePrediction(r.prediction),
         // AUDIT-13 P6/S6: the draft and the opening purse. Absent stays absent.
         draft: Array.isArray(r.draft) ? [...new Set(asStrArray(r.draft))].slice(0, AUDIT13_SIDE.draftSize) : undefined,
