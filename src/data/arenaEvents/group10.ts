@@ -449,6 +449,36 @@ const EVENTS: Record<string, ArenaEventDef[]> = {
     ],
 };
 
+// W2: kiln's own deaths mostly end as burns festering later (a status
+// death); three more that land outright, eligible across the arena.
+const KILN_EXTRA: ArenaEventDef[] = [
+    {
+        id: 'kl-a14-kiln-door-draught', weight: WL,
+        text: 'A kiln door in {zone} is opened from somewhere else, and the draught of fire comes out sideways across {tribute}.',
+        escapeText: '{tribute} sees the door seal crack in {zone} and is flat behind the brick before the flame comes out.',
+        cause: 'Caught in the draught of an opened kiln', code: 'burns',
+        dodgeStat: 'agility', dodgeAlt: 'intelligence', dodgeDifficulty: 7,
+        damage: 44, burned: true, terrains: ['open', 'ruins', 'highland'],
+    },
+    {
+        id: 'kl-a14-saggar-stack', weight: WL,
+        text: 'A stack of fired saggars in {zone} goes over, forty clay boxes each the weight of a child, onto {tribute}.',
+        escapeText: '{tribute} hears the stack in {zone} grind and gets out from under it at a crawl.',
+        cause: 'Crushed under a toppling saggar stack', code: 'crush',
+        dodgeStat: 'agility', dodgeAlt: 'strength', dodgeDifficulty: 7,
+        damage: 42, bleeding: true, terrains: ['ruins', 'desert'],
+    },
+    {
+        id: 'kl-a14-silica-lungs', weight: WL,
+        text: 'The dust in {zone} is fine as flour and it is glass. {tribute} has been breathing it for three days.',
+        escapeText: '{tribute} ties a wet cloth over the face in {zone} and keeps it there.',
+        cause: 'Breathed the kiln dust until the lungs set', code: 'asphyxiation',
+        dodgeStat: 'endurance', dodgeAlt: 'intelligence', dodgeDifficulty: 7,
+        damage: 36, terrains: ['desert', 'cave', 'open'], requires: { daysAbove: 3 },
+    },
+];
+EVENTS.kiln = [...KILN_EXTRA, ...EVENTS.kiln];
+
 for (const [id, list] of Object.entries(EVENTS)) {
     EXTRA_ARENA_EVENTS_GROUP10[id] = [...(EXTRA_ARENA_EVENTS_GROUP10[id] ?? []), ...list];
 }

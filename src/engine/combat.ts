@@ -2068,7 +2068,7 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         // AUDIT-9 (audit B20): and the other end of the same thread. Written
         // unconditionally, so at the epilogue it names whoever killed last.
         ctx.state.lastKillerId = killer.id;
-        victim.causeOfDeath = cause
+        victim.causeOfDeath = (cause && plainZoneLabels(ctx.state, cause))
             || (weapon ? `Killed by ${killer.name} (${weapon.name})` : `Killed by ${killer.name}`);
 
         const weaponType = weapon ? weapon.id : 'unarmed';
