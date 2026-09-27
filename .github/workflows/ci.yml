@@ -173,6 +173,8 @@ jobs:
       - run: npm run test:flavor
       - run: npm run test:names
       - run: npm run test:achievements
+      # AUDIT-14 §8: achievement fixes H1-H4, the a14-* entries and the added names.
+      - run: npm run test:audit14-achievements
       - run: npm run test:predicates
       # AUDIT-8 §1.5: a string in one data table that is supposed to name a row
       # in another. Unguarded until now, and `broker.preferredTraits` listed

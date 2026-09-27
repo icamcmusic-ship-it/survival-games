@@ -19,6 +19,9 @@ import { scenarioCard } from '../data/replayCards';
 import { ARENA_MUTTS } from '../data/mutts';
 import { deathCausesInRun } from '../engine/encounters';
 import { deathCodeOf } from '../engine/causes';
+import { masteryTier } from '../engine/season/surfaced';
+import { driftedTier } from '../engine/season/replayability';
+import { legacyOf } from '../data/districts';
 import {
     STORAGE_KEYS, StorageSpec, asNum, asObjMap, asRecord, asStrArray, readStored, removeStored,
     writeStored,
@@ -761,6 +764,33 @@ export function foldDailyAndWeekly(ledger: SeasonLedger | undefined, state: Game
     return next;
 }
 
+/** AUDIT-14 §8: has drift lifted any district a tier, or sunk a storied one to thin or forgotten. */
+function legacyMovesOf(drift: Record<number, number> | undefined): { legacyRisen: boolean; legacyFallen: boolean } {
+    const order = ['forgotten', 'thin', 'modest', 'strong', 'storied'];
+    let legacyRisen = false;
+    let legacyFallen = false;
+    Object.keys(drift ?? {}).map(Number).forEach(d => {
+        const base = legacyOf(d).tier;
+        const now = driftedTier(d, drift);
+        if (order.indexOf(now) > order.indexOf(base)) legacyRisen = true;
+        if (base === 'storied' && (now === 'thin' || now === 'forgotten')) legacyFallen = true;
+    });
+    return { legacyRisen, legacyFallen };
+}
+
+/** AUDIT-14 §8: the longest run of consecutive daily dates whose slip named the victor. */
+export function dailyCallStreakOf(history: SeasonLedger['dailyHistory']): number {
+    const days = [...(history ?? [])].sort((a, b) => a.date.localeCompare(b.date));
+    let best = 0;
+    let run = 0;
+    days.forEach((d, i) => {
+        const gap = i > 0 ? (Date.parse(d.date) - Date.parse(days[i - 1].date)) / 86_400_000 : 1;
+        run = d.pickRight ? (gap === 1 ? run + 1 : 1) : 0;
+        best = Math.max(best, run);
+    });
+    return best;
+}
+
 export function careerTotals(records: PanemRecords): CareerTotals {
     // §10.1: the hand-authored shelf and the canonical bestiary, measured
     // against what actually exists rather than a hardcoded count.
@@ -813,6 +843,13 @@ export function careerTotals(records: PanemRecords): CareerTotals {
         bestSeasonCrowns: records.ledger?.bestSeasonCrowns ?? 0,
         slipBankroll: records.ledger?.predictionBank?.bankroll,
         slipBankrollStart: AUDIT12_WAVE3.prediction.bankrollStart,
+        // AUDIT-14 §8: the new meta shelves.
+        draftsPlayed: records.ledger?.draftsPlayed ?? 0,
+        weeklyMaxed: !!records.ledger?.weeklyBest && records.ledger.weeklyBest.max > 0
+            && records.ledger.weeklyBest.score >= records.ledger.weeklyBest.max,
+        arenasMastered: Object.values(records.ledger?.arenaMastery ?? {}).filter(m => masteryTier(m) !== undefined).length,
+        ...legacyMovesOf(records.ledger?.legacyDrift),
+        dailyCallStreak: dailyCallStreakOf(records.ledger?.dailyHistory),
     };
     return totals;
 }
