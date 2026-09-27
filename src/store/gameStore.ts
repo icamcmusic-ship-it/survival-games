@@ -639,6 +639,13 @@ function settleBook(state: GameState) {
  * large enough that the yields don't dominate the run.
  */
 const RUN_BATCH_SIZE = 20;
+/*
+ * AUDIT-14 Q1: a "turn" is a whole phase, and late phases with 12+ districts
+ * cost tens of milliseconds each, so twenty of them made one 540 ms task and a
+ * Cancel button that felt dead. The loop now also yields whenever this much
+ * wall time has passed since the last yield, whatever the turn count.
+ */
+const RUN_YIELD_MS = 30;
 
 interface ActiveRun {
     cancelled: boolean;
@@ -1715,6 +1722,7 @@ export const gameActions = {
             // Ceiling well above any realistic run; the phase guards below are
             // what actually terminate the loop.
             let guard = 2000;
+            let sinceYield = Date.now();
             while (state.phase !== 'ended' && guard-- > 0) {
                 // Checked before every step, not just at batch boundaries, so a
                 // cancelled loop cannot land another turn after the player has
@@ -1737,10 +1745,11 @@ export const gameActions = {
                 state = simulator.getState();
                 turns++;
 
-                if (turns % RUN_BATCH_SIZE === 0) {
+                if (turns % RUN_BATCH_SIZE === 0 || Date.now() - sinceYield >= RUN_YIELD_MS) {
                     publishProgress(state, turns);
                     await yieldToBrowser();
                     if (stale()) return;
+                    sinceYield = Date.now();
                 }
             }
 
