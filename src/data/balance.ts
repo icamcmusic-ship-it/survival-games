@@ -11296,7 +11296,7 @@ export const AUDIT14_RELATIONS = {
     /** RB2/R11: the objective tier a sworn hunt takes once the target is hurt (a pact hunt is 60). */
     oathMomentTier: 72,
     /** RB9: the chance an unplanned performed romance goes ahead (a planned showmance always does). */
-    performedRomanceChance: 0.5,
+    performedRomanceChance: 0.3,
     /** RB8/E6: a due intent whose pair are in different zones waits this many cycles before it lapses. */
     intentApartGrace: 1,
     /**
@@ -11339,7 +11339,7 @@ export const AUDIT14_RELATIONS = {
      * roll (`romanceRampChance`) counted days too; on nights alone it has to
      * be a good deal likelier or the run of nights never completes.
      */
-    slowBurnNightChance: 0.48,
+    slowBurnNightChance: 0.4,
     /** Regard each gains on finding the other. */
     partnerMeetRegard: 10,
 } as const;
@@ -11530,7 +11530,7 @@ export const AUDIT14_CONTENT = {
     /** Share of a lesson an unarmed tribute takes from landing a blow on an armed one. */
     disarmUnarmedShare: 0.3,
     shelterwrightPerLevel: 0.04,
-    shelterwrightSkillPerLevel: 0.05,
+    shelterwrightSkillPerLevel: 0.08,
     triagePerLevel: 0.08,
     bracingPerLevel: 0.05,
     bracingFloor: 0.6,

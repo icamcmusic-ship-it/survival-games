@@ -487,7 +487,8 @@ function carryRoom(t: Tribute): number {
 
 /** People of theirs who are elsewhere. */
 function separated(state: SimContext['state'], t: Tribute): Tribute[] {
-    return state.tributes.filter(o => o.status === 'alive' && o.id !== t.id && allied(o, t) && o.zone !== t.zone);
+    // Somebody mid-crossing is as far from the fire as somebody a zone off.
+    return state.tributes.filter(o => o.status === 'alive' && o.id !== t.id && allied(o, t) && (o.zone !== t.zone || !!o.transit));
 }
 
 /**
