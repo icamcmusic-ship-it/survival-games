@@ -4995,7 +4995,11 @@ export const STANCE_MODES = {
         healthThreshold: 25,
         /** Both hunger and thirst above this is a body out of options. */
         vitalThreshold: 80,
-        base: 3.6,
+        // AUDIT-14: 3.6 -> 3.9. The horn stopped haunting everybody for the
+        // whole Games (E15), so fewer tributes are broken and the emergency
+        // posture fell under the 1% stance floor; the same body in the same
+        // state reads it a little sooner.
+        base: 3.9,
         /** Combat power added by having nothing left to lose. */
         powerBonus: 2.5,
         /** ...and the tunnel vision that comes with it. */
