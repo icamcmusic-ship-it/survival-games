@@ -1,3 +1,4 @@
+import { softStepNoise } from './audit14Content';
 import { weatherNoise } from './arenaDepth';
 import { GameState, Tribute } from '../models/types';
 import { SimContext } from './context';
@@ -34,6 +35,8 @@ export function crossingNoise(t: Tribute, partySize: number): number {
         + hurt * NOISE.perInjuryGrade
         + encumbranceOf(t) * NOISE.perEncumbrance;
     noise *= NOISE.stanceScale[t.stance] ?? 1;
+    // AUDIT-14 T12: Soft Step.
+    noise *= softStepNoise(t);
     // Fieldcraft is the one thing a tribute can do about any of the above.
     noise -= profOf(t, 'stealth') * NOISE.stealthQuieting;
     return Math.max(NOISE.minCrossing, noise);

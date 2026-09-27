@@ -1,3 +1,4 @@
+import { quickStudyScorePenalty } from '../audit14Content';
 import { SimContext, getAlive } from '../context';
 import { noteStationMates, stationBondOf } from '../allianceBonds';
 import { ALLIANCE_BONDS } from '../../data/balance';
@@ -1871,7 +1872,8 @@ export function processTrainingScores(ctx: SimContext) {
             }
         }
 
-        t.trainingScore = score;
+        // AUDIT-14 T4: a Quick Study looked worse than they are.
+        t.trainingScore = quickStudyScorePenalty(t) > 0 ? Math.max(1, score - quickStudyScorePenalty(t)) : score;
         const reaction = attempt
             ? fillLine(landed ? attempt.landed : attempt.botched, { tribute: t.name, station: showStation })
             : fillLine(ctx.pickText(ROUTINE_SESSIONS), { tribute: t.name, station: showStation });

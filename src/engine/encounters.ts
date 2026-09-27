@@ -1,3 +1,4 @@
+import { noForage } from './audit14Content';
 import { Terrain, Tribute, attr } from '../models/types';
 import { afterForage, anglingForage, neverPoisonous, noteStitched } from './audit13Content';
 import { noteParleyFailed } from './traitHooks';
@@ -820,6 +821,8 @@ function attemptForage(
     // AUDIT-9 stage C §3: searching ground takes hours. A tribute who has
     // spent the day crossing does not also comb this zone for food.
     if (!spend(t, ACTION_BUDGET.forageHours)) return false;
+    // AUDIT-14 S3: a withdrawal does not stop to look for food.
+    if (noForage(t)) return false;
     // §5 `noForage`: nothing edible grows here. Everything anybody eats in
     // this arena came out of the horn, which makes the horn the only pantry
     // and going back to it the only plan.

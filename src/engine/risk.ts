@@ -1,3 +1,4 @@
+import { wardDownedRisk } from './relationsArc';
 import { riskShift } from './arenaDepth';
 import { Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
@@ -49,6 +50,9 @@ export function riskTolerance(ctx: SimContext, t: Tribute): number {
     // AUDIT-14 T5: the room. Company, the most frightening person here, being
     // followed, and how the best hostile here measures up against them.
     risk += roomRisk(ctx, t);
+
+    // AUDIT-14 T12: a ward down beside them.
+    risk += wardDownedRisk(ctx.state, t);
 
     return Math.max(-1, Math.min(1, risk));
 }

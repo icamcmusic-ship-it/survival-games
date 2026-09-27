@@ -1,3 +1,4 @@
+import { audit14TrainingScale } from './audit14Content';
 import { ArchetypeId, Item, Proficiency, Tribute } from '../models/types';
 import { DRIFT, PROFICIENCY, VOLUNTEER } from '../data/balance';
 import { ITEMS } from '../data/constants';
@@ -97,6 +98,13 @@ const ARCHETYPE_SPECIALITY: Record<ArchetypeId, Proficiency> = {
     pilgrim: 'weathercraft',
     mourner: 'resting',
     lamplighter: 'signalling',
+    // AUDIT-14 §7 R1-R6, each owning one of the new skills where it fits.
+    cutpurse: 'caching',
+    undertaker: 'triage',
+    poacher: 'scentcraft',
+    tinker: 'shelterwright',
+    smuggler: 'bartering',
+    nightwarden: 'bracing',
     // AUDIT-9 stage D: the walk is the job.
     courier: 'pacing',
 };
@@ -302,6 +310,8 @@ export function trainProficiency(t: Tribute, skill: Proficiency, ctx?: SimContex
      * Defaults to 1, so every existing call site is unchanged.
      */
     const gain = PROFICIENCY.gainPerUse * pressure * early * nearCap * share * trainingShareScale(t, skill)
+        // AUDIT-14 T4: a Quick Study.
+        * audit14TrainingScale(t)
         * Math.pow(1 - PROFICIENCY.diminishingPerLevel, current);
     const next = Math.min(PROFICIENCY.max, current + gain);
     // Rounded so the value stays legible in a tooltip and in save files.
@@ -591,6 +601,15 @@ const TEACH_PHRASE: Record<Proficiency, string> = {
     weathercraft: 'to watch which way the birds go before the wind turns',
     teaching: 'to show it once slowly and then shut up while they get it wrong',
     resting: 'to sleep in the first hour of dark and not the last, however cold it is',
+    // AUDIT-14 §7
+    poisoncraft: 'that the dose is in the thickness of the coat, not the colour of it',
+    feinting: 'to look where you are not going to hit, and mean it',
+    disarming: 'to take the wrist and not the blade, and to turn it the way it does not bend',
+    shelterwright: 'to pitch the low end into the wind and never the high one',
+    triage: 'to stop the bleeding first and ask what happened afterwards',
+    bracing: 'to land on the side of the foot and roll, and never to put a hand out',
+    scentcraft: 'to walk the stream a hundred paces and come out on stone',
+    caching: 'to bury it under something you will recognise in the dark',
 };
 
 /**

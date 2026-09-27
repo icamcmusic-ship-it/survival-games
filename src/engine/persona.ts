@@ -78,6 +78,13 @@ const PERSONA_TESTS: Record<InterviewPersona, PersonaTest> = {
     'The District Loyalist': t => t.allianceId !== undefined || (t.sparedDowned?.length ?? 0) > 0,
     'The Quirky Oddball': () => undefined,
     'The Wildcard': () => undefined,
+    // AUDIT-14 §7 P1-P4. The outsider promised never to be one of them; the
+    // showboat promised a show; the scrapper promised not to run; the
+    // oracle promised only to know things, which nobody can check.
+    'The Outsider': t => !t.allianceId?.startsWith('career-pack'),
+    'The Showboat': t => stanceFamily(t.stance) === 'aggressive' || t.kills > 0,
+    'The Scrapper': t => stanceFamily(t.stance) !== 'evasive',
+    'The Oracle': () => undefined,
 };
 
 const BACKLASH_LINES: Record<string, (t: Tribute) => string> = {

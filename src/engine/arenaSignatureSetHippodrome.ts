@@ -114,7 +114,7 @@ const hippodromeSignature: Signature = (ctx, cycle, rng) => {
             const zone = getZone(state.arena, t.zone);
             const vertical = zone ? zoneFeatures(zone).vertical === true : false;
             if (vertical && rng.chance(k.stumbleChance)) {
-                applyDamage(ctx, t, k.stumbleDamage, { cause: `Fell in the dark on ${t.zone}`, kind: 'arena', code: 'fall' });
+                applyDamage(ctx, t, k.stumbleDamage, { cause: `Fell in the dark on ${t.zone}`, kind: 'arena', code: 'fall', signature: true });
                 ctx.logEvent(`${t.name} misses a step on ${t.zone} in the blackout and finds the next one the hard way.`, [t.id], { zone: t.zone, category: 'arena' });
                 checkDeath(ctx, t, `Fell in the dark on ${t.zone}`);
             }
@@ -123,7 +123,7 @@ const hippodromeSignature: Signature = (ctx, cycle, rng) => {
         const exposed = getAlive(state).filter(t => !hasTool(t, 'light'));
         const victim = rng.chance(k.animatronicChance) ? rng.pickOrUndefined(exposed) : undefined;
         if (victim) {
-            applyDamage(ctx, victim, k.animatronicDamage, { cause: `Caught by an animatronic in ${victim.zone}`, kind: 'arena', code: 'machinery' });
+            applyDamage(ctx, victim, k.animatronicDamage, { cause: `Caught by an animatronic in ${victim.zone}`, kind: 'arena', code: 'machinery', signature: true });
             addZoneThreat(state, victim, victim.zone, MEMORY.hazardThreat * 2);
             ctx.logEvent(
                 `Something with a painted face and a motor in it finds ${victim.name} in the blackout in ${victim.zone}. It does not let go until its cycle ends.`,
@@ -166,7 +166,7 @@ const undercroftSignature: Signature = (ctx, cycle, rng) => {
     tributesIn(ctx, 'The Third Rail').forEach(t => {
         if (!rng.chance(ARENA_RULES.thirdRailTouchChance)) return;
         injure(t, 'burned');
-        applyDamage(ctx, t, k.railDamage, { cause: 'Electrocuted on the third rail', kind: 'arena', code: 'hazard' });
+        applyDamage(ctx, t, k.railDamage, { cause: 'Electrocuted on the third rail', kind: 'arena', code: 'hazard', signature: true });
         ctx.logEvent(`${t.name} touches the wrong rail on the Third Rail. It is still live.`, [t.id], { important: true, zone: t.zone, category: 'arena' });
         clampTribute(t);
         checkDeath(ctx, t, 'Electrocuted on the third rail');
@@ -196,7 +196,7 @@ const undercroftSignature: Signature = (ctx, cycle, rng) => {
                 clampTribute(t);
                 return;
             }
-            applyDamage(ctx, t, k.damage, { cause: `Hit by the train in ${zone}`, kind: 'arena', code: 'machinery' });
+            applyDamage(ctx, t, k.damage, { cause: `Hit by the train in ${zone}`, kind: 'arena', code: 'machinery', signature: true });
             addZoneThreat(ctx.state, t, zone, MEMORY.hazardThreat * 2);
             clampTribute(t);
             checkDeath(ctx, t, `Hit by the train in ${zone}`);
@@ -252,7 +252,7 @@ const vintageSignature: Signature = (ctx, _cycle, rng) => {
             const wrapped = hasTool(t, 'warmth');
             const damage = wrapped ? Math.round(k.damage / 2) : k.damage;
             t.vitals.fatigue += wrapped ? Math.round(k.fatigue / 2) : k.fatigue;
-            applyDamage(ctx, t, damage, { cause: `Froze on ${zone}`, kind: 'arena', code: 'hypothermia' });
+            applyDamage(ctx, t, damage, { cause: `Froze on ${zone}`, kind: 'arena', code: 'hypothermia', signature: true });
             if (!wrapped && rng.chance(k.frostbiteChance)) {
                 injure(t, 'frostbitten');
                 ctx.logEvent(`${t.name}'s hands go white and then grey on ${zone}, holding the dead vines for warmth that is not in them.`, [t.id], { zone, category: 'injury' });
@@ -283,7 +283,7 @@ const cinderpeakSignature: Signature = (ctx, cycle, rng) => {
             const wrapped = hasTool(t, 'warmth');
             t.vitals.fatigue += wrapped ? Math.round(k.exposedFatigue / 2) : k.exposedFatigue;
             applyDamage(ctx, t, wrapped ? Math.round(k.exposedDamage / 2) : k.exposedDamage,
-                { cause: `Lost in the whiteout on ${t.zone}`, kind: 'arena', code: 'hypothermia' });
+                { cause: `Lost in the whiteout on ${t.zone}`, kind: 'arena', code: 'hypothermia', signature: true });
             if (!wrapped && rng.chance(k.frostbiteChance)) injure(t, 'frostbitten');
             clampTribute(t);
             checkDeath(ctx, t, `Lost in the whiteout on ${t.zone}`);
@@ -412,7 +412,7 @@ const opencutSignature: Signature = (ctx, cycle, rng) => {
             ctx.logEvent(`${t.name} is off ${target} and onto solid rock with the edge going behind their heels.`, [t.id], { zone: target, category: 'arena' });
             return;
         }
-        applyDamage(ctx, t, k.damage, { cause: `Went down with ${target}`, kind: 'arena', code: 'fall' });
+        applyDamage(ctx, t, k.damage, { cause: `Went down with ${target}`, kind: 'arena', code: 'fall', signature: true });
         clampTribute(t);
         checkDeath(ctx, t, `Went down with ${target}`);
     });

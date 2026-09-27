@@ -1,3 +1,4 @@
+import { audit14DestinationScore } from './audit14Content';
 import { Tribute, Zone } from '../models/types';
 import { audit13DestinationScore } from './audit13Content';
 import { cannonAvoidance, signallingPull } from './traitHooks';
@@ -134,6 +135,8 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
         score += cannonAvoidance(state, t, z.name) + signallingPull(state, t, z.name);
         // AUDIT-13 N4 / N26 / N35: Drowned Once, the Pilgrim's landmark, Regrouping.
         score += audit13DestinationScore(state, t, z);
+        // AUDIT-14 S1-S3 / A34 / T12: a rally, a blood trail, a withdrawal, a ward.
+        score += audit14DestinationScore(ctx, t, z);
         if (z.terrain === 'water' || z.terrain === 'wetland') score += traitMod(t, 'water');
 
         if (isEvasiveStance(t.stance)) score -= z.danger * 2;

@@ -1,3 +1,4 @@
+import { AUDIT14_CONTENT as A14 } from '../../data/balance';
 import { Proficiency } from '../../models/types';
 import { craftOf } from '../../data/districts';
 import { profOf } from '../proficiency';
@@ -200,6 +201,24 @@ function angleWeights(t: Tribute): Array<[typeof INTERVIEW_SCENARIOS[number], nu
                 if (t.volunteered && !t.isCareer) weight += INTERVIEW_ANGLES.districtLoyalist.volunteer;
                 weight += t.reputation < INTERVIEW_ANGLES.districtLoyalist.lowReputation ? INTERVIEW_ANGLES.districtLoyalist.lowReputationBonus : 0;
                 if (t.isCareer) weight += INTERVIEW_ANGLES.districtLoyalist.career;
+                break;
+            // AUDIT-14 §7 P1-P4: each weighted off what it would be true of.
+            case 'The Outsider':
+                if (t.isCareer) { weight = 0; break; }
+                if (t.district >= INTERVIEW_ANGLES.survivor.outerFrom) weight += A14.angleOutsiderOuter;
+                if (t.trainingScore < INTERVIEW_ANGLES.humbleUnderdog.trainingPivot) weight += A14.angleOutsiderLowScore;
+                break;
+            case 'The Showboat':
+                weight += t.attributes.charisma * A14.angleShowboatPerCharisma;
+                if (t.traits.includes('Showman') || t.traits.includes('Crowd-Pleaser')) weight += A14.angleShowboatTrait;
+                break;
+            case 'The Scrapper':
+                weight += (t.attributes.strength + t.attributes.endurance) * A14.angleScrapperPerBody;
+                if (!t.isCareer && [3, 5, 6].includes(t.district)) weight += A14.angleScrapperDistrict;
+                break;
+            case 'The Oracle':
+                weight += t.attributes.intelligence * A14.angleOraclePerIntelligence;
+                if (t.archetype === 'scholar' || t.archetype === 'herald') weight += A14.angleOracleArchetype;
                 break;
             case 'The Wildcard':
                 if (t.archetype === 'wildcard' || t.archetype === 'trickster') weight += INTERVIEW_ANGLES.wildcard.archetype;

@@ -448,6 +448,11 @@ function saltflatsSignature(ctx: SimContext, _cycle: number, rng: RNG) {
         });
         observer.vitals.thirst += ARENA_SIGNATURES.saltFlats.thirst;
         if (rng.chance(ARENA_SIGNATURES.saltFlats.glareChance)) loseSanity(observer, ARENA_SIGNATURES.saltFlats.glareSanity);
+        if (rng.chance(ARENA_SIGNATURES.saltFlats.sunstrokeChance)) {
+            const cause = `Sunstroke on the salt at ${observer.zone}`;
+            applyDamage(ctx, observer, ARENA_SIGNATURES.saltFlats.sunstrokeDamage, { cause, kind: 'arena', code: 'heatstroke', signature: true });
+            checkDeath(ctx, observer, cause);
+        }
         clampTribute(observer);
     });
 }
@@ -1577,7 +1582,7 @@ function menagerieSignature(ctx: SimContext, cycle: number, rng: RNG) {
 
     const open = releases.filter(([c]) => cycle >= c).length;
     if (open === 0) return;
-    if (!rng.chance(Math.min(0.6, 0.1 * open))) return;
+    if (!rng.chance(Math.min(ARENA_SIGNATURES.menagerie.cap, ARENA_SIGNATURES.menagerie.perOpen * open))) return;
 
     const roster = rosterFor(ctx);
     if (roster.length === 0) return;

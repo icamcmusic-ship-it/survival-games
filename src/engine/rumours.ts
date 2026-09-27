@@ -1,3 +1,4 @@
+import { noteOracleTold, oracleCredibility } from './audit14Content';
 /**
  * §4.7: rumours with content, as opposed to intel with a value.
  *
@@ -260,8 +261,11 @@ export function tradeRumours(ctx: SimContext, a: Tribute, b: Tribute) {
         // whether the mark takes the claim, so this is the one place in the
         // rumour layer where being convincing is the whole question.
         // AUDIT-13 N18: and `mimicry` is being convincing on purpose.
-        if (!ctx.rng.chance(RUMOURS.plantChance + traitMod(planter, 'rumourCredibility') + mimicryCredibility(planter))) return;
+        // AUDIT-14 P4: an Oracle's first rumours are believed.
+        if (!ctx.rng.chance(RUMOURS.plantChance + traitMod(planter, 'rumourCredibility') + mimicryCredibility(planter)
+            + oracleCredibility(planter))) return;
         plantRumour(ctx, planter, mark);
+        noteOracleTold(planter);
     });
 }
 

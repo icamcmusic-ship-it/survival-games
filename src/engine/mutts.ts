@@ -1,3 +1,4 @@
+import { scentcraftScale } from './audit14Content';
 import { traitMod } from '../data/traits';
 import { muttHandlingScale } from './traitHooks';
 import { Mutt, Tribute } from '../models/types';
@@ -365,7 +366,8 @@ export function tickPersistentMutts(ctx: SimContext) {
         // stronger test: whatever is tracking them loses interest in prey that
         // has stopped moving, rather than announcing it has found them again.
         if (!target || !isActive(target)) return;
-        if (!ctx.rng.chance(MUTTS.persistentReattackChance)) return;
+        // AUDIT-14 K7: scentcraft breaks the trail.
+        if (!ctx.rng.chance(MUTTS.persistentReattackChance * scentcraftScale(target))) return;
 
         const mutt = rosterFor(ctx).find(m => m.id === active.muttId);
         if (!mutt) return;

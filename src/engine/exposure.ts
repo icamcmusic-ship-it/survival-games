@@ -1,5 +1,5 @@
 import { earnTrait } from './earnedTraits';
-import { exposureScale } from './audit13Content';
+import { exposureScale, noteWeatherLesson } from './audit13Content';
 import { DeathCauseCode, Tribute } from '../models/types';
 import { injure } from './wounds';
 import { CLIMATE, CRAFTING, PHYSIQUE, PROFICIENCY, TOOLS , EARNED_TRAIT_RULES } from '../data/balance';
@@ -127,6 +127,7 @@ export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProf
         : 0;
     if (frostbiteChance > 0 && !t.injuries.frostbitten && ctx.rng.chance(frostbiteChance)) {
         injure(t, 'frostbitten');
+        noteWeatherLesson(ctx, t);
         ctx.logEvent(
             profile.onFrostbite?.(t) ?? `${t.name}'s fingers blacken with frostbite in ${profile.name}.`,
             [t.id],
@@ -167,6 +168,7 @@ export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProf
     if (profile.damage && (profile.damageChance === undefined || ctx.rng.chance(profile.damageChance * scale))) {
         // AUDIT-13 W3: the standing climate's bare "Froze to death" (climate.ts)
         // speaks in the arena's words; a named front or snap keeps its own.
+        noteWeatherLesson(ctx, t);
         const climateCause = profile.cause === 'Froze to death'
             ? skinCause(ctx.state.arena.id, 'hypothermia', t.id, profile.cause)
             : profile.cause;

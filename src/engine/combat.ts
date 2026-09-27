@@ -1,3 +1,4 @@
+import { noteShowboatKill, afterFight, afterLandedHit, audit14DamageScale, audit14PowerHooks, audit14RetreatShift, beforeFight, rearguardCover } from './audit14Content';
 import { deceptionEdge, dropPlan, weaponFails, weatherRangedPenalty } from './arenaDepth';
 import { arenaHasLaw } from './gamesProfile';
 import { targetDrawOf } from './targeting';
@@ -364,6 +365,8 @@ export function applyDamage(
     if (ARMOURED_DAMAGE.includes(record.kind)) amount *= 1 - injuryAbsorption(t);
     // AUDIT-13 N9 / N28: Ash-Lunged in smoke; a Lamplighter's marked route.
     amount *= audit13DamageScale(t, record.kind, record.cause);
+    // AUDIT-14 T13 / K6: Iron Lungs against the arena; bracing against a fall.
+    amount *= audit14DamageScale(ctx, t, record.kind, record.code);
     /*
      * `naturalDeathRate`: how hard everything that is not another tribute hits.
      *
@@ -849,6 +852,8 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
     power += traitPowerHooks(ctx, t);
     // AUDIT-13 N11 / N27: Hunger-Sharp when hungry; a Mourner against an ally's killer.
     power += audit13PowerHooks(t, opponent);
+    // AUDIT-14 §7: Sore Loser, Late Bloomer, Sharp Elbows, Short Fuse, feinting, Rallying.
+    power += audit14PowerHooks(ctx, t, opponent);
 
     return power;
 }
@@ -982,6 +987,8 @@ function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, round
     // A §8: somebody in shock is not weighing anything. They break off.
     if (inShock(ctx, t)) chance += COMBAT.retreatLosingBonus;
     chance += traitMod(t, 'retreat');
+    // AUDIT-14 S3 / P3: a withdrawal keeps withdrawing; a Scrapper stands the first fight.
+    chance += audit14RetreatShift(t);
     // AUDIT-12 §16: the Evasion skill.
     chance += evasionRetreat(t);
     // AUDIT-12 §7: an archetype that will not fight bare-handed.
@@ -1152,6 +1159,8 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
             { important: true, category: 'injury' }
         );
     }
+    // AUDIT-14 K1 / K3 / Q6: poisoncraft, disarming, and the boot knife.
+    afterLandedHit(ctx, attacker, defender, weapon);
     wearWeapon(weapon, ctx, attacker);
     // AUDIT-12 E6: the weapon can break into the hand holding it and finish
     // them. A dead or downed attacker trains nothing and frightens nobody.
@@ -1196,7 +1205,31 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
  * fight someone walked away from on purpose, which meant no fleeing, no
  * wearing an opponent down over two encounters, and no tension in a rematch.
  */
+/**
+ * AUDIT-14 §7: the fight, with the new content's before-and-after around it —
+ * the Gambler's side bet (A35), the blood trail and the withdrawal it leaves
+ * (S2/S3), feinting (K2) and the Scrapper's first stand (P3). Every early
+ * return in the fight itself passes through here, which is why it wraps.
+ */
 export function resolveCombat(
+    ctx: SimContext,
+    t1: Tribute,
+    t2: Tribute,
+    isBloodbath: boolean = false,
+    isBetrayal: boolean = false,
+    noRetreatRounds: number = 0,
+    damageMultiplier: number = 1,
+) {
+    if (t1.status === 'dead' || t2.status === 'dead' || isDowned(t1) || isDowned(t2)) return;
+    const note = beforeFight(ctx, t1, t2, isBloodbath);
+    try {
+        fightOut(ctx, t1, t2, isBloodbath, isBetrayal, noRetreatRounds, damageMultiplier);
+    } finally {
+        afterFight(ctx, t1, t2, note);
+    }
+}
+
+function fightOut(
     ctx: SimContext,
     t1: Tribute,
     t2: Tribute,
@@ -1426,7 +1459,9 @@ export function resolveCombat(
             trainProficiency(fleer, 'sprinting', undefined, PROFICIENCY.sprintingRetreatShare);
             const partingChance = Math.max(0.05,
                 COMBAT.partingShotChance - fleer.attributes.stealth * STEALTH.disengagePerPoint
-                    - profOf(fleer, 'sprinting') * PROFICIENCY.sprintingPartingRelief);
+                    - profOf(fleer, 'sprinting') * PROFICIENCY.sprintingPartingRelief)
+                // AUDIT-14 T8: a Rearguard ally covers the one breaking off.
+                * rearguardCover(ctx, fleer);
             if (ctx.rng.chance(partingChance)) {
                 const parting = bestWeapon(stayer);
                 landHit(ctx, stayer, fleer, 2, parting);
@@ -2106,6 +2141,8 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         // feel it, carry loot, or wear out gear.
         if (killerAlive) {
             addExcitement(killer, 20);
+            // AUDIT-14 P2: the Showboat's first kill is paid twice over.
+            noteShowboatKill(killer, 20);
             // Bloodlust: briefly stronger and far less willing to break off.
             killer.momentum = Math.min(HUNTING.momentumMax, (killer.momentum ?? 0) + HUNTING.momentumPerKill);
 

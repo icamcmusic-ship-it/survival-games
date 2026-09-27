@@ -1,3 +1,4 @@
+import { audit14ThirstDrain, outsiderSponsor } from './audit14Content';
 import { Tribute, attr } from '../models/types';
 import { noteRest, restingFatigue, restingSanity } from './audit13Content';
 import { rationMeal, rationingDrain } from './traitHooks';
@@ -174,6 +175,8 @@ function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
     // AUDIT-12 §16: the Rationing skill.
     hunger -= rationingDrain(t);
     thirst += traitMod(t, 'thirstDrain');
+    // AUDIT-14 A37: Drowned Once, away from water.
+    thirst += audit14ThirstDrain(ctx.state, t);
     fatigue += time === 'night' ? traitMod(t, 'fatigueNight') - restingFatigue(t) : traitMod(t, 'fatigueDay');
     // Younger tributes burn through rations faster and sleep worse.
     if (t.age <= TRAIT_EFFECTS.youngAge) {
@@ -1196,7 +1199,8 @@ export function processVitals(ctx: SimContext, time: 'day' | 'night') {
         if (t.status !== 'alive') return;
 
         // Standing with the Capitol drifts by temperament as well as by events.
-        const standing = traitMod(t, 'sponsorTrust');
+        // AUDIT-14 P1: an Outsider while the Careers lead.
+        const standing = traitMod(t, 'sponsorTrust') + outsiderSponsor(ctx.state, t);
         if (standing !== 0) t.sponsorTrust = Math.max(0, Math.min(100, t.sponsorTrust + standing));
 
         if (isStarCrossed(t)) {

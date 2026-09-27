@@ -1,3 +1,4 @@
+import { showboatExcitement } from './audit14Content';
 import { Tribute } from '../models/types';
 import { traitMod } from '../data/traits';
 
@@ -13,7 +14,8 @@ import { traitMod } from '../data/traits';
  */
 export function addExcitement(t: Tribute, amount: number) {
     if (amount === 0) return;
-    const scale = Math.max(0.1, 1 + traitMod(t, 'excitement'));
+    // AUDIT-14 P2: the Showboat plays to the crowd.
+    const scale = Math.max(0.1, 1 + traitMod(t, 'excitement') + showboatExcitement(t));
     // Only gains are amplified: a trait that makes you compelling should not
     // also make a penalty hurt more.
     t.excitementRating += amount > 0 ? amount * scale : amount;

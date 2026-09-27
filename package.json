@@ -43,6 +43,7 @@
     "test:audit13-relations": "tsx scripts/check-audit13-relations.ts",
     "test:audit14-relations": "tsx scripts/check-audit14-relations.ts",
     "test:audit13-content": "tsx scripts/check-audit13-content.ts",
+    "test:audit14-content": "tsx scripts/check-audit14-content.ts",
     "test:actions": "tsx scripts/check-actions.ts",
     "test:bodies": "tsx scripts/check-bodies.ts",
     "test:endgame": "tsx scripts/check-endgame.ts",

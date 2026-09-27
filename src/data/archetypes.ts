@@ -657,7 +657,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         stanceBias: { Defensive: 0.4, Evasive: 0.3, Scavenging: 0.3 },
         // Audit 3 §3.3: a Scholar's whole method is watching something for long
         // enough to understand it, which is what a stalk is.
-        objectiveBias: { reach: 0.4, stalk: 0.25 },
+        objectiveBias: { reach: 0.4, stalk: 0 },
         targetPreference: 'weakest',
                 // Audit 2 §8.2: was `flat`. The point of the archetype is that it
         // updates — and what it updates *toward* is confidence, not caution. A
@@ -922,7 +922,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
          * has run out of people to talk to is the most frightening version of
          * themselves, and that is a beat the archetype could never reach.
          */
-        stanceBias: { Defensive: 0.6, Aggressive: -0.4, Evasive: 0.2, Desperate: 0.8 },
+        stanceBias: { Defensive: 0.6, Aggressive: -0.4, Evasive: 0.2, Desperate: 0.3, Parleying: 0.3 },
         objectiveBias: { protect: 0.5, survive: 0.4 },
         targetPreference: 'nearest',
         // §8.1: as with the Underdog — the archetype's whole argument is that
@@ -1086,7 +1086,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
          * attention goes up: calling somebody out in front of the cameras is
          * the loudest thing a tribute can do, and the arena hears it too.
          */
-        statBias: { agility: 1, charisma: 1, endurance: -1 },
+        statBias: { agility: 1, charisma: 1, endurance: 0 },
         preferredTraits: ['Left-Handed', 'Reach', 'Marksman', 'Dead-Eyed'],
         // AUDIT-12 §7: 0.3 -> 0.25.
         aggression: 0.25,
@@ -1101,7 +1101,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         signature: 'duellistChallenge',
         hatesArchetypes: ['career', 'opportunist', 'ghost', 'scholar'],
         tagline: 'One of us. Not four of you.',
-        targetDraw: 3,
+        targetDraw: 1.5,
         // AUDIT-12 §7: 0.7 -> 0.8 (7.3-7.4% at n=4,800, top of the field twice).
         fearScale: 0.8,
     },
@@ -1349,7 +1349,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         caution: 0.35,
         // AUDIT-13 A21/A27: Hiding (1.7%) was built for exactly this person.
         stanceBias: { Fortified: 0.6, Evasive: 0.4, Aggressive: -0.5, Hiding: 0.6 },
-        objectiveBias: { wait: 0.5, survive: 0.3 },
+        // AUDIT-14 A34: the isolate objective, at last.
+        objectiveBias: { wait: 0.5, survive: 0.3, isolate: 0.6 },
         hatesArchetypes: ['diplomat', 'showrunner'],
         targetPreference: 'nearest',
         riskCurve: 'late-blooming',
@@ -1377,6 +1378,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         signature: 'heraldCall',
         tagline: 'Two of them, one camera, and a very good angle.',
         targetDraw: 1,
+        // AUDIT-14 A33: Career-carried, with a horn-death rate near half.
+        hornFight: -0.15,
         fearScale: 1,
     },
     'healer-pacifist': {
@@ -1640,7 +1643,7 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         allianceAffinity: 0.3,
         treachery: -0.2,
         caution: 0.1,
-        stanceBias: { Mourning: 0.8, Nursing: 0.2, Hunting: 0.2 },
+        stanceBias: { Mourning: 0.5, Nursing: 0.2, Hunting: 0.2 },
         objectiveBias: { protect: 0.3, hunt: 0.2 },
         hatesArchetypes: ['opportunist'],
         targetPreference: 'rival',
@@ -1648,6 +1651,8 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         signature: 'mournerVigil',
         tagline: 'Somebody has to remember them.',
         targetDraw: 0,
+        // AUDIT-14 signature table: horn deaths 42%.
+        hornFight: -0.1,
         fearScale: 1,
     },
     lamplighter: {
@@ -1669,6 +1674,130 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         tagline: 'Walk where I walked.',
         targetDraw: 0,
         fearScale: 1,
+    },    /*
+     * AUDIT-14 §7 R1-R6: six more, each with a signature in
+     * `engine/audit14Content.ts`. R6 is the audit's "Sentinel", renamed
+     * Nightwarden because Sentinel is a name in `names.ts`.
+     */
+    cutpurse: {
+        id: 'cutpurse',
+        name: 'Cutpurse',
+        description: 'Never starts a fight and never needs to. Walks past a sleeping tribute and walks on carrying something of theirs — unless they wake.',
+        statBias: { agility: 2, stealth: 1 },
+        preferredTraits: ['Lightfooted', 'Silent Step', 'Scavenger'],
+        aggression: -0.1,
+        allianceAffinity: 0,
+        treachery: 0.15,
+        caution: 0.2,
+        stanceBias: { Shadowing: 0.6, Evasive: 0.2 },
+        objectiveBias: { stalk: 0.2, survive: 0.2 },
+        hatesArchetypes: ['warden'],
+        targetPreference: 'richest',
+        riskCurve: 'flat',
+        signature: 'liftPurse',
+        tagline: 'You will not miss it until later.',
+        targetDraw: -0.5,
+        fearScale: 1,
+    },
+    undertaker: {
+        id: 'undertaker',
+        name: 'Undertaker',
+        description: 'Buries the dead where they fall and reads the body while doing it. Comes away steadier, better liked, and knowing exactly who did it.',
+        statBias: { willpower: 2, intelligence: 1 },
+        preferredTraits: ['Witness', 'Stoic', 'Devout'],
+        aggression: -0.05,
+        allianceAffinity: 0.2,
+        treachery: -0.1,
+        caution: 0.15,
+        stanceBias: { Scavenging: 0.4, Defensive: 0.2 },
+        objectiveBias: { mourn: 0.3, survive: 0.2 },
+        hatesArchetypes: ['beast'],
+        targetPreference: 'rival',
+        riskCurve: 'flat',
+        signature: 'lastRites',
+        tagline: 'Somebody should.',
+        targetDraw: -0.5,
+        fearScale: 0.95,
+    },
+    poacher: {
+        id: 'poacher',
+        name: 'Poacher',
+        description: 'Sets a snare meant for bigger game than rabbits. Somebody walking a trail they have lined does not get up again in a hurry.',
+        statBias: { stealth: 2, agility: 1 },
+        preferredTraits: ['Trapper', 'Houndsman', 'Knot-Tier'],
+        aggression: 0.1,
+        allianceAffinity: -0.05,
+        treachery: 0.05,
+        caution: 0.1,
+        stanceBias: { Baiting: 0.5, Fortified: 0.2 },
+        objectiveBias: { wait: 0.3, hold: 0.2 },
+        hatesArchetypes: ['ratcatcher'],
+        targetPreference: 'weakest',
+        riskCurve: 'flat',
+        signature: 'snareHunt',
+        tagline: 'Walk carefully. I did.',
+        targetDraw: 0,
+        fearScale: 1,
+    },
+    tinker: {
+        id: 'tinker',
+        name: 'Tinker',
+        description: 'Mends what breaks and makes weapons out of what nobody wanted. Arrives empty-handed and is armed by the second day — with something that will not last.',
+        statBias: { intelligence: 2, endurance: 1 },
+        preferredTraits: ['Rope-Handed', 'Mapmaker', 'Scavenger'],
+        aggression: 0,
+        allianceAffinity: 0.15,
+        treachery: 0,
+        caution: 0.15,
+        stanceBias: { Scavenging: 0.4, Defensive: 0.2 },
+        objectiveBias: { hold: 0.2, survive: 0.2 },
+        hatesArchetypes: ['saboteur'],
+        targetPreference: 'nearest',
+        riskCurve: 'late-blooming',
+        signature: 'juryRig',
+        tagline: 'It will hold. For now.',
+        targetDraw: -0.5,
+        fearScale: 1,
+    },
+    smuggler: {
+        id: 'smuggler',
+        name: 'Smuggler',
+        description: 'Carries things between people who cannot meet, and takes a cut. The courier\'s dark mirror: always welcome, never quite trusted, and a fat target while loaded.',
+        statBias: { charisma: 1, agility: 1, stealth: 1 },
+        preferredTraits: ['Barterer', 'Horse Trader', 'Lightfooted'],
+        aggression: -0.05,
+        allianceAffinity: 0.2,
+        treachery: 0.2,
+        caution: 0.15,
+        stanceBias: { Evasive: 0.3, Regrouping: 0.3 },
+        objectiveBias: { reach: 0.3, protect: 0.1 },
+        hatesArchetypes: ['courier'],
+        targetPreference: 'richest',
+        riskCurve: 'flat',
+        signature: 'runGoods',
+        tagline: 'Everybody pays the carrier.',
+        targetDraw: 0,
+        fearScale: 1,
+    },
+    nightwarden: {
+        id: 'nightwarden',
+        name: 'Nightwarden',
+        description: 'Does not sleep while anybody on their side does. The first knife that comes for the camp in the dark finds them already standing — once a night, and never for themselves alone.',
+        statBias: { willpower: 1, endurance: 2 },
+        preferredTraits: ['Watchful', 'Night Owl', 'Keeps Watch Alone'],
+        aggression: 0,
+        allianceAffinity: 0.4,
+        treachery: -0.15,
+        caution: 0.2,
+        stanceBias: { Patrolling: 0.6, Defensive: 0.2 },
+        objectiveBias: { protect: 0.4, hold: 0.2 },
+        hatesArchetypes: ['cutpurse'],
+        targetPreference: 'nearest',
+        riskCurve: 'flat',
+        signature: 'holdTheLine',
+        tagline: 'Sleep. I have it.',
+        targetDraw: 0,
+        fearScale: 0.9,
     },
 };
 
@@ -1789,15 +1918,22 @@ const BASE_WEIGHTS: ArchetypeWeights = {
     pilgrim: 0.6,
     mourner: 0.6,
     lamplighter: 0.6,
+    // AUDIT-14 §7.
+    cutpurse: 0.6,
+    undertaker: 0.6,
+    poacher: 0.6,
+    tinker: 0.6,
+    smuggler: 0.6,
+    nightwarden: 0.6,
 };
 
 /** Career districts train for it; everyone else is shaped by their industry. */
 export const DISTRICT_ARCHETYPE_WEIGHTS: Record<number, ArchetypeWeights> = {
     1:  { career: 7, trickster: 1.5, strategist: 1, diplomat: 1.2, herald: 1.2, duellist: 1.2 },
     2:  { career: 8, protector: 1.5, wildcard: 1, zealot: 1.5, duellist: 1.5, warden: 1.2 },
-    3:  { strategist: 4, trickster: 2, underdog: 1.5, saboteur: 1.5, scholar: 1.5, broker: 1.2 },
+    3:  { strategist: 4, trickster: 2, underdog: 1.5, saboteur: 1.5, scholar: 1.5, broker: 1.2, tinker: 1.2 },
     4:  { career: 6, survivalist: 2, protector: 1.5, medic: 1.2, forager: 1.5 },
-    5:  { strategist: 2.5, trickster: 2, wildcard: 1.5, mercenary: 1.5, scholar: 1.5, broker: 1.5 },
+    5:  { strategist: 2.5, trickster: 2, wildcard: 1.5, mercenary: 1.5, scholar: 1.5, broker: 1.5, tinker: 1.2 },
     6:  { wildcard: 2.5, underdog: 2, trickster: 1.5, mercenary: 1.5, ghost: 1.5, broker: 1.2, courier: 3 },
     7:  { protector: 2.5, survivalist: 2, wildcard: 1.5, beast: 1.2, warden: 1.5, forager: 1.2 },
     8:  { underdog: 2.5, trickster: 2, protector: 1.5, saboteur: 1.5, broker: 1.2 },

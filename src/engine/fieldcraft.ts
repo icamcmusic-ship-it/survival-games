@@ -1,3 +1,4 @@
+import { notePoisoncraft } from './audit14Content';
 import { Item, Tribute, Trap } from '../models/types';
 import { isKnotTier } from '../data/traits';
 import { huntingYield } from './traitHooks';
@@ -830,6 +831,8 @@ export function poisonWeapon(ctx: SimContext, t: Tribute): boolean {
 
     weapon.poison = true;
     trainProficiency(t, 'medicine');
+    // AUDIT-14 K1: poisoncraft is learned at the pot.
+    notePoisoncraft(ctx, t);
     // Rendering a plant down into something that kills is the same knowledge
     // as rendering one down into something that heals, learnt from the
     // dangerous end. The read is in `treatInfection`.

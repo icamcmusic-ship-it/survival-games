@@ -91,6 +91,19 @@ let victors = 0, victorKills = 0, victorZeroKills = 0, victorHealth = 0;
 let crowned = 0, dualWins = 0;
 let wipeouts = 0, careerVictors = 0;
 const victorsByDistrict: Record<number, number> = {};
+/*
+ * AUDIT-14 A28: the Career and district rows, per head and per field size.
+ *
+ * In a 6-district field the three Career districts are half the cast and in
+ * an 8-district field three-eighths, and D1/D2/D4 are the only Career
+ * districts present in every config — so "Careers win 48%" and "D4 wins 21%"
+ * were mostly measuring how this harness mixes configs. Per head, split by
+ * field size, is the reading that means something.
+ */
+const headcount = { big: { career: 0, other: 0 }, small: { career: 0, other: 0 } };
+const headWins = { big: { career: 0, other: 0 }, small: { career: 0, other: 0 } };
+const victorsByDistrictBig: Record<number, number> = {};
+let victorsBig = 0;
 // A2: the archetype balance table the design review measured by hand. Win
 // rate is the only number that says whether an archetype is a character or a
 // handicap, and it was not being tracked at all.
@@ -246,6 +259,8 @@ for (let i = 0; i < RUNS; i++) {
     // §8d: the reaping-assigned set, snapshotted before a cycle has run.
     // Everything a tribute finishes with that is not in here was earned.
     const reapingTraits = new Map<string, string[]>();
+    const field: 'big' | 'small' = configs[cell.configIndex].districtCount >= 12 ? 'big' : 'small';
+    state.tributes.forEach(t => { headcount[field][t.isCareer ? 'career' : 'other']++; });
     state.tributes.forEach(t => {
         reapingTraits.set(t.id, [...t.traits]);
         t.traits.forEach(trait => {
@@ -395,6 +410,11 @@ for (let i = 0; i < RUNS; i++) {
         // in the source material.
         victorsByDistrict[winner.district] = (victorsByDistrict[winner.district] ?? 0) + 1;
         if (winner.isCareer) careerVictors++;
+        headWins[field][winner.isCareer ? 'career' : 'other']++;
+        if (field === 'big') {
+            victorsByDistrictBig[winner.district] = (victorsByDistrictBig[winner.district] ?? 0) + 1;
+            victorsBig++;
+        }
         archetypeWins[winner.archetype] = (archetypeWins[winner.archetype] ?? 0) + 1;
         const winnerTier = legacyOf(winner.district).tier;
         tierWins[winnerTier] = (tierWins[winnerTier] ?? 0) + 1;
@@ -579,6 +599,9 @@ const MIN_SAMPLE = 100;
  * properly.
  */
 const GUARD_MIN_SAMPLE = 500;
+/** AUDIT-14 A36: entrants below which a trait row is not worth reading. */
+const TRAIT_READ_MIN = 400;
+
 function winRates(entrants: Record<string, number>, wins: Record<string, number>): Array<[string, number, number]> {
     return Object.keys(entrants)
         .filter(k => entrants[k] >= MIN_SAMPLE)
@@ -632,6 +655,13 @@ const underSampled = archetypeRates.filter(r => r[2] < GUARD_MIN_SAMPLE).map(r =
 /** How many districts win often enough to be worth rooting for at all. */
 const viableDistricts = Object.values(victorsByDistrict)
     .filter(n => n / Math.max(1, victors) >= 0.04).length;
+
+/** AUDIT-14 A28: Career win rate per entrant over everybody else's, for one field size. */
+function perHeadRatio(field: 'big' | 'small'): number {
+    const career = headWins[field].career / Math.max(1, headcount[field].career);
+    const other = headWins[field].other / Math.max(1, headcount[field].other);
+    return other > 0 ? career / other : 0;
+}
 
 const indicators: Indicator[] = [
     {
@@ -1219,8 +1249,11 @@ const indicators: Indicator[] = [
          * while an ordinary sweep does not. It is the maximum of twelve rows,
          * so it gets the same selected-extreme interval as the top-three row.
          */
-        label: 'largest single-district win share',
-        value: victors === 0 ? 0 : Math.max(0, ...Object.values(victorsByDistrict)) / victors,
+        // AUDIT-14 A28: read on the 12-district runs only. In a 6- or
+        // 8-district field D1/D2/D4 are a third to a half of the cast, which
+        // is a statement about the config mix and not about any district.
+        label: 'largest district win share (12 districts)',
+        value: victorsBig === 0 ? 0 : Math.max(0, ...Object.values(victorsByDistrictBig)) / victorsBig,
         guard: v => v <= 0.20,
         guardText: '<= 20%',
         goal: '<= 15%',
@@ -1228,9 +1261,9 @@ const indicators: Indicator[] = [
         baseline: '21.2% (District 2)',
         fmt: asPct,
         extremeOf: () => ({
-            rows: Math.max(1, Object.keys(victorsByDistrict).length),
-            successes: Math.max(0, ...Object.values(victorsByDistrict)),
-            n: Math.max(1, victors),
+            rows: Math.max(1, Object.keys(victorsByDistrictBig).length),
+            successes: Math.max(0, ...Object.values(victorsByDistrictBig)),
+            n: Math.max(1, victorsBig),
         }),
     },
     {
@@ -1372,9 +1405,15 @@ const indicators: Indicator[] = [
         // mixed final twos 68 to 91. The last fight is not where this is
         // decided and no amount of tuning the last fight will move it. What
         // gets them there is a pass of its own.
-        label: 'Career victors',
-        value: careerVictors / Math.max(1, crowned),
-        sample: () => ({ successes: careerVictors, n: crowned }),
+        /*
+         * AUDIT-14 A28: per head, at 12 districts. The share of crowns was a
+         * function of how many Careers a config puts in the field; the win
+         * rate per Career entrant over the win rate per everybody else is not.
+         * The audit measured 1.03x at 12 districts. The old share row is still
+         * printed in the summary below.
+         */
+        label: 'Career win/head ratio (12 districts)',
+        value: perHeadRatio('big'),
         /*
          * §8.1: ratcheted. Measured 52.1% at n=1,600, 47.0% at n=400.
          *
@@ -1408,12 +1447,24 @@ const indicators: Indicator[] = [
          * spread measured below as headroom above a bad day, plus the same
          * again, and fails a return to the pre-pass numbers.
          */
-        guard: v => v <= 0.55,
-        guardText: '<= 55%',
-        goal: '<= 45%',
-        goalMet: v => v <= 0.45,
-        baseline: '76.3% measured (audit reported 40.1%, did not reproduce); 52.7% on main at n=1600 before the death-mix settings, 57.5% after',
-        fmt: asPct,
+        guard: v => v <= 1.6,
+        guardText: '<= 1.6x',
+        goal: '<= 1.25x',
+        goalMet: v => v <= 1.25,
+        baseline: '1.03x (AUDIT-14 E9, n=800 12-district runs); the share row it replaces read 48.2% of victors across the config mix',
+        fmt: v => `${v.toFixed(2)}x`,
+    },
+    {
+        // AUDIT-14 A28: and in the small fields, where the horn was theirs by
+        // head count (3.95x at 6 districts before the small-field horn fix).
+        label: 'Career win/head ratio (6-8 districts)',
+        value: perHeadRatio('small'),
+        guard: v => v <= 3.5,
+        guardText: '<= 3.5x',
+        goal: '<= 2x',
+        goalMet: v => v <= 2,
+        baseline: '3.95x at 6 districts, 1.85x across the mix (AUDIT-14 E10/E7)',
+        fmt: v => `${v.toFixed(2)}x`,
     },
 ];
 
@@ -1474,6 +1525,7 @@ console.log('\nvictors by district:');
         console.log(`  D${String(d).padStart(2)}  ${pct(n, victors).padStart(6)}  (${String(n).padStart(3)})  ${bar}`);
     });
     console.log(`  Careers            ${pct(careerVictors, crowned)}`);
+    console.log(`  Career per head    ${perHeadRatio('big').toFixed(2)}x at 12 districts, ${perHeadRatio('small').toFixed(2)}x at 6-8`);
     console.log(`  top three combined ${pct(topThreeDistrictShare * victors, victors)}`);
     console.log(`  wipeouts (no victor at all) ${pct(wipeouts, runs)}`);
 }
@@ -1963,7 +2015,9 @@ if (underSampled.length) {
     }
     // The tail is the actionable part: a trait far off the mean on a small
     // sample is noise, but a *cluster* at the bottom is a family that is weak.
-    const tail = reapingTraitRates.slice(-6).map(([k, v, n]) => `${k} ${(v * 100).toFixed(2)}% (n=${n})`);
+    // AUDIT-14 A36: the per-trait table is flat at n~500 (14 of 198 rows
+    // outside the interval, ~10 by chance), so a thin row says so.
+    const tail = reapingTraitRates.slice(-6).map(([k, v, n]) => `${k} ${(v * 100).toFixed(2)}% (n=${n}${n < TRAIT_READ_MIN ? ', oversample before reading' : ''})`);
     console.log(`  bottom six: ${tail.join(', ')}`);
 }
 // AUDIT-7 §8.2: counted alongside the indicator guards rather than beside them.

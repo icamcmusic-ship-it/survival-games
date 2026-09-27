@@ -1,3 +1,4 @@
+import { buryOverflow } from './audit14Content';
 import { craftOf } from '../data/districts';
 import { ITEM_AFFINITY } from '../data/balance';
 import { GameState, Item, ItemQuality, Tribute } from '../models/types';
@@ -350,7 +351,8 @@ export function enforceCapacity(t: Tribute): Item[] {
         if (keeper) salvageInto(keeper, leaving);
         dropped.push(leaving);
     }
-    return dropped;
+    // AUDIT-14 K8: somebody who knows how buries it instead.
+    return buryOverflow(t, dropped);
 }
 
 /**

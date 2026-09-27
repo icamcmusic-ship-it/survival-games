@@ -9104,6 +9104,12 @@ export const ARCHETYPE_HOOKS = {
  * tuning "the tide" means editing one block.
  */
 export const ARENA_SIGNATURES = {
+    /**
+     * AUDIT-14: the Menagerie's release pressure. It was 0.1 a cycle per open
+     * enclosure capped at 0.6, which put the arena's mutts ahead of the
+     * tributes themselves (tribute-kill share 49.8% against a 50% floor).
+     */
+    menagerie: { perOpen: 0.07, cap: 0.4 },
     /** Audit 5 §5.7: the Tidewrack Flats' turn of the tide. */
     tideTurn: { escapeBase: 0.4, escapePerAgility: 0.05, escapeFatigue: 8, damage: 16, caughtFatigue: 14 },
     /** Audit 5 §5.7: the Thresher Floor's line starting under somebody. */
@@ -9125,7 +9131,7 @@ export const ARENA_SIGNATURES = {
     /** The Open Cut: the ground gives. */
     groundGive: { firstCycle: 5, everyNth: 5, maxFalls: 2, holdBase: 0.35, holdPerAgility: 0.05, damage: 22, muttChance: 0.3 },
     /** The Gallery: the house picks one room and plays it to everybody. */
-    openMic: { pickChance: 0.6, sanity: 5, rigChance: 0.35, dodgeBase: 0.4, dodgePerAgility: 0.05, rigDamage: 18, rigBleedChance: 0.5 },
+    openMic: { pickChance: 0.6, sanity: 5, rigChance: 0.5, dodgeBase: 0.4, dodgePerAgility: 0.05, rigDamage: 18, rigBleedChance: 0.5 },
     /** The Malt House: vapour builds in the enclosed rooms, then goes. */
     vapour: { risePerDay: 0.2, risePerNight: 0.35, fumeFatigue: 6, fumeSanity: 3, igniteChance: 0.7 },
     /** Circuit Row: the pace car laps the oval, one sector per cycle. */
@@ -9133,7 +9139,7 @@ export const ARENA_SIGNATURES = {
     /** The Ward Block: the cell doors seal on a timer. */
     lockdown: { firstCycle: 3, everyNth: 4, lockCycles: 2, busiestChance: 0.65, doorChance: 0.2, doorDamage: 16, trappedSanity: 6, trappedFatigue: 5, muttChance: 0.3 },
     /** The Glasshouse: one wing at a time, the glass gives. */
-    glassGives: { firstCycle: 3, everyNth: 3, dodgeBase: 0.3, dodgePerAgility: 0.05, damage: 18, coverKept: 0.6, rooflessShelter: 0.05, acousticsGain: 0.3, exposureFatigue: 6, exposureThirst: 4, safeRelief: 5 },
+    glassGives: { firstCycle: 3, everyNth: 3, dodgeBase: 0.3, dodgePerAgility: 0.05, damage: 18, coverKept: 0.6, rooflessShelter: 0.05, acousticsGain: 0.3, exposureFatigue: 6, exposureThirst: 4, safeRelief: 5, rooflessColdChance: 0.35, rooflessColdDamage: 7 },
 
     /** The Clockwork Island: the hour turns and one sector pays for it. */
     clock: {
@@ -9198,6 +9204,13 @@ export const ARENA_SIGNATURES = {
         thirst: 10,
         glareChance: 0.2,
         glareSanity: 6,
+        /**
+         * AUDIT-14: the flats kill with the sun as well as with the sightlines.
+         * The mirror only fed the hunters, so the arena's tribute-kill share
+         * sat at the 72% ceiling.
+         */
+        sunstrokeChance: 0.12,
+        sunstrokeDamage: 9,
     },
     /** The Spore Fields: the bloom, and the gamble it is. */
     bloom: {
@@ -11195,7 +11208,8 @@ export const AUDIT13_CONTENT = {
     weathercraftFloor: 0.6,
     /** N21 teaching: student gain added per level; share of a lesson a watching teacher takes. */
     teachingPerLevel: 0.25,
-    teachingWatchShare: 0.5,
+    // AUDIT-14 A38: only a tribute who actually taught learns teaching.
+    teachingWatchShare: 0,
     /** N22 resting: sanity and night fatigue per level. */
     restingSanityPerLevel: 0.5,
     restingFatiguePerLevel: 0.5,
@@ -11227,7 +11241,8 @@ export const AUDIT13_CONTENT = {
     /** N28 Lamplighter: earliest day, the hazard damage that lands on a marked route, and how long it lasts. */
     beaconMinDay: 2,
     beaconHazardScale: 0.7,
-    beaconCycles: 2,
+    // AUDIT-14: the Lamplighter was the best non-Career row (7.08% HI).
+    beaconCycles: 1,
 
     // ---- quirks ----------------------------------------------------------
     /** N29: navigation training multiplier for the step-counter. */
@@ -11287,6 +11302,38 @@ export const AUDIT14_RELATIONS = {
      * scaled by (100 - regard) / (100 - regardSoftCap).
      */
     regardSoftCap: 85,
+
+    // ---- §3 T8: the betrayal intent's target can see it coming.
+    /** Base chance the target notices the tell. */
+    noticeBase: 0.15,
+    /** Per point of intelligence, and per level of vigilance. */
+    noticePerIntelligence: 0.02,
+    noticePerVigilance: 0.06,
+    /** Intelligence at which an ally in the zone also looks, and tells them. */
+    noticeAllyIntelligence: 7,
+    /** Chance a watchful target strikes first when the knife is due. */
+    watchfulPreempt: 0.35,
+    /** Chance a watchful target simply is not there to be struck (sleeps apart). */
+    watchfulSidestep: 0.35,
+    /** Regard lost between the two when a watchful target sidesteps it. */
+    sidestepRegard: 15,
+    /** The fuse: 1-3 cycles, shorter for the more ambitious. */
+    fuseMax: 3,
+    /** Ambition above which the fuse shortens by one, and above which by two. */
+    fuseAmbitionShort: 0.25,
+    fuseAmbitionShorter: 0.45,
+
+    // ---- §3 T12: the ward goes to the elder who cares most.
+    /** Weight of the elder's `protect` objective bias against their regard (0-100). */
+    wardProtectWeight: 50,
+    /** Risk-tolerance lift for an elder whose ward is down beside them. */
+    wardDownedRisk: 0.2,
+
+    // ---- §3 T14: the partner search, while it is worth doing.
+    /** Days the search stays open. */
+    partnerSearchDays: 4,
+    /** Regard each gains on finding the other. */
+    partnerMeetRegard: 10,
 } as const;
 
 /**
@@ -11410,4 +11457,156 @@ export const AUDIT14_ENGINE = {
     // ---- T2: a hunt that cannot become Hunting becomes a stalk.
     /** Chance per cycle a hunt the tribute cannot run is downgraded. */
     huntDowngradeChance: 0.65,
+} as const;
+
+/**
+ * AUDIT-14 §7: the knobs behind the new traits, skills, archetypes, quirks,
+ * stances and personas, and the §7 balance proposals that are numbers. Every
+ * one is read in `engine/audit14Content.ts` or at the site that file's
+ * comment for it names.
+ */
+export const AUDIT14_CONTENT = {
+    // ---- A28: the small-field horn.
+    /** Career share of the field above which the horn is read as theirs. */
+    smallFieldCareerShare: 0.25,
+    /** Fight-chance cut for a non-Career per unit of Career share over the line (scaled by share/line - 1). */
+    smallFieldScatter: 0.35,
+    /** Cap on that cut. */
+    smallFieldScatterCap: 0.3,
+
+    // ---- A35: the Gambler's side bet on somebody else's fight.
+    /** Chance a Gambler watching a fight puts money on it. */
+    sideBetChance: 0.6,
+    /** Excitement for calling it right. */
+    sideBetExcitement: 6,
+
+    // ---- A34: the Hermit's isolate objective.
+    /** Objective tier (as the other rungs in `OBJECTIVES`). */
+    isolateTier: 5,
+    isolateCycles: 4,
+    /** Company in the current zone at which a Hermit goes looking for emptier ground. */
+    isolateCrowd: 1,
+    /** Hops out a Hermit will look for it. */
+    isolateHops: 2,
+
+    // ---- A37: Drowned Once pays for keeping off the water.
+    drownedDryThirst: 0.3,
+
+    // ---- A40: Regrouping only balks at an *armed* hostile.
+    // (no number; the rule is in `stance.ts`)
+
+    // ---- Pilgrim: the landmark is within reach of the plate.
+    pilgrimLandmarkHops: 2,
+
+    // ---- T1-T16 traits.
+    soreLoserEdge: 0.8,
+    quickStudyScale: 1.25,
+    quickStudyTrainingScore: 1,
+    feverProofInfectionScale: 0.6,
+    rearguardCover: 0.4,
+    rearguardAmbushed: 0.05,
+    lateBloomerEarlyDay: 4,
+    lateBloomerEarlyPower: 0.5,
+    lateBloomerLateDay: 7,
+    lateBloomerLatePower: 0.6,
+    softStepNoiseScale: 0.8,
+    ironLungsScale: 0.7,
+    sharpElbowsHornPower: 0.3,
+    sharpElbowsDayOneDraw: 0.5,
+    shortFusePower: 0.4,
+
+    // ---- K1-K8 skills.
+    poisoncraftPerLevel: 0.05,
+    feintingPowerPerLevel: 0.25,
+    disarmPerLevel: 0.03,
+    /** Share of a lesson an unarmed tribute takes from landing a blow on an armed one. */
+    disarmUnarmedShare: 0.3,
+    shelterwrightPerLevel: 0.04,
+    shelterwrightSkillPerLevel: 0.05,
+    triagePerLevel: 0.08,
+    bracingPerLevel: 0.05,
+    bracingFloor: 0.6,
+    scentcraftPerLevel: 0.05,
+    /** Items a caching tribute can keep buried, and the level it takes to bury rather than drop. */
+    cacheMax: 3,
+    cacheLevel: 1,
+
+    // ---- R1-R6 archetype signatures.
+    liftWakeBase: 0.2,
+    liftWakePerVigilance: 0.08,
+    lastRitesSanity: 10,
+    lastRitesSponsor: 4,
+    lastRitesRead: 30,
+    snareDamage: 18,
+    juryRigDurability: 0.5,
+    smuggleHops: 2,
+    smuggleCut: 5,
+    smuggleCycles: 3,
+    smuggleDraw: 1,
+
+    // ---- Q1-Q8 quirks.
+    bootBladeChance: 0.1,
+    marksBodiesRead: 10,
+
+    // ---- S1-S3 stances.
+    rallyingBase: 8.5,
+    rallyingPerSeparated: 0.6,
+    rallyingPull: 4,
+    rallyingPowerPerAlly: 0.2,
+    rallyingDraw: 1,
+    trailingBase: 8.5,
+    trailingPull: 6,
+    trailingExecute: 0.2,
+    trailingAmbushed: 0.05,
+    /** Health below which a fled opponent is worth following. */
+    trailingQuarryHealth: 60,
+    retreatingBase: 8.5,
+    retreatingHealth: 50,
+    retreatingRetreat: 0.1,
+    retreatingPull: 3,
+
+    // ---- P1-P4 personas.
+    outsiderSponsor: 0.5,
+    outsiderAlliance: 0.1,
+    showboatExcitement: 0.3,
+    showboatFirstKillScale: 2,
+    scrapperRetreat: 0.03,
+    oracleCredibility: 0.2,
+    oracleRumours: 2,
+    /** Interview-angle weights for P1-P4 (read in `phases/interviews.ts`). */
+    angleOutsiderOuter: 0.6,
+    angleOutsiderLowScore: 0.4,
+    angleShowboatPerCharisma: 0.08,
+    angleShowboatTrait: 0.8,
+    angleScrapperPerBody: 0.05,
+    angleScrapperDistrict: 0.6,
+    angleOraclePerIntelligence: 0.08,
+    angleOracleArchetype: 0.8,
+
+    // ---- odds and ends the hooks above read.
+    /** Q8: thirst at which the kept sip is drunk, and what it gives back. */
+    keptSipThirst: 85,
+    keptSipRelief: 30,
+    /** K8: share of a lesson in caching from every overflow. */
+    cacheTrainShare: 0.2,
+    /** A34: a hop is worth this much remembered company when picking empty ground. */
+    isolatePerHop: 0.5,
+    /** §3 T12: a ward's pull back toward the elder. */
+    wardPull: 2,
+    /** R3: how well a Poacher's snare is hidden, and the tracking that reads one. */
+    snareConcealment: 0.6,
+    snareTrackerLevel: 3,
+    /** R5: regard the client gains for the delivery. */
+    smuggleRegard: 6,
+    /** R6: sponsor trust for the footage. */
+    wardenSponsor: 5,
+    /** A38: shares of a lesson, so no non-core skill reaches most of the field. */
+    feintingTrainShare: 0.3,
+    bracingTrainShare: 0.3,
+    weathercraftLessonShare: 0.2,
+    /** S2/S3: cycles the fight that opened them stays fresh (entry latency needs two). */
+    trailingWindow: 3,
+    /** S2: chance the winner of a fight goes after a bleeding opponent who ran. */
+    trailingForceChance: 0.5,
+    retreatingWindow: 3,
 } as const;

@@ -64,6 +64,11 @@ export const PERSONA_THREAT: Record<InterviewPersona, number> = {
     'The Reluctant Hero': -0.1,
     'The District Loyalist': -0.05,
     'The Wildcard': 0.05,
+    // AUDIT-14 §7 P1-P4.
+    'The Outsider': -0.1,
+    'The Showboat': 0.2,
+    'The Scrapper': 0.1,
+    'The Oracle': 0.05,
 };
 
 /**
@@ -92,6 +97,11 @@ export const PERSONA_FAMILY: Record<InterviewPersona, PersonaFamily> = {
     'The Survivor': 'loyalist',
     'The Reluctant Hero': 'loyalist',
     'The District Loyalist': 'loyalist',
+    // AUDIT-14 §7 P1-P4.
+    'The Outsider': 'underdog',
+    'The Showboat': 'firebrand',
+    'The Scrapper': 'loyalist',
+    'The Oracle': 'enigma',
 };
 
 export const PERSONA_FAMILY_LABEL: Record<PersonaFamily, string> = {

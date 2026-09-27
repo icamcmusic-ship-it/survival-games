@@ -1431,6 +1431,12 @@ export const TRAITS = ROLLABLE_TRAITS;
  * and a sanity penalty for the same kill.
  */
 export const INCOMPATIBLE_TRAITS: Array<[string, string]> = [
+    // AUDIT-14 §7: the new sixteen against their opposites.
+    ['Horn-Shy', 'Sharp Elbows'],
+    ['Blood-Shy', 'Bloodthirsty'],
+    ['Soft Step', 'Loud Heart'],
+    ['Fever-Proof', 'Slow Healer'],
+    ['Cold Feet', 'Oathkeeper'],
     // AUDIT-11 §16: the new sixteen against their obvious opposites.
     ['Heavy Sleeper', 'Light Sleeper'],
     ['Heavy Sleeper', 'Insomniac'],

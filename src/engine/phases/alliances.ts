@@ -1,3 +1,4 @@
+import { outsiderPull } from '../audit14Content';
 import { dreadOf } from '../intent';
 import { kinBound } from '../audit13Content';
 import { oathRefusesBetrayal } from '../traitHooks';
@@ -621,7 +622,8 @@ export function processAlliances(ctx: SimContext) {
                     const asked = suitor ? (suitor === t1 ? t2 : t1) : undefined;
                     const baseChance = Math.max(
                         ALLIANCES.minFormChance,
-                        (ALLIANCES.baseFormChance + affinity + compat + persona + history) / trustCost
+                        // AUDIT-14 P1: an Outsider and somebody else outside.
+                        (ALLIANCES.baseFormChance + affinity + compat + persona + history + outsiderPull(t1, t2)) / trustCost
                             * (1 + dread * ALLIANCES.dreadFormationWeight)
                             // §9 (requests): a Career does not pair off with an
                             // outer-district tribute unless that tribute is

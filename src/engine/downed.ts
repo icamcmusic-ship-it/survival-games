@@ -1,3 +1,4 @@
+import { audit14ExecuteDrive, noteTriage, triageBonus } from './audit14Content';
 import { Item, Tribute, attr } from '../models/types';
 import { thawRivals } from './allianceBonds';
 import { SimContext } from './context';
@@ -56,7 +57,9 @@ function rescueChance(rescuer: Tribute, hasKit: boolean): number {
     return DOWNED.rescueBase
         + (rescuer.proficiencies?.medicine ?? 0) * DOWNED.rescuePerMedicine
         + attr(rescuer, 'intelligence') * DOWNED.rescuePerIntelligence
-        + (hasKit ? DOWNED.rescueItemBonus : 0);
+        + (hasKit ? DOWNED.rescueItemBonus : 0)
+        // AUDIT-14 K5: triage.
+        + triageBonus(rescuer);
 }
 
 /**
@@ -316,6 +319,8 @@ export function tickDowned(ctx: SimContext) {
                 (rescueChance(o, !!medicalItem(o)) > rescueChance(best, !!medicalItem(best)) ? o : best));
             // The kit is spent on the attempt, not on the outcome.
             noteAttempt(ctx.state, 'treat-downed');
+            // AUDIT-14 K5: treating a downed ally is how triage is learned.
+            noteTriage(ctx, rescuer);
             const kit = consumeOne(rescuer, i => i.type === 'medical');
             if (ctx.rng.chance(rescueChance(rescuer, !!kit))) {
                 const cause = t.downed!.cause;
@@ -372,6 +377,8 @@ export function tickDowned(ctx: SimContext) {
                     + ARCHETYPES[decider.archetype].aggression * DOWNED.executePerAggression
                     - traitMod(decider, 'killSanity') * DOWNED.executePerAggression;
                 chance += traitMod(decider, 'executeDrive');
+                // AUDIT-14 S2: somebody on a blood trail came here to finish it.
+                chance += audit14ExecuteDrive(decider);
                 /*
                  * AUDIT-6 §8.1: the Confessor's win condition, which the
                  * archetype advertised and the engine never implemented.

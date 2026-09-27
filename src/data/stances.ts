@@ -148,6 +148,28 @@ export const STANCE_PROFILES: Record<Stance, StanceProfile> = {
         conditional: true, minHold: 2,
         blurb: 'Under cover with the weather coming. Half as exposed to cold and heat, found only by somebody who can read ground, and it costs food and rest to hold.',
     },
+    /*
+     * AUDIT-14 §7 S1-S3. Rallying takes share from Evasive (a leader whose
+     * group is scattered stands and calls rather than running); Blood-Trailing
+     * (the audit's "Pursuing", renamed because the word is prose elsewhere)
+     * from Aggressive and Hunting; Retreating from Desperate, the stance with
+     * the worst outcomes. Retreating and Blood-Trailing are each other's counter.
+     */
+    Rallying: {
+        id: 'Rallying', label: 'Rallying', family: 'defensive',
+        conditional: true, minHold: 2,
+        blurb: 'Leading a group that has come apart. Stands where they are and calls them in — steadier for every one who arrives, and easy to find for anybody else listening.',
+    },
+    BloodTrailing: {
+        id: 'BloodTrailing', label: 'Blood-Trailing', family: 'aggressive',
+        conditional: true, minHold: 2,
+        blurb: 'Somebody broke off a fight with them bleeding. They follow the blood a zone at a time, keen to finish it — and walk into whatever is waiting at the end of it.',
+    },
+    Retreating: {
+        id: 'Retreating', label: 'Retreating', family: 'evasive',
+        conditional: true, minHold: 2,
+        blurb: 'Lost the last fight and got out of it. Keeps moving away, breaks off sooner if caught, and does not stop to forage.',
+    },
 };
 
 /** Every stance, in display order. The single source of truth for iteration. */

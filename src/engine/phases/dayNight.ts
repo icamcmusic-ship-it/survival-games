@@ -1,3 +1,4 @@
+import { holdsGround, mustMove } from '../audit14Content';
 import { craftKit, followPlan, tickArenaDepth } from '../arenaDepth';
 import { badKneeClimb } from '../audit13Content';
 import { arenaHazardForBorder, borderCapReached } from '../arenaWave2';
@@ -1630,6 +1631,8 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
     if (crossed.has(t.id)) return;
     // AUDIT-13 N36: Mourning does not leave the body for the cycle it lasts.
     if (t.stance === 'Mourning' && !t.transit && !collapsed.includes(t.zone)) return;
+    // AUDIT-14 S1: a rally is called from where the group can find it.
+    if (holdsGround(t) && !t.transit && !collapsed.includes(t.zone)) return;
 
     // §5.3: a traversal already underway finishes before anything else. A
     // crossing abandoned because the destination collapsed is just a wasted
@@ -1825,7 +1828,8 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
         return;
     }
 
-    if (!ctx.rng.chance(wanderChanceFor(ctx, t))) return;
+    // AUDIT-14 S2/S3: a blood trail and a withdrawal are walked, not wandered.
+    if (!mustMove(t) && !ctx.rng.chance(wanderChanceFor(ctx, t))) return;
     const newZone = pickDestination(ctx, t, options).name;
     if (t.zone === newZone) return;
     if (beginMove(ctx, t, newZone) !== 'arrived') return;

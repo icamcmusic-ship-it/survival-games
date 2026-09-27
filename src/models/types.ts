@@ -26,7 +26,12 @@ export type InterviewPersona =
     | 'The Professional'
     | 'The Homesick'
     | 'The Volunteer'
-    | 'The Provocateur';
+    | 'The Provocateur'
+    // AUDIT-14 §7 P1-P4.
+    | 'The Outsider'
+    | 'The Showboat'
+    | 'The Scrapper'
+    | 'The Oracle';
 /**
  * A tribute's standing posture.
  *
@@ -74,7 +79,13 @@ export type Stance =
     // AUDIT-13 N35-N37: finding the pack again, standing over the dead, and getting out of the weather.
     | 'Regrouping'
     | 'Mourning'
-    | 'Sheltering';
+    | 'Sheltering'
+    // AUDIT-14 §7 S1-S3: calling the group in, following a blood trail
+    // (S2 "Pursuing", renamed: the word is prose elsewhere), and a fighting
+    // withdrawal.
+    | 'Rallying'
+    | 'BloodTrailing'
+    | 'Retreating';
 
 export type ArchetypeId =
     | 'career' | 'strategist' | 'survivalist' | 'protector' | 'trickster' | 'wildcard' | 'underdog'
@@ -133,7 +144,9 @@ export type ArchetypeId =
     // AUDIT-12 §16: five more, each with a signature of its own.
     | 'scout-runner' | 'turncoat' | 'guardian' | 'forger' | 'gambler'
     // AUDIT-13 §16 N23-N28.
-    | 'firekeeper' | 'kingmaker' | 'ratcatcher' | 'pilgrim' | 'mourner' | 'lamplighter';
+    | 'firekeeper' | 'kingmaker' | 'ratcatcher' | 'pilgrim' | 'mourner' | 'lamplighter'
+    // AUDIT-14 §7 R1-R6 (R6 "Sentinel" renamed: the word is a name in names.ts).
+    | 'cutpurse' | 'undertaker' | 'poacher' | 'tinker' | 'smuggler' | 'nightwarden';
 
 export interface Attributes {
     strength: number;
@@ -340,7 +353,9 @@ export type Proficiency = 'forage' | 'melee' | 'ranged' | 'medicine' | 'tracking
      * deal, reading the weather before it arrives, passing a skill on, and
      * actually resting when resting.
      */
-    | 'angling' | 'mimicry' | 'bartering' | 'weathercraft' | 'teaching' | 'resting';
+    | 'angling' | 'mimicry' | 'bartering' | 'weathercraft' | 'teaching' | 'resting'
+    /* AUDIT-14 §7 K1-K8: eight more, each gated to a situation. */
+    | 'poisoncraft' | 'feinting' | 'disarming' | 'shelterwright' | 'triage' | 'bracing' | 'scentcraft' | 'caching';
 
 /** Why a tribute is walking somewhere. Drives the chronicle copy as well as the route. */
 export type ObjectiveReason = 'water' | 'shelter' | 'feast' | 'ally' | 'forage'
@@ -408,7 +423,14 @@ export type Objective =
      * tribute whose memory of the field has gone completely cold, which was
      * previously indistinguishable from calm.
      */
-    | { kind: 'scout'; zone: string; expires: number };
+    | { kind: 'scout'; zone: string; expires: number }
+    /**
+     * AUDIT-14 A34 (AUDIT-13 A21): going to the emptiest ground they know of
+     * and staying there. The Hermit's premise — camps as deep as the map
+     * allows — which the cascade never expressed: hermits shared a zone with
+     * twelve others and were alone 6.6% of cycles.
+     */
+    | { kind: 'isolate'; zone: string; expires: number };
 
 /**
  * §3.4: the objective that came second, and by how much.
@@ -1309,12 +1331,16 @@ export interface Tribute {
      */
     relationsArc?: {
         /** R3: the ally this tribute has been seen counting the knives over. */
-        betrayalIntent?: { targetId: string; cycle: number };
+        betrayalIntent?: { targetId: string; cycle: number; fuse?: number };
+        /** AUDIT-14 T8: an ally they have seen counting their kit, and since when. */
+        watchful?: { fromId: string; cycle: number };
+        /** AUDIT-14 T14: the district partner they are looking for, while it lasts. */
+        partnerSearchFor?: string;
         /** R4: beats already given, so each lands once. */
         partnerSearched?: boolean;
         lastOfDistrict?: boolean;
         standoff?: boolean;
-        /** R5: slow-burn rapport with each ally, in shared cycles. */
+        /** R5: slow-burn rapport with each ally, in consecutive shared nights (AUDIT-14 E19). */
         rapport?: Record<string, number>;
         /** R6: vengeance targets already let go of. */
         cooled?: string[];
@@ -1639,6 +1665,30 @@ export interface Tribute {
     mourning?: { victimId: string; killerId?: string; cycle: number };
     /** N2 Loud Heart: an ally with one is in the zone this cycle, so fear sticks less. */
     heartened?: boolean;
+    /*
+     * AUDIT-14 §7: per-tribute state for the new content, all read in
+     * `engine/audit14Content.ts`. Optional; an older save reads as "never".
+     */
+    /** S2 Blood-Trailing: somebody who broke off a fight with them, wounded, and when. */
+    quarryFled?: { id: string; cycle: number };
+    /** S3 Retreating: the cycle they last lost a fight's exchanges. */
+    lostFightAt?: number;
+    /** K8 caching: what they buried, and where. */
+    cache?: { zone: string; items: Item[] };
+    /** P4 The Oracle: rumours told so far that carried the persona's weight. */
+    oracleTold?: number;
+    /** P2 The Showboat: the first kill has been paid for. */
+    showboatPaid?: boolean;
+    /** P3 The Scrapper: the first fight has been stood through. */
+    scrapperStood?: boolean;
+    /** Q6: the boot knife has been used. Q8: the kept sip has been drunk. */
+    bootBladeUsed?: boolean;
+    sipDrunk?: boolean;
+    /** R6 Nightwarden: the last cycle the watch turned an ambush aside, and how often it has. */
+    wardenHeldAt?: number;
+    wardenHeld?: number;
+    /** R5 Smuggler: loaded (and so a target) until this cycle. */
+    smugglingUntil?: number;
     /** A1: cycles the tribute has been dug in — read by the Fortified payoffs. */
     fortifiedCycles?: number;
     /**
@@ -4267,6 +4317,9 @@ export type EventType =
     | 'scout-warning' | 'turncoat-coup' | 'guardian-stand' | 'forged-weapon' | 'gambler-wager'
     // AUDIT-13 §16 N23-N28: the six new set pieces.
     | 'hearth-kept' | 'kingmaker-crown' | 'pest-sweep' | 'pilgrim-arrival' | 'mourner-vigil' | 'beacon-lit'
+    // AUDIT-14 §7 R1-R6 set pieces, A35 the side bet, and the §3 T8 notice.
+    | 'cutpurse-lift' | 'last-rites' | 'snare-hunt' | 'jury-rig' | 'run-goods' | 'hold-the-line'
+    | 'gambler-side-bet' | 'betrayal-noticed'
     | 'sepsis-deepened'
     | 'sepsis-treated'
     | 'shelter-built'

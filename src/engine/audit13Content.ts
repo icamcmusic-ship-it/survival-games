@@ -1,3 +1,5 @@
+import { AUDIT14_CONTENT as C14 } from '../data/balance';
+import { nearLandmarks, shelterwrightScale, shelterwrightSkill } from './audit14Content';
 import { Proficiency, Tribute, Zone } from '../models/types';
 import { SimContext, getAlive } from './context';
 import { AUDIT13_CONTENT as C, AUDIT14_ENGINE as E14 } from '../data/balance';
@@ -100,7 +102,9 @@ function pickLandmark(ctx: SimContext, t: Tribute) {
     // AUDIT-14 E18: with every sector by the horn closed, any open ground will do.
     const fallback = zones.length > 0 ? zones
         : ctx.state.arena.zones.map(z => z.name).filter(z => !collapsed.includes(z) && z !== t.zone);
-    const pick = ctx.rng.pickOrUndefined(fallback);
+    // AUDIT-14: a vow about a place within reach — the old pick pulled the
+    // Pilgrim across the whole map through every hunter on it.
+    const pick = ctx.rng.pickOrUndefined(nearLandmarks(ctx.state, t, fallback));
     if (pick) t.pilgrimZone = pick;
 }
 
@@ -230,7 +234,9 @@ export function audit13DestinationScore(state: SimContext['state'], t: Tribute, 
 
 /** How well this tribute can put a roof over themselves: the trait and the skill. */
 function shelterSkill(t: Tribute): number {
-    return traitMod(t, 'campSkill') + profOf(t, 'carpentry') * C.shelteringPerCarpentry;
+    return traitMod(t, 'campSkill') + profOf(t, 'carpentry') * C.shelteringPerCarpentry
+        // AUDIT-14 K4: shelterwright.
+        + shelterwrightSkill(t);
 }
 
 /**
@@ -275,9 +281,19 @@ export function shelterScore(ctx: SimContext, t: Tribute): number {
 export function exposureScale(ctx: SimContext, t: Tribute): number {
     let scale = t.stance === 'Sheltering' ? C.shelteringExposureScale : 1;
     scale *= Math.max(C.weathercraftFloor, 1 - profOf(t, 'weathercraft') * C.weathercraftPerLevel);
-    if (t.stance !== 'Sheltering') trainProficiency(t, 'weathercraft', ctx);
+    // AUDIT-14 K4: shelterwright.
+    scale *= shelterwrightScale(t);
     if (warmedByHearth(ctx, t)) scale *= 1 - C.hearthColdResist;
     return scale;
+}
+
+/**
+ * AUDIT-14 A38: weathercraft is learned from weather that actually landed a
+ * blow — a damage roll or frostbite in `applyExposure` — not from every tick
+ * spent outdoors, which taught it to 59% of the field.
+ */
+export function noteWeatherLesson(ctx: SimContext, t: Tribute) {
+    if (t.stance !== 'Sheltering') trainProficiency(t, 'weathercraft', ctx, C14.weathercraftLessonShare);
 }
 
 function warmedByHearth(ctx: SimContext, t: Tribute): boolean {

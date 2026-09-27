@@ -1,3 +1,5 @@
+import { isolationZone } from './audit14Content';
+import { AUDIT14_CONTENT as C14 } from '../data/balance';
 import { targetDrawOf } from './targeting';
 import { hiddenFromHunt } from './traitHooks';
 import { GameState, Objective, Tribute, Zone } from '../models/types';
@@ -128,6 +130,13 @@ function announce(ctx: SimContext, t: Tribute, objective: Objective) {
                 { type: 'objective-formed', category: 'survival' }
             );
             return;
+        case 'isolate':
+            ctx.logEvent(
+                `${t.name} has had enough of company in ${t.zone}, and goes looking for somewhere nobody else is: ${objective.zone}.`,
+                [t.id],
+                { type: 'objective-formed', category: 'travel' }
+            );
+            return;
         case 'scout':
             ctx.logEvent(
                 `${t.name} realises they have not seen another living soul in days, and sets off for the high ground at ${objective.zone}.`,
@@ -210,6 +219,7 @@ export function isObjectiveValid(ctx: SimContext, t: Tribute): boolean {
                     c.zone === objective.zone && c.ownerId === objective.ownerId && c.foundBy === undefined);
         case 'mourn':
         case 'scout':
+        case 'isolate':
             return t.zone !== objective.zone && !collapsed.includes(objective.zone);
         // §16: courting ends when you are standing in front of them — the
         // asking itself is the alliance layer's business, not this one's.
@@ -257,7 +267,8 @@ function isObjectiveReachable(ctx: SimContext, t: Tribute, goal: Objective): boo
         case 'recover': return !collapsed.includes(goal.zone);
         case 'scavenge':
         case 'mourn':
-        case 'scout': return !collapsed.includes(goal.zone) && t.zone !== goal.zone;
+        case 'scout':
+        case 'isolate': return !collapsed.includes(goal.zone) && t.zone !== goal.zone;
         case 'court': return !!living(goal.targetId);
         default: return false;
     }
@@ -873,6 +884,16 @@ function chooseObjective(
         }
     }
 
+    // AUDIT-14 A34: the Hermit's rung. Company here, and emptier ground
+    // they know of within a couple of hops: they go to it.
+    if (objectiveBiasFor(t, 'isolate') > 0) {
+        const lonely = isolationZone(ctx, t);
+        if (lonely) {
+            const o = offer(C14.isolateTier, { kind: 'isolate', zone: lonely, expires: expiry(C14.isolateCycles) });
+            if (o) return o;
+        }
+    }
+
     // 7. Ground worth standing on: good forage, no bad memories, nobody else in it.
     const current = getZone(state.arena, t.zone);
     if (current && rememberedThreat(state, t, t.zone) < OBJECTIVES.holdMaxThreat
@@ -1155,6 +1176,7 @@ function hesitate(ctx: SimContext, t: Tribute, chosen: Objective, other: Objecti
             case 'mourn': return `going back for ${name(o.forId)}`;
             case 'recover': return 'letting the wound close';
             case 'scout': return `getting eyes on the arena from ${o.zone}`;
+            case 'isolate': return `getting away from everybody, to ${o.zone}`;
             case 'reach': return {
                 water: 'finding water', shelter: 'finding somewhere to sleep',
                 feast: 'the feast', ally: 'reaching their allies', forage: 'finding food',
@@ -1211,6 +1233,7 @@ export function objectiveZone(ctx: SimContext, t: Tribute): string | undefined {
         case 'scavenge':
         case 'mourn':
         case 'scout':
+        case 'isolate':
             return objective.zone;
         // §16: courting reads the same rule as protecting — you go to where
         // you last saw them, not to where they actually are.
@@ -1309,7 +1332,8 @@ function recordObjectiveOutcome(ctx: SimContext, t: Tribute, previous: Objective
         case 'scavenge': won = t.zone === previous.zone
             && (state.abandonedCamps ?? []).some(c => c.zone === previous.zone && c.foundBy === t.id); break;
         case 'mourn':
-        case 'scout': won = t.zone === previous.zone; break;
+        case 'scout':
+        case 'isolate': won = t.zone === previous.zone; break;
         // §16: the win is standing in front of them. Whether they said yes is
         // the alliance layer's question, and it is asked one rung later.
         case 'court': { const them = find(previous.targetId); won = !!them && them.zone === t.zone; break; }
@@ -1353,6 +1377,7 @@ export function objectiveLabel(state: { tributes: Tribute[] }, t: Tribute): stri
         case 'mourn': return `Going back to where ${name(objective.forId)} fell`;
         case 'recover': return `Resting up in ${objective.zone}`;
         case 'scout': return `Climbing ${objective.zone} for a look`;
+        case 'isolate': return `Going to ground alone in ${objective.zone}`;
         case 'reach': {
             const why = {
                 water: 'for water', shelter: 'for shelter', feast: 'for the feast',
