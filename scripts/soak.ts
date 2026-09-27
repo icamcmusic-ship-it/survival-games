@@ -1049,7 +1049,7 @@ for (let i = 0; i < 400; i++) {
       if (s && s.samples >= 6) {
         const rate = s.changes / (s.samples - 1);
         worstThrashRate = Math.max(worstThrashRate, rate);
-        if (rate > 0.6) note(`stance thrashing: ${t.name} changed stance on ${(rate * 100).toFixed(0)}% of cycles`);
+        if (rate > 0.6) note(`stance thrashing: ${t.name} changed stance on ${(rate * 100).toFixed(0)}% of cycles (${seed})`);
       }
       // --- Odds are live: a survivor's score should have moved off its opening line. ---
       const opening = startingOdds.get(t.id);

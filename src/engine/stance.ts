@@ -1052,6 +1052,12 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
         if (s === t.stance || s === 'Desperate') return true;
         if (!heldLastCycle) return false;
         if (chainBreak && STANCE_PROFILES[s]?.conditional) return false;
+        // AUDIT-14: grief is left for ordinary footing, not for a new project.
+        // A mourner who stood up straight into Fortified or Shadowing lost the
+        // new stance as soon as its precondition flickered and changed again —
+        // Mourning x3 -> Fortified -> Aggressive was three changes for what was
+        // one decision (getting up). Mourning exits to a lasting stance.
+        if (t.stance === 'Mourning' && STANCE_PROFILES[s]?.conditional) return false;
         return (t.stanceCooldown?.[s] ?? -Infinity) <= cycle;
     });
     t.stanceReady = ready;
