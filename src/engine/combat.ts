@@ -17,7 +17,7 @@ import { getZone, zoneFeatures } from './map';
 import { loadFromViolence } from './loadBearing';
 import { noteFightOpened } from './runRecords';
 import { readOf, addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound, rattle } from './memory';
-import { classifyCause, refineHazardCode } from './causes';
+import { classifyCause, plainZoneLabels, refineHazardCode } from './causes';
 import { incurDebt } from './debts';
 import { adjustRel, adjustTrust, getRel, propagateDeathFallout } from './relationships';
 import { noteMilestone } from './milestones';
@@ -325,6 +325,8 @@ export function applyDamage(
     // tribute killed earlier in the same pass silently overwrites the damage
     // record their obituary was built from.
     if (t.status !== 'alive') return false;
+    // AUDIT-14 W3: the wound record names the zone the way the obituary will.
+    if (record.cause?.includes('(') && record.kind !== 'tribute') record = { ...record, cause: plainZoneLabels(ctx.state, record.cause) };
 
     // §9.1: while they are in the rescue window they are out of the damage
     // system entirely. This reads like a bug until you follow the callers:
@@ -2229,7 +2231,7 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             });
         }
     } else if (posthumousKiller) {
-        victim.causeOfDeath = cause || victim.lastDamage?.cause || `Died of the wounds ${posthumousKiller.name} gave them`;
+        victim.causeOfDeath = plainZoneLabels(ctx.state, cause || victim.lastDamage?.cause || `Died of the wounds ${posthumousKiller.name} gave them`);
         if (!silent) {
             ctx.logEvent(
                 `${victim.name} dies of the wounds ${posthumousKiller.name} gave them. ${posthumousKiller.name} is not alive to know it.`,
@@ -2238,7 +2240,8 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             );
         }
     } else {
-        victim.causeOfDeath = cause || victim.lastDamage?.cause || 'Died to environment';
+        // AUDIT-14 W3: one choke point for the zone sub-label in an obituary.
+        victim.causeOfDeath = plainZoneLabels(ctx.state, cause || victim.lastDamage?.cause || 'Died to environment');
         const witness = ctx.state.tributes.find(o =>
             o.status === 'alive' && o.id !== victim.id && o.zone === victim.zone);
         const pool = pickEnvironmentalDeathPool(victim, witness);

@@ -3,6 +3,7 @@ import type { SanityBand } from '../engine/sanityBands';
 import { proceduralArenaFlavor } from './proceduralFlavor';
 import { EXTRA_ARENA_EVENTS, UNIVERSAL_EVENTS_GROUP6, UNIVERSAL_EVENTS_GROUP7 } from './arenaEvents';
 import { UNIVERSAL_EVENTS_AUDIT13 } from './arenaEvents/universal13';
+import { UNIVERSAL_EVENTS_AUDIT14 } from './arenaEvents/universal14';
 import { NEW_ARENA_FLAVOR } from './arenaFlavorNew';
 import { HIPPODROME_SET_FLAVOR } from './arenaFlavorSetHippodrome';
 
@@ -142,6 +143,8 @@ export interface ArenaEventDef {
         alone?: boolean;
         /** Days survived at or above this. */
         daysAbove?: number;
+        /** AUDIT-14 §6: only in one of these zones (plain names, sub-label ignored). Lets an arena death name its landmark. */
+        zone?: string[];
     };
     /**
      * §7: a mechanical consequence beyond the stat block above, dispatched by
@@ -14905,6 +14908,8 @@ UNIVERSAL_EVENTS.push(...UNIVERSAL_EVENTS_GROUP6);
 UNIVERSAL_EVENTS.push(...UNIVERSAL_EVENTS_GROUP7);
 // AUDIT-13 §9.1/§10.1: D1–D32 and V1–V32.
 UNIVERSAL_EVENTS.push(...UNIVERSAL_EVENTS_AUDIT13);
+// AUDIT-14 §6: D1–D30 and V1–V30, V15b.
+UNIVERSAL_EVENTS.push(...UNIVERSAL_EVENTS_AUDIT14);
 stampEventIds('universal', UNIVERSAL_EVENTS);
 
 export function arenaFlavor(arenaId: string, arena?: Arena): ArenaFlavor {

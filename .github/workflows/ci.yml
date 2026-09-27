@@ -99,6 +99,8 @@ jobs:
       # reaches its hook in a real run.
       - run: npm run test:audit13-content
       - run: npm run test:zone-strip
+      - run: npm run test:audit14-arenas
+      - run: npm run test:arena-deathmix
       # AUDIT-10 batch 2: the shared legal-action contract. "Validated twice"
       # is not something a reader can check by inspection.
       - run: npm run test:actions

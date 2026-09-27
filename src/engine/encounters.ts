@@ -439,6 +439,8 @@ function requirementsHold(ctx: SimContext, t: Tribute, event: ArenaEventDef): bo
         if (!f || !(f.elevation || f.chokepoint)) return false;
     }
     if (need.loadBearing && !isLoadBearing(ctx.state, t.zone)) return false;
+    // AUDIT-14 §6: a landmark death happens at the landmark.
+    if (need.zone && !need.zone.some(z => t.zone === z || t.zone.startsWith(`${z} (`))) return false;
     if (need.storm && !ctx.state.weatherFront) return false;
     if (need.stance && !need.stance.includes(t.stance)) return false;
     if (need.trait && !t.traits.includes(need.trait)) return false;

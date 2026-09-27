@@ -13,6 +13,7 @@ import { rosterFor, engageMutt } from './mutts';
 import { strengthCapForAge } from './physique';
 import { hasTool } from './items';
 import { isUnlitZone } from './map';
+import { plainZoneName } from './rescueLine';
 import { ARENA_SIGNATURES, BLEEDING, ESCALATION, MEMORY, PROC_SIGNATURE, SIGNATURE_RULES } from '../data/balance';
 import { loseSanity } from './sanityBands';
 import { allied } from './alliance';
@@ -143,7 +144,7 @@ function vaultSignature(ctx: SimContext, cycle: number, rng: RNG) {
     zones.forEach(z => startZoneEffect(ctx, z, 'fogbound', false));
     getAlive(ctx.state).forEach(t => {
         if (!rng.chance(ARENA_SIGNATURES.vault.stumbleChance)) return;
-        applyDamage(ctx, t, 6, { cause: 'Walked into something in the dark', kind: 'arena', code: 'hazard' });
+        applyDamage(ctx, t, 6, { cause: 'Walked into something in the dark', kind: 'arena', code: 'impact' });
         loseSanity(t, ARENA_SIGNATURES.vault.stumbleSanity);
         clampTribute(t);
         checkDeath(ctx, t, 'Walked into something in the dark');
@@ -977,11 +978,11 @@ function canopywebSignature(ctx: SimContext, cycle: number, rng: RNG) {
             ctx.logEvent(`${t.name} gets under cover before the worst of it reaches ${target}.`, [t.id], { zone: target, category: 'arena' });
             return;
         }
-        applyDamage(ctx, t, 16, { cause: `Shredded by falling needles in ${target}`, kind: 'arena', code: 'hazard' });
+        applyDamage(ctx, t, 16, { cause: `Shredded by falling needles in ${plainZoneName(target)}`, kind: 'arena', code: 'bleeding', signature: true });
         openWound(t, BLEEDING.hazardSeverity);
         addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
         clampTribute(t);
-        checkDeath(ctx, t, `Shredded by falling needles in ${target}`);
+        checkDeath(ctx, t, `Shredded by falling needles in ${plainZoneName(target)}`);
     });
     // The rope bridges take it worse than the tributes do.
     if (rng.chance(SIGNATURE_RULES.canopywebSeverChance)) severRandomEdge(ctx, target);
@@ -1002,12 +1003,12 @@ function acousticforestSignature(ctx: SimContext, cycle: number, rng: RNG) {
             ctx.logEvent(`${t.name} throws themself flat as ${target} implodes into splinters overhead.`, [t.id], { zone: target, category: 'arena' });
             return;
         }
-        applyDamage(ctx, t, 24, { cause: `Caught in the shattering trees of ${target}`, kind: 'arena', code: 'hazard' });
+        applyDamage(ctx, t, 24, { cause: `Caught in the shattering trees of ${plainZoneName(target)}`, kind: 'arena', code: 'sound', signature: true });
         openWound(t, BLEEDING.hazardSeverity);
         loseSanity(t, SIGNATURE_RULES.acousticforestSanityLoss);
         addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
         clampTribute(t);
-        checkDeath(ctx, t, `Caught in the shattering trees of ${target}`);
+        checkDeath(ctx, t, `Caught in the shattering trees of ${plainZoneName(target)}`);
     });
 }
 
@@ -1022,11 +1023,13 @@ function burnscarSignature(ctx: SimContext, cycle: number, rng: RNG) {
     const target = rng.pick(zones);
     ctx.logEvent(`THE MOUNTAIN CATCHES HEAT: the seed pods over ${target} go off at once, and the brush with them.`, [], { important: true, zone: target, category: 'arena' });
     tributesIn(ctx, target).forEach(t => {
-        applyDamage(ctx, t, 15, { cause: `Caught in the seed-shrapnel over ${target}`, kind: 'arena', code: 'hazard' });
+        // AUDIT-14 W3: the zone's plain name (no sub-label), a real code, and
+        // tagged as Burnscar's own death (W2).
+        applyDamage(ctx, t, 15, { cause: `Caught in the seed-shrapnel over ${plainZoneName(target)}`, kind: 'arena', code: 'impact', signature: true });
         if (!t.injuries.burned && rng.chance(SIGNATURE_RULES.burnscarBurnChance)) injure(t, 'burned');
         addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
         clampTribute(t);
-        checkDeath(ctx, t, `Caught in the seed-shrapnel over ${target}`);
+        checkDeath(ctx, t, `Caught in the seed-shrapnel over ${plainZoneName(target)}`);
     });
     startZoneEffect(ctx, target, 'burning', false);
     if (rng.chance(SIGNATURE_RULES.burnscarSeverChance)) severRandomEdge(ctx, target); // an instant thorn barrier
@@ -1831,9 +1834,9 @@ function applySignaturePayload(ctx: SimContext, zones: string[], payload: Signat
                         ? ctx.state.arena.effectVocab?.[payload.effect]?.label
                         : undefined;
                     const cause = named
-                        ? `Caught by the ${named} in ${zone}`
-                        : `Caught by the arena in ${zone}`;
-                    applyDamage(ctx, t, damage, { cause, kind: 'arena', code: 'hazard' });
+                        ? `Caught by the ${named} in ${plainZoneName(zone)}`
+                        : proceduralFallbackCause(payload.effect, plainZoneName(zone));
+                    applyDamage(ctx, t, damage, { cause, kind: 'arena', code: proceduralCode(payload.effect), signature: true });
                     addZoneThreat(ctx.state, t, zone, MEMORY.hazardThreat * 2);
                     clampTribute(t);
                     checkDeath(ctx, t, cause);
@@ -2062,7 +2065,7 @@ function karstSignature(ctx: SimContext, cycle: number, rng: RNG) {
         loseSanity(t, ARENA_SIGNATURES.undermere.darkSanity);
         t.vitals.fatigue += ARENA_SIGNATURES.undermere.darkFatigue;
         if (rng.chance(ARENA_SIGNATURES.undermere.blindStumbleChance)) {
-            applyDamage(ctx, t, ARENA_SIGNATURES.undermere.stumbleDamage, { cause: `Lost in the dark under ${t.zone}`, kind: 'arena', code: 'hazard' });
+            applyDamage(ctx, t, ARENA_SIGNATURES.undermere.stumbleDamage, { cause: `Lost in the dark under ${plainZoneName(t.zone)}`, kind: 'arena', code: 'fall' });
             machineryMayFinish(ctx, t, rng, `Went into the sump under ${t.zone}`,
                 `${t.name} puts a foot into nothing under ${t.zone}. The sound it makes arrives a very long time afterwards.`,
                 t.zone, 'drowning');
@@ -2429,4 +2432,28 @@ export function runArenaSignature(ctx: SimContext) {
     // AUDIT-12 §8: the thin arenas' mechanics, scarce water, telegraphs.
     if (getAlive(ctx.state).length > ESCALATION.finalistCount) runWave2Arena(ctx);
     stampSignature(ctx.state, before);
+}
+
+/**
+ * AUDIT-14 W4/W10: the procedural path's last generic obituary. Every effect
+ * kind gets its own wording and code, so no procedural death reads "Caught by
+ * the arena" and none lands on the `hazard` catch-all.
+ */
+const PROC_FALLBACK: Record<string, [string, DeathCauseCode]> = {
+    burning: ['Burned when the ground in {z} caught', 'burns'],
+    flooded: ['Drowned when {z} flooded', 'drowning'],
+    fogbound: ['Walked off an edge in the fog over {z}', 'fall'],
+    irradiated: ['Sickened by the ground in {z}', 'exposure'],
+    swarming: ['Stung down by the swarm in {z}', 'animal'],
+    stripped: ['Starved out of the bare ground in {z}', 'starvation'],
+    quaking: ['Crushed when {z} shook itself apart', 'crush'],
+    frozen: ['Froze in {z} when the cold came down', 'hypothermia'],
+    contaminated: ['Choked on the air in {z}', 'asphyxiation'],
+};
+function proceduralFallbackCause(effect: string | undefined, zone: string): string {
+    const hit = effect ? PROC_FALLBACK[effect] : undefined;
+    return (hit ? hit[0] : 'Brought down by the ground itself in {z}').replace('{z}', zone);
+}
+function proceduralCode(effect: string | undefined): DeathCauseCode {
+    return (effect ? PROC_FALLBACK[effect]?.[1] : undefined) ?? 'collapse';
 }

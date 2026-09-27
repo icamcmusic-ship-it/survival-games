@@ -79,6 +79,7 @@ import { QUALITY_BIAS } from '../../data/balance';
 import { isAggressiveStance, isEvasiveStance } from '../../data/stances';
 import { loseSanity } from '../sanityBands';
 import { withFallen } from '../arenaRules';
+import { plainZoneName } from '../rescueLine';
 
 /**
  * The day/night cycle: the orchestrator, not the implementation.
@@ -1407,10 +1408,10 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
         const zone = getZone(ctx.state.arena, trappedZone);
         const inAChokepoint = zone !== undefined && zoneFeatures(zone).chokepoint === true;
         const cause = hasForceField(ctx.state.arena, trappedZone)
-            ? `Driven into the force field as the border closed over ${trappedZone}`
+            ? `Driven into the force field as the border closed over ${plainZoneName(trappedZone)}`
             : inAChokepoint
-                ? `Crushed as ${trappedZone} closed`
-                : `Caught in the collapsing border of ${trappedZone}`;
+                ? `Crushed as ${plainZoneName(trappedZone)} closed`
+                : `Caught in the collapsing border of ${plainZoneName(trappedZone)}`;
         // The crush *replaces* the open-ground collapse rather than preceding
         // it. A survivor used to take the multiplied crush and then the full
         // base damage again under the same cause — so the multiplier was really
