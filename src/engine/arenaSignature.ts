@@ -600,7 +600,7 @@ function eclipseSignature(ctx: SimContext, cycle: number, rng: RNG) {
     zones.forEach(z => startZoneEffect(ctx, z, 'fogbound', false));
     getAlive(ctx.state).forEach(t => {
         if (!rng.chance(SIGNATURE_RULES.eclipseStumbleChance)) return;
-        applyDamage(ctx, t, 5, { cause: 'Walked off a bearing that no longer existed', kind: 'arena', code: 'fall' });
+        applyDamage(ctx, t, SIGNATURE_RULES.eclipseStumbleDamage, { cause: 'Walked off a bearing that no longer existed', kind: 'arena', code: 'fall' });
         loseSanity(t, SIGNATURE_RULES.eclipseSanityLoss);
         clampTribute(t);
         checkDeath(ctx, t, 'Walked off a bearing that no longer existed');

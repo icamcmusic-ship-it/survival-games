@@ -506,6 +506,8 @@ export const CLIMATE = {
  */
 export const SIGNATURE_RULES = {
     eclipseStumbleChance: 0.25,
+    /** AUDIT-14: a fall in the fog that can finish somebody (it was 5, and the Eclipse sat on the 5% own-death floor). */
+    eclipseStumbleDamage: 9,
     eclipseSanityLoss: 9,
     reefBloomChance: 0.4,
     reefDodgeBase: 0.3,
@@ -9109,7 +9111,7 @@ export const ARENA_SIGNATURES = {
      * enclosure capped at 0.6, which put the arena's mutts ahead of the
      * tributes themselves (tribute-kill share 49.8% against a 50% floor).
      */
-    menagerie: { perOpen: 0.07, cap: 0.4 },
+    menagerie: { perOpen: 0.06, cap: 0.35 },
     /** Audit 5 §5.7: the Tidewrack Flats' turn of the tide. */
     tideTurn: { escapeBase: 0.4, escapePerAgility: 0.05, escapeFatigue: 8, damage: 16, caughtFatigue: 14 },
     /** Audit 5 §5.7: the Thresher Floor's line starting under somebody. */
