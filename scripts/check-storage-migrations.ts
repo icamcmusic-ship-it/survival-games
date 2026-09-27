@@ -16,6 +16,7 @@
 import assert from 'node:assert/strict';
 import { HOF_SPEC } from '../src/utils/hofStorage';
 import { PANEM_SPEC } from '../src/utils/panemStorage';
+import { decodeCampaignResult, encodeCampaign } from '../src/utils/campaignLink';
 import { COINS_SPEC, CONFIG_SPEC, FILTERS_SPEC, readCoins } from '../src/utils/prefsStorage';
 import { CONFIG_KEYS, REWIND_PERSIST, SAVED_RUN_SPEC, normalizeConfig, normalizePrediction, normalizeTribute } from '../src/utils/saveMigrations';
 import { normalizeEntry } from '../src/utils/hofStorage';
@@ -394,7 +395,7 @@ test('no field of a written Panem record is lost on a round trip', () => {
         stipendsTaken: 2,
         dailyBests: { 'daily-1': { day: 9, deaths: 23, victorName: 'Rue', victorDistrict: 11, date: 'd' } },
         victorMentors: { 2: { name: 'Cato', archetype: 'career', run: 4 } },
-        districtCrowns: { 11: { victories: 1, lastRun: 4, lastVictorName: 'Rue', lastDate: 'd' } },
+        districtCrowns: { 11: { victories: 1, first: { name: 'Rue', archetype: 'underdog', run: 4, kills: 0, days: 9, seed: 'S1', arenaName: 'A', date: 'd' }, latest: { name: 'Rue', archetype: 'underdog', run: 4, kills: 0, days: 9, seed: 'S1', arenaName: 'A', date: 'd' }, archetypes: ['underdog'] } },
         arenasWon: ['reef'],
         quellsSeen: ['the-reflection'],
         deathsSeen: ['bleeding'],
@@ -704,6 +705,39 @@ test('config values out of range are clamped rather than trusted', () => {
     assert.equal(hostile.sanityDrainRate, 2.5);
     assert.equal(hostile.ageMean, 18);
     assert.equal(hostile.ageSpread, 4);
+});
+
+test('AUDIT-14 U2: a saved run keeps its undo high-water mark; older saves read as zero', () => {
+    seedLegacy(STORAGE_KEYS.savedRun, legacySave());
+    assert.equal(readStored(SAVED_RUN_SPEC)!.seenAhead, undefined);
+    seedLegacy(STORAGE_KEYS.savedRun, { ...legacySave(), seenAhead: 2 });
+    assert.equal(readStored(SAVED_RUN_SPEC)!.seenAhead, 2);
+    seedLegacy(STORAGE_KEYS.savedRun, { ...legacySave(), seenAhead: 'x' });
+    assert.equal(readStored(SAVED_RUN_SPEC)!.seenAhead, undefined);
+});
+
+test('AUDIT-14 S1: a D16 campaign round-trips through a run link', () => {
+    const out = decodeCampaignResult(encodeCampaign({
+        runs: 3, victors: 2, patronDistricts: [14, 16], lastVictorDistrict: 16,
+        recentRuns: [{ victorDistrict: 16 }],
+    }));
+    assert.equal(out.status, 'ok');
+    assert.deepEqual(out.snapshot?.patronDistricts, [14, 16]);
+    assert.deepEqual(out.snapshot?.recentRuns, [{ victorDistrict: 16 }]);
+});
+
+test('AUDIT-14 S2/S11: record-book map entries are validated and victors clamped', () => {
+    writeStored(PANEM_SPEC, {
+        runs: 1, victors: 5, unlocked: [], bests: { a: null } as never,
+        districtCrowns: { 3: null } as never, gamemakerRecords: { x: null } as never,
+        recentRuns: [null] as never,
+    });
+    const book = readStored(PANEM_SPEC)!;
+    assert.deepEqual(book.bests, {});
+    assert.deepEqual(book.districtCrowns, {});
+    assert.deepEqual(book.gamemakerRecords, {});
+    assert.deepEqual(book.recentRuns, []);
+    assert.equal(book.victors, 2);
 });
 
 console.log(failures === 0 ? '\nall storage migration checks passed' : `\n${failures} check(s) failed`);

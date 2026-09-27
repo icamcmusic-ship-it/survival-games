@@ -239,6 +239,7 @@ function writeSave() {
         // checkpoint — see its comment for why that is exact.
         ...packRewind(rewindDepth > 0 ? rewindStack.slice(-rewindDepth) : [], log),
         bets, sideBets, betsResolved, hofSaved, isReplayedRun, savedAt,
+        seenAhead,
         // Batch 6: which balance produced this run, so a resume after a knob
         // has moved can say so instead of silently stitching two rule sets
         // together. See `SavedRun.balanceFingerprint`.
@@ -344,9 +345,23 @@ function summarize(slot: number, saved: SavedRun): SlotSummary {
 const REWIND_CAP = 16;
 let rewindStack: GameState[] = [];
 
+/*
+ * AUDIT-14 U2: how many phases the player has undone and not yet re-played.
+ *
+ * The engine is deterministic, so a player who watched the bloodbath, pressed
+ * Undo twice and found the book open again was betting on a future they had
+ * already seen (and could cash a wager out at a price from before a death they
+ * had watched). Undo moves this forward; every advance pays one back. While it
+ * is above zero the player is standing behind their own high-water mark, and
+ * the book takes no wagers and buys none back. It is not restored by undo and
+ * travels with the save.
+ */
+let seenAhead = 0;
+
 function pushRewind(state: GameState) {
     rewindStack.push(snapshotState(state));
     if (rewindStack.length > REWIND_CAP) rewindStack.shift();
+    if (seenAhead > 0) seenAhead -= 1;
 }
 
 /** AUDIT-12 wave 3: the run at its reaping, for the reaping counterfactuals. */
@@ -357,6 +372,7 @@ function clearRewind() {
     // AUDIT-11 E11: anything still holding a reference to the old ring (an
     // in-flight what-if) can tell the run underneath it has gone.
     rewindGeneration++;
+    seenAhead = 0;
 }
 
 /** AUDIT-11 E11: bumped whenever the ring is replaced by another run's. */
@@ -377,6 +393,7 @@ const pendingLogLength = new WeakMap<GameState, number>();
 function pushRewindLite(state: GameState) {
     const snap = snapshotState({ ...state, log: [] });
     pendingLogLength.set(snap, state.log.length);
+    if (seenAhead > 0) seenAhead -= 1;
     rewindStack.push(snap);
     if (rewindStack.length > REWIND_CAP) rewindStack.shift();
 }
@@ -402,8 +419,9 @@ function rehydrateRewind(log: GameState['log']) {
  * button comes back working but shallower — which the UI says out loud
  * rather than leaving the player to discover.
  */
-function restoreRewind(snaps: GameState[] | undefined) {
+function restoreRewind(snaps: GameState[] | undefined, ahead = 0) {
     rewindStack = (snaps ?? []).slice(-REWIND_CAP);
+    seenAhead = Math.max(0, Math.floor(ahead));
 }
 
 function saveHallOfFame(state: GameState): WriteResult {
@@ -680,6 +698,8 @@ export const gameActions = {
         // button the UI drew in between returned false and the click ignored
         // it.
         if (!gameState || !sideBettingOpen(gameState.phase)) return false;
+        // AUDIT-14 U2: no wagers on a future the player has already watched.
+        if (seenAhead > 0) return false;
         if (stake <= 0 || coins < stake) return false;
         // §6.1: the price comes off the live board, not a fixed table — an
         // unpriceable wager (first blood on nobody, a district with no
@@ -720,6 +740,8 @@ export const gameActions = {
         const { gameState, bets, coins, betsResolved } = gameStore.getState();
         const bet = bets[tributeId];
         if (!gameState || !bet || betsResolved || !engine || gameState.phase === 'ended') return 0;
+        // AUDIT-14 U2: and no buy-back at a price from before a death they saw.
+        if (seenAhead > 0) return 0;
         const tribute = gameState.tributes.find(t => t.id === tributeId);
         if (!tribute) return 0;
         // AUDIT-9 B15: the store refuses an invalid cash-out on its own
@@ -951,7 +973,7 @@ export const gameActions = {
         if (!gameState || gameState.phase === 'ended') return false;
         const spec = SAVE_SLOT_SPECS[slot - 1];
         return tryWriteStored(spec, {
-            gameState, bets, sideBets, betsResolved, hofSaved, isReplayedRun,
+            gameState, bets, sideBets, betsResolved, hofSaved, isReplayedRun, seenAhead,
             ...packRewind(rewindStack.slice(-REWIND_PERSIST), gameState.log),
             savedAt: new Date().toISOString(),
         } as SavedRun) !== 'quota' && persistenceMode() === 'persistent';
@@ -975,7 +997,7 @@ export const gameActions = {
         // §2.2: whatever undo history travelled with the save comes back with
         // it. A save from before the stack was persisted has none, and resumes
         // exactly as it used to.
-        restoreRewind(saved.rewind);
+        restoreRewind(saved.rewind, saved.seenAhead);
         reapingState = saved.reaping ?? null;
         autosaveNote = saved.note;
         const { Simulator } = await loadEngine();
@@ -1160,6 +1182,20 @@ export const gameActions = {
         gameStore.setState({ panem: setApprenticeshipChoice(district, skill) });
     },
 
+    /**
+     * AUDIT-14 U2: true while the player stands behind a phase they already
+     * watched. The book is closed to new wagers and cash-outs until they have
+     * re-played back up to it.
+     */
+    wagersLocked(): boolean {
+        return seenAhead > 0;
+    },
+
+    /** How many phases the player must re-play before the book reopens. */
+    phasesBehind(): number {
+        return seenAhead;
+    },
+
     /** Whether a step back is currently possible. */
     canStepBack(): boolean {
         const { gameState, runProgress } = gameStore.getState();
@@ -1170,6 +1206,7 @@ export const gameActions = {
     stepBack() {
         if (!gameActions.canStepBack() || !engine) return;
         const prev = rewindStack.pop()!;
+        seenAhead += 1;
         gameStore.setState({ gameState: prev, simulator: new engine.Simulator(prev) });
         persistRun();
     },
@@ -1202,6 +1239,7 @@ export const gameActions = {
         if (index < 0 || index >= rewindStack.length) return;
         const target = rewindStack[rewindStack.length - 1 - index];
         rewindStack = rewindStack.slice(0, rewindStack.length - 1 - index);
+        seenAhead += index + 1;
         gameStore.setState({ gameState: target, simulator: new engine.Simulator(target) });
         persistRun();
     },

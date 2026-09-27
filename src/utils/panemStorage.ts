@@ -476,6 +476,48 @@ export const RECORD_DEFS: Array<{
     },
 ];
 
+/*
+ * AUDIT-14 S2: `asObjMap` passes every value through, so a hand-edited or
+ * corrupted book with `districtCrowns:{3:null}` reached `careerTotals` and
+ * crashed the Record Book screen, and `recentRuns:[null]` reached continuity
+ * during reaping. Every map entry is now rebuilt the way `campaignLink`
+ * already rebuilds a link's: non-object members, and members without the
+ * numbers the readers do arithmetic on, are dropped.
+ */
+function finiteOr(value: unknown): number | undefined {
+    return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+function validMap<T>(value: unknown, keep: (entry: Record<string, unknown>) => boolean): Record<string, T> {
+    const out: Record<string, T> = {};
+    for (const [key, member] of Object.entries(asObjMap<unknown>(value))) {
+        const entry = asRecord(member);
+        if (entry && keep(entry)) out[key] = entry as unknown as T;
+    }
+    return out;
+}
+function validStamp(value: unknown): boolean {
+    const s = asRecord(value);
+    return !!s && typeof s.name === 'string' && typeof s.archetype === 'string' && finiteOr(s.run) !== undefined;
+}
+const validRecordHolder = (e: Record<string, unknown>) => finiteOr(e.value) !== undefined && typeof e.name === 'string';
+const validGamemaker = (e: Record<string, unknown>) =>
+    ['games', 'victors', 'totalDays', 'deaths'].every(k => finiteOr(e[k]) !== undefined);
+const validCrown = (e: Record<string, unknown>) =>
+    finiteOr(e.victories) !== undefined && validStamp(e.first) && validStamp(e.latest)
+    && Array.isArray(e.archetypes) && (e.archetypes as unknown[]).every(a => typeof a === 'string');
+const validMentor = (e: Record<string, unknown>) =>
+    typeof e.name === 'string' && typeof e.archetype === 'string' && finiteOr(e.run) !== undefined;
+const validDaily = (e: Record<string, unknown>) =>
+    finiteOr(e.day) !== undefined && finiteOr(e.deaths) !== undefined && typeof e.date === 'string';
+function validRecentRuns(value: unknown): PanemRecords['recentRuns'] {
+    if (!Array.isArray(value)) return undefined;
+    return value.filter(member => {
+        const e = asRecord(member);
+        return !!e && finiteOr(e.day) !== undefined && finiteOr(e.deaths) !== undefined
+            && (e.victorDistrict === undefined || finiteOr(e.victorDistrict) !== undefined);
+    }) as PanemRecords['recentRuns'];
+}
+
 /**
  * v0 — unversioned `PanemRecords`, written before the envelope existed. Note
  *      that the old reader dropped `patronDistrict` and `gamemakerRecords`
@@ -494,7 +536,10 @@ export const PANEM_SPEC: StorageSpec<PanemRecords> = {
         const patron = asNum(r.patronDistrict, NaN);
         return {
             runs: Math.max(0, asNum(r.runs, 0)),
-            victors: Math.max(0, asNum(r.victors, 0)),
+            // AUDIT-14 S11: at most two crowns a Games (a dual win), the same
+            // bound `campaignLink` enforces, so a book the game loads always
+            // produces a run link the game accepts.
+            victors: Math.min(Math.max(0, asNum(r.runs, 0)) * 2, Math.max(0, asNum(r.victors, 0))),
             // AUDIT-9 B03: retired ids forward to their survivor. This runs on
             // every read, not only on a version bump, which is what makes it
             // reach stores already written at the current version.
@@ -502,8 +547,8 @@ export const PANEM_SPEC: StorageSpec<PanemRecords> = {
                 asStrArray(r.unlocked),
                 asObjMap<{ run: number; date: string }>(r.unlockedAt),
             ),
-            bests: asObjMap<RecordHolder>(r.bests),
-            gamemakerRecords: asObjMap<GamemakerRecord>(r.gamemakerRecords),
+            bests: validMap<RecordHolder>(r.bests, validRecordHolder),
+            gamemakerRecords: validMap<GamemakerRecord>(r.gamemakerRecords, validGamemaker),
             patronDistrict: Number.isFinite(patron) ? patron : undefined,
             // §9: a store written before multi-patronage carries only the
             // single field; seeding the list from it keeps the purchase the
@@ -513,9 +558,9 @@ export const PANEM_SPEC: StorageSpec<PanemRecords> = {
                 : (Number.isFinite(patron) ? [patron] : []),
             arenasBought: asStrArray(r.arenasBought),
             stipendsTaken: Math.max(0, asNum(r.stipendsTaken, 0)),
-            dailyBests: asObjMap<{ day: number; deaths: number; victorName?: string; victorDistrict?: number; date: string }>(r.dailyBests),
-            victorMentors: asObjMap<{ name: string; archetype: string; run: number }>(r.victorMentors),
-            districtCrowns: asObjMap<DistrictCrown>(r.districtCrowns),
+            dailyBests: validMap<{ day: number; deaths: number; victorName?: string; victorDistrict?: number; date: string }>(r.dailyBests, validDaily),
+            victorMentors: validMap<{ name: string; archetype: string; run: number }>(r.victorMentors, validMentor),
+            districtCrowns: validMap<DistrictCrown>(r.districtCrowns, validCrown),
             arenasWon: asStrArray(r.arenasWon),
             quellsSeen: asStrArray(r.quellsSeen),
             deathsSeen: asStrArray(r.deathsSeen),
@@ -548,11 +593,9 @@ export const PANEM_SPEC: StorageSpec<PanemRecords> = {
                 if (!term || typeof term.name !== 'string') return undefined;
                 return { name: term.name, runsServed: Math.max(0, asNum(term.runsServed, 0)) };
             })(),
-            recentRuns: Array.isArray(r.recentRuns)
-                ? (r.recentRuns as PanemRecords['recentRuns'])
-                : undefined,
+            recentRuns: validRecentRuns(r.recentRuns),
             heirlooms: r.heirlooms !== undefined
-                ? asObjMap<{ token: string; quirk?: string; fromName: string; run: number }>(r.heirlooms)
+                ? validMap<{ token: string; quirk?: string; fromName: string; run: number }>(r.heirlooms, e => typeof e.token === 'string' && typeof e.fromName === 'string' && finiteOr(e.run) !== undefined)
                 : undefined,
             // AUDIT-11 §8/§12: the campaign arc, predictions, parlays and
             // bankrolls. All optional; a store from before them reads as none.

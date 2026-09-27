@@ -553,7 +553,7 @@ export const DossierPanel = React.memo(function DossierPanel({
                                     <span className="flex-none">
                                         {t.status === 'dead' ? 'lost' : live ? `now ${live.mult.toFixed(1)}×` : ''}
                                     </span>
-                                    {t.status === 'alive' && live && (
+                                    {t.status === 'alive' && live && !gameActions.wagersLocked() && (
                                         <Hint align="right" text={`Cash out now at the current price (${live.pct}% implied)`}>
                                             <button
                                                 className="btn btn-sm btn-ghost flex-none -my-1"

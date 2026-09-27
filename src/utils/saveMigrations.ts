@@ -137,6 +137,12 @@ export interface SavedRun {
      * thing dropped when a save will not fit.
      */
     reaping?: GameState;
+    /**
+     * AUDIT-14 U2: phases undone and not yet re-played. While above zero the
+     * book is closed, so a reload cannot launder an undo into a fresh wager.
+     * Absent on older saves, which reads as zero.
+     */
+    seenAhead?: number;
 }
 
 /**
@@ -1028,6 +1034,8 @@ export function normalizeSavedRun(raw: unknown): SavedRun | null {
         savedAt: Number.isNaN(Date.parse(savedAt)) ? new Date(0).toISOString() : savedAt,
         note: typeof r.note === 'string' ? r.note.slice(0, 120) : undefined,
         reaping: r.reaping !== undefined ? normalizeGameState(r.reaping) ?? undefined : undefined,
+        seenAhead: typeof r.seenAhead === 'number' && Number.isFinite(r.seenAhead) && r.seenAhead > 0
+            ? Math.min(64, Math.floor(r.seenAhead)) : undefined,
     };
 }
 

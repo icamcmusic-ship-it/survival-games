@@ -59,7 +59,8 @@ const MAX_RECENT_RUNS = 64;
 const MAX_RECORD_ENTRIES = 64;
 const MAX_NAME_CHARS = 60;
 const MAX_COUNT = 1_000_000;
-const MAX_DISTRICT = 13;
+// Districts run 1-16 (13-16 are the expanded Games), so a record for D14-16 must survive the link.
+const MAX_DISTRICT = 16;
 
 /** Non-finite, non-numeric and out-of-range values all read as absent. */
 function num(value: unknown): number | undefined {
