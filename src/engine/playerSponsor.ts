@@ -132,7 +132,7 @@ export function sendPlayerParachute(state: GameState, tributeId: string, itemId:
         id: `player-gift-${state.logCounter = (state.logCounter ?? 0) + 1}`,
         day: state.day,
         phase: state.phase,
-        text: `A parachute comes down through the canopy over ${t.zone} with no name on it. ${t.name} opens it and finds ${itemPhrase(gift)}. Somebody in the Capitol is watching them specifically.`,
+        text: playerParachuteLine(state, t, itemPhrase(gift), rng),
         tributesInvolved: [t.id],
         important: true,
         category: 'sponsor',
@@ -150,4 +150,41 @@ export function sendPlayerParachute(state: GameState, tributeId: string, itemId:
     }
 
     return { ok: true, cost, message: `${itemPhrase(gift)} is on its way to ${t.name}.` };
+}
+
+/*
+ * AUDIT-14 S8: the player's parachute had one line, and it came "through the
+ * canopy" in the Vault, the Salt Mirror and every underground arena. The line
+ * is now drawn from a pool, with the way in fitted to the ground it lands on.
+ */
+const PARACHUTE_WAY_IN: Record<string, string[]> = {
+    cave: ['through a vent in the rock', 'down a shaft in the ceiling', 'out of a hatch in the roof'],
+    urban: ['between the rooftops', 'down past the broken windows', 'through a gap in the roofs'],
+    ruins: ['through the open roof', 'between the fallen walls', 'past what is left of the upper floors'],
+    water: ['out of the sky onto the water', 'down to the waterline', 'onto the shallows'],
+    ice: ['out of a white sky', 'down onto the ice', 'through the glare'],
+    forest: ['through the canopy', 'down between the trunks', 'through the branches'],
+    default: ['out of the sky', 'down on the wind', 'from somewhere overhead'],
+};
+
+const PLAYER_PARACHUTE_LINES = [
+    'A parachute comes down {way} over {zone} with no name on it. {name} opens it and finds {item}. Somebody in the Capitol is watching them specifically.',
+    'Silver catches the light {way} above {zone}. The parachute settles at {name}\'s feet: {item}, and no card.',
+    'A chime, and a parachute drifts {way} into {zone}. {name} tears it open and finds {item}. Nobody in the arena paid for that.',
+    '{name} hears it before they see it: a parachute, coming {way} over {zone}. Inside is {item}. Somebody out there has picked them.',
+    'The parachute lands {way} in {zone}, close enough to touch. {name} finds {item} and looks up, as if the sponsor could be seen.',
+    'A small silver parachute comes {way} into {zone}, straight to {name}. {item} is inside. The cameras linger on the moment they open it.',
+    'Something comes {way} over {zone} and bumps to a stop beside {name}: a parachute, {item} inside, and not a word with it.',
+];
+
+function playerParachuteLine(state: GameState, t: Tribute, item: string, rng: RNG): string {
+    const terrain = state.arena.zones.find(z => z.name === t.zone)?.terrain ?? 'open';
+    const ways = PARACHUTE_WAY_IN[terrain] ?? PARACHUTE_WAY_IN.default;
+    const template = rng.pick(PLAYER_PARACHUTE_LINES);
+    const way = rng.pick(ways);
+    return template
+        .replace('{way}', way)
+        .replace('{zone}', t.zone)
+        .replace('{name}', t.name)
+        .replace('{item}', item);
 }

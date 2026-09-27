@@ -14,8 +14,9 @@ import { COIN_ECONOMY } from '../data/balance';
 import { arenaLaws } from '../engine/gamesProfile';
 import { Notable, runDelta, runNotables, victorsOf } from './notables';
 import { ARENAS } from '../data/constants';
-import { dailyDateOf, dailySeed, weeklyRules } from '../data/replayHooks';
+import { dailyDateOf, dailySeed } from '../data/replayHooks';
 import { scenarioCard } from '../data/replayCards';
+import { scenarioCast } from '../engine/season/scenarios';
 import { ARENA_MUTTS } from '../data/mutts';
 import { deathCausesInRun } from '../engine/encounters';
 import { deathCodeOf } from '../engine/causes';
@@ -1185,7 +1186,10 @@ export function commitRun(state: GameState): RunOutcome {
     newAchievements.forEach(id => { records.unlockedAt![id] = stamp; });
     // AUDIT-13 P1: a scenario card whose own achievement this run earned.
     const card = scenarioCard(state.config.scenario);
-    if (card && earned.includes(card.achievement)) {
+    // AUDIT-14 F3: a card with no achievement of its own is won by crowning one of its cast.
+    const cardWon = card && (card.achievement ? earned.includes(card.achievement)
+        : winners.some(w => scenarioCast(state).some(c => c.id === w.id)));
+    if (card && cardWon) {
         records.ledger = { ...(records.ledger ?? {}), scenariosWon: [...new Set([...(records.ledger?.scenariosWon ?? []), card.id])] };
     }
 

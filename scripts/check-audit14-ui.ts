@@ -8,8 +8,16 @@
  * S2  a corrupted record book reads without throwing, and the record book renders
  * S3  a Hall of Fame import never evicts the player's own victors
  * S11 the stored victor count never exceeds what a run link accepts
+ * S4-S10, F1-F3, F5, F6 and the rest: see each test's name
  */
 import assert from 'node:assert/strict';
+import { initialRunState } from './runInit';
+import { Simulator } from '../src/engine/simulator';
+import { ARENAS, DEFAULT_GAME_CONFIG } from '../src/data/constants';
+import { scenarioCast } from '../src/engine/season/scenarios';
+import { STORY_CHAINS } from '../src/engine/season/storyChains';
+import { COMMENTATORS, SCENARIO_CARDS, STORY_CHAIN_META } from '../src/data/replayCards';
+import { sendPlayerParachute } from '../src/engine/playerSponsor';
 import { decodeCampaignResult, encodeCampaign } from '../src/utils/campaignLink';
 import { PANEM_SPEC, careerTotals, dailyStreakOf, foldDailyAndWeekly } from '../src/utils/panemStorage';
 import { HOF_CAP, importHallOfFame } from '../src/utils/hofStorage';
@@ -24,6 +32,26 @@ const backend: StorageBackend = {
     removeItem: k => { mem.delete(k); },
 };
 setStorageBackend(backend);
+
+/** Play a run headless, to the end or until `stopAt` is the phase. */
+function play(seed: string, mutate?: (s: GameState) => void, stopAt?: GameState['phase'], config = DEFAULT_GAME_CONFIG): GameState {
+    let state = initialRunState({ seed, arenaId: ARENAS[0].id, config });
+    mutate?.(state);
+    const sim = new Simulator(state);
+    let guard = 4000;
+    while (state.phase !== 'ended' && guard-- > 0) {
+        if (stopAt && state.phase === stopAt && (stopAt !== 'day' || state.day >= 1)) break;
+        if (state.phase === 'setup') sim.processTraining();
+        else if (state.phase === 'training' || state.phase === 'scores') sim.processInterviews();
+        else if (state.phase === 'interviews') sim.startGames();
+        else if (state.phase === 'bloodbath') sim.processBloodbath();
+        else if (state.phase === 'epilogue') state.phase = 'ended';
+        else if (!sim.processTurn()) break;
+        state = sim.getState();
+    }
+    return state;
+}
+const outcome = (s: GameState) => s.tributes.map(t => `${t.id}:${t.status}:${t.kills}:${t.eliminationIndex ?? ''}`).join('|');
 
 let failures = 0;
 async function test(name: string, fn: () => void | Promise<void>) {
@@ -118,6 +146,53 @@ async function main() {
         const wk = { ...base, seed: 'weekly-1999-W01', launchWeekKey: 'week-1999-W01' } as unknown as GameState;
         // No slip on this state, so nothing is written; the point is that it is not rejected outright.
         assert.notEqual(foldDailyAndWeekly({}, wk), undefined);
+    });
+
+    await test('S9: The Pack of Six does not apply below four districts; Strange Allies swear a real alliance', () => {
+        const small = play('A14-S9-SMALL', st => { st.config = { ...st.config, scenario: 'career-six' }; }, undefined, { ...DEFAULT_GAME_CONFIG, districtCount: 3 });
+        assert.equal(scenarioCast(small).length, 0, 'no pack of four');
+        assert.ok(!small.log.some(e => e.text.startsWith('Scenario: The Pack of Six')), 'not announced');
+        let formed = 0;
+        for (const seed of ['A14-S9-1', 'A14-S9-2', 'A14-S9-3', 'A14-S9-4', 'A14-S9-5']) {
+            const s = play(seed, st => { st.config = { ...st.config, scenario: 'rival-allies' }; }, 'bloodbath');
+            const [a, b] = scenarioCast(s);
+            if (a && b && a.allianceId && a.allianceId === b.allianceId) formed++;
+        }
+        assert.ok(formed >= 3, `the pair came off the plates allied in ${formed}/5 runs`);
+    });
+
+    await test('F3: every scenario card applies, announces itself, and replays exactly', () => {
+        assert.ok(SCENARIO_CARDS.length >= 15, `${SCENARIO_CARDS.length} cards`);
+        assert.ok(COMMENTATORS.length >= 7, `${COMMENTATORS.length} voices`);
+        assert.ok(STORY_CHAIN_META.length >= 15, `${STORY_CHAIN_META.length} chains`);
+        assert.deepEqual(STORY_CHAIN_META.map(c => c.id), STORY_CHAINS.map(c => c.id));
+        for (const card of SCENARIO_CARDS) {
+            const mutate = (st: GameState) => { st.config = { ...st.config, scenario: card.id }; };
+            const s = play(`A14-F3-${card.id}`, mutate, 'bloodbath');
+            assert.ok(scenarioCast(s).length > 0, `${card.id}: empty cast`);
+            assert.ok(s.log.some(e => e.text.startsWith(`Scenario: ${card.name}`)), `${card.id}: not announced`);
+        }
+        const once = play('A14-F3-REPLAY', st => { st.config = { ...st.config, scenario: 'old-grudge' }; });
+        const twice = play('A14-F3-REPLAY', st => { st.config = { ...st.config, scenario: 'old-grudge' }; });
+        assert.equal(outcome(once), outcome(twice));
+    });
+
+    await test('S8/S10: the player parachute line varies; a training flub is not a toll paid', () => {
+        const s = play('A14-S10', undefined, 'bloodbath');
+        const flubs = s.log.filter(e => e.type === 'training-flub').length;
+        const paid = s.log.filter(e => e.type === 'tribute-paid' && e.category === 'training').length;
+        assert.equal(paid, 0, 'training lines still typed tribute-paid');
+        void flubs;
+        const lines = new Set<string>();
+        for (let i = 0; i < 12; i++) {
+            const st = play(`A14-S8-${i}`, undefined, 'day');
+            const t = st.tributes.find(x => x.status === 'alive')!;
+            const before = st.log.length;
+            sendPlayerParachute(st, t.id, 'bandages');
+            const line = st.log.slice(before).find(e => e.category === 'sponsor')?.text ?? '';
+            lines.add(line.replace(t.name, 'X').replace(t.zone, 'Z').replace(/finds .*?[.:]/, 'finds I.'));
+        }
+        assert.ok(lines.size >= 3, `only ${lines.size} distinct parachute lines`);
     });
 
     await test('U2: the save carries the undo high-water mark', () => {

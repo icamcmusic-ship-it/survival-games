@@ -312,7 +312,7 @@ function attemptStation(
     ctx.logEvent(
         fillLine(line, { tribute: t.name, station, watcher: watcher?.name ?? 'somebody' }),
         watcher ? [t.id, watcher.id] : [t.id],
-        { type: 'tribute-paid', important: true, category: 'training' }
+        { type: 'training-flub', important: true, category: 'training' }
     );
     loseSanity(t, TRAINING.failureSanity);
     clampTribute(t);

@@ -1,4 +1,4 @@
-import { GameState, Tribute } from '../../models/types';
+import { GameState, Tribute, ZoneEffectKind } from '../../models/types';
 import { AUDIT12_WAVE3, QUALITY_BIAS } from '../../data/balance';
 import { ITEMS } from '../../data/constants';
 import { SimContext, getAlive } from '../context';
@@ -32,6 +32,8 @@ export interface StoryChain {
     id: string;
     title: string;
     steps: [ChainStep, ChainStep, ChainStep];
+    /** AUDIT-14 F3: what an 'effect' step does to the zone. Older chains name theirs below. */
+    effect?: ZoneEffectKind;
 }
 
 export const STORY_CHAINS: StoryChain[] = [
@@ -73,6 +75,92 @@ export const STORY_CHAINS: StoryChain[] = [
             { kind: 'threat', text: z => `Smoke on the edge of ${z}. Not a campfire: a line of it, too straight to be an accident.` },
             { kind: 'threat', text: z => `The burn line has moved into ${z} overnight. It is being walked, deliberately, toward somebody.` },
             { kind: 'effect', text: z => `The line reaches the middle of ${z} and the Gamemakers light the rest of it.` },
+        ],
+    },
+    // AUDIT-14 F3: ten more, so the rotation takes a long career to repeat.
+    {
+        id: 'the-bell-tower', title: 'The Bell Tower',
+        steps: [
+            { kind: 'threat', text: z => `A bell rings once in ${z}, from somewhere nobody can see. There is no bell in ${z}.` },
+            { kind: 'threat', text: (z, w) => `${w} hears the bell in ${z} again, closer, and counts. It rang once for every tribute still alive.` },
+            { kind: 'reward', text: (z, w) => `${w} finds the bell in ${z} at last, hung in a hollow, and a crate tied to its rope.` },
+        ],
+    },
+    {
+        id: 'the-white-flag', title: 'The White Flag',
+        steps: [
+            { kind: 'threat', text: z => `Somebody has tied a strip of white cloth high up in ${z}. Nobody in the arena will admit to it.` },
+            { kind: 'threat', text: (z, w) => `There are two white flags in ${z} now. ${w} stops to look and does not like how easy they are to see.` },
+            { kind: 'reward', text: (z, w) => `${w} climbs to the white flags in ${z}. Somebody left a truce offering under them and did not live to collect it.` },
+        ],
+    },
+    {
+        id: 'the-frozen-pool', title: 'The Frozen Pool',
+        effect: 'frozen',
+        steps: [
+            { kind: 'threat', text: z => `The water in ${z} has a skin of ice on it in the morning. It is not that cold.` },
+            { kind: 'threat', text: (z, w) => `${w} breaks the ice in ${z} with a heel and it is thicker than yesterday. The Gamemakers are doing this.` },
+            { kind: 'effect', text: z => `${z} freezes over in an hour, all of it, with a sound like a shot.` },
+        ],
+    },
+    {
+        id: 'the-sealed-door', title: 'The Sealed Door',
+        steps: [
+            { kind: 'threat', text: (z, w) => `${w} finds a door in ${z} set into the ground, with a wheel on it that will not turn.` },
+            { kind: 'threat', text: z => `The wheel on the door in ${z} has moved. Somebody has been working at it at night.` },
+            { kind: 'reward', text: (z, w) => `The door in ${z} finally gives under ${w}'s weight. Below it: a storeroom the Capitol forgot.` },
+        ],
+    },
+    {
+        id: 'the-drowned-bell', title: 'The Drowned Bell',
+        effect: 'flooded',
+        steps: [
+            { kind: 'threat', text: z => `The ground in ${z} sounds hollow. Somewhere under it, water is moving.` },
+            { kind: 'threat', text: (z, w) => `${w} puts an ear to the ground in ${z} and hears it clearly now: a current, and something knocking in it.` },
+            { kind: 'effect', text: z => `The ground in ${z} gives way to the water underneath it.` },
+        ],
+    },
+    {
+        id: 'the-false-spring', title: 'The False Spring',
+        effect: 'blooming',
+        steps: [
+            { kind: 'threat', text: z => `Green shoots in ${z}, overnight, out of season. The arena is growing something.` },
+            { kind: 'threat', text: (z, w) => `${w} walks through ${z} knee-deep in growth that was not there two days ago. Some of it is food.` },
+            { kind: 'effect', text: z => `${z} blooms all at once. Every tribute in the arena can smell it.` },
+        ],
+    },
+    {
+        id: 'the-quiet-zone', title: 'The Quiet Zone',
+        effect: 'fogbound',
+        steps: [
+            { kind: 'threat', text: z => `The birds have stopped in ${z}. Not flown off: stopped.` },
+            { kind: 'threat', text: (z, w) => `${w} realises they cannot hear their own footsteps in ${z}. The Gamemakers have turned the sound down.` },
+            { kind: 'effect', text: z => `A grey fog rolls into ${z} and takes the last of the sound with it.` },
+        ],
+    },
+    {
+        id: 'the-supply-drop', title: 'The Supply Drop',
+        steps: [
+            { kind: 'threat', text: z => `A hovercraft passes low over ${z} and drops nothing. It does it again an hour later.` },
+            { kind: 'threat', text: (z, w) => `${w} sees the hovercraft over ${z} a third time. It is marking a place.` },
+            { kind: 'reward', text: (z, w) => `The hovercraft finally drops something in ${z}, and ${w} is the one standing under it.` },
+        ],
+    },
+    {
+        id: 'the-tally-stones', title: 'The Tally Stones',
+        steps: [
+            { kind: 'threat', text: z => `Somebody is stacking stones in ${z}, one cairn per cannon.` },
+            { kind: 'threat', text: (z, w) => `${w} counts the cairns in ${z} and finds one more than there have been cannons.` },
+            { kind: 'reward', text: (z, w) => `${w} takes the extra cairn in ${z} apart. Whoever built it hid something at the bottom.` },
+        ],
+    },
+    {
+        id: 'the-poisoned-well', title: 'The Poisoned Well',
+        effect: 'contaminated',
+        steps: [
+            { kind: 'threat', text: z => `The water in ${z} tastes of metal this morning.` },
+            { kind: 'threat', text: (z, w) => `${w} finds a dead animal at the water's edge in ${z}, and then another.` },
+            { kind: 'effect', text: z => `The water in ${z} turns a colour water should not be. Nobody drinks there again.` },
         ],
     },
 ];
@@ -121,7 +209,7 @@ export function tickStoryChain(ctx: SimContext): void {
     story.lastDay = state.day;
     addExcitement(who, S.stepExcitement);
     if (step.kind === 'threat') alive.forEach(t => addZoneThreat(state, t, zone, S.stepThreat));
-    if (step.kind === 'effect') startZoneEffect(ctx, zone, chain.id === 'the-flood-gate' ? 'flooded' : chain.id === 'the-signal' ? 'fogbound' : 'burning');
+    if (step.kind === 'effect') startZoneEffect(ctx, zone, chain.effect ?? (chain.id === 'the-flood-gate' ? 'flooded' : chain.id === 'the-signal' ? 'fogbound' : 'burning'));
     let text = step.text(zone, who.name);
     if (step.kind === 'reward') {
         const pool = itemPoolFor(state, ITEMS.filter(i => i.value >= S.rewardMinValue));

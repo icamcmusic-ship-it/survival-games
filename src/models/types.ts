@@ -4309,6 +4309,8 @@ export type EventType =
     | 'triangle-formed'
     | 'triangle-jealousy'
     | 'tribute-paid'
+    // AUDIT-14 S10: a training failure, formerly logged as 'tribute-paid'.
+    | 'training-flub'
     | 'tribute-paid-information'
     | 'truce-held'
     | 'truce-outlived'
