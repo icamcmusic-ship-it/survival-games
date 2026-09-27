@@ -516,7 +516,7 @@ export const SIGNATURE_RULES = {
     abattoirFatigue: 15,
     carnivalSanityLoss: 12,
     ashwasteWadeFatigue: 10,
-    ashwasteBurnChance: 0.2,
+    ashwasteBurnChance: 0.3,
     quarryDodgeBase: 0.3,
     /*
      * AUDIT-6 §7.3: 0.35 plus agility meant a tribute with average legs got
@@ -534,7 +534,9 @@ export const SIGNATURE_RULES = {
     terracesFatigue: 12,
     canopywebDodgeBase: 0.3,
     canopywebSeverChance: 0.5,
-    acousticforestDodgeBase: 0.28,
+    acousticforestDodgeBase: 0.2,
+    /** AUDIT-14: the flying timber (was a flat 24). */
+    acousticforestDamage: 30,
     acousticforestSanityLoss: 8,
     burnscarBurnChance: 0.3,
     burnscarSeverChance: 0.5,
@@ -9113,15 +9115,23 @@ export const ARENA_SIGNATURES = {
      */
     menagerie: { perOpen: 0.06, cap: 0.35 },
     /** Audit 5 §5.7: the Tidewrack Flats' turn of the tide. */
-    tideTurn: { escapeBase: 0.4, escapePerAgility: 0.05, escapeFatigue: 8, damage: 16, caughtFatigue: 14 },
+    tideTurn: { escapeBase: 0.32, escapePerAgility: 0.05, escapeFatigue: 8, damage: 16, caughtFatigue: 14 },
     /** Audit 5 §5.7: the Thresher Floor's line starting under somebody. */
     thresherLine: { everyNth: 3, busiestChance: 0.6, dodgeBase: 0.35, dodgePerAgility: 0.05, damage: 14, bleedChance: 0.4 },
     /** Audit 5 §5.7: the Vigil's bell at the dead hour. */
     watchBell: { shelteredAt: 0.6, fatigue: 9, fatigueSheltered: 3, sanity: 4, sanitySheltered: 1, stumbleChance: 0.08, stumbleDamage: 6 },
     /** Audit 5 §5.7: the Saltworks' pan cracking under the emptiest zone. */
-    panCracks: { earlyEveryNth: 5, emptiestChance: 0.65, holdBase: 0.45, holdPerAgility: 0.04, damage: 12, muttChance: 0.5 },
+    panCracks: { earlyEveryNth: 5, emptiestChance: 0.4, holdBase: 0.3, holdPerAgility: 0.04, damage: 12, muttChance: 0.5 },
     /** Audit 5 §5.7: the Kiln's second sun, telegraphed a day ahead. */
     secondSun: { safestChance: 0.7, thirst: 14, fatigue: 8, burnChance: 0.45, burnDamage: 9 },
+    /*
+     * AUDIT-14: the knobs moved in this block and nearby (Open-Cut falls,
+     * Ward Block doors, Glasshouse cold, Salt Flats sun, Gallery rig, Stalled
+     * Sun, Ashwaste gust, Concrete collapse, Tidewrack tide, Saltworks pan,
+     * the third rail, the Acoustic Forest's dodge) put every hand-authored
+     * arena at least a few points inside the per-arena death-mix band. They
+     * sat within a seed of its edges, so any engine change flipped one.
+     */
     /** The Hippodrome: the power comes on at a random hour, then fails. */
     hippodromeLights: { firstMinCycle: 3, firstMaxCycle: 7, litCycles: 2, blackoutCycles: 2, restCycles: 4, stumbleChance: 0.12, stumbleDamage: 8, animatronicChance: 0.35, animatronicDamage: 14, blackoutSanity: 4 },
     /** The Undercroft: the ghost train on the main line. */
@@ -9131,17 +9141,17 @@ export const ARENA_SIGNATURES = {
     /** Cinder Peak: clear sky, then whiteout. */
     cinderSky: { clearCycles: 2, whiteoutCycles: 2, calmCycles: 2, exposedDamage: 8, exposedFatigue: 10, frostbiteChance: 0.2 },
     /** The Open Cut: the ground gives. */
-    groundGive: { firstCycle: 5, everyNth: 5, maxFalls: 2, holdBase: 0.35, holdPerAgility: 0.05, damage: 22, muttChance: 0.3 },
+    groundGive: { firstCycle: 5, everyNth: 5, maxFalls: 4, holdBase: 0.35, holdPerAgility: 0.05, damage: 26, rockfallChance: 0.08, rockfallDamage: 10, muttChance: 0.3 },
     /** The Gallery: the house picks one room and plays it to everybody. */
-    openMic: { pickChance: 0.6, sanity: 5, rigChance: 0.5, dodgeBase: 0.4, dodgePerAgility: 0.05, rigDamage: 18, rigBleedChance: 0.5 },
+    openMic: { pickChance: 0.6, sanity: 5, rigChance: 0.75, dodgeBase: 0.4, dodgePerAgility: 0.05, rigDamage: 30, rigBleedChance: 0.3 },
     /** The Malt House: vapour builds in the enclosed rooms, then goes. */
     vapour: { risePerDay: 0.2, risePerNight: 0.35, fumeFatigue: 6, fumeSanity: 3, igniteChance: 0.7 },
     /** Circuit Row: the pace car laps the oval, one sector per cycle. */
     paceCar: { dodgeBase: 0.35, dodgePerAgility: 0.05, damage: 20, fatigue: 8, bleedChance: 0.4 },
     /** The Ward Block: the cell doors seal on a timer. */
-    lockdown: { firstCycle: 3, everyNth: 4, lockCycles: 2, busiestChance: 0.65, doorChance: 0.2, doorDamage: 16, trappedSanity: 6, trappedFatigue: 5, muttChance: 0.3 },
+    lockdown: { firstCycle: 3, everyNth: 4, lockCycles: 2, busiestChance: 0.9, doorChance: 0.35, doorDamage: 16, trappedSanity: 6, trappedFatigue: 5, trappedHurtChance: 0.35, trappedHurt: 9, muttChance: 0.3 },
     /** The Glasshouse: one wing at a time, the glass gives. */
-    glassGives: { firstCycle: 3, everyNth: 3, dodgeBase: 0.3, dodgePerAgility: 0.05, damage: 18, coverKept: 0.6, rooflessShelter: 0.05, acousticsGain: 0.3, exposureFatigue: 6, exposureThirst: 4, safeRelief: 5, rooflessColdChance: 0.35, rooflessColdDamage: 7 },
+    glassGives: { firstCycle: 3, everyNth: 3, dodgeBase: 0.3, dodgePerAgility: 0.05, damage: 18, coverKept: 0.6, rooflessShelter: 0.05, acousticsGain: 0.3, exposureFatigue: 6, exposureThirst: 4, safeRelief: 5, rooflessColdChance: 0.5, rooflessColdDamage: 7 },
 
     /** The Clockwork Island: the hour turns and one sector pays for it. */
     clock: {
@@ -9176,7 +9186,7 @@ export const ARENA_SIGNATURES = {
     stalledSun: {
         thirst: 22,
         fatigue: 12,
-        burnChance: 0.25,
+        burnChance: 0.35,
     },
     /** The Frozen Wasteland: the cold snap. */
     freeze: {
@@ -9185,7 +9195,7 @@ export const ARENA_SIGNATURES = {
     },
     /** The Concrete Jungle: something enormous comes down. */
     collapse: {
-        dodgeBase: 0.35,
+        dodgeBase: 0.27,
         dodgePerAgility: 0.04,
     },
     /** The Toxic Bog: the swamp exhales. */
@@ -9211,7 +9221,7 @@ export const ARENA_SIGNATURES = {
          * The mirror only fed the hunters, so the arena's tribute-kill share
          * sat at the 72% ceiling.
          */
-        sunstrokeChance: 0.12,
+        sunstrokeChance: 0.18,
         sunstrokeDamage: 9,
     },
     /** The Spore Fields: the bloom, and the gamble it is. */
@@ -10040,7 +10050,7 @@ export const ARENA_RULES = {
     /** Cover below which high ground counts as exposed (Cinder Peak clear sky). */
     exposedRidgeCoverBelow: 0.3,
     /** Per-cycle chance the Undercroft third rail catches somebody standing on it. */
-    thirdRailTouchChance: 0.2,
+    thirdRailTouchChance: 0.28,
     /**
      * An arena-wide sightline. `acoustics` multiplies every zone's carry,
      * `concealment` multiplies the chance to stay unseen, `ambush` shifts the

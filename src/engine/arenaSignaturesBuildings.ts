@@ -222,6 +222,12 @@ export function wardblockSignature(ctx: SimContext, cycle: number, rng: RNG) {
         trapped.forEach(t => {
             loseSanity(t, knobs.trappedSanity);
             t.vitals.fatigue += knobs.trappedFatigue;
+            // AUDIT-14: a cell with the doors run shut is hurting whoever is in it.
+            if (rng.chance(knobs.trappedHurtChance)) {
+                const cause = `Died locked in ${block}`;
+                applyDamage(ctx, t, knobs.trappedHurt, { cause, kind: 'arena', code: 'exposure', signature: true });
+                checkDeath(ctx, t, cause);
+            }
             clampTribute(t);
         });
         const roster = rosterFor(ctx);

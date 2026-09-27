@@ -373,6 +373,14 @@ const opencutSignature: Signature = (ctx, cycle, rng) => {
         return zone !== undefined && z !== cornucopia && zoneFeatures(zone).elevation
             && (zone.terrain === 'highland' || zone.terrain === 'open');
     });
+    // AUDIT-14: the benches shed stone between the big falls, on whoever is standing on them.
+    candidates.forEach(z => tributesIn(ctx, z).forEach(t => {
+        if (!rng.chance(k.rockfallChance)) return;
+        const cause = `Struck by falling rock on ${z}`;
+        applyDamage(ctx, t, k.rockfallDamage, { cause, kind: 'arena', code: 'impact', signature: true });
+        clampTribute(t);
+        checkDeath(ctx, t, cause);
+    }));
     const fallen = fallenZones(state).length;
     if (fallen >= k.maxFalls) return;
     const step = (cycle - k.firstCycle) % k.everyNth;

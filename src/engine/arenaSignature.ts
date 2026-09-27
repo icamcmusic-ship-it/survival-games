@@ -14,7 +14,7 @@ import { strengthCapForAge } from './physique';
 import { hasTool } from './items';
 import { isUnlitZone } from './map';
 import { plainZoneName } from './rescueLine';
-import { ARENA_SIGNATURES, BLEEDING, ESCALATION, MEMORY, PROC_SIGNATURE, SIGNATURE_RULES } from '../data/balance';
+import { ARENA_SIGNATURES, AUDIT12_WAVE2_ARENA, BLEEDING, ESCALATION, MEMORY, PROC_SIGNATURE, SIGNATURE_RULES } from '../data/balance';
 import { loseSanity } from './sanityBands';
 import { allied } from './alliance';
 import { gallerySignature, malthouseSignature, circuitSignature, wardblockSignature, glasshouseSignature } from './arenaSignaturesBuildings';
@@ -1008,7 +1008,7 @@ function acousticforestSignature(ctx: SimContext, cycle: number, rng: RNG) {
             ctx.logEvent(`${t.name} throws themself flat as ${target} implodes into splinters overhead.`, [t.id], { zone: target, category: 'arena' });
             return;
         }
-        applyDamage(ctx, t, 24, { cause: `Caught in the shattering trees of ${plainZoneName(target)}`, kind: 'arena', code: 'sound', signature: true });
+        applyDamage(ctx, t, SIGNATURE_RULES.acousticforestDamage, { cause: `Caught in the shattering trees of ${plainZoneName(target)}`, kind: 'arena', code: 'sound', signature: true });
         openWound(t, BLEEDING.hazardSeverity);
         loseSanity(t, SIGNATURE_RULES.acousticforestSanityLoss);
         addZoneThreat(ctx.state, t, target, MEMORY.hazardThreat * 2);
@@ -2430,6 +2430,12 @@ export function runArenaSignature(ctx: SimContext) {
     const before = woundSnapshot(ctx.state);
     if (signature) {
         signature(ctx, cycle, rng);
+        // AUDIT-14: a hand-written signature's hit finishes what it started
+        // the way every other arena mechanic's does (`strike` in arenaWave2):
+        // somebody it leaves at the edge goes over it. Without this the
+        // bespoke set pieces wounded and the fights that followed killed, and
+        // half the arenas sat within a seed of the death-mix band's edges.
+        finishSignatureHits(ctx, before, rng);
     } else {
         const rule = ctx.state.arena.signatureRule;
         if (rule) runDeclarativeSignature(ctx, rule, cycle, rng);
@@ -2437,6 +2443,18 @@ export function runArenaSignature(ctx: SimContext) {
     // AUDIT-12 §8: the thin arenas' mechanics, scarce water, telegraphs.
     if (getAlive(ctx.state).length > ESCALATION.finalistCount) runWave2Arena(ctx);
     stampSignature(ctx.state, before);
+}
+
+function finishSignatureHits(ctx: SimContext, before: Map<string, unknown>, rng: RNG) {
+    getAlive(ctx.state).forEach(t => {
+        const d = t.lastDamage;
+        if (!d || d === before.get(t.id) || d.kind !== 'arena' || d.sourceId || d.code === 'border') return;
+        if (t.health <= 0 || t.health > AUDIT12_WAVE2_ARENA.mechanicFinishBelowHealth) return;
+        if (!rng.chance(AUDIT12_WAVE2_ARENA.mechanicFinishChance)) return;
+        applyDamage(ctx, t, finishingDamage(ctx, t), { cause: d.cause, kind: 'arena', code: d.code, signature: true });
+        clampTribute(t);
+        checkDeath(ctx, t, d.cause);
+    });
 }
 
 /**
