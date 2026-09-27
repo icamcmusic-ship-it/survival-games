@@ -215,7 +215,8 @@ function applyEventTo(ctx: SimContext, t: Tribute, event: ArenaEventDef, narrate
     }
     if (event.heal) t.health = Math.min(100, t.health + event.heal);
     if (event.bleeding) openWound(t, BLEEDING.hazardSeverity);
-    if (event.poisoned) injure(t, 'poisoned');
+    // AUDIT-13 N13: food the arena hands a Bitter Root is never the poisoned kind.
+    if (event.poisoned && !(event.feed && neverPoisonous(t))) injure(t, 'poisoned');
     if (event.burned) injure(t, 'burned');
     if (event.frostbitten) injure(t, 'frostbitten');
     if (event.infected) injure(t, 'infected');
@@ -845,8 +846,7 @@ function attemptForage(
     // that are only useful to someone who does not intend to eat them.
     // A scavenger turns up things nobody left on purpose: a dropped pack, a
     // coil of wire in the ruins, matches in a dead tribute's coat.
-    // AUDIT-13 N13: nothing a Bitter Root picks is poison.
-    const pool = !neverPoisonous(t) && ctx.rng.chance(ZONES.nightlockChance)
+    const pool = ctx.rng.chance(ZONES.nightlockChance)
         ? ITEMS.filter(i => i.id === 'nightlock')
         // `scavenging` is the read: what turns up is partly what is there and
         // partly whether the person looking knows a coil of wire from a root.

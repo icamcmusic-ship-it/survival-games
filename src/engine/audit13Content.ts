@@ -389,7 +389,10 @@ export function afterForage(ctx: SimContext, t: Tribute) {
     if (isBitterRoot(t) && ctx.rng.chance(C.bitterRootChance)) loseSanity(t, C.bitterRootSanity);
 }
 
-/** Read by `attemptForage`: N13 nothing Bitter Root picks is poison. */
+/**
+ * Read by `applyEventTo`: N13 food the arena offers a Bitter Root is never
+ * the poisoned kind. Nightlock they still find, and know for what it is.
+ */
 export function neverPoisonous(t: Tribute): boolean {
     return isBitterRoot(t);
 }

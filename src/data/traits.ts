@@ -1306,7 +1306,7 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         mods: { odds: 0.8 },
     },
     'Bitter Root': {
-        info: 'Knows every root that will not kill you. What they forage is never poisonous, though some of it tastes like despair.',
+        info: 'Knows every root that will not kill you. Food the arena offers them is never the poisoned kind, though some of what they forage tastes like despair.',
         mods: { forage: 0.05, poisonResist: 0.1 },
     },
     'Deadfall Mind': {

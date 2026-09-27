@@ -1616,6 +1616,10 @@ export const ARCHETYPES: Record<ArchetypeId, ArchetypeDef> = {
         caution: 0.1,
         stanceBias: { Evasive: 0.2, Defensive: 0.2 },
         objectiveBias: { reach: 0.6 },
+        // Measured 1.8-3.5% at n=1,600 with a third of deaths at the horn: the
+        // vow is to a sector off the plates, not to the pile. The same knob
+        // hermit and forger use.
+        hornFight: -0.15,
         hatesArchetypes: ['saboteur'],
         targetPreference: 'rival',
         riskCurve: 'late-blooming',

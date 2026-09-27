@@ -11186,7 +11186,7 @@ export const AUDIT13_CONTENT = {
     teachingPerLevel: 0.25,
     teachingWatchShare: 0.5,
     /** N22 resting: sanity and night fatigue per level. */
-    restingSanityPerLevel: 1,
+    restingSanityPerLevel: 0.5,
     restingFatiguePerLevel: 0.5,
 
     // ---- archetypes ------------------------------------------------------
@@ -11237,7 +11237,7 @@ export const AUDIT13_CONTENT = {
     mourningRegard: 20,
     mourningBase: 8.5,
     mourningAwareness: 0.5,
-    mourningSanity: 4,
+    mourningSanity: 2,
     /** N37 Sheltering: shelter skill needed, score, exposure kept, the costs, and the tracker who still finds them. */
     shelteringSkillMin: 0.15,
     shelteringPerCarpentry: 0.1,

@@ -430,7 +430,9 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
     Regrouping: (ctx, t) => stickyHold(t, 'Regrouping') || regroupingAvailable(ctx, t),
     // Nobody sits down with a body while somebody hostile is standing over it.
     Mourning: (ctx, t, sig) => stickyHold(t, 'Mourning') || (sig.hostile === 0 && mourningAvailable(ctx, t)),
-    Sheltering: (ctx, t) => stickyHold(t, 'Sheltering') || shelteringAvailable(ctx, t),
+    // Somebody past caring (Desperate's own test) does not stop to build a roof.
+    Sheltering: (ctx, t, sig) => stickyHold(t, 'Sheltering')
+        || (!sig.broken && t.health >= STANCE_MODES.desperate.healthThreshold && shelteringAvailable(ctx, t)),
 
     /*
      * Audit 5 §12: a pack with somewhere to walk the edge of.
