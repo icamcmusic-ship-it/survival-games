@@ -78,7 +78,8 @@ for (const file of engineFiles('src/engine')) {
  * quietly growing back. A new lethal event that lands in `hazard` must either
  * carry a `code` or say what it is in words `classifyCause` can read.
  */
-const HAZARD_CATCHALL_CEILING = 337;
+// AUDIT-14 W4: every authored lethal cause now refines out of the catch-all.
+const HAZARD_CATCHALL_CEILING = 5;
 const catchAll = new Set<string>();
 for (const a of ARENAS) {
     for (const e of arenaFlavor(a.id, a).events) {

@@ -18,6 +18,7 @@ import { QUALITY_BIAS } from '../data/balance';
 import { giveItem, itemPhrase, mintItem } from './items';
 import { earnTrait } from './earnedTraits';
 import { loseSanity } from './sanityBands';
+import { plainZoneName } from './rescueLine';
 import { noteMilestone, recordMilestone } from './milestones';
 
 /**
@@ -393,13 +394,13 @@ function applyEffectTickInner(ctx: SimContext, zoneName: string, effect: ZoneEff
         if (t.status !== 'alive') return;
         switch (effect.kind) {
             case 'burning':
-                applyDamage(ctx, t, Math.round(ZONE_EFFECTS.burningDamage * severity), { cause: `Caught in the fire in ${zoneName}`, kind: 'arena', code: 'burns' });
+                applyDamage(ctx, t, Math.round(ZONE_EFFECTS.burningDamage * severity), { cause: `Caught in the fire in ${plainZoneName(zoneName)}`, kind: 'arena', code: 'burns' });
                 if (ctx.rng.chance(ZONE_EFFECTS.burningBurnChance * severity) && !t.injuries.burned) {
                     injure(t, 'burned');
                     ctx.logEvent(`${t.name} does not get clear of the fire in ${zoneName} fast enough.`, [t.id], { important: true, category: 'hazard' });
                 }
                 clampTribute(t);
-                checkDeath(ctx, t, `Caught in the fire in ${zoneName}`);
+                checkDeath(ctx, t, `Caught in the fire in ${plainZoneName(zoneName)}`);
                 // §8.9: walking out of a burning sector leaves a mark that is
                 // not always a scar.
                 if (t.status === 'alive') earnTrait(ctx, t, 'Firetouched');
@@ -417,12 +418,12 @@ function applyEffectTickInner(ctx: SimContext, zoneName: string, effect: ZoneEff
                         + traitMod(t, 'water') * ZONE_EFFECTS.drownSwimmerBonus
                         - t.vitals.fatigue * ZONE_EFFECTS.drownFatiguePenalty;
                     if (ctx.rng.chance(Math.max(0.05, Math.min(0.97, swim)))) {
-                        applyDamage(ctx, t, Math.round(ZONE_EFFECTS.floodDamage * severity), { cause: `Caught in the flooding of ${zoneName}`, kind: 'arena', code: 'drowning' });
+                        applyDamage(ctx, t, Math.round(ZONE_EFFECTS.floodDamage * severity), { cause: `Caught in the flooding of ${plainZoneName(zoneName)}`, kind: 'arena', code: 'drowning' });
                         ctx.logEvent(`${t.name} is dragged under by the current in flooded ${zoneName} and barely surfaces.`, [t.id], { important: true, category: 'hazard' });
                         clampTribute(t);
-                        checkDeath(ctx, t, `Caught in the flooding of ${zoneName}`);
+                        checkDeath(ctx, t, `Caught in the flooding of ${plainZoneName(zoneName)}`);
                     } else {
-                        applyDamage(ctx, t, ZONE_EFFECTS.drownDamage, { cause: `Drowned in ${zoneName}`, kind: 'arena', code: 'drowning' });
+                        applyDamage(ctx, t, ZONE_EFFECTS.drownDamage, { cause: `Drowned in ${plainZoneName(zoneName)}`, kind: 'arena', code: 'drowning' });
                         ctx.logEvent(
                             `${t.name} goes into the water in flooded ${zoneName} and does not come up where anyone is looking. `
                             + `They were never taught, and the current does not care when you learn.`,
@@ -430,7 +431,7 @@ function applyEffectTickInner(ctx: SimContext, zoneName: string, effect: ZoneEff
                             { important: true, category: 'hazard' }
                         );
                         clampTribute(t);
-                        checkDeath(ctx, t, `Drowned in ${zoneName}`);
+                        checkDeath(ctx, t, `Drowned in ${plainZoneName(zoneName)}`);
                     }
                 }
                 break;
@@ -464,11 +465,11 @@ function applyEffectTickInner(ctx: SimContext, zoneName: string, effect: ZoneEff
                 break;
 
             case 'irradiated':
-                applyDamage(ctx, t, Math.round(ZONE_EFFECTS.irradiatedDamage * severity), { cause: `Poisoned by whatever is loose in ${zoneName}`, kind: 'arena', code: 'poison' });
+                applyDamage(ctx, t, Math.round(ZONE_EFFECTS.irradiatedDamage * severity), { cause: `Poisoned by whatever is loose in ${plainZoneName(zoneName)}`, kind: 'arena', code: 'poison' });
                 loseSanity(t, ZONE_EFFECTS.irradiatedSanityLoss * severity);
                 if (!t.injuries.poisoned) injure(t, 'poisoned');
                 clampTribute(t);
-                checkDeath(ctx, t, `Poisoned by whatever is loose in ${zoneName}`);
+                checkDeath(ctx, t, `Poisoned by whatever is loose in ${plainZoneName(zoneName)}`);
                 break;
 
             case 'quaking':
@@ -477,7 +478,7 @@ function applyEffectTickInner(ctx: SimContext, zoneName: string, effect: ZoneEff
                 t.vitals.fatigue += ZONE_EFFECTS.quakingFatigue * severity;
                 loseSanity(t, ZONE_EFFECTS.quakingSanityLoss * severity);
                 if (ctx.rng.chance(ZONE_EFFECTS.quakingFootingChance * severity)) {
-                    applyDamage(ctx, t, Math.round(ZONE_EFFECTS.quakingFootingDamage * severity), { cause: `Fell on unstable ground in ${zoneName}`, kind: 'arena', code: 'fall' });
+                    applyDamage(ctx, t, Math.round(ZONE_EFFECTS.quakingFootingDamage * severity), { cause: `Fell on unstable ground in ${plainZoneName(zoneName)}`, kind: 'arena', code: 'fall' });
                     openWound(t, BLEEDING.hazardSeverity);
                     ctx.logEvent(
                         `${t.name} loses their footing as ${zoneName} shifts under them and goes down hard on the broken ground.`,
@@ -489,7 +490,7 @@ function applyEffectTickInner(ctx: SimContext, zoneName: string, effect: ZoneEff
                 // stops being a footing problem and becomes a fall.
                 if (quakingAge(ctx, effect) >= ZONE_EFFECTS.quakingGiveAfter
                     && ctx.rng.chance(ZONE_EFFECTS.quakingGiveChance * severity)) {
-                    applyDamage(ctx, t, Math.round(ZONE_EFFECTS.quakingGiveDamage * severity), { cause: `Dropped a level when the ground gave way in ${zoneName}`, kind: 'arena', code: 'fall' });
+                    applyDamage(ctx, t, Math.round(ZONE_EFFECTS.quakingGiveDamage * severity), { cause: `Dropped a level when the ground gave way in ${plainZoneName(zoneName)}`, kind: 'arena', code: 'fall' });
                     openWound(t, BLEEDING.hazardSeverity);
                     injure(t, 'legs');
                     ctx.logEvent(
@@ -499,7 +500,7 @@ function applyEffectTickInner(ctx: SimContext, zoneName: string, effect: ZoneEff
                     );
                 }
                 clampTribute(t);
-                checkDeath(ctx, t, `Dropped a level when the ground gave way in ${zoneName}`);
+                checkDeath(ctx, t, `Dropped a level when the ground gave way in ${plainZoneName(zoneName)}`);
                 break;
 
             case 'swarming':

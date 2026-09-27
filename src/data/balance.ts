@@ -11299,3 +11299,28 @@ export const SPONSOR_NOTE = {
     /** Notes one tribute can receive in a Games; past this the Capitol stops delivering them. */
     maxPerTribute: 3,
 } as const;
+
+/**
+ * AUDIT-14 §6 (arena agent): the death-mix floor on the field the audit named,
+ * and the draw weights of the new deaths and events.
+ */
+export const AUDIT14_ARENA = {
+    /** W2: floor on `lastDamage.signature` as a share of non-tribute deaths, per arena. */
+    lastDamageSignatureMin: 0.05,
+    /** D1–D30: draw weight of each new universal death (gated, so small). */
+    universalDeathWeight: 0.2,
+    /** V1–V30: draw weight of each new universal beat. */
+    universalBeatWeight: 0.45,
+    /** A1–A42: draw weight of an arena-specific death in the five arenas over the tribute ceiling (W1). */
+    ceilingArenaDeathWeight: 1.6,
+    /** A1–A42: kiln and canopy, the two nearest the W2 signature floor. */
+    lowSignatureArenaDeathWeight: 2.4,
+    /** W7: nights within which the same night-rule line is not announced again. */
+    nightRuleQuietNights: 3,
+    /** W9: the day carnival's midway powers up all at once, its damage, and the base dodge. */
+    carnivalFinaleDay: 10,
+    carnivalFinaleDamage: 30,
+    carnivalFinaleDodge: 0.35,
+    /** A1–A42: draw weight elsewhere. */
+    arenaDeathWeight: 1,
+} as const;

@@ -70,6 +70,7 @@
     "test:audit12": "tsx scripts/check-audit12.ts",
     "test:arena-deathmix": "tsx scripts/check-arena-deathmix.ts",
     "test:audit14-achievements": "tsx scripts/check-audit14-achievements.ts",
+    "test:audit14-arenas": "tsx scripts/check-audit14-arenas.ts",
     "funnel": "tsx scripts/funnel.ts",
     "cohorts": "tsx scripts/cohorts.ts",
     "catalog": "tsx scripts/catalog.ts",

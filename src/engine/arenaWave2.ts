@@ -2,7 +2,7 @@ import type { DeathCauseCode, GameState, Tribute } from '../models/types';
 import type { ArenaEventDef } from '../data/arenaFlavor';
 import { arenaFlavor } from '../data/arenaFlavor';
 import { ARENA_MUTTS } from '../data/mutts';
-import { ARENA_DEATH_BUDGET, AUDIT12_WAVE2_ARENA as K, MEMORY } from '../data/balance';
+import { ARENA_DEATH_BUDGET, AUDIT12_WAVE2_ARENA as K, AUDIT14_ARENA, MEMORY } from '../data/balance';
 import { ITEMS } from '../data/constants';
 import { RNG } from '../utils/rng';
 import { SimContext, getAlive } from './context';
@@ -272,6 +272,8 @@ export const DEATH_MIX_BAND = {
     tributeMax: K.tributeShareMax,
     ownMin: K.signatureShareMin,
     borderCap: K.borderKillCap,
+    /** AUDIT-14 W2: the 5 % floor read off `lastDamage.signature` itself. */
+    sigMin: AUDIT14_ARENA.lastDamageSignatureMin,
 } as const;
 
 export function borderKills(state: GameState): number {

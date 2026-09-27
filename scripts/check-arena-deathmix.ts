@@ -23,7 +23,7 @@ const causes = new Map<string, number>();
 
 for (const arena of ARENAS) {
     if (only && arena.id !== only) continue;
-    let deaths = 0, tribute = 0, nonTribute = 0, signature = 0, border = 0;
+    let deaths = 0, tribute = 0, nonTribute = 0, signature = 0, lastSig = 0, border = 0, paren = 0, hazard = 0;
     for (let i = 0; i < RUNS; i++) {
         const sim = new Simulator(initialRunState({ seed: `MIX${i}-${arena.id}`, arenaId: arena.id, config: DEFAULT_GAME_CONFIG }));
         let g = 3000; let s = sim.getState();
@@ -39,7 +39,11 @@ for (const arena of ARENAS) {
         for (const t of s.tributes) {
             if (t.status !== 'dead') continue;
             deaths++;
+            // AUDIT-14 W3: no cause of death may leak a zone's sub-label.
+            if (s.arena.zones.some(z => z.name.includes('(') && (t.causeOfDeath ?? '').includes(z.name))) paren++;
             if (t.causeCode === 'tribute') { tribute++; continue; }
+            if (t.causeCode === 'hazard') hazard++;
+            if (t.lastDamage?.signature) lastSig++;
             nonTribute++;
             if (t.causeCode === 'border') border++;
             if (diedOfArena(t, s)) signature++;
@@ -49,9 +53,15 @@ for (const arena of ARENAS) {
     const share = tribute / Math.max(1, deaths);
     const sig = signature / Math.max(1, nonTribute);
     const borderPer = border / RUNS;
-    rows.push(`${arena.id.padEnd(16)} tribute ${(share * 100).toFixed(0).padStart(3)}%  own ${(sig * 100).toFixed(0).padStart(3)}%  border/run ${borderPer.toFixed(2)}`);
+    const last = lastSig / Math.max(1, nonTribute);
+    rows.push(`${arena.id.padEnd(16)} tribute ${(share * 100).toFixed(0).padStart(3)}%  own ${(sig * 100).toFixed(0).padStart(3)}%  sig ${(last * 100).toFixed(0).padStart(3)}%  border/run ${borderPer.toFixed(2)}`);
     if (share < B.tributeMin || share > B.tributeMax) failures.push(`${arena.id}: tribute-kill share ${(share * 100).toFixed(1)}% outside ${B.tributeMin * 100}-${B.tributeMax * 100}%`);
     if (sig < B.ownMin) failures.push(`${arena.id}: own-cause share ${(sig * 100).toFixed(1)}% of non-tribute deaths < ${B.ownMin * 100}%`);
+    // AUDIT-14 W2: the floor on the field the fix named.
+    if (last < B.sigMin) failures.push(`${arena.id}: lastDamage.signature share ${(last * 100).toFixed(1)}% of non-tribute deaths < ${B.sigMin * 100}%`);
+    if (paren) failures.push(`${arena.id}: ${paren} cause(s) of death carry a zone sub-label in parentheses`);
+    // AUDIT-14 W4: the catch-all under 1 % of deaths.
+    if (hazard / Math.max(1, deaths) >= 0.01) failures.push(`${arena.id}: 'hazard' is ${(hazard / deaths * 100).toFixed(1)}% of deaths (>= 1%)`);
     if (borderPer > B.borderCap + 0.5) failures.push(`${arena.id}: ${borderPer.toFixed(2)} border deaths per Games > cap ${B.borderCap}`);
 }
 console.log(rows.join('\n'));
