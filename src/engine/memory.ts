@@ -1,7 +1,7 @@
 import { GameState, RivalRecord, Tribute, TributeMemory, ZoneMemory } from '../models/types';
 import { deafToCannon } from './audit13Content';
 import { grudgeDecayScale, scarReaderSees } from './traitHooks';
-import { FEAR, HUNTING, INTEL, MEMORY, NOISE, PERCEPTION, RELATIONSHIPS, RIVAL_READ, SANITY_BANDS, SUSPICION, ZONES } from '../data/balance';
+import { FEAR, HUNTING, INTEL, MEMORY, NOISE, PERCEPTION, RELATIONSHIPS, RIVAL_READ, SANITY_BANDS, SUSPICION, ZONES, AUDIT14_ENGINE } from '../data/balance';
 import { arenaHasLaw } from './gamesProfile';
 import { profOf } from './proficiency';
 import { suspectKilling } from './accusations';
@@ -12,7 +12,7 @@ import { getZone } from './map';
 import { believes } from './rapport';
 import { SimContext } from './context';
 import { arenaIsSilent } from './gamesProfile';
-import { adjustBelief, credibilityWeight } from './relationships';
+import { adjustBelief, credibilityWeight, getRel } from './relationships';
 import { allied } from './alliance';
 
 /**
@@ -335,6 +335,20 @@ export function broadcastDeath(ctx: SimContext, victim: Tribute, killer?: Tribut
         if (witnessed && killer && killer.id !== other.id) {
             // Seeing who did it is worth far more than hearing the cannon.
             noteSighting(state, other, zone, Math.max(1, rememberedRivals(state, other, zone)), rememberedBarren(state, other, zone));
+        }
+        // AUDIT-14 T9: fear is heard as well as seen. Somebody whose ally was
+        // killed learns to fear the killer in proportion to what the ally meant
+        // (the group talks; K3 still discounts a Career inside addFear), and a
+        // name the sky keeps showing — three kills and counting — is feared on
+        // reputation by everyone not standing beside it.
+        if (killer && killer.id !== other.id && !allied(other, killer)) {
+            const regard = getRel(other, victim.id);
+            if (regard > 0 && (witnessed || allied(other, victim))) {
+                addFear(other, killer.id, AUDIT14_ENGINE.allyKillerFear * Math.min(100, regard) / 100, undefined, killer);
+            }
+            if (!silent && killer.kills >= AUDIT14_ENGINE.wantedKills) {
+                addFear(other, killer.id, AUDIT14_ENGINE.wantedFear, undefined, killer);
+            }
         }
         // §3.2: a cannon one zone over is a belief, not an observation. The
         // near-miss observer learns to fear a killer they did not see — and a

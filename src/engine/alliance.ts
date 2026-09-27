@@ -1,4 +1,5 @@
 import { traitMod } from '../data/traits';
+import { leaveKit } from './abandonedCamps';
 import { crownLeadership } from './audit13Content';
 import { ARCHETYPES } from '../data/archetypes';
 import { Alliance, AllianceEndReason, AllianceRole, EventType, GameState, Item, Tribute } from '../models/types';
@@ -998,14 +999,9 @@ export function distributeCache(
     if (living.length === 0) {
         // Nobody left to take it. It stays where the group kept it, which is
         // what the abandoned-camp layer is for; the items are still real.
-        ctx.state.abandonedCamps = ctx.state.abandonedCamps ?? [];
-        ctx.state.abandonedCamps.push({
-            zone: record.campZone ?? ctx.state.arena.zones[0].name,
-            ownerId: record.leaderId ?? '',
-            ownerName: 'the group that kept it',
-            cycle: ctx.state.cycle ?? 0,
-            items: spoils.map(i => i.id),
-        });
+        // AUDIT-14 E4/E13: through the one cache writer — merged, never on
+        // closed ground, and the instances kept.
+        leaveKit(ctx, record.campZone ?? ctx.state.arena.zones[0].name, record.leaderId ?? '', 'the group that kept it', spoils, 'scatter');
         return { given, dropped: spoils };
     }
 

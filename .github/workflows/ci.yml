@@ -165,6 +165,7 @@ jobs:
       # stays the exception. The proposed "Receipt of Mercy" was unreachable.
       - run: npm run test:mercy
       - run: npm run test:whatif
+      - run: npm run test:audit14-engine
 
       # Content and structure.
       - run: npm run test:arenas

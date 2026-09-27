@@ -26,7 +26,7 @@ import { TRAITS, traitFits } from '../data/constants';
 import { traitMod } from '../data/traits';
 import { adjustRel, getRel, trustOf } from './relationships';
 import { allianceOf, allied, areLovers, isStarCrossed, membersOf, mergeAllianceRecords } from './alliance';
-import { cycleOf, ensureMemory, hasStoodBy, rememberedPlaceOf } from './memory';
+import { cycleOf, ensureMemory, hasStoodBy, hasVengeanceAgainst, rememberedPlaceOf } from './memory';
 import { inventoryValue } from './items';
 import { resolveBetrayal } from './betrayal';
 import { oathRefusesBetrayal } from './traitHooks';
@@ -51,6 +51,7 @@ const names = (ts: Tribute[]) => ts.map(t => t.name).join(' and ');
  * they act — and if the group breaks up in between, the knife never comes.
  */
 export function betrayalIntent(ctx: SimContext, members: Tribute[]): boolean {
+    clearStaleIntents(ctx);
     const alive = getAlive(ctx.state).length;
     if (alive > AUDIT13_RELATIONS.intentFieldSize || members.length < 2) return false;
     const cycle = cycleOf(ctx.state);
@@ -60,11 +61,18 @@ export function betrayalIntent(ctx: SimContext, members: Tribute[]): boolean {
     for (const m of live) {
         const intent = m.relationsArc?.betrayalIntent;
         if (!intent || intent.cycle >= cycle) continue;
-        m.relationsArc!.betrayalIntent = undefined;
         const victim = live.find(o => o.id === intent.targetId);
-        if (!victim || !allied(m, victim) || oathRefusesBetrayal(ctx, m)) continue;
+        // AUDIT-14 E6: the knife needs them in the same place. Apart when it
+        // comes due, the intent is held one more cycle, then let go.
+        if (victim && victim.zone !== m.zone && !intent.deferred && allied(m, victim)) {
+            intent.deferred = true;
+            intent.cycle = cycle;
+            continue;
+        }
+        m.relationsArc!.betrayalIntent = undefined;
+        if (!victim || victim.zone !== m.zone || !allied(m, victim) || oathRefusesBetrayal(ctx, m)) continue;
         noteGrudgeMotive(ctx, m, victim);
-        resolveBetrayal(ctx, m, victim, members);
+        resolveBetrayal(ctx, m, victim, members, undefined, true);
         return true;
     }
 
@@ -75,7 +83,8 @@ export function betrayalIntent(ctx: SimContext, members: Tribute[]): boolean {
         const ambition = Math.max(AUDIT13_RELATIONS.intentAmbitionFloor,
             ARCHETYPES[m.archetype].treachery + traitMod(m, 'treachery'));
         live.forEach(o => {
-            if (o.id === m.id || areLovers(m, o)) return;
+            // AUDIT-14 E6: the tell is watched across a camp, not across the arena.
+            if (o.id === m.id || areLovers(m, o) || o.zone !== m.zone) return;
             const distrust = Math.max(0, Math.min(1, (100 - trustOf(m, o)) / 200));
             const kit = Math.min(AUDIT13_RELATIONS.intentKitCap, 0.5 + inventoryValue(o) / AUDIT13_RELATIONS.intentKitNorm);
             const score = ambition * distrust * kit * (AUDIT13_RELATIONS.intentFieldSize / Math.max(2, alive));
@@ -86,12 +95,31 @@ export function betrayalIntent(ctx: SimContext, members: Tribute[]): boolean {
     const { m, o } = best as { m: Tribute; o: Tribute };
     arcOf(m).betrayalIntent = { targetId: o.id, cycle };
     ctx.logEvent(
-        `${m.name} spends the evening sharpening everything they own and counting, twice, what ${o.name} is carrying. `
+        // AUDIT-14 E7: the alliance pass runs ahead of the day step, so a
+        // day-phase tell is written at first light, not in the evening.
+        `${m.name} spends ${ctx.state.phase === 'day' ? 'the grey hour before dawn' : 'the evening'} sharpening everything they own and counting, twice, what ${o.name} is carrying. `
         + `Nobody says anything. The cameras stay on ${m.name}.`,
         [m.id, o.id],
         { type: 'betrayal-warning', important: true, category: 'betrayal', zone: m.zone },
     );
     return false;
+}
+
+/**
+ * AUDIT-14 E8: an intent is about an ally. When the alliance ends or the
+ * target dies it goes, rather than riding into the next group and firing on
+ * the first cycle the two are allied again with no new tell.
+ */
+export function clearStaleIntents(ctx: SimContext) {
+    const byId = new Map(ctx.state.tributes.map(t => [t.id, t] as const));
+    ctx.state.tributes.forEach(t => {
+        const intent = t.relationsArc?.betrayalIntent;
+        if (!intent) return;
+        const target = byId.get(intent.targetId);
+        if (t.status !== 'alive' || !target || target.status !== 'alive' || !allied(t, target)) {
+            t.relationsArc!.betrayalIntent = undefined;
+        }
+    });
 }
 
 /** R1: the two halves of a split, meeting again. */
@@ -270,7 +298,8 @@ function wards(ctx: SimContext) {
     alive.forEach(young => {
         const arc = arcOf(young);
         if (young.age > AUDIT13_RELATIONS.wardYoungAge || arc.wardOf) return;
-        const elder = alive.find(o => o.age >= AUDIT13_RELATIONS.wardElderAge && allied(o, young) && !areLovers(o, young));
+        const elder = alive.find(o => o.age >= AUDIT13_RELATIONS.wardElderAge && allied(o, young) && !areLovers(o, young)
+            && !hasVengeanceAgainst(o, young.id) && !hasVengeanceAgainst(young, o.id));
         if (!elder) return;
         arc.wardOf = elder.id;
         // The guardian stand rides the protector machinery: a protector
@@ -288,6 +317,14 @@ function wards(ctx: SimContext) {
         if (!arc?.wardOf) return;
         const elder = ctx.state.tributes.find(o => o.id === arc.wardOf);
         if (!elder) return;
+        // AUDIT-14 E12: the bond is an alliance bond. It goes when the
+        // alliance does, or when either has sworn on the other.
+        if (elder.status === 'alive' && (!allied(elder, young)
+            || hasVengeanceAgainst(elder, young.id) || hasVengeanceAgainst(young, elder.id))) {
+            arc.wardOf = undefined;
+            elder.protectorBonds = (elder.protectorBonds ?? []).filter(id => id !== young.id);
+            return;
+        }
         if (elder.status === 'alive') {
             if (elder.zone !== young.zone) return;
             const skill = (Object.keys(elder.proficiencies ?? {}) as Proficiency[]).sort((x, y) => profOf(elder, y) - profOf(elder, x))[0];
@@ -296,6 +333,8 @@ function wards(ctx: SimContext) {
         }
         if (arc.inherited) return;
         arc.inherited = true;
+        // AUDIT-14 E12: nothing is inherited across a killing between them.
+        if (elder.lastDamage?.sourceId === young.id || young.lastDamage?.sourceId === elder.id) return;
         const trait = elder.traits.find(tr => (TRAITS as readonly string[]).includes(tr) && !young.traits.includes(tr) && traitFits(young.traits, tr));
         if (!trait) return;
         young.traits.push(trait);
@@ -314,6 +353,7 @@ function wards(ctx: SimContext) {
  * of the phase's import cycle.
  */
 export function tickRelationsArc(ctx: SimContext, declare: (a: Tribute, b: Tribute) => void) {
+    clearStaleIntents(ctx); // AUDIT-14 E8
     reunionOrFeud(ctx);
     partnerArc(ctx);
     slowBurn(ctx, declare);

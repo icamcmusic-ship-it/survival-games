@@ -2565,7 +2565,7 @@ export const SPONSOR_TEXTS = [
     '{tribute} catches the parachute in {zone} before it lands, which the commentary will replay all evening. {item}.',
     'A chime over {zone}. {tribute} has learned not to hope at chimes, and this time it is theirs: {item}.',
     'Whoever bought {item} for {tribute} watched them for four days first. It lands in {zone}.',
-    '{tribute} finds the parachute in {zone} tangled and half-buried, and {item} still good.',
+    '{tribute} finds the parachute in {zone} tangled and half-buried, and {item} is still good.',
     'A parachute lands in {zone} beside {tribute} with the Capitol seal facing up, as if that mattered. {item}.',
     '{tribute} opens the parachute in {zone} with their back to a wall and both eyes on the approach. {item}.',
     'The sponsor rooms have been quiet about {tribute} all week. {item} comes down into {zone} anyway.',
@@ -3825,7 +3825,7 @@ export const SURVIVAL_TEXTS = {
         "{tribute} drinks at {zone} with one hand cupped and one hand on their weapon, which is how everything is done now.",
         "The water in {zone} is cold enough to ache, and {tribute} drinks it down ache and all.",
         "For a full minute at the water's edge in {zone}, {tribute}'s only strategy is swallowing.",
-        "{tribute} tops up their skin, then their stomach, then the skin again — the {zone} waterline arithmetic of somebody planning to keep living.",
+        "{tribute} tops up their skin, then their stomach, then the skin again — the waterline arithmetic of somebody in {zone} planning to keep living.",
         "{tribute} hears their own gulping in the quiet of {zone} and cannot make themselves care who else does.",
         "Clean water in {zone}. {tribute} stops rationing hope for exactly as long as it takes to drink.",
         "Kneeling at the edge of {zone}, {tribute} drinks until the headache that has been running their decisions finally lets go.",
@@ -4729,7 +4729,7 @@ export const TRAINING_MOCK: string[] = [
 
 export const TRAINING_THEFT: string[] = [
     '{tribute} walks off the {station} with {other}\'s water bottle and drinks from it in front of them an hour later.',
-    'Something of {other}\'s is missing from the {station} rack. {tribute} is wearing it by the evening.',
+    'Something of {other}\'s is missing from the rack at the {station}. {tribute} is wearing it by the evening.',
     '{tribute} lifts a coil of wire from the {station} while {other} is being corrected by a trainer.',
     '{other} leaves their gloves at the {station}. {tribute} does not hand them in.',
     '{tribute} takes the last of the good flints from the {station} and leaves {other} the chipped one.',
@@ -4822,7 +4822,7 @@ export const TRAINING_GROUP_TENSION: string[] = [
     'Something is said at the {station} about {topic} and by the end of it {tribute}, {other} and {third} are all standing.',
     '{other} walks off the {station} rather than finish the drill with {tribute} and {third}, and everybody watches them go.',
     '{tribute} squares up to {other} at the {station}. {third} moves in behind {tribute}, which settles the question.',
-    'It takes two trainers to get {tribute}, {other} and {third} off the {station} mat, and none of the three has a mark on them.',
+    'It takes two trainers to get {tribute}, {other} and {third} away from the {station}, and none of the three has a mark on them.',
 ];
 
 /**

@@ -9427,7 +9427,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
         actions: {
             forage: [
                 '{tribute} works a moss hammock in {zone} and pulls out {item}.',
-                '{tribute} checks a cached line in {zone} and finds {item} still tied off.',
+                '{tribute} checks a cached line in {zone} and finds {item} where they left it, still tied off.',
                 '{tribute} strips a nest in {zone} of what isn\'t eggs and comes away with {item}.',
                 '{tribute} works the bark of {zone} for what collects in it and finds {item}.',
                 '{tribute} climbs out along a limb of {zone} for {item} nobody closer bothered to reach.',

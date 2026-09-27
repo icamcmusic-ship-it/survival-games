@@ -14,7 +14,7 @@ import { spend } from './actionBudget';
 import { mitigate } from './hazardChain';
 import { SimContext , getAlive } from './context';
 import { applyDamage, checkDeath, resolveCombat } from './combat';
-import { depleteZone, depletionOf, effectiveResources, getZone, zoneFeatures , reachableZones } from './map';
+import { depleteZone, depletionOf, effectiveResources, getZone, zoneFeatures, reachableZones, severedEdgeSet } from './map';
 import { collapseStructure, isLoadBearing } from './loadBearing';
 import { noteEffectCaused } from './runRecords';
 import type { SanityBand } from './sanityBands';
@@ -1151,7 +1151,7 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
         // same pool — the ones the pool exists to vary between — did not count.
         noteMilestone(ctx, 'patrol-posted', [t.id]);
         say('patrol');
-        reachableZones(ctx.state.arena, t.zone, ctx.state.collapsedZones ?? []).forEach(z => {
+        reachableZones(ctx.state.arena, t.zone, ctx.state.collapsedZones ?? [], severedEdgeSet(ctx.state)).forEach(z => {
             noteSighting(ctx.state, t, z.name, getAlive(ctx.state).filter(o => o.zone === z.name && isHostileTo(t, o)).length, depletionOf(ctx.state, z.name));
         });
         trainProficiency(t, 'tracking');

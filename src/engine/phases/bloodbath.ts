@@ -5,6 +5,7 @@ import { targetDrawOf } from '../targeting';
 import { SimContext, getAlive } from '../context';
 import { tickRunRecords } from '../runRecords';
 import { RNG } from '../../utils/rng';
+import { updateStance } from '../stance';
 import { Item, Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
 import { traitMod } from '../../data/traits';
@@ -1099,6 +1100,11 @@ export function processBloodbath(ctx: SimContext) {
     // AUDIT-12 E4/E16: the horn is where most leaders and role holders die.
     // Re-deal before the first day rather than waiting for a caller to prune.
     pruneDeadAlliances(ctx);
+    // AUDIT-14 T16: the first day starts from a scored stance, not the
+    // archetype's reaping-day posture. Somebody who fled the horn with
+    // nothing reads the board differently from a Career who held it.
+    const standing = getAlive(ctx.state);
+    standing.forEach(t => updateStance(ctx, t, standing.filter(o => o.zone === t.zone)));
 }
 
 /**

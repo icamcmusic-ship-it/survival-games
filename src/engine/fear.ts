@@ -109,10 +109,11 @@ export function fearFraction(t: Tribute, otherId: string): number {
 }
 
 /** The most frightening living tribute believed to be in a given zone. */
-export function fearInZone(state: GameState, t: Tribute, zoneName: string): number {
+export function fearInZone(state: GameState, t: Tribute, zoneName: string, exclude?: (id: string) => boolean): number {
     let worst = 0;
     state.tributes.forEach(o => {
         if (o.status !== 'alive' || o.id === t.id) return;
+        if (exclude?.(o.id)) return;
         // AUDIT-9 B11: only what they believe, and now actually only that.
         //
         // This used to test `o.zone` — the rival's *true* position — gated on

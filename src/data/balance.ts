@@ -11246,3 +11246,79 @@ export const AUDIT13_CONTENT = {
     shelteringFatigue: 0.5,
     shelteringTrackedLevel: 3,
 } as const;
+
+/**
+ * AUDIT-14 §3: engine fixes and tribute-logic knobs.
+ */
+export const AUDIT14_ENGINE = {
+    // ---- T1: stance choice is a draw from the top of the ranking, not an argmax.
+    /** How many of the ranked stances the draw considers. */
+    stanceSoftmaxTopN: 3,
+    /** Temperature floor, and what confusion and weak willpower add to it. */
+    stanceSoftmaxBaseTemp: 0.25,
+    stanceSoftmaxConfusionTemp: 0.5,
+    stanceSoftmaxWillpowerTemp: 0.2,
+
+    // ---- T7: the AUDIT-13 stance bases scale with the signal behind them.
+    /** Regrouping: share of the base kept at one hop, rising to all of it at `regroupingHopCap` hops. */
+    regroupingHopFloor: 0.7,
+    regroupingHopCap: 3,
+    /** Regrouping: share kept at zero regard for the person walked back to. */
+    regroupingRegardFloor: 0.6,
+    /** Mourning: share kept at zero regard for the dead. */
+    mourningRegardFloor: 0.5,
+    /** Sheltering: share kept when only the standing climate (no front) is biting. */
+    shelteringClimateOnlyScale: 0.8,
+
+    // ---- T13: the cold night rule reads the posture and the camp.
+    nightColdCampScale: 0.5,
+
+    // ---- T5: risk tolerance reads the room.
+    riskPerAllyHere: 0.1,
+    riskAllyCap: 0.3,
+    riskFearWeight: 0.3,
+    riskFollowedPenalty: 0.15,
+    riskPowerWeight: 0.1,
+    /** Power points per unit of the power term (the difference is divided by this). */
+    riskPowerDivisor: 10,
+
+    // ---- T4: the vengeance pull is aimed at the target, not any rival.
+    vengeancePull: 4,
+    /** Cycles without contact over which the pull fades to nothing. */
+    vengeancePullDecayCycles: 8,
+
+    // ---- T6: a look further out at water, allies and the sworn target.
+    fieldWater: 2,
+    fieldAlly: 1,
+    fieldVengeance: 1.5,
+    /** Thirst at or over which water pulls from further out. */
+    fieldThirstFrom: 40,
+    /** Hops the field looks out to. */
+    fieldMaxHops: 3,
+
+    // ---- T9: fear that is heard about, not only seen.
+    /** Fear of an ally's known killer per 100 regard for the ally. */
+    allyKillerFear: 10,
+    /** Kills at which a rumoured killer is feared on reputation, and how much. */
+    wantedKills: 3,
+    wantedFear: 5,
+
+    // ---- T10: where the quarry would go.
+    projectionConfidence: 0.6,
+    /** Tracking level at which the projection runs a second hop. */
+    projectionTwoHopTracking: 3,
+
+    // ---- T11: the Kingmaker's choice.
+    /** Chance a Prickly or Contrarian ally, or one who dislikes the Kingmaker, refuses the crown. */
+    crownRefuseChance: 0.5,
+
+    // ---- T15: the endgame reads the other finalists.
+    /** Pull toward a zone within one hop of a believed finalist, for a high-risk finalist. */
+    endgameFinalistPull: 3,
+    /** Pull toward cover for a low-risk finalist. */
+    endgameCoverPull: 2,
+
+    // ---- T2: a hunt that cannot become Hunting becomes a stalk.
+    /** Chance per cycle a hunt the tribute cannot run is downgraded. */
+    huntDowngradeChance: 0.5,
+} as const;

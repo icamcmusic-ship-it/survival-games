@@ -917,7 +917,7 @@ export const BUILDING_ARENA_FLAVOR: Record<string, ArenaFlavor> = {
             {
                 text: '{tribute} crosses {zone} in full view of the media tower, because the infield is the only way back. Everybody with a view of the infield saw it.',
                 escapeText: '{tribute} waits for dark before crossing the infield at {zone}.',
-                cause: 'Shot crossing the infield', code: 'tribute',
+                cause: 'Shot crossing the infield', code: 'impact',
                 dodgeStat: 'stealth', dodgeAlt: 'agility', dodgeDifficulty: 6, damage: 16, bleeding: true, terrains: ['open'], witnesses: true,
             },
             {

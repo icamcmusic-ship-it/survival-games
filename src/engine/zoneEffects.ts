@@ -263,6 +263,8 @@ export function tickZoneEffects(ctx: SimContext) {
     const cycle = cycleOf(state);
 
     Object.keys(state.zoneEffects).forEach(zoneName => {
+        // AUDIT-14 E5: closed ground keeps no effects and narrates nothing.
+        if ((state.collapsedZones ?? []).includes(zoneName)) { delete state.zoneEffects![zoneName]; return; }
         const list = state.zoneEffects![zoneName];
         const zone = getZone(state.arena, zoneName);
         const occupants = presentIn(state, zoneName);
@@ -418,13 +420,13 @@ function applyEffectTickInner(ctx: SimContext, zoneName: string, effect: ZoneEff
                         - t.vitals.fatigue * ZONE_EFFECTS.drownFatiguePenalty;
                     if (ctx.rng.chance(Math.max(0.05, Math.min(0.97, swim)))) {
                         applyDamage(ctx, t, Math.round(ZONE_EFFECTS.floodDamage * severity), { cause: `Caught in the flooding of ${zoneName}`, kind: 'arena', code: 'drowning' });
-                        ctx.logEvent(`${t.name} is dragged under by the current in flooded ${zoneName} and barely surfaces.`, [t.id], { important: true, category: 'hazard' });
+                        ctx.logEvent(`${t.name} is dragged under by the current in ${/flood/i.test(zoneName) ? zoneName : `flooded ${zoneName}`} and barely surfaces.`, [t.id], { important: true, category: 'hazard' });
                         clampTribute(t);
                         checkDeath(ctx, t, `Caught in the flooding of ${zoneName}`);
                     } else {
                         applyDamage(ctx, t, ZONE_EFFECTS.drownDamage, { cause: `Drowned in ${zoneName}`, kind: 'arena', code: 'drowning' });
                         ctx.logEvent(
-                            `${t.name} goes into the water in flooded ${zoneName} and does not come up where anyone is looking. `
+                            `${t.name} goes into the water in ${/flood/i.test(zoneName) ? zoneName : `flooded ${zoneName}`} and does not come up where anyone is looking. `
                             + `They were never taught, and the current does not care when you learn.`,
                             [t.id],
                             { important: true, category: 'hazard' }

@@ -4,7 +4,7 @@ import { DeathCauseCode, SignatureRule, Tribute } from '../models/types';
 import { RNG } from '../utils/rng';
 import { SimContext, getAlive } from './context';
 import { applyDamage, checkDeath } from './combat';
-import { getZone, reachableZones, severEdge, edgeKey, depleteZone, depletionOf, zoneFeatures } from './map';
+import { getZone, reachableZones, severEdge, edgeKey, depleteZone, depletionOf, zoneFeatures, severedEdgeSet } from './map';
 import { addZoneThreat, noteSighting } from './memory';
 import { startZoneEffect, hasEffect, severRandomEdge, effectsFor } from './zoneEffects';
 import { injure, openWound } from './wounds';
@@ -1460,7 +1460,7 @@ function nooneplaceSignature(ctx: SimContext, _cycle: number, rng: RNG) {
         if (!rng.chance(chance)) return;
 
         const from = t.zone;
-        const neighbours = reachableZones(ctx.state.arena, from, ctx.state.collapsedZones || [])
+        const neighbours = reachableZones(ctx.state.arena, from, ctx.state.collapsedZones || [], severedEdgeSet(ctx.state))
             .map(z => z.name)
             .filter(n => n !== from);
         if (neighbours.length === 0) return;
@@ -1783,7 +1783,7 @@ function telegraphSignature(ctx: SimContext, rule: SignatureRule, cycle: number,
     getAlive(ctx.state).forEach(t => {
         if (t.archetype !== 'scholar') return;
         if (!truth.includes(t.zone)) return;
-        const escape = reachableZones(ctx.state.arena, t.zone, ctx.state.collapsedZones || [])
+        const escape = reachableZones(ctx.state.arena, t.zone, ctx.state.collapsedZones || [], severedEdgeSet(ctx.state))
             .map(z => z.name)
             .find(z => !truth.includes(z));
         if (!escape) return;

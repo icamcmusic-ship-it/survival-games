@@ -1,5 +1,6 @@
-import { GameState, Stance, TraceReason, Tribute, ArchetypeId } from '../models/types';
-import { cannotPatrol, hungerSharpHunting, mourningAvailable, regroupingAvailable, shelterScore, shelteringAvailable } from './audit13Content';
+import { GameState, Stance, TraceReason, Tribute, ArchetypeId, attr } from '../models/types';
+import { confusionOf } from './confusion';
+import { cannotPatrol, hungerSharpHunting, mourningAvailable, regroupingAvailable, regroupingSignal, shelterScore, shelteringAvailable } from './audit13Content';
 import { griefStance } from './allianceBonds';
 import { ARCHETYPES } from '../data/archetypes';
 import { DECISION_TRACE, FEAR, RISK, RIVAL_READ, STANCE, STANCE_HOLD, STANCE_MODES, STEALTH, VITALS } from '../data/balance';
@@ -17,13 +18,13 @@ import { traitMod } from '../data/traits';
 import { profOf } from './proficiency';
 import { hasBroken } from './resolve';
 import { awareness } from './stealth';
-import { getZone, reachableZones, zoneFeatures } from './map';
+import { getZone, reachableZones, severedEdgeSet, zoneFeatures } from './map';
 import { hasTruce } from './parley';
 import { debtTo } from './debts';
 import { trapsIn } from './fieldcraft';
 import { inventoryValue } from './items';
 import { allied } from './alliance';
-import { AUDIT12_WAVE2_TRIBUTES as W2, AUDIT13_CONTENT as A13 } from '../data/balance';
+import { AUDIT12_WAVE2_TRIBUTES as W2, AUDIT13_CONTENT as A13, AUDIT14_ENGINE as E14 } from '../data/balance';
 import { hidingAvailable } from './traitHooks';
 
 /**
@@ -219,7 +220,7 @@ function buildSignals(ctx: SimContext, t: Tribute, occupants: Tribute[]): Stance
     const cycle = ctx.state.cycle ?? 0;
 
     const neighbours = zone
-        ? reachableZones(ctx.state.arena, t.zone, ctx.state.collapsedZones || []).map(z => z.name)
+        ? reachableZones(ctx.state.arena, t.zone, ctx.state.collapsedZones || [], severedEdgeSet(ctx.state)).map(z => z.name)
         : [];
     const cannonNearby = (ctx.state.recentCannonZones ?? [])
         .some(c => c.cycle >= cycle - 1 && (neighbours.includes(c.zone) || c.zone === t.zone));
@@ -299,7 +300,20 @@ type StancePrecondition = (ctx: SimContext, t: Tribute, sig: StanceSignals) => b
  * cycle the stranger walks on.
  */
 function stickyHold(t: Tribute, stance: Stance): boolean {
-    return t.stance === stance && (t.stanceHeld ?? 0) < STANCE_PROFILES[stance].minHold;
+    // AUDIT-14 E1: the hold keeps a stance that was *entered legally*. A
+    // stance the tribute never qualified for (an archetype's opening
+    // posture, say) has no `stanceReady` stamp, and holding it on no reason
+    // is how a Mourner mourned nobody for two cycles.
+    return t.stance === stance && (t.stanceHeld ?? 0) < STANCE_PROFILES[stance].minHold
+        && t.stanceReady?.[stance] !== undefined;
+}
+
+/** The Hunting precondition, readable without a signal bundle (AUDIT-14 T2). */
+export function canRunHunt(t: Tribute): boolean {
+    if (t.objective?.kind !== 'hunt') return false;
+    if (profOf(t, 'tracking') >= STANCE_MODES.hunting.trackingMin) return true;
+    const quarry = t.objective.targetId;
+    return quarry !== undefined && ensureMemory(t).vengeance.includes(quarry);
 }
 
 export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> = {
@@ -310,12 +324,7 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
     // grudge now waives the tracking floor: you do not need fieldcraft to hunt
     // the one person you have promised yourself you will kill, and "committing
     // to one person" is exactly what the stance is for.
-    Hunting: (_ctx, t) => {
-        if (t.objective?.kind !== 'hunt') return false;
-        if (profOf(t, 'tracking') >= STANCE_MODES.hunting.trackingMin) return true;
-        const quarry = t.objective.targetId;
-        return quarry !== undefined && ensureMemory(t).vengeance.includes(quarry);
-    },
+    Hunting: (_ctx, t) => canRunHunt(t),
 
     // Ground they chose, held long enough to have worked on, with something
     // built on it. A trap is the purest version; a shelter counts too — the
@@ -789,8 +798,9 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
     },
 
     // AUDIT-13 N35: a separated ally who would rather find their people than a fight.
-    Regrouping: (_ctx, t, sig) => {
-        let s = A13.regroupingBase;
+    Regrouping: (ctx, t, sig) => {
+        // AUDIT-14 T7: scaled by how far away they are and how much they matter.
+        let s = A13.regroupingBase * regroupingSignal(ctx, t);
         s += sig.arch.allianceAffinity * STANCE.archetypeWeight * STANCE_MODES.conditionalArchetypeWeight;
         s -= Math.min(W2.hidingThreatCap, sig.hostile) * A13.regroupingHostilePenalty;
         s += sig.arch.stanceBias?.Regrouping ?? 0;
@@ -798,8 +808,10 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
     },
 
     // AUDIT-13 N36: grief, for one cycle, outranks almost everything.
-    Mourning: (_ctx, _t, sig) => {
-        let s = A13.mourningBase;
+    Mourning: (_ctx, t, sig) => {
+        // AUDIT-14 T7: grief the size of the person lost.
+        const regard = t.mourning ? Math.max(0, Math.min(100, getRel(t, t.mourning.victimId))) : 0;
+        let s = A13.mourningBase * (E14.mourningRegardFloor + (1 - E14.mourningRegardFloor) * regard / 100);
         s -= Math.min(W2.hidingThreatCap, sig.hostile) * A13.regroupingHostilePenalty;
         s += sig.arch.stanceBias?.Mourning ?? 0;
         return s;
@@ -944,6 +956,14 @@ function stanceReasons(ctx: SimContext, t: Tribute, sig: StanceSignals, stance: 
         if (sig.broken) push('past caring', STANCE_MODES.desperate.brokenBonus);
         if (t.vitals.hunger > STANCE_MODES.desperate.vitalThreshold) push('starving', STANCE_MODES.desperate.vitalBonus);
         if (t.vitals.thirst > STANCE_MODES.desperate.vitalThreshold) push('parched', STANCE_MODES.desperate.vitalBonus);
+    } else if (stance === 'Regrouping') {
+        // AUDIT-14 T7: every scorer says why.
+        push('their people are out there somewhere', A13.regroupingBase * regroupingSignal(ctx, t));
+    } else if (stance === 'Mourning' && t.mourning) {
+        const dead = ctx.state.tributes.find(o => o.id === t.mourning!.victimId);
+        push(`grieving ${dead?.name ?? 'somebody'}`, A13.mourningBase * Math.max(0, getRel(t, t.mourning.victimId)) / 100);
+    } else if (stance === 'Sheltering') {
+        push(ctx.state.weatherFront ? 'weather coming' : 'the arena\'s own cold', shelterScore(ctx, t));
     } else if (stance === 'Scavenging') {
         if (!sig.hasWeapon) push('unarmed', STANCE_MODES.scavenging.unarmedBonus);
         if (sig.cannonNearby) push('a cannon just went off nearby', STANCE_MODES.scavenging.cannonBonus);
@@ -959,6 +979,27 @@ function stanceReasons(ctx: SimContext, t: Tribute, sig: StanceSignals, stance: 
     return out
         .sort((a, b) => Math.abs(b.weight) - Math.abs(a.weight))
         .slice(0, DECISION_TRACE.reasonsPerStance);
+}
+
+/** AUDIT-14 T1: index into `ranked` of a softmax draw over its top few. */
+function drawStance(ctx: SimContext, t: Tribute, ranked: Array<[Stance, number]>): number {
+    const n = Math.min(E14.stanceSoftmaxTopN, ranked.length);
+    if (n <= 1) return 0;
+    // Only a real change of mind is drawn: with the incumbent still in the
+    // running, the hysteresis decides, and a draw would only add churn.
+    if (ranked.slice(0, n).some(([st]) => st === t.stance)) return 0;
+    const temp = E14.stanceSoftmaxBaseTemp
+        + E14.stanceSoftmaxConfusionTemp * confusionOf(ctx, t)
+        + E14.stanceSoftmaxWillpowerTemp * Math.max(0, 1 - attr(t, 'willpower') / 10);
+    const top = ranked[0][1];
+    const weights = ranked.slice(0, n).map(([, sc]) => Math.exp((sc - top) / temp));
+    const total = weights.reduce((a, b) => a + b, 0);
+    let roll = ctx.rng.nextFloat() * total;
+    for (let i = 0; i < n; i++) {
+        roll -= weights[i];
+        if (roll <= 0) return i;
+    }
+    return 0;
 }
 
 export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) {
@@ -1052,6 +1093,12 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
         && ranked[0][1] - ranked[1][1] < STANCE_HOLD.conditionalEntryTieBand) {
         [ranked[0], ranked[1]] = [ranked[1], ranked[0]];
     }
+    // AUDIT-14 T1: the pick is a draw over the top of the ranking, not an
+    // argmax. Rested, disciplined tributes stay near-deterministic; tired,
+    // confused or weak-willed ones make human mistakes. The hysteresis below
+    // is untouched and still judges the drawn stance against the incumbent.
+    const drawn = drawStance(ctx, t, ranked);
+    if (drawn > 0) [ranked[0], ranked[drawn]] = [ranked[drawn], ranked[0]];
     const [bestStance, bestScore] = ranked[0] ?? ['Defensive', 0];
 
     // A §1: what the scorer actually saw, kept for one cycle so the tribute
@@ -1190,6 +1237,10 @@ export function openingStance(archetype: ArchetypeId): Stance {
     let best: Stance = 'Defensive';
     let bestScore = bias.Defensive ?? 0;
     (Object.entries(bias) as Array<[Stance, number]>).forEach(([stance, score]) => {
+        // AUDIT-14 E1: a conditional stance needs a situation, and nothing
+        // has happened yet at the reaping. Thirty archetypes opened Mourning,
+        // Nursing or Fortified with nobody to mourn, nurse or fortify.
+        if (STANCE_PROFILES[stance]?.conditional) return;
         if (score > bestScore) { best = stance; bestScore = score; }
     });
     return best;

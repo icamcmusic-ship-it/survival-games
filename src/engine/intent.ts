@@ -246,7 +246,7 @@ export function layFalseTrail(ctx: SimContext, t: Tribute) {
     if (!ctx.rng.chance(PLANNING.falseTrailChance + profOf(t, 'signalling') * PLANNING.falseTrailPerSignalling)) return;
     trainProficiency(t, 'signalling');
 
-    const options = reachableZones(ctx.state.arena, t.zone, ctx.state.collapsedZones ?? [])
+    const options = reachableZones(ctx.state.arena, t.zone, ctx.state.collapsedZones ?? [], severedEdgeSet(ctx.state))
         .filter(z => z.name !== t.zone);
     if (options.length === 0) return;
     const decoy = ctx.rng.pick(options).name;
@@ -291,7 +291,7 @@ export function isBeingFollowed(ctx: SimContext, t: Tribute): boolean {
 
 /** Somewhere this tribute has not already given up on. */
 export function freshGround(ctx: SimContext, t: Tribute): string | undefined {
-    const options = reachableZones(ctx.state.arena, t.zone, ctx.state.collapsedZones ?? [])
+    const options = reachableZones(ctx.state.arena, t.zone, ctx.state.collapsedZones ?? [], severedEdgeSet(ctx.state))
         .filter(z => z.name !== t.zone && (t.memory?.forageFailures?.[z.name] ?? 0) === 0);
     if (options.length === 0) return undefined;
     return options.sort((a, b) => (getZone(ctx.state.arena, b.name)?.resources ?? 0)

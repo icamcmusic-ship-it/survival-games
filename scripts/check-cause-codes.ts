@@ -78,7 +78,11 @@ for (const file of engineFiles('src/engine')) {
  * quietly growing back. A new lethal event that lands in `hazard` must either
  * carry a `code` or say what it is in words `classifyCause` can read.
  */
-const HAZARD_CATCHALL_CEILING = 337;
+// AUDIT-14 E10: 337 -> 448. The rise is not new uncoded content: "Killed by
+// the dust" and a hundred lines like it were being read as *tribute* kills by
+// the `^Killed by` rule. Arena damage no longer lets that rule fire, so those
+// lines now land honestly in the catch-all, where they wait for a code.
+const HAZARD_CATCHALL_CEILING = 448;
 const catchAll = new Set<string>();
 for (const a of ARENAS) {
     for (const e of arenaFlavor(a.id, a).events) {
