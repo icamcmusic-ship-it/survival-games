@@ -811,7 +811,7 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
     Mourning: (_ctx, t, sig) => {
         // AUDIT-14 T7: grief the size of the person lost.
         const regard = t.mourning ? Math.max(0, Math.min(100, getRel(t, t.mourning.victimId))) : 0;
-        let s = A13.mourningBase * (E14.mourningRegardFloor + (1 - E14.mourningRegardFloor) * regard / 100);
+        let s = A13.mourningBase * (E14.mourningRegardFloor + (E14.mourningRegardCeil - E14.mourningRegardFloor) * regard / 100);
         s -= Math.min(W2.hidingThreatCap, sig.hostile) * A13.regroupingHostilePenalty;
         s += sig.arch.stanceBias?.Mourning ?? 0;
         return s;
@@ -988,6 +988,9 @@ function drawStance(ctx: SimContext, t: Tribute, ranked: Array<[Stance, number]>
     // Only a real change of mind is drawn: with the incumbent still in the
     // running, the hysteresis decides, and a draw would only add churn.
     if (ranked.slice(0, n).some(([st]) => st === t.stance)) return 0;
+    // ...and somebody already changing their mind cycle to cycle is not also
+    // handed a random one: the draw is a mistake, not a source of churn.
+    if ((t.stanceChurn ?? 0) >= 1) return 0;
     const temp = E14.stanceSoftmaxBaseTemp
         + E14.stanceSoftmaxConfusionTemp * confusionOf(ctx, t)
         + E14.stanceSoftmaxWillpowerTemp * Math.max(0, 1 - attr(t, 'willpower') / 10);

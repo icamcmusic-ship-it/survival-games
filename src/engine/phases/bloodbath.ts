@@ -6,11 +6,12 @@ import { SimContext, getAlive } from '../context';
 import { tickRunRecords } from '../runRecords';
 import { RNG } from '../../utils/rng';
 import { updateStance } from '../stance';
+import { STANCE_PROFILES } from '../../data/stances';
 import { Item, Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
 import { traitMod } from '../../data/traits';
 import { ARCHETYPES } from '../../data/archetypes';
-import { ALLIANCES, AUDIT12_TRIBUTES, AUDIT13_CAREERS, AUDIT13_RELATIONS, BLOODBATH, ESCALATION, QUALITY_BIAS, TRAINING } from '../../data/balance';
+import { ALLIANCES, AUDIT12_TRIBUTES, AUDIT13_CAREERS, AUDIT13_RELATIONS, BLOODBATH, ESCALATION, QUALITY_BIAS, STANCE, TRAINING } from '../../data/balance';
 import { allied, pruneDeadAlliances, registerAlliance } from '../alliance';
 
 /**
@@ -1104,7 +1105,12 @@ export function processBloodbath(ctx: SimContext) {
     // archetype's reaping-day posture. Somebody who fled the horn with
     // nothing reads the board differently from a Career who held it.
     const standing = getAlive(ctx.state);
-    standing.forEach(t => updateStance(ctx, t, standing.filter(o => o.zone === t.zone)));
+    standing.forEach(t => {
+        updateStance(ctx, t, standing.filter(o => o.zone === t.zone));
+        // A starting point, not a commitment: the first day's scorer is not
+        // held to a posture read off the horn in the confusion of the gong.
+        t.stanceHeld = Math.max(t.stanceHeld, STANCE_PROFILES[t.stance]?.minHold ?? STANCE.minHold);
+    });
 }
 
 /**

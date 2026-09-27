@@ -44,8 +44,12 @@ export function tickAudit13Content(ctx: SimContext) {
         // they are cleared here when they lapse.
         if (t.hearthUntil !== undefined && t.hearthUntil < cycle) t.hearthUntil = undefined;
         if (t.beaconUntil !== undefined && t.beaconUntil < cycle) t.beaconUntil = undefined;
-        if (!isActive(t)) return;
-        if (t.archetype === 'firekeeper') tendFire(ctx, t, night);
+        // AUDIT-14 E11: a crown lasts only as long as the Kingmaker still means
+        // it — checked for the downed too, who are skipped below.
+        if (t.crownedById) {
+            const maker = ctx.state.tributes.find(o => o.id === t.crownedById);
+            if (!maker || maker.status !== 'alive' || maker.crownedId !== t.id) t.crownedById = undefined;
+        }
         // AUDIT-14 E18: a vow to ground that has since closed is re-sworn.
         if (t.archetype === 'pilgrim' && t.pilgrimZone && !t.pilgrimArrived
             && (ctx.state.collapsedZones ?? []).includes(t.pilgrimZone)) {
@@ -59,12 +63,10 @@ export function tickAudit13Content(ctx: SimContext) {
                 );
             }
         }
+        if (!isActive(t)) return;
+        if (t.archetype === 'firekeeper') tendFire(ctx, t, night);
         if (t.archetype === 'pilgrim' && !t.pilgrimZone) pickLandmark(ctx, t);
-        // AUDIT-14 E11: a crown lasts only as long as the Kingmaker still means it.
-        if (t.crownedById) {
-            const maker = ctx.state.tributes.find(o => o.id === t.crownedById);
-            if (!maker || maker.status !== 'alive' || maker.crownedId !== t.id) t.crownedById = undefined;
-        }
+
         // Arriving is a fact the moment it happens; the set piece is the camera finding it.
         if (t.archetype === 'pilgrim' && t.pilgrimZone === t.zone) t.pilgrimArrived = true;
         if (t.crownedId) crownShare(ctx, t);
@@ -189,7 +191,7 @@ function regroupTargets(state: SimContext['state'], t: Tribute): Tribute[] {
 }
 
 /**
- * AUDIT-14 T7: how strongly Regrouping pulls, 0..1 — further apart and more
+ * AUDIT-14 T7: how strongly Regrouping pulls, as a scale on its base — further apart and more
  * cared about pulls harder. The base used to win outright whenever anybody of
  * theirs was a zone away.
  */
@@ -202,9 +204,9 @@ export function regroupingSignal(ctx: SimContext, t: Tribute): number {
     targets.forEach(o => {
         const hops = hopsTo(ctx.state.arena, t.zone, o.zone, collapsed, severed) ?? E14.regroupingHopCap;
         const hopScale = E14.regroupingHopFloor
-            + (1 - E14.regroupingHopFloor) * Math.min(1, (Math.max(1, hops) - 1) / Math.max(1, E14.regroupingHopCap - 1));
+            + (E14.regroupingHopCeil - E14.regroupingHopFloor) * Math.min(1, (Math.max(1, hops) - 1) / Math.max(1, E14.regroupingHopCap - 1));
         const regard = Math.max(0, Math.min(100, getRel(t, o.id)));
-        const regardScale = E14.regroupingRegardFloor + (1 - E14.regroupingRegardFloor) * regard / 100;
+        const regardScale = E14.regroupingRegardFloor + (E14.regroupingRegardCeil - E14.regroupingRegardFloor) * regard / 100;
         best = Math.max(best, hopScale * regardScale);
     });
     return best;
@@ -562,9 +564,9 @@ export function crownAlly(ctx: SimContext, t: Tribute): boolean {
     const worth = (o: Tribute) => (1 + Math.max(0, getRel(t, o.id)) / 100)
         * (o.trainingScore + o.kills + o.attributes.charisma / 2);
     const ward = candidates.reduce((best, o) => (worth(o) > worth(best) ? o : best));
-    // ...and a proud or contrary ally, or one who has no time for the
-    // Kingmaker, can say no.
-    const proud = ward.traits.includes('Prickly') || ward.traits.includes('Contrarian') || getRel(ward, t.id) < 0;
+    // ...and an ally who has no time for the Kingmaker, or holds a grudge
+    // against them, can say no.
+    const proud = getRel(ward, t.id) < 0 || hasVengeanceAgainst(ward, t.id);
     if (proud && ctx.rng.chance(E14.crownRefuseChance)) {
         ctx.logEvent(
             `${t.name} tries to name ${ward.name} as the one worth following. ${ward.name} will not have it said about them.`,

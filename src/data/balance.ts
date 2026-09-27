@@ -11255,18 +11255,25 @@ export const AUDIT14_ENGINE = {
     /** How many of the ranked stances the draw considers. */
     stanceSoftmaxTopN: 3,
     /** Temperature floor, and what confusion and weak willpower add to it. */
-    stanceSoftmaxBaseTemp: 0.25,
-    stanceSoftmaxConfusionTemp: 0.5,
-    stanceSoftmaxWillpowerTemp: 0.2,
+    stanceSoftmaxBaseTemp: 0.15,
+    stanceSoftmaxConfusionTemp: 0.4,
+    stanceSoftmaxWillpowerTemp: 0.15,
 
     // ---- T7: the AUDIT-13 stance bases scale with the signal behind them.
-    /** Regrouping: share of the base kept at one hop, rising to all of it at `regroupingHopCap` hops. */
-    regroupingHopFloor: 0.7,
+    /**
+     * Regrouping: the base scales from `regroupingHopFloor` at one hop to
+     * `regroupingHopCeil` at `regroupingHopCap` hops or more — a signal around
+     * the old flat base, not a cut to it.
+     */
+    regroupingHopFloor: 0.9,
+    regroupingHopCeil: 1.2,
     regroupingHopCap: 3,
-    /** Regrouping: share kept at zero regard for the person walked back to. */
-    regroupingRegardFloor: 0.6,
-    /** Mourning: share kept at zero regard for the dead. */
-    mourningRegardFloor: 0.5,
+    /** Regrouping: scale at zero and at full regard for the person walked back to. */
+    regroupingRegardFloor: 0.9,
+    regroupingRegardCeil: 1.15,
+    /** Mourning: scale at zero and at full regard for the dead. */
+    mourningRegardFloor: 0.9,
+    mourningRegardCeil: 1.3,
     /** Sheltering: share kept when only the standing climate (no front) is biting. */
     shelteringClimateOnlyScale: 0.8,
 
@@ -11274,23 +11281,23 @@ export const AUDIT14_ENGINE = {
     nightColdCampScale: 0.5,
 
     // ---- T5: risk tolerance reads the room.
-    riskPerAllyHere: 0.1,
-    riskAllyCap: 0.3,
-    riskFearWeight: 0.3,
-    riskFollowedPenalty: 0.15,
-    riskPowerWeight: 0.1,
+    riskPerAllyHere: 0.05,
+    riskAllyCap: 0.15,
+    riskFearWeight: 0.2,
+    riskFollowedPenalty: 0.1,
+    riskPowerWeight: 0.05,
     /** Power points per unit of the power term (the difference is divided by this). */
     riskPowerDivisor: 10,
 
     // ---- T4: the vengeance pull is aimed at the target, not any rival.
-    vengeancePull: 4,
+    vengeancePull: 2.5,
     /** Cycles without contact over which the pull fades to nothing. */
     vengeancePullDecayCycles: 8,
 
     // ---- T6: a look further out at water, allies and the sworn target.
     fieldWater: 2,
     fieldAlly: 1,
-    fieldVengeance: 1.5,
+    fieldVengeance: 1,
     /** Thirst at or over which water pulls from further out. */
     fieldThirstFrom: 40,
     /** Hops the field looks out to. */
@@ -11309,7 +11316,7 @@ export const AUDIT14_ENGINE = {
     projectionTwoHopTracking: 3,
 
     // ---- T11: the Kingmaker's choice.
-    /** Chance a Prickly or Contrarian ally, or one who dislikes the Kingmaker, refuses the crown. */
+    /** Chance an ally who dislikes the Kingmaker, or holds a grudge against them, refuses the crown. */
     crownRefuseChance: 0.5,
 
     // ---- T15: the endgame reads the other finalists.
@@ -11320,5 +11327,5 @@ export const AUDIT14_ENGINE = {
 
     // ---- T2: a hunt that cannot become Hunting becomes a stalk.
     /** Chance per cycle a hunt the tribute cannot run is downgraded. */
-    huntDowngradeChance: 0.5,
+    huntDowngradeChance: 0.65,
 } as const;

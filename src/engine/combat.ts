@@ -321,6 +321,11 @@ export function applyDamage(
 ): boolean {
     if (amount <= 0) return false;
     // AUDIT-13 W5: split the `hazard` catch-all at the one place damage lands.
+    // AUDIT-14 E10: "tribute" means a tribute did it. An arena site that
+    // wrote the code with no tribute behind it is classified from its words.
+    if (record.code === 'tribute' && record.kind !== 'tribute' && !record.sourceId) {
+        record = { ...record, code: classifyCause(record.cause, record.kind) };
+    }
     // AUDIT-14 E9: ...and refine a broad arena code the same way.
     if (record.code) {
         const refined = refineHazardCode(record.code, record.cause, record.kind);

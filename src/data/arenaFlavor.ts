@@ -12679,7 +12679,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} follows a bighorn trail through {zone} to a ledge nobody else could reach, and finds {item} there.',
                 '{tribute} digs at the base of a seep-stained wall in {zone} and comes up with {item}.',
                 '{tribute} strips a prickly pear in {zone} with more patience than they knew they had, and pockets {item}.',
-                '{tribute} checks a cliff-dweller granary in {zone} on a hunch and finds {item} still dry inside it.',
+                '{tribute} checks a cliff-dweller granary in {zone} on a hunch and finds {item} inside it, dry.',
                 '{tribute} works {zone} in the first cool hour and is back in shade with {item} before the heat comes up.',
             ],
             rest: [
