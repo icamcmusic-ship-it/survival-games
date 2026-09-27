@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { HAUNTED_BADGE, ZONE_STATE_BADGE, isHaunted, zoneStateBadge } from '../ui/zoneStatus';
 import { GameState, Tribute } from '../models/types';
 import { effectiveResources } from '../engine/map';
 import { ArenaGraph } from './ArenaGraph';
@@ -64,6 +65,13 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                 </div>
             </div>
 
+            {/* AUDIT-14 F1: the day-8 finale mutation, said where the map is. */}
+            {gameState.arenaFinaleMutated && (
+                <div className="panel-flush px-3 py-2 text-sm font-semibold" role="status" data-testid="finale-mutation-banner"
+                    style={{ borderLeft: '3px solid var(--cat-hazard)' }}>
+                    The arena has changed its shape for the finale. Old routes and old hiding places may no longer hold.
+                </div>
+            )}
             {view === 'graph' && (
                 <div className="panel-flush p-2">
                     {/* §2.10: the graph has a floor on its rendered width (see
@@ -88,6 +96,8 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                         <span style={{ color: 'var(--cat-death)' }}>† · deaths here</span>
                         <span>⛺ · a camp stands here</span>
                         <span>Dashed · out of bounds</span>
+                        <span style={{ color: 'var(--cat-hazard)' }}>{Object.values(ZONE_STATE_BADGE).map(b => b.glyph).join(' ')} · damaged, ruined, flooded, burning, ash, regrowth</span>
+                        <span style={{ color: 'var(--cat-hazard)' }}>{HAUNTED_BADGE.glyph} · haunted: camping there costs sanity</span>
                         <span style={{ color: 'var(--cat-death)' }}>✕ · route destroyed</span>
                     </div>
                     {/* §5: the arena's terrains and its edge rules, named. Both
@@ -144,7 +154,7 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                             aria-pressed={isSelected}
                             // The card's own text is a pile of glyphs and percentages;
                             // spoken, it needs to be one sentence about one sector.
-                            aria-label={`${zone.name} — ${zone.terrain}, ${dangerLabel(zone.danger)} danger, ${Math.round(stock * 100)}% supplies, ${occupants.length} tribute${occupants.length === 1 ? '' : 's'} present${isCollapsed ? ', out of bounds' : ''}${pending.length > 0 ? `, ${pending.map(f => f.kind).join(' and ')} forecast${cyclesOut !== undefined && cyclesOut > 0 ? ` in ${cyclesOut} cycles` : ' now due'}` : ''}. ${isSelected ? 'Selected — activate to clear' : 'Activate to show only its events'}`}
+                            aria-label={`${zone.name} — ${zone.terrain}${zoneStateBadge(gameState, zone.name) ? `, ${zoneStateBadge(gameState, zone.name)!.label.toLowerCase()}` : ''}${isHaunted(gameState, zone.name) ? ', haunted' : ''}, ${dangerLabel(zone.danger)} danger, ${Math.round(stock * 100)}% supplies, ${occupants.length} tribute${occupants.length === 1 ? '' : 's'} present${isCollapsed ? ', out of bounds' : ''}${pending.length > 0 ? `, ${pending.map(f => f.kind).join(' and ')} forecast${cyclesOut !== undefined && cyclesOut > 0 ? ` in ${cyclesOut} cycles` : ' now due'}` : ''}. ${isSelected ? 'Selected — activate to clear' : 'Activate to show only its events'}`}
                             className={`panel-flush p-3.5 text-left transition-all flex flex-col justify-between gap-3 min-h-[136px] hover:border-[var(--color-ink-600)] ${
                                 isSelected ? 'ring-2 ring-[var(--red)] border-[var(--red)]' : ''
                             } ${isCollapsed ? 'opacity-60' : ''}`}
@@ -166,6 +176,17 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                                         )}
                                         {occupants.length > 0 && (
                                             <span className="chip chip-accent">{occupants.length} here</span>
+                                        )}
+                                        {/* AUDIT-14 F1: sector state and haunting. */}
+                                        {zoneStateBadge(gameState, zone.name) && (
+                                            <span className="chip" style={{ color: 'var(--cat-hazard)', borderColor: 'var(--cat-hazard)' }}>
+                                                {zoneStateBadge(gameState, zone.name)!.glyph} {zoneStateBadge(gameState, zone.name)!.label}
+                                            </span>
+                                        )}
+                                        {isHaunted(gameState, zone.name) && (
+                                            <span className="chip" style={{ color: 'var(--cat-death)', borderColor: 'var(--cat-death)' }} title="Enough have died here that camping costs sanity">
+                                                {HAUNTED_BADGE.glyph} {HAUNTED_BADGE.label}
+                                            </span>
                                         )}
                                     </span>
                                 </div>
