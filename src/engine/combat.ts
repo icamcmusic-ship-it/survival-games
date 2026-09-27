@@ -33,7 +33,7 @@ import { dominantSideCost, effectiveAgility, grappleResistance, injuryAbsorption
 import { addExcitement } from './audience';
 import { traitMod } from '../data/traits';
 import { earnTrait } from './earnedTraits';
-import { AUDIT13_CAREERS, PREGAMES, AUDIT12_WAVE2_TRIBUTES } from '../data/balance';
+import { AUDIT13_CAREERS, PREGAMES, AUDIT12_WAVE2_TRIBUTES, AUDIT14_RELATIONS } from '../data/balance';
 import { evasionRetreat, lootChanceBonus, noteRetreatFailed, onCannon, traitPowerHooks, twitchyAllyHit } from './traitHooks';
 import { audit13DamageScale, audit13PowerHooks, onAudit13Death, spendBorrowedLuck } from './audit13Content';
 import { armourOf, effectiveDamage, encumbranceOf, wearArmour } from './items';
@@ -804,6 +804,11 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
     if (opponent && traitMod(t, 'vengeanceEdge') !== 0
         && (hasVengeanceAgainst(t, opponent.id) || getRel(t, opponent.id) <= COMBAT.vengefulHatredRegard)) {
         power += traitMod(t, 'vengeanceEdge');
+    }
+    // AUDIT-14 RB2/R11: the oath that waited. Against a sworn target who is
+    // already hurt, the swearer is fighting the fight they were waiting for.
+    if (opponent && opponent.health < AUDIT14_RELATIONS.oathAdvantageHealth && hasVengeanceAgainst(t, opponent.id)) {
+        power += AUDIT14_RELATIONS.oathAdvantagePower;
     }
 
     /*
@@ -1671,7 +1676,9 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
         twitchyAllyHit(ctx, attackers, fighters.length, twitchyRolled);
         if (!attackers.some(isActive)) continue;
 
-        const lead = attackers.filter(isActive).reduce((best, a) =>
+        // AUDIT-14 RB2: whoever swore on the target takes point on them.
+        const avenger = sworn === target ? attackers.find(a => isActive(a) && hasVengeanceAgainst(a, target.id)) : undefined;
+        const lead = avenger ?? attackers.filter(isActive).reduce((best, a) =>
             (combatPower(ctx, a, bestWeapon(a)) > combatPower(ctx, best, bestWeapon(best)) ? a : best));
         // A pack fight feeds the same rivalry ledger a duel does — the pair
         // actually trading blows remember it, which is what rematch study,
@@ -2111,10 +2118,16 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
                 addExcitement(killer, COMBAT.vengeanceExcitement);
                 // §(requests 1): the discharge is about the killer's head, not
                 // a second announcement of the death. Off the red channel.
+                // AUDIT-14 RB2: a solo oath paid is the same beat a pact's is.
                 ctx.logEvent(
-                    `${killer.name} settles the debt. ${victim.name} is dead, and whatever was driving ${killer.name} goes quiet.`,
+                    ctx.rng.pick([
+                        `${killer.name} settles the debt. ${victim.name} is dead, and whatever was driving ${killer.name} goes quiet.`,
+                        `${killer.name} waited for this, and it came. ${victim.name} is dead, and ${killer.name} sits down beside the body for a long time.`,
+                        `${killer.name} finishes what they swore to finish. There is no speech. There is not even very much relief.`,
+                        `${victim.name} dies knowing exactly who and exactly why. ${killer.name} made sure of both.`,
+                    ]),
                     [killer.id, victim.id],
-                    { important: true, category: 'sanity' }
+                    { important: true, category: 'sanity', type: 'vengeance-paid', actorId: killer.id }
                 );
             }
 

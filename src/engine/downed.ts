@@ -1,12 +1,12 @@
 import { Item, Tribute, attr } from '../models/types';
 import { thawRivals } from './allianceBonds';
 import { SimContext } from './context';
-import { DOWNED, STANCE } from '../data/balance';
+import { AUDIT14_RELATIONS, DOWNED, STANCE } from '../data/balance';
 import { ARCHETYPES } from '../data/archetypes';
 import { traitMod } from '../data/traits';
 import { clampTribute } from './vitals';
 import { consumeOne } from './items';
-import { cycleOf } from './memory';
+import { cycleOf, hasVengeanceAgainst } from './memory';
 import { adjustRel, adjustRespect } from './relationships';
 import { addFear } from './fear';
 import { hopsTo, severedEdgeSet } from './map';
@@ -360,7 +360,10 @@ export function tickDowned(ctx: SimContext) {
         {
             const hostiles = here.filter(o => !wouldHelp(o, t));
             if (hostiles.length > 0) {
-                const decider = ctx.rng.pick(hostiles);
+                // AUDIT-14 RB2/R11: somebody standing over the person they swore
+                // on is the one who decides, and mostly decides one way.
+                const avenger = hostiles.find(o => hasVengeanceAgainst(o, t.id));
+                const decider = avenger ?? ctx.rng.pick(hostiles);
                 // `killSanity` is the trait table's own mercy axis — Pacifist and
                 // Softhearted sit high on it, Ruthless and Bloodthirsty below zero
                 // — so it is the suitable key here rather than a new one. Grim has
@@ -396,6 +399,7 @@ export function tickDowned(ctx: SimContext) {
                 const watching = here.filter(o => o.id !== decider.id).length;
                 chance -= (t.attributes.charisma / DOWNED.pleaCharismaScale)
                     * (DOWNED.pleaBase + watching * DOWNED.pleaPerWitness);
+                if (avenger) chance = Math.max(chance, AUDIT14_RELATIONS.oathExecuteChance);
                 const witnesses = here.filter(o => o.id !== decider.id);
                 if (ctx.rng.chance(Math.max(0, Math.min(1, chance)))) {
                     decider.finishedDowned = [...(decider.finishedDowned ?? []), t.id];

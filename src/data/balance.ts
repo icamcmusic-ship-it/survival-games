@@ -11104,8 +11104,8 @@ export const AUDIT13_RELATIONS = {
      */
     romanceMinAge: 15,
     romanceAgeGap: 2,
-    romanceRampChance: 0.12,
-    romanceRampCycles: 7,
+    romanceRampChance: 0.105,
+    romanceRampCycles: 5,
     romanceRegard: 55,
     romanceSponsorBonus: 10,
     /** R6: sworn targets unseen this many cycles are let go of. */
@@ -11245,4 +11245,33 @@ export const AUDIT13_CONTENT = {
     shelteringHunger: 0.5,
     shelteringFatigue: 0.5,
     shelteringTrackedLevel: 3,
+} as const;
+
+/**
+ * AUDIT-14 §5: the relationship layer's second pass (RB1-RB9, R7, R11).
+ * (RB1 itself moved `AUDIT13_RELATIONS.romanceRamp*` from 0.12 / 7 cycles.)
+ */
+export const AUDIT14_RELATIONS = {
+    /**
+     * RB2/R11: an oath waits for its moment. Once the sworn target is hurt
+     * below `oathAdvantageHealth` (or downed) the hunt for them takes
+     * `oathMomentTier`, and the swearer fights them with `oathAdvantagePower`;
+     * in a pack fight the swearer takes point on them; over a
+     * downed sworn target the swearer is the one who decides, at
+     * `oathExecuteChance` at least.
+     */
+    oathAdvantageHealth: 75,
+    oathAdvantagePower: 5,
+    oathExecuteChance: 0.6,
+    /** RB2/R11: the objective tier a sworn hunt takes once the target is hurt (a pact hunt is 60). */
+    oathMomentTier: 72,
+    /** RB9: the chance an unplanned performed romance goes ahead (a planned showmance always does). */
+    performedRomanceChance: 0.5,
+    /** RB8/E6: a due intent whose pair are in different zones waits this many cycles before it lapses. */
+    intentApartGrace: 1,
+    /**
+     * R7: positive regard saturates. Above `regardSoftCap` a positive delta is
+     * scaled by (100 - regard) / (100 - regardSoftCap).
+     */
+    regardSoftCap: 85,
 } as const;

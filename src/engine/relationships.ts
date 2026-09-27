@@ -4,7 +4,7 @@ import { griefScaling } from './allianceBonds';
 import { forceStance } from './stance';
 import { noteRivalDeath } from './rapport';
 import { RNG } from '../utils/rng';
-import { BETRAYAL, DEBTS, RELATIONSHIPS, GENERATION, HUNTING, RESPECT, SUSPICION , EARNED_TRAIT_RULES } from '../data/balance';
+import { AUDIT14_RELATIONS, BETRAYAL, DEBTS, RELATIONSHIPS, GENERATION, HUNTING, RESPECT, SUSPICION , EARNED_TRAIT_RULES } from '../data/balance';
 import { ARCHETYPES } from '../data/archetypes';
 import { SimContext } from './context';
 import { carryCapacity, giveItem } from './items';
@@ -42,7 +42,13 @@ export function getRel(a: Tribute, bId: string): number {
 }
 
 export function adjustRel(a: Tribute, bId: string, delta: number): number {
-    const next = clampRel(getRel(a, bId) + delta);
+    const cur = getRel(a, bId);
+    // AUDIT-14 R7: the top of the scale is hard to reach. Past the soft cap a
+    // warm delta buys less and less, so "would die for you" stays rare; the
+    // negative side is left as it was.
+    const soft = AUDIT14_RELATIONS.regardSoftCap;
+    if (delta > 0 && cur > soft) delta *= (100 - cur) / (100 - soft);
+    const next = clampRel(cur + delta);
     a.relationships[bId] = next;
     return next;
 }
@@ -459,16 +465,35 @@ export function propagateDeathFallout(ctx: SimContext, victim: Tribute, killer?:
                 // merely worked it out from the next zone over usually does not.
                 const sworn = witnessed || isLover || isPartner
                     || ctx.rng.chance(RELATIONSHIPS.vengeanceDistantChance);
-                if (sworn && (personal || now <= RELATIONSHIPS.vengeanceThreshold)) {
+                // AUDIT-14 RB3: an oath already let go of does not come back on
+                // hearsay. It takes watching them do it again.
+                const cooled = other.relationsArc?.cooled?.includes(killer.id) ?? false;
+                if (sworn && (personal || now <= RELATIONSHIPS.vengeanceThreshold) && (!cooled || witnessed)) {
                     swearVengeance(other, killer.id);
+                    // AUDIT-14 RB2/R11: the stance stays (it is the grief, and
+                    // dropping it measured no better for the swearer while it
+                    // cost the arena its Aggressive floor); the *plan* lives
+                    // in the hunt objective's timing (objectives.ts), the
+                    // swearer taking point in a pack fight, and the execution
+                    // decision over a downed target (downed.ts).
                     forceStance(other, 'Aggressive', 'watched a friend die');
-                    ctx.logEvent(
-                        fill(ctx.pickText(VENGEANCE_TEXTS), { mourner: other.name, victim: victim.name, killer: killer.name }),
-                        [other.id, killer.id, victim.id],
-                        // AUDIT-9: typed, so the counters stop reading the
-                        // 'VENGEANCE:' prefix back out of the sentence.
-                        { important: true, category: 'sanity', type: 'vengeance-sworn', actorId: other.id }
-                    );
+                    if (cooled && other.relationsArc) {
+                        other.relationsArc.cooled = other.relationsArc.cooled!.filter(id => id !== killer.id);
+                        ctx.logEvent(
+                            `${other.name} had let ${killer.name} go. Then ${killer.name} did it again, to ${victim.name}, in front of them, `
+                            + 'and the old oath comes back as if it had never been put down.',
+                            [other.id, killer.id, victim.id],
+                            { important: true, category: 'sanity', type: 'vengeance-resworn', actorId: other.id }
+                        );
+                    } else {
+                        ctx.logEvent(
+                            fill(ctx.pickText(VENGEANCE_TEXTS), { mourner: other.name, victim: victim.name, killer: killer.name }),
+                            [other.id, killer.id, victim.id],
+                            // AUDIT-9: typed, so the counters stop reading the
+                            // 'VENGEANCE:' prefix back out of the sentence.
+                            { important: true, category: 'sanity', type: 'vengeance-sworn', actorId: other.id }
+                        );
+                    }
                 }
             }
 

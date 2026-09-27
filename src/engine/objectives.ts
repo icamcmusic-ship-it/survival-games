@@ -2,7 +2,7 @@ import { targetDrawOf } from './targeting';
 import { hiddenFromHunt } from './traitHooks';
 import { GameState, Objective, Tribute, Zone } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
-import { AUDIT12_TRIBUTES, AUDIT13_CAREERS, ENDGAME, ESCALATION, PERCEPTION, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, MEMORY, MOVEMENT, OBJECTIVES, PLANNING, REPUTATION_TARGETING, RISK, STANDING_GOAL } from '../data/balance';
+import { AUDIT12_TRIBUTES, AUDIT13_CAREERS, AUDIT14_RELATIONS, ENDGAME, ESCALATION, PERCEPTION, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, MEMORY, MOVEMENT, OBJECTIVES, PLANNING, REPUTATION_TARGETING, RISK, STANDING_GOAL } from '../data/balance';
 import { SimContext } from './context';
 import { cycleOf, cyclesSinceContact, ensureMemory, hasVengeanceAgainst, impressionOf, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
 import { getZone, hopsTo, nextHopToward, severedEdgeSet, zoneFeatures } from './map';
@@ -558,7 +558,10 @@ function chooseObjective(
         // written for.
         const withPactMate = here.some(o => o.id !== t.id && o.status === 'alive' && sharesVengeancePact(state, t, o)
             && ensureMemory(o).vengeance.includes(sworn.id));
-        const o = offer(withPactMate ? OBJECTIVES.pactHuntTier : 56, { kind: 'hunt', targetId: sworn.id, expires: expiry(OBJECTIVES.huntCycles) });
+        // AUDIT-14 RB2/R11: an oath with a plan. A hurt or downed target is
+        // the moment the swearer was waiting for, and it outranks a pact-mate.
+        const moment = sworn.downed || sworn.health < AUDIT14_RELATIONS.oathAdvantageHealth;
+        const o = offer(moment ? AUDIT14_RELATIONS.oathMomentTier : withPactMate ? OBJECTIVES.pactHuntTier : 56, { kind: 'hunt', targetId: sworn.id, expires: expiry(OBJECTIVES.huntCycles) });
         if (o) return o;
     }
     // §3.3: in the endgame, a tribute who concludes they win a straight fight
