@@ -184,7 +184,7 @@ export function ArenaMap({ gameState, selectedZone, onSelectZone, tributes }: {
                                             </span>
                                         )}
                                         {isHaunted(gameState, zone.name) && (
-                                            <span className="chip" style={{ color: 'var(--cat-death)', borderColor: 'var(--cat-death)' }} title="Enough have died here that camping costs sanity">
+                                            <span className="chip" style={{ color: 'var(--cat-death)', borderColor: 'var(--cat-death)' }} role="group" aria-label="Haunted: enough have died here that camping costs sanity" title="Enough have died here that camping costs sanity">
                                                 {HAUNTED_BADGE.glyph} {HAUNTED_BADGE.label}
                                             </span>
                                         )}
