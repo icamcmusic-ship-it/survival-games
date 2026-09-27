@@ -1,5 +1,62 @@
 # Changelog
 
+## AUDIT-14 implementation
+
+Implements `AUDIT-14.md`. Final state: `npm run gate` 56/56 (slow sweeps included), `test:ui` 64/64, and `METRICS_RUNS=1600 test:metrics` holds every guard: mean run length 10.07 days; Career win rate per head 1.05× the non-Career rate in 12-district fields and 2.04× in 6–8-district fields.
+
+- **Integrity (§4 U2, §8 S1–S3):**
+  - Undo locks betting until the rewound phases are replayed.
+  - Run links carry districts 14–16.
+  - Malformed record-book entries are dropped instead of crashing the Record Book.
+  - A Hall of Fame import can no longer evict the player's own victors, and the 50-record cap now always holds.
+- **UI (§4):**
+  - Fixes: autoplay no longer stalls after a dialog closes, phase ticks no longer overlap on phones, the keys overlay lists Ctrl+K and Esc.
+  - QOL: a sticky phone control bar, N catches up to the live page, an autoplay chip, a slider for long logs, a descriptive Undo label, and `ui-test.mjs` finds Chromium on its own.
+- **Side features (§8 S4–S11, F, P):**
+  - Fixes: daily streak expiry, launch-date stamping for dailies and weeklies, first-result-wins for dailies, the Pack of Six floor, and a `training-flub` log type.
+  - New: parachute lines matched to terrain, zone states and haunted sectors on the map, an arena ledger in the debrief, a paid sponsor note, and a "what if I had not done this" branch.
+  - More content: 12 scenario cards, 3 commentators, 10 story chains (gated behind the original five), and a Codex.
+  - Stale-line memory now counts runs as well as days.
+- **Engine (§3 E1–E19, T1–T16):**
+  - Stances: no unqualified opening stances, and a softmax pick from the top three.
+  - Caches of the dead: a single writer (`leaveKit`), with no duplicates and none in collapsed zones.
+  - Collapsed zones no longer carry zone states.
+  - Betrayal warnings and strikes need both tributes in the same zone.
+  - The applyDamage→refineHazardCode path now splits broad arena causes into the six specific cause codes; "Killed by" counts as a tribute kill only when a tribute struck the blow.
+  - Wards and kingmakers go stale no longer, the finale mutation waits for night, and the horn is no longer permanently haunted.
+  - Tribute reasoning: target-scoped vengeance fear, risk that reads the room, destinations scored three steps out, tracker prediction, and a finalist endgame plan.
+  - Relationship leftovers: slow burn counts consecutive shared nights, betrayal tells can be noticed, wards go to the closest elder who cares most, and the district-partner search.
+  - Guard: `test:audit14-engine`.
+- **Relationships (§5 RB1–RB9, R7, R10, R11):**
+  - Slow-burn romances are reachable again.
+  - Oaths wait for a hurt target, and a cooled oath is re-sworn only after a new trigger.
+  - A coup now carries fallout, and `leaveAlliance` keeps rosters accurate.
+  - Every betrayal warning resolves on screen.
+  - Positive regard has a soft cap.
+  - Guard: `test:audit14-relations`.
+  - Deferred: R1–R6, R8, R9 (trust tests, alliance roles, reputation spread, secret alliances, negotiated truces, cross-season grudges, unrequited bonds).
+- **Arenas, deaths and events (§6):**
+  - Zone sub-labels are stripped from every cause.
+  - 0 authored causes end on `hazard` (ceiling 337 → 5).
+  - A 5% signature-death floor is enforced in CI (`test:arena-deathmix`).
+  - Night-rule variants, and the carnival finale.
+  - New content: D1–D30, A1–A42 plus 7 extra deaths, V1–V72, in `universal14.ts` and `group10.ts`.
+  - Guard: `test:audit14-arenas`.
+  - Deferred: W6, W8, W10, and the W12–W19 mechanics.
+- **Balance and content (§7):**
+  - A per-head Career guard, and a fix for the horn in small fields.
+  - District crafts changed for D3, D5 and D6.
+  - The Hermit's `isolate` objective; the Gambler bets on other people's fights; Scholar and Drowned Once reworked.
+  - Skill spread capped at 15% of entrants.
+  - New content: 16 traits, 8 skills, 6 archetypes (Sentinel renamed Nightwarden), 8 quirks, 3 stances (Rallying, Retreating, and Blood-Trailing, which was Pursuing), 4 personas, in `audit14Content.ts`.
+  - Guard: `test:audit14-content`.
+- **Achievements and names (§8):**
+  - Fixes: the a12-fed-by-foes nearMiss, the volunteer-first-blood rate, a campaign mode in `check-achievements` for ledger achievements, tightened near-automatic entries, and rarity labels re-measured.
+  - 28 new achievements.
+  - 183 new single given names.
+  - Skipped: 14 achievements with no data source; 43 neutral names that break the initial-letter rule.
+  - Guard: `test:audit14-achievements`.
+
 ## AUDIT-13 implementation
 
 Implements `AUDIT-13.md`. The numbers below come from the check scripts named in each bullet, at the run counts given.
