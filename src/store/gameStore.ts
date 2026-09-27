@@ -5,7 +5,7 @@ import { noteRunLines, readStaleLines } from '../utils/staleLines';
 import { PARLAY } from '../data/balance';
 import { balanceFingerprint, balanceMatches } from '../engine/balanceFingerprint';
 import { Bet, REWIND_PERSIST, SAVED_RUN_SPEC, SAVE_SLOT_SPECS, SavedRun, SideBet, SideBetKind, packRewind } from '../utils/saveMigrations';
-import { SIDE_BETS } from '../data/balance';
+import { SIDE_BETS, SPONSOR_NOTE } from '../data/balance';
 import { SideBetTarget, SideQuote, priceSideBet, quoteSideMarkets, settleSideBet, sideBettingOpen, marketRulesOf } from '../engine/sideMarkets';
 import { STARTING_COINS, readCoins, writeCoins } from '../utils/prefsStorage';
 import { clearAllStoredData } from '../utils/storage';
@@ -1847,6 +1847,18 @@ export const gameActions = {
         const result = sendPlayerParachute(state, tributeId, itemId);
         if (!result.ok) return result;
 
+        gameActions.setCoins(coins - result.cost);
+        gameActions.syncFromSimulator();
+        return result;
+    },
+
+    /** AUDIT-14 F5: the booth's second verb, a paid note. */
+    sponsorNote(tributeId: string): SponsorResult {
+        const { simulator, coins } = gameStore.getState();
+        if (!simulator || !engine) return { ok: false, cost: 0, message: 'No Games are running.' };
+        if (coins < SPONSOR_NOTE.cost) return { ok: false, cost: SPONSOR_NOTE.cost, message: `A note costs ${SPONSOR_NOTE.cost} coins. You have ${coins}.` };
+        const result = engine.sendPlayerNote(simulator.getState(), tributeId);
+        if (!result.ok) return result;
         gameActions.setCoins(coins - result.cost);
         gameActions.syncFromSimulator();
         return result;

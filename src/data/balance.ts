@@ -11255,3 +11255,18 @@ export const AUDIT13_CONTENT = {
     shelteringFatigue: 0.5,
     shelteringTrackedLevel: 3,
 } as const;
+
+/**
+ * AUDIT-14 F5: the booth's second verb — a paid note, no item. Cheaper than
+ * any parachute, and worth only what being noticed is worth.
+ */
+export const SPONSOR_NOTE = {
+    /** Flat price of a note. */
+    cost: 30,
+    /** Sanity a note restores. */
+    sanityGain: 5,
+    /** Sponsor trust it adds. */
+    trustGain: 2,
+    /** Notes one tribute can receive in a Games; past this the Capitol stops delivering them. */
+    maxPerTribute: 3,
+} as const;

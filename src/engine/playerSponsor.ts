@@ -1,7 +1,8 @@
 import { giftRefusal } from './arenaPolicy';
+import { arenaHasLaw } from './gamesProfile';
 import { GameState, Item, Tribute } from '../models/types';
 import { ITEMS } from '../data/constants';
-import { SPONSOR_MARKET, QUALITY_BIAS } from '../data/balance';
+import { SPONSOR_MARKET, QUALITY_BIAS, SPONSOR_NOTE } from '../data/balance';
 import { SPONSOR_BLOCS, blocWeight } from './sponsorBlocs';
 import { audiencePriceFactor } from './audienceSegments';
 import { RNG } from '../utils/rng';
@@ -187,4 +188,52 @@ function playerParachuteLine(state: GameState, t: Tribute, item: string, rng: RN
         .replace('{zone}', t.zone)
         .replace('{name}', t.name)
         .replace('{item}', item);
+}
+
+/*
+ * AUDIT-14 F5: a paid note. No item, only a line on a card and the knowledge
+ * that somebody outside is watching. Logged in the intervention log, so a
+ * replay or a what-if puts it back at the cycle it landed.
+ */
+const PLAYER_NOTES = [
+    'A tiny parachute over {zone} with nothing in it but a card for {name}. It says: keep going.',
+    'A note comes down to {name} in {zone}. Three words, no signature: we are watching.',
+    '{name} unfolds a card that came down over {zone}. Somebody has written their name on it, and underneath: not yet.',
+    'The parachute over {zone} is almost weightless. Inside is a note for {name}: they believe you.',
+    'A card for {name}, dropped over {zone}. It says only: home is waiting.',
+    '{name} reads the note that came down in {zone} twice, then puts it inside their jacket.',
+];
+
+export function notesReceived(state: GameState, tributeId: string): number {
+    return (state.interventionLog ?? []).filter(r => r.type === 'note' && r.targetId === tributeId).length;
+}
+
+export function sendPlayerNote(state: GameState, tributeId: string): SponsorResult {
+    const t = state.tributes.find(o => o.id === tributeId);
+    if (!t) return { ok: false, cost: 0, message: 'That note cannot be sent.' };
+    if (t.status !== 'alive') return { ok: false, cost: 0, message: `${t.name} is beyond the reach of a note.` };
+    if (state.phase !== 'day' && state.phase !== 'night' && state.phase !== 'feast') {
+        return { ok: false, cost: 0, message: 'Notes can only be sent once the tributes are in the arena.' };
+    }
+    if (arenaHasLaw(state, 'noSponsors')) {
+        return { ok: false, cost: 0, message: `Nothing reaches the floor in ${state.arena.name}, not even a card.` };
+    }
+    if (notesReceived(state, t.id) >= SPONSOR_NOTE.maxPerTribute) {
+        return { ok: false, cost: 0, message: `The Capitol will not deliver another note to ${t.name}.` };
+    }
+    const rng = new RNG(`${state.seed}-player-note-${t.id}-${notesReceived(state, t.id)}`);
+    (state.interventionLog ??= []).push({ cycle: cycleOf(state), type: 'note', targetId: t.id });
+    t.sponsorTrust = Math.min(100, t.sponsorTrust + SPONSOR_NOTE.trustGain);
+    t.vitals.sanity = Math.min(100, t.vitals.sanity + SPONSOR_NOTE.sanityGain);
+    clampTribute(t);
+    state.log.push({
+        id: `player-note-${state.logCounter = (state.logCounter ?? 0) + 1}`,
+        day: state.day,
+        phase: state.phase,
+        text: rng.pick(PLAYER_NOTES).replace('{zone}', t.zone).replace('{name}', t.name),
+        tributesInvolved: [t.id],
+        important: false,
+        category: 'sponsor',
+    });
+    return { ok: true, cost: SPONSOR_NOTE.cost, message: `Your note reaches ${t.name}.` };
 }

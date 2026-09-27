@@ -117,7 +117,7 @@ export function interventionUndone(reaping: GameState, actual: GameState, index:
     if (!dropped) return undefined;
     const planned = all.filter((_, i) => i !== index);
     const who = reaping.tributes.find(t => t.id === dropped.targetId)?.name;
-    const subject = `${dropped.type === 'parachute' ? 'the parachute' : `the ${dropped.type} command`}${who ? ` to ${who}` : ''}`;
+    const subject = `${dropped.type === 'parachute' ? 'the parachute' : dropped.type === 'note' ? 'the note' : `the ${dropped.type} command`}${who ? ` to ${who}` : ''}`;
     const ends: GameState[] = [];
     for (let k = 0; k < count; k++) {
         const start = snapshotState(reaping);

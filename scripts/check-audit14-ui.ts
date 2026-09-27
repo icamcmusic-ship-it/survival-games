@@ -17,7 +17,8 @@ import { ARENAS, DEFAULT_GAME_CONFIG } from '../src/data/constants';
 import { scenarioCast } from '../src/engine/season/scenarios';
 import { STORY_CHAINS } from '../src/engine/season/storyChains';
 import { COMMENTATORS, SCENARIO_CARDS, STORY_CHAIN_META } from '../src/data/replayCards';
-import { sendPlayerParachute } from '../src/engine/playerSponsor';
+import { sendPlayerNote, sendPlayerParachute } from '../src/engine/playerSponsor';
+import { SPONSOR_NOTE } from '../src/data/balance';
 import { interventionUndone } from '../src/engine/season/whatIfBranches';
 import { snapshotState } from '../src/utils/snapshot';
 import { decodeCampaignResult, encodeCampaign } from '../src/utils/campaignLink';
@@ -213,6 +214,27 @@ async function main() {
         assert.equal(r!.kind, 'no-intervention');
         assert.equal(r!.branches.length, 2);
         assert.match(r!.subject, /parachute/);
+    });
+
+    await test('F5: a paid note lands, is logged for replay, and is capped per tribute', () => {
+        const st = play('A14-F5', undefined, 'day');
+        const t = st.tributes.find(x => x.status === 'alive')!;
+        const sanity = t.vitals.sanity;
+        const r = sendPlayerNote(st, t.id);
+        assert.ok(r.ok, r.message);
+        assert.ok(t.vitals.sanity >= sanity);
+        assert.equal((st.interventionLog ?? []).filter(x => x.type === 'note').length, 1);
+        for (let i = 0; i < 5; i++) sendPlayerNote(st, t.id);
+        assert.equal((st.interventionLog ?? []).filter(x => x.type === 'note' && x.targetId === t.id).length, SPONSOR_NOTE.maxPerTribute);
+        // Replayed from the log, a note lands the same line.
+        const reaping = initialRunState({ seed: 'A14-F5', arenaId: ARENAS[0].id, config: DEFAULT_GAME_CONFIG });
+        const start = snapshotState(reaping);
+        start.plannedInterventions = [{ cycle: 3, type: 'note', targetId: reaping.tributes[1].id }];
+        const sim = new Simulator(start);
+        let guard = 4000;
+        while (guard-- > 0 && sim.advance()) { /* to the end */ }
+        const end = sim.getState();
+        assert.ok(end.log.some(e => e.id.startsWith('player-note-')) || end.tributes[1].status === 'dead', 'the replayed note landed');
     });
 
     await test('U2: the save carries the undo high-water mark', () => {
