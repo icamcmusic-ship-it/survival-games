@@ -18,6 +18,7 @@ import { RNG } from '../utils/rng';
 import type { Simulator } from '../engine/simulator';
 import type { GamemakerEventType } from '../engine/gamemaker';
 import { createStore } from './createStore';
+import { dailyDateOf, dailySeed, weeklyRules } from '../data/replayHooks';
 import { PanemRecords, campaignSnapshotOf, RunOutcome, addPatronDistrict, buyArena, clearPanem, commitRun, dropPatronDistrict, noteBankroll, noteStipendTaken, openParlay, readPanem, setParlayLeg, settleParlay } from '../utils/panemStorage';
 import type { SponsorResult } from '../engine/playerSponsor';
 import { readPrefs } from './prefsStore';
@@ -362,6 +363,20 @@ function pushRewind(state: GameState) {
     rewindStack.push(snapshotState(state));
     if (rewindStack.length > REWIND_CAP) rewindStack.shift();
     if (seenAhead > 0) seenAhead -= 1;
+}
+
+/**
+ * AUDIT-14 S5/S7: a daily counts only on its own date and a weekly under the
+ * week it was started in. Both are stamped here, at launch, rather than
+ * inferred from the seed when the run is committed.
+ */
+function launchStamp(seed: string): { launchedOn?: string; launchWeekKey?: string } {
+    const now = new Date();
+    const out: { launchedOn?: string; launchWeekKey?: string } = {};
+    if (seed === dailySeed(now)) out.launchedOn = dailyDateOf(seed);
+    const weekly = weeklyRules(now);
+    if (seed === weekly.seed) out.launchWeekKey = weekly.key;
+    return out;
 }
 
 /** AUDIT-12 wave 3: the run at its reaping, for the reaping counterfactuals. */
@@ -1540,6 +1555,8 @@ export const gameActions = {
             veteransSeated: veterans.length > 0 ? veterans : undefined,
             // AUDIT-13 S6: the purse at the gong, for Bought Nothing.
             playerPurseAtStart: gameStore.getState().coins,
+            // AUDIT-14 S5/S7: which daily or weekly this is, fixed at launch.
+            ...launchStamp(safeSeed),
             ...(legacy.length > 0 ? { legacyTributeIds: legacy } : {}),
             // AUDIT-11 §12: recently seen flavour lines, snapshotted here so the
             // engine never reads storage and a save rewords identically.

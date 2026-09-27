@@ -766,9 +766,14 @@ export interface RunOutcome {
  * AUDIT-13 S5: consecutive calendar days, ending at the newest daily played,
  * with a daily in the history. Dates are the daily seed's own UTC date.
  */
-export function dailyStreakOf(history: SeasonLedger['dailyHistory']): number {
+export function dailyStreakOf(history: SeasonLedger['dailyHistory'], now: Date = new Date()): number {
     const days = [...new Set((history ?? []).map(d => d.date))].sort().reverse();
     if (days.length === 0) return 0;
+    // AUDIT-14 S4: a streak is live only if its newest daily is today's or
+    // yesterday's (UTC). Seven dailies from last year are not a streak now.
+    const today = Date.parse(now.toISOString().slice(0, 10));
+    const sinceNewest = (today - Date.parse(days[0])) / 86_400_000;
+    if (!(sinceNewest >= 0 && sinceNewest <= 1)) return 0;
     let streak = 1;
     for (let i = 1; i < days.length; i++) {
         const gap = (Date.parse(days[i - 1]) - Date.parse(days[i])) / 86_400_000;
@@ -784,9 +789,14 @@ export function dailyStreakOf(history: SeasonLedger['dailyHistory']): number {
  * week's best slip under this week's rules.
  */
 export function foldDailyAndWeekly(ledger: SeasonLedger | undefined, state: GameState): SeasonLedger | undefined {
-    const date = dailyDateOf(state.seed);
-    const weekly = weeklyRules();
-    if (!date && state.seed !== weekly.seed) return ledger;
+    // AUDIT-14 S5: only the daily launched on its own date counts; a past
+    // date's seed typed into the box is practice. S7: the weekly is matched on
+    // the week it was launched under, not the week it happens to end in.
+    const seedDate = dailyDateOf(state.seed);
+    const date = seedDate && state.launchedOn === seedDate ? seedDate : undefined;
+    const weeklyKey = state.launchWeekKey && state.seed === state.launchWeekKey.replace(/^week-/, 'weekly-')
+        ? state.launchWeekKey : undefined;
+    if (!date && !weeklyKey) return ledger;
     const next: SeasonLedger = { ...(ledger ?? {}) };
     const victor = victorsOf(state)[0];
     const slip = scorePrediction(state, state.prediction);
@@ -795,11 +805,15 @@ export function foldDailyAndWeekly(ledger: SeasonLedger | undefined, state: Game
             date, seed: state.seed, victorName: victor?.name, victorDistrict: victor?.district,
             ...(state.prediction?.winnerId ? { pickRight: !!victor && state.prediction.winnerId === victor.id } : {}),
         };
-        next.dailyHistory = [row, ...(next.dailyHistory ?? []).filter(d => d.date !== date)]
-            .sort((a, b) => b.date.localeCompare(a.date)).slice(0, AUDIT13_SIDE.dailyHistoryCap);
+        // AUDIT-14 S6: the *first* completed run of a date is the result.
+        // Replays are practice and never overwrite it (or its pickRight).
+        if (!(next.dailyHistory ?? []).some(d => d.date === date)) {
+            next.dailyHistory = [row, ...(next.dailyHistory ?? [])]
+                .sort((a, b) => b.date.localeCompare(a.date)).slice(0, AUDIT13_SIDE.dailyHistoryCap);
+        }
     }
-    if (state.seed === weekly.seed && slip && (!next.weeklyBest || next.weeklyBest.key !== weekly.key || slip.score > next.weeklyBest.score)) {
-        next.weeklyBest = { key: weekly.key, score: slip.score, max: slip.max };
+    if (weeklyKey && slip && (!next.weeklyBest || next.weeklyBest.key !== weeklyKey || slip.score > next.weeklyBest.score)) {
+        next.weeklyBest = { key: weeklyKey, score: slip.score, max: slip.max };
     }
     return next;
 }

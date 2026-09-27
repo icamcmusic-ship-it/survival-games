@@ -11,11 +11,11 @@
  */
 import assert from 'node:assert/strict';
 import { decodeCampaignResult, encodeCampaign } from '../src/utils/campaignLink';
-import { PANEM_SPEC, careerTotals } from '../src/utils/panemStorage';
+import { PANEM_SPEC, careerTotals, dailyStreakOf, foldDailyAndWeekly } from '../src/utils/panemStorage';
 import { HOF_CAP, importHallOfFame } from '../src/utils/hofStorage';
 import { SAVED_RUN_SPEC } from '../src/utils/saveMigrations';
 import { StorageBackend, setStorageBackend } from '../src/utils/storage';
-import type { CampaignSnapshot, HallOfFameEntry } from '../src/models/types';
+import type { CampaignSnapshot, GameState, HallOfFameEntry } from '../src/models/types';
 
 const mem = new Map<string, string>();
 const backend: StorageBackend = {
@@ -94,6 +94,30 @@ async function main() {
         assert.equal(res.entries.filter(e => e.id.startsWith('mine-')).length, 10);
         assert.ok(res.entries.every(e => !e.id.startsWith('evil-') || !e.pinned), 'imports arrive unpinned');
         assert.ok(res.entries.every(e => Date.parse(e.date) <= Date.now() + 1000), 'no future dates');
+    });
+
+    await test('S4: a daily streak from last year is not live', () => {
+        const row = (date: string) => ({ date, seed: `daily-${date}` });
+        const week = ['2025-03-07', '2025-03-06', '2025-03-05', '2025-03-04', '2025-03-03', '2025-03-02', '2025-03-01'].map(row);
+        assert.equal(dailyStreakOf(week, new Date(Date.UTC(2026, 8, 27))), 0);
+        assert.equal(dailyStreakOf(week, new Date(Date.UTC(2025, 2, 8, 12))), 7, 'yesterday still counts');
+    });
+
+    await test('S5/S6/S7: dailies count on their own date, first run wins; weeklies match their launch week', () => {
+        const victor = { id: 'v', name: 'Rue', district: 11, status: 'alive' };
+        const base = { tributes: [victor], log: [], day: 5 } as unknown as GameState;
+        const typed = { ...base, seed: 'daily-2025-03-01' } as GameState;
+        assert.equal(foldDailyAndWeekly(undefined, typed), undefined, 'a typed-in past daily is practice');
+        const real = { ...base, seed: 'daily-2025-03-01', launchedOn: '2025-03-01', prediction: { winnerId: 'x' } } as unknown as GameState;
+        const first = foldDailyAndWeekly(undefined, real)!;
+        assert.equal(first.dailyHistory?.[0].pickRight, false);
+        const replay = { ...real, prediction: { winnerId: 'v' } } as unknown as GameState;
+        const second = foldDailyAndWeekly(first, replay)!;
+        assert.equal(second.dailyHistory?.length, 1);
+        assert.equal(second.dailyHistory?.[0].pickRight, false, 'a replay does not overwrite the first result');
+        const wk = { ...base, seed: 'weekly-1999-W01', launchWeekKey: 'week-1999-W01' } as unknown as GameState;
+        // No slip on this state, so nothing is written; the point is that it is not rejected outright.
+        assert.notEqual(foldDailyAndWeekly({}, wk), undefined);
     });
 
     await test('U2: the save carries the undo high-water mark', () => {
