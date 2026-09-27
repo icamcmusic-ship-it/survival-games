@@ -11269,7 +11269,7 @@ export const AUDIT13_CONTENT = {
     /** N37 Sheltering: shelter skill needed, score, exposure kept, the costs, and the tracker who still finds them. */
     shelteringSkillMin: 0.15,
     shelteringPerCarpentry: 0.1,
-    shelteringBase: 6.8,
+    shelteringBase: 7.3,
     shelteringNightBonus: 1,
     shelteringExposureScale: 0.5,
     shelteringHunger: 0.5,
@@ -11601,8 +11601,7 @@ export const AUDIT14_CONTENT = {
     isolatePerHop: 0.5,
     /** §3 T12: a ward's pull back toward the elder. */
     wardPull: 2,
-    /** R3: how well a Poacher's snare is hidden, and the tracking that reads one. */
-    snareConcealment: 0.6,
+    /** R3: the tracking that reads a Poacher's snare. */
     snareTrackerLevel: 3,
     /** R5: regard the client gains for the delivery. */
     smuggleRegard: 6,
@@ -11615,6 +11614,6 @@ export const AUDIT14_CONTENT = {
     /** S2/S3: cycles the fight that opened them stays fresh (entry latency needs two). */
     trailingWindow: 3,
     /** S2: chance the winner of a fight goes after a bleeding opponent who ran. */
-    trailingForceChance: 0.5,
+    trailingForceChance: 0.45,
     retreatingWindow: 3,
 } as const;

@@ -21,6 +21,7 @@ import { getMark, setMark } from './arenaRules';
 import { forceStance } from './stance';
 import { isAggressiveStance } from '../data/stances';
 import { adjustRel } from './relationships';
+import { injure } from './wounds';
 import { carryCapacity, giveItem, mintItem } from './items';
 
 /**
@@ -697,27 +698,32 @@ export function lastRites(ctx: SimContext, t: Tribute): boolean {
     return true;
 }
 
-/** R3 Poacher: a snare that catches a person. Lays one first if they have none out. */
+/**
+ * R3 Poacher: a snare that catches a person. The first offer lays it — on
+ * the busiest way into where they stand — and it is kept as the Poacher's
+ * own mark rather than an ordinary trap, so a passing tribute's normal trap
+ * roll does not spring it for the wrong reason. After that it waits.
+ */
 export function snareHunt(ctx: SimContext, t: Tribute): boolean {
-    const here = getZone(ctx.state.arena, t.zone);
-    const ground = new Set([t.zone, ...(here?.adjacent ?? [])]);
-    const lines = (ctx.state.traps ?? []).filter(tr => tr.ownerId === t.id && ground.has(tr.zone));
-    if (lines.length === 0) {
-        ctx.state.traps = ctx.state.traps ?? [];
-        ctx.state.traps.push({ id: `snare-${t.id}-${cycleOf(ctx.state)}`, kind: 'snare', zone: t.zone, ownerId: t.id,
-            concealment: C.snareConcealment, setCycle: cycleOf(ctx.state) });
+    const key = `a14snare:${t.id}`;
+    const laid = getMark(ctx.state, key);
+    const collapsed = ctx.state.collapsedZones ?? [];
+    if (typeof laid !== 'string' || collapsed.includes(laid)) {
+        const here = getZone(ctx.state.arena, t.zone);
+        const ways = [t.zone, ...(here?.adjacent ?? [])].filter(z => !collapsed.includes(z));
+        const busiest = ways.map(z => [z, getAlive(ctx.state).filter(o => o.zone === z && o.id !== t.id).length] as const)
+            .sort((a, b) => b[1] - a[1])[0];
+        if (busiest) setMark(ctx.state, key, busiest[0]);
         return false;
     }
-    const zones = new Set(lines.map(l => l.zone));
-    const quarry = ctx.rng.pickOrUndefined(getAlive(ctx.state).filter(o => o.id !== t.id && zones.has(o.zone) && isActive(o)
+    const quarry = ctx.rng.pickOrUndefined(getAlive(ctx.state).filter(o => o.id !== t.id && o.zone === laid && isActive(o)
         && !allied(o, t) && !isTrapwise(o) && profOf(o, 'tracking') < C.snareTrackerLevel));
     if (!quarry) return false;
-    const line = lines.find(l => l.zone === quarry.zone)!;
-    ctx.state.traps = (ctx.state.traps ?? []).filter(tr => tr !== line);
+    setMark(ctx.state, key, undefined);
     // Downs, never kills: the snare holds them for whoever comes.
     const damage = Math.min(C.snareDamage, Math.max(0, quarry.health - 1));
     quarry.health -= damage;
-    quarry.injuries.legs = true;
+    injure(quarry, 'legs');
     clampTribute(quarry);
     trainProficiency(t, 'scentcraft', ctx);
     ctx.logEvent(`${quarry.name} walks the trail through ${quarry.zone} and the ground takes their leg out from under them. It is ${t.name}'s snare, and it was set for somebody exactly their size.`,
