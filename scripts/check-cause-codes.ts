@@ -78,7 +78,8 @@ for (const file of engineFiles('src/engine')) {
  * quietly growing back. A new lethal event that lands in `hazard` must either
  * carry a `code` or say what it is in words `classifyCause` can read.
  */
-// AUDIT-14 W4: every authored lethal cause now refines out of the catch-all.
+// AUDIT-14 W4 + E10: arena lines refine out of the catch-all; "Killed by the …"
+// lines are no longer read as tribute kills (E10). Measured after merge: 0; ceiling keeps small headroom.
 const HAZARD_CATCHALL_CEILING = 5;
 const catchAll = new Set<string>();
 for (const a of ARENAS) {

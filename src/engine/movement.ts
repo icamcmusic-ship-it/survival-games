@@ -2,11 +2,14 @@ import { Tribute, Zone } from '../models/types';
 import { audit13DestinationScore } from './audit13Content';
 import { cannonAvoidance, signallingPull } from './traitHooks';
 import { ARCHETYPES } from '../data/archetypes';
-import { CONFUSION, FEAR, MEMORY, MOVEMENT, NOTORIETY, DECISION_TRACE, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, RISK } from '../data/balance';
+import { CONFUSION, FEAR, MEMORY, MOVEMENT, NOTORIETY, DECISION_TRACE, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, RISK, AUDIT14_ENGINE as E14 } from '../data/balance';
 import { confusionOf } from './confusion';
 import { SimContext } from './context';
-import { effectiveResources, zoneFeatures } from './map';
-import { believedIn, ensureMemory, hasVengeanceAgainst, reckonsRegrown, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
+import { edgeKey, effectiveResources, getZone, severedEdgeSet, zoneFeatures } from './map';
+import { allied } from './alliance';
+import { profOf } from './proficiency';
+import { zoneStateOf } from './arenaDynamics';
+import { believedIn, cyclesSinceContact, ensureMemory, hasVengeanceAgainst, rememberedPlaceOf, reckonsRegrown, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
 import { fearInZone } from './fear';
 import { notorietyInZone } from './notoriety';
 import { rumourPull } from './rumours';
@@ -73,9 +76,22 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
             // AUDIT-9 B11: the target's last *known* position, not their
             // actual one. A sworn hunter walks to where they saw them, and
             // arrives to find them gone — which is what a hunt is.
-            const hunted = state.tributes.filter(o =>
-                o.status === 'alive' && hasVengeanceAgainst(t, o.id) && believedIn(state, t, o.id, z.name));
-            if (hunted.length > 0 && rivals > 0) score += 4;
+            // AUDIT-14 T4: the pull is toward the target, weighted by how fresh
+            // the sighting is — it used to need *another* rival seen there too,
+            // so an oath with no witness moved nobody.
+            let pull = 0;
+            state.tributes.forEach(o => {
+                if (o.status !== 'alive' || !hasVengeanceAgainst(t, o.id) || !believedIn(state, t, o.id, z.name)) return;
+                const since = cyclesSinceContact(state, t, o.id);
+                const confidence = Number.isFinite(since)
+                    ? Math.max(0, 1 - since / E14.vengeancePullDecayCycles) : 0.5;
+                pull = Math.max(pull, E14.vengeancePull * confidence);
+            });
+            // AUDIT-14 T10: and where they would have gone from there.
+            ensureMemory(t).vengeance.forEach(id => {
+                if (projectedPlaceOf(ctx, t, id) === z.name) pull = Math.max(pull, E14.vengeancePull * E14.projectionConfidence);
+            });
+            score += pull;
         }
 
         // Ground they believe they already stripped is not worth walking back
@@ -98,13 +114,17 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
         // §4.7: and whatever they have been told about the place. A believed
         // cache pulls, a believed occupant pushes, and either can be a plant.
         score += rumourPull(state, t, z.name);
-        const dreaded = fearInZone(state, t, z.name) / FEAR.max;
+        // AUDIT-14 T3: a sworn oath takes the fear off the *sworn* person only.
+        // It used to switch off every person-fear in the arena.
+        const dreaded = fearInZone(state, t, z.name, id => hasVengeanceAgainst(t, id)) / FEAR.max;
         if (dreaded > 0) {
             // Unless they are the one doing the hunting: a target's menace is a
             // reason to go, not a reason to stay away.
-            const hunting = isAggressiveStance(t.stance) || ensureMemory(t).vengeance.length > 0;
-            if (!hunting) score -= dreaded * FEAR.avoidWeight * (1 + arch.caution);
+            if (!isAggressiveStance(t.stance)) score -= dreaded * FEAR.avoidWeight * (1 + arch.caution);
         }
+        // AUDIT-14 T6: one hop is not a plan. Water, allies and the sworn
+        // target further out pull through the graph, weakening with distance.
+        score += potentialField(ctx, t, z.name);
 
         // Ground a tribute is personally good at. A Climber goes up, a Swimmer
         // crosses, and a Night-Sighted tribute is not pinned down after dark.
@@ -166,8 +186,18 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
             const wantsTheHorn = riskTolerance(ctx, t) > ENDGAME_POSITIONING.hornEdge;
             const isHorn = /cornucopia/i.test(z.name);
             const isHigh = zoneFeatures(z).elevation === true;
-            if ((wantsTheHorn && isHorn) || (!wantsTheHorn && isHigh)) {
+            // AUDIT-14 T15: a forcing finalist goes where they believe the
+            // others are, and only to the horn when they have no idea; a
+            // careful one wants height *and* cover.
+            const finalistNear = wantsTheHorn ? believedFinalistWithinHop(ctx, t, z.name) : false;
+            const knowsWhere = wantsTheHorn && believesAnyFinalist(state, t);
+            if (wantsTheHorn && finalistNear) score += E14.endgameFinalistPull;
+            if ((wantsTheHorn && isHorn && !knowsWhere && zoneStateOf(state, z.name) !== 'ruined')
+                || (!wantsTheHorn && isHigh)) {
                 score += ENDGAME_POSITIONING.pullWeight;
+            }
+            if (!wantsTheHorn && (z.terrain === 'forest' || z.terrain === 'ruins' || (zoneFeatures(z).shelterQuality ?? 0) > 0)) {
+                score += E14.endgameCoverPull;
             }
         }
 
@@ -229,4 +259,98 @@ export function pickDestination(ctx: SimContext, t: Tribute, options: Zone[]): Z
         };
     }
     return pick.z;
+}
+
+/** AUDIT-14 T6: hop distances from `from` over open, unsevered ground. */
+function hopMap(ctx: SimContext, from: string): Map<string, number> {
+    const state = ctx.state;
+    const collapsed = state.collapsedZones ?? [];
+    const severed = severedEdgeSet(state);
+    const dist = new Map<string, number>([[from, 0]]);
+    let frontier = [from];
+    for (let d = 1; d <= E14.fieldMaxHops && frontier.length > 0; d++) {
+        const next: string[] = [];
+        frontier.forEach(name => {
+            (getZone(state.arena, name)?.adjacent ?? []).forEach(n => {
+                if (dist.has(n) || collapsed.includes(n) || severed.has(edgeKey(name, n))) return;
+                dist.set(n, d);
+                next.push(n);
+            });
+        });
+        frontier = next;
+    }
+    return dist;
+}
+
+/**
+ * AUDIT-14 T6: max over targets of value / (1 + hops) from this option —
+ * water when thirsty, the nearest ally, the sworn target's believed place.
+ */
+function potentialField(ctx: SimContext, t: Tribute, zone: string): number {
+    const state = ctx.state;
+    const dist = hopMap(ctx, zone);
+    let field = 0;
+    const at = (z: string | undefined, value: number) => {
+        if (!z) return;
+        const h = dist.get(z);
+        if (h === undefined) return;
+        field = Math.max(field, value / (1 + h));
+    };
+    if (t.vitals.thirst >= E14.fieldThirstFrom) {
+        const urgency = t.vitals.thirst / 100;
+        state.arena.zones.forEach(z => { if (zoneFeatures(z).waterSource === true) at(z.name, E14.fieldWater * urgency); });
+    }
+    if (t.allianceId) {
+        state.tributes.forEach(o => {
+            if (o.id !== t.id && o.status === 'alive' && o.zone !== t.zone && allied(o, t)) at(o.zone, E14.fieldAlly);
+        });
+    }
+    ensureMemory(t).vengeance.forEach(id => {
+        at(rememberedPlaceOf(state, t, id), E14.fieldVengeance);
+        at(projectedPlaceOf(ctx, t, id), E14.fieldVengeance * E14.projectionConfidence);
+    });
+    return field;
+}
+
+/** AUDIT-14 T15: the finalists this tribute has a live sighting of. */
+function believesAnyFinalist(state: SimContext['state'], t: Tribute): boolean {
+    return state.tributes.some(o => o.status === 'alive' && o.id !== t.id && !allied(o, t)
+        && rememberedPlaceOf(state, t, o.id) !== undefined);
+}
+
+function believedFinalistWithinHop(ctx: SimContext, t: Tribute, zone: string): boolean {
+    const state = ctx.state;
+    const near = new Set([zone, ...(getZone(state.arena, zone)?.adjacent ?? [])]);
+    return state.tributes.some(o => {
+        if (o.status !== 'alive' || o.id === t.id || allied(o, t)) return false;
+        const place = rememberedPlaceOf(state, t, o.id);
+        return place !== undefined && near.has(place);
+    });
+}
+
+/**
+ * AUDIT-14 T10: where the quarry would have gone from the last sighting.
+ *
+ * Not a live feed — a model of a person: from where they were seen, toward
+ * water if they were standing on dry ground, else away from the horn. One hop
+ * for anybody, two for a tracker. Undefined with no live sighting to start from.
+ */
+export function projectedPlaceOf(ctx: SimContext, t: Tribute, otherId: string): string | undefined {
+    const state = ctx.state;
+    let at: string | undefined = rememberedPlaceOf(state, t, otherId);
+    if (!at || cyclesSinceContact(state, t, otherId) < 1) return undefined;
+    const collapsed = state.collapsedZones ?? [];
+    const severed = severedEdgeSet(state);
+    const horn = state.arena.zones[0]?.name;
+    const hops = profOf(t, 'tracking') >= E14.projectionTwoHopTracking ? 2 : 1;
+    for (let h = 0; h < hops; h++) {
+        const from: string = at;
+        const here = getZone(state.arena, from);
+        const next: string[] = (here?.adjacent ?? []).filter(n => !collapsed.includes(n) && !severed.has(edgeKey(from, n)));
+        if (!here || next.length === 0) break;
+        const wet = zoneFeatures(here).waterSource === true;
+        const water: string | undefined = wet ? undefined : next.find(n => { const z = getZone(state.arena, n); return !!z && zoneFeatures(z).waterSource === true; });
+        at = water ?? next.find(n => n !== horn && !(getZone(state.arena, n)?.adjacent ?? []).includes(horn ?? '')) ?? next.find(n => n !== horn) ?? next[0];
+    }
+    return at;
 }

@@ -6,6 +6,45 @@ import { ITEMS, IMPROVISED_ITEMS } from '../data/constants';
 import { giveItem, mintItem } from './items';
 import { QUALITY_BIAS } from '../data/balance';
 import { cycleOf, noteSighting } from './memory';
+import { nearestSafeZone, severedEdgeSet } from './map';
+
+/**
+ * AUDIT-14 E2/E4/E13: leave real kit on the ground as a cache.
+ *
+ * Every writer of a corpse or scattered store goes through here so the three
+ * rules hold in one place: the instances are handed over (not re-minted), a
+ * collapsed zone never receives a cache nobody can reach (it goes to the
+ * nearest open ground, where the hovercraft set it down), and a zone holds one
+ * unfound cache — a second body's kit joins the first rather than hiding
+ * behind it.
+ */
+export function leaveKit(ctx: SimContext, zone: string, ownerId: string, ownerName: string, kit: Item[],
+    kind: 'corpse' | 'scatter'): string | undefined {
+    const state = ctx.state;
+    if (kit.length === 0) return undefined;
+    const collapsed = state.collapsedZones ?? [];
+    let at = zone;
+    if (collapsed.includes(zone)) {
+        const open = state.arena.zones.map(z => z.name).filter(n => !collapsed.includes(n));
+        if (open.length === 0) return undefined;
+        at = nearestSafeZone(state.arena, zone, open, severedEdgeSet(state));
+        if (collapsed.includes(at)) return undefined;
+    }
+    // Keepsakes belong to the dead; the next pair of hands gets an object.
+    const handed = kit.map(i => (i.keepsake ? { ...i, keepsake: undefined } : i));
+    state.abandonedCamps = state.abandonedCamps ?? [];
+    const cycle = cycleOf(state);
+    const existing = state.abandonedCamps.find(c => c.zone === at && c.foundBy === undefined
+        && cycle - c.cycle <= ABANDONED_CAMPS.lifetimeCycles);
+    if (existing) {
+        existing.items.push(...handed.map(i => i.id));
+        existing.kit = [...(existing.kit ?? []), ...handed];
+        existing.cycle = cycle;
+        return at;
+    }
+    state.abandonedCamps.push({ zone: at, ownerId, ownerName, cycle, items: handed.map(i => i.id), kit: handed, kind });
+    return at;
+}
 
 /**
  * §5.5: a camp somebody left in a hurry.
@@ -100,11 +139,18 @@ export function abandonCamp(ctx: SimContext, t: Tribute, zone: string) {
  */
 function checkAbandonedCamps(ctx: SimContext, t: Tribute) {
     const state = ctx.state;
+    // AUDIT-14 E4: expired caches are pruned, and the live one is looked
+    // for among the unexpired — an old entry earlier in the list used to
+    // match first and hide a fresh cache behind its age.
+    const now = cycleOf(state);
+    if (state.abandonedCamps) {
+        state.abandonedCamps = state.abandonedCamps.filter(c =>
+            c.foundBy !== undefined || now - c.cycle <= ABANDONED_CAMPS.lifetimeCycles);
+    }
     const camp = (state.abandonedCamps ?? []).find(c =>
         c.zone === t.zone && c.foundBy === undefined && c.ownerId !== t.id);
     if (!camp) return;
-    const age = cycleOf(state) - camp.cycle;
-    if (age > ABANDONED_CAMPS.lifetimeCycles) return;
+    const age = now - camp.cycle;
     /*
      * §16: whether they came here for this, or tripped over it.
      *
@@ -125,7 +171,11 @@ function checkAbandonedCamps(ctx: SimContext, t: Tribute) {
             + salvageFindBonus(t))) return;
 
     camp.foundBy = t.id;
-    camp.items.forEach(id => {
+    // AUDIT-14 E13: real kit is handed over as it is — blood, wear, poison.
+    if (camp.kit) {
+        camp.kit.forEach(i => giveItem(t, i));
+        camp.kit = undefined;
+    } else camp.items.forEach(id => {
         const def = ITEMS.find(i => i.id === id) ?? IMPROVISED_ITEMS.find(i => i.id === id);
         if (def) giveItem(t, mintItem(ctx.rng, def as Item, QUALITY_BIAS.scavenged));
     });
@@ -139,6 +189,19 @@ function checkAbandonedCamps(ctx: SimContext, t: Tribute) {
         noteSighting(state, t, owner.zone, 1, 0);
     }
     const haul = camp.items.length > 0 ? 'things nobody walks away from on purpose' : 'nothing worth taking';
+    // AUDIT-14 E3: a body's kit is not a camp somebody fled.
+    if (camp.kind === 'corpse' || camp.kind === 'scatter') {
+        ctx.logEvent(
+            camp.kind === 'corpse'
+                ? `${t.name} ${onPurpose ? 'walked to' : 'comes across'} what ${camp.ownerName} was carrying in ${t.zone}, `
+                  + 'left where the hovercraft took them. It is theirs now.'
+                : `${t.name} ${onPurpose ? 'walked to' : 'turns up'} the store ${camp.ownerName === 'the group that kept it' ? 'a dead pack kept' : `${camp.ownerName} was carrying`} in ${t.zone}, `
+                  + 'scattered where it fell. It is theirs now.',
+            [t.id],
+            { important: true, zone: t.zone, category: 'loot' }
+        );
+        return;
+    }
     ctx.logEvent(
         onPurpose
             ? `${t.name} walked to ${t.zone} for ${camp.ownerName}'s kit, and it is still there: a cold fire, `

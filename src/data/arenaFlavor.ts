@@ -8491,7 +8491,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} raids the lodge pantry off {zone} and takes {item} off a shelf tinned before the Dark Days.',
                 '{tribute} digs spring beauty bulbs from the meadow of {zone} and turns up {item}.',
                 '{tribute} follows a deer trail through {zone} to water and finds {item} at the crossing.',
-                '{tribute} checks the old trapline blazes in {zone} and finds {item} still cached at the third tree.',
+                '{tribute} checks the old trapline blazes in {zone} and finds {item} cached, untouched, at the third tree.',
                 '{tribute} gathers pitchwood off the deadfall of {zone} and pockets {item} beneath it.',
             ],
             rest: [
@@ -9430,7 +9430,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
         actions: {
             forage: [
                 '{tribute} works a moss hammock in {zone} and pulls out {item}.',
-                '{tribute} checks a cached line in {zone} and finds {item} still tied off.',
+                '{tribute} checks a cached line in {zone} and finds {item} where they left it, still tied off.',
                 '{tribute} strips a nest in {zone} of what isn\'t eggs and comes away with {item}.',
                 '{tribute} works the bark of {zone} for what collects in it and finds {item}.',
                 '{tribute} climbs out along a limb of {zone} for {item} nobody closer bothered to reach.',
@@ -12682,7 +12682,7 @@ export const ARENA_FLAVOR: Record<string, ArenaFlavor> = {
                 '{tribute} follows a bighorn trail through {zone} to a ledge nobody else could reach, and finds {item} there.',
                 '{tribute} digs at the base of a seep-stained wall in {zone} and comes up with {item}.',
                 '{tribute} strips a prickly pear in {zone} with more patience than they knew they had, and pockets {item}.',
-                '{tribute} checks a cliff-dweller granary in {zone} on a hunch and finds {item} still dry inside it.',
+                '{tribute} checks a cliff-dweller granary in {zone} on a hunch and finds {item} inside it, dry.',
                 '{tribute} works {zone} in the first cool hour and is back in shade with {item} before the heat comes up.',
             ],
             rest: [

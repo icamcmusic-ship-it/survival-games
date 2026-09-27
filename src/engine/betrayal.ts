@@ -104,7 +104,7 @@ function pickKind(ctx: SimContext, kinds: BetrayalKind[], betrayer?: Tribute): B
  * Carries out one betrayal. Returns the kind chosen so the caller can log
  * around it if it wants to.
  */
-export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Tribute, members: Tribute[], forced?: BetrayalKind): BetrayalKind {
+export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Tribute, members: Tribute[], forced?: BetrayalKind, warned?: boolean): BetrayalKind {
     const kind = forced ?? pickKind(ctx, availableKinds(ctx, betrayer, victim), betrayer);
     const record = allianceOf(ctx.state, betrayer.allianceId);
     noteContact(ctx.state, betrayer, victim);
@@ -144,7 +144,7 @@ export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Trib
             const deathTrap = options
                 .filter(z => rememberedThreat(ctx.state, betrayer, z.name) >= BETRAYAL.lureMinRememberedThreat)
                 .sort((a, b) => rememberedThreat(ctx.state, betrayer, b.name) - rememberedThreat(ctx.state, betrayer, a.name))[0];
-            if (!deathTrap) return resolveKnife(ctx, betrayer, victim, members);
+            if (!deathTrap) return resolveKnife(ctx, betrayer, victim, members, warned);
 
             // A real move, not a teleport: it leaves a trail and springs
             // whatever is waiting in the zone they were sent to.
@@ -226,11 +226,11 @@ export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Trib
                 [betrayer.id, victim.id],
                 { type: 'preemptive-betrayals', important: true, category: 'betrayal' }
             );
-            return resolveKnife(ctx, betrayer, victim, members);
+            return resolveKnife(ctx, betrayer, victim, members, warned);
         }
 
         default:
-            return resolveKnife(ctx, betrayer, victim, members);
+            return resolveKnife(ctx, betrayer, victim, members, warned);
     }
 }
 
@@ -255,9 +255,16 @@ export function preemptiveBetrayer(ctx: SimContext, members: Tribute[]): [Tribut
 }
 
 /** The original: the knife, and the fight that follows it. */
-function resolveKnife(ctx: SimContext, betrayer: Tribute, victim: Tribute, members: Tribute[]): BetrayalKind {
+/** AUDIT-14 E6: the knife everybody saw coming does not come "without warning". */
+const WARNED_KNIFE = [
+    '{betrayer} does in {zone} exactly what everybody watching saw coming, and draws on {victim}. The only one surprised is {victim}.',
+    'The cameras were right. {betrayer} turns on {victim} in {zone}, and the thing everybody saw coming arrives on schedule.',
+    '{betrayer} finally does it: in {zone}, the blade comes out for {victim}. Anybody who had been watching could have told {victim} so.',
+];
+
+function resolveKnife(ctx: SimContext, betrayer: Tribute, victim: Tribute, members: Tribute[], warned?: boolean): BetrayalKind {
     ctx.logEvent(
-        fill(ctx.pickText(ALLIANCE_TEXTS.betray), { betrayer: betrayer.name, victim: victim.name, zone: betrayer.zone }),
+        fill(ctx.pickText(warned ? WARNED_KNIFE : ALLIANCE_TEXTS.betray), { betrayer: betrayer.name, victim: victim.name, zone: betrayer.zone }),
         [betrayer.id, victim.id],
         { important: true, category: 'betrayal' }
     );

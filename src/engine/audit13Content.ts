@@ -1,6 +1,6 @@
 import { Proficiency, Tribute, Zone } from '../models/types';
 import { SimContext, getAlive } from './context';
-import { AUDIT13_CONTENT as C } from '../data/balance';
+import { AUDIT13_CONTENT as C, AUDIT14_ENGINE as E14 } from '../data/balance';
 import {
     hasBadKnee, hasBorrowedLuck, hasDeadfallMind, hasLoudHeart, hasTinEar, isAshLunged, isBellVoiced,
     isBitterRoot, isHungerSharp, isKinSeeker, isMudSkinned, isSlowHealer, isStitchFingered, isTwoFaced,
@@ -9,7 +9,7 @@ import {
 import { cycleOf, ensureMemory, hasVengeanceAgainst, swearVengeance } from './memory';
 import { allied } from './alliance';
 import { isActive } from './downed';
-import { getZone } from './map';
+import { getZone, hopsTo, severedEdgeSet } from './map';
 import { profOf, trainProficiency } from './proficiency';
 import { hasCamp, lightFire, trapsIn } from './fieldcraft';
 import { loseSanity } from './sanityBands';
@@ -44,9 +44,29 @@ export function tickAudit13Content(ctx: SimContext) {
         // they are cleared here when they lapse.
         if (t.hearthUntil !== undefined && t.hearthUntil < cycle) t.hearthUntil = undefined;
         if (t.beaconUntil !== undefined && t.beaconUntil < cycle) t.beaconUntil = undefined;
+        // AUDIT-14 E11: a crown lasts only as long as the Kingmaker still means
+        // it — checked for the downed too, who are skipped below.
+        if (t.crownedById) {
+            const maker = ctx.state.tributes.find(o => o.id === t.crownedById);
+            if (!maker || maker.status !== 'alive' || maker.crownedId !== t.id) t.crownedById = undefined;
+        }
+        // AUDIT-14 E18: a vow to ground that has since closed is re-sworn.
+        if (t.archetype === 'pilgrim' && t.pilgrimZone && !t.pilgrimArrived
+            && (ctx.state.collapsedZones ?? []).includes(t.pilgrimZone)) {
+            const lost = t.pilgrimZone;
+            t.pilgrimZone = undefined;
+            pickLandmark(ctx, t);
+            if (t.pilgrimZone) {
+                ctx.logEvent(
+                    `The place ${t.name} swore to reach is gone — ${lost} is closed ground now. They pick another and keep walking.`,
+                    [t.id], { category: 'survival', zone: t.zone }
+                );
+            }
+        }
         if (!isActive(t)) return;
         if (t.archetype === 'firekeeper') tendFire(ctx, t, night);
         if (t.archetype === 'pilgrim' && !t.pilgrimZone) pickLandmark(ctx, t);
+
         // Arriving is a fact the moment it happens; the set piece is the camera finding it.
         if (t.archetype === 'pilgrim' && t.pilgrimZone === t.zone) t.pilgrimArrived = true;
         if (t.crownedId) crownShare(ctx, t);
@@ -77,14 +97,21 @@ function pickLandmark(ctx: SimContext, t: Tribute) {
     const horn = ctx.state.arena.zones[0];
     const collapsed = ctx.state.collapsedZones ?? [];
     const zones = (horn?.adjacent ?? []).filter(z => !collapsed.includes(z));
-    const pick = ctx.rng.pickOrUndefined(zones);
+    // AUDIT-14 E18: with every sector by the horn closed, any open ground will do.
+    const fallback = zones.length > 0 ? zones
+        : ctx.state.arena.zones.map(z => z.name).filter(z => !collapsed.includes(z) && z !== t.zone);
+    const pick = ctx.rng.pickOrUndefined(fallback);
     if (pick) t.pilgrimZone = pick;
 }
 
 /** N24: a crowned ally still standing beside them is sponsor attention shared. */
 function crownShare(ctx: SimContext, t: Tribute) {
     const ward = ctx.state.tributes.find(o => o.id === t.crownedId);
-    if (!ward || ward.status !== 'alive') { t.crownedId = undefined; return; }
+    if (!ward || ward.status !== 'alive') {
+        if (ward?.crownedById === t.id) ward.crownedById = undefined;
+        t.crownedId = undefined;
+        return;
+    }
     if (ward.zone !== t.zone) return;
     t.sponsorTrust = Math.min(100, t.sponsorTrust + C.crownSponsorShare);
 }
@@ -163,6 +190,28 @@ function regroupTargets(state: SimContext['state'], t: Tribute): Tribute[] {
                 && cycle - (ensureMemory(t).lastContact[o.id] ?? -Infinity) <= C.regroupingContactCycles));
 }
 
+/**
+ * AUDIT-14 T7: how strongly Regrouping pulls, as a scale on its base — further apart and more
+ * cared about pulls harder. The base used to win outright whenever anybody of
+ * theirs was a zone away.
+ */
+export function regroupingSignal(ctx: SimContext, t: Tribute): number {
+    const targets = regroupTargets(ctx.state, t);
+    if (targets.length === 0) return 0;
+    const collapsed = ctx.state.collapsedZones ?? [];
+    const severed = severedEdgeSet(ctx.state);
+    let best = 0;
+    targets.forEach(o => {
+        const hops = hopsTo(ctx.state.arena, t.zone, o.zone, collapsed, severed) ?? E14.regroupingHopCap;
+        const hopScale = E14.regroupingHopFloor
+            + (E14.regroupingHopCeil - E14.regroupingHopFloor) * Math.min(1, (Math.max(1, hops) - 1) / Math.max(1, E14.regroupingHopCap - 1));
+        const regard = Math.max(0, Math.min(100, getRel(t, o.id)));
+        const regardScale = E14.regroupingRegardFloor + (E14.regroupingRegardCeil - E14.regroupingRegardFloor) * regard / 100;
+        best = Math.max(best, hopScale * regardScale);
+    });
+    return best;
+}
+
 /** Regrouping's precondition: somebody of theirs is elsewhere, and they know where. */
 export function regroupingAvailable(ctx: SimContext, t: Tribute): boolean {
     return regroupTargets(ctx.state, t).length > 0;
@@ -193,12 +242,25 @@ export function shelteringAvailable(ctx: SimContext, t: Tribute): boolean {
     const front = ctx.state.weatherFront;
     const zone = getZone(ctx.state.arena, t.zone);
     if (front && (front.zone === t.zone || (zone?.adjacent ?? []).includes(front.zone))) return true;
-    return !!climateOf(ctx.state.arena.id);
+    // AUDIT-14 T13: the standing climate counts only when it is biting this
+    // phase — a climate with no exposure in daylight is not a reason to hide.
+    return climateBiting(ctx);
+}
+
+function climateBiting(ctx: SimContext): boolean {
+    const time = ctx.state.timeOfDay === 'night' || ctx.state.phase === 'night' ? 'night' : 'day';
+    const exposure = climateOf(ctx.state.arena.id)?.exposure?.(time);
+    return !!exposure && (exposure.damage ?? 0) + (exposure.fatigue ?? 0) > 0;
 }
 
 /** Sheltering's score: the skill, and the dark, which is when the cold kills. */
 export function shelterScore(ctx: SimContext, t: Tribute): number {
-    return C.shelteringBase + shelterSkill(t) + (ctx.state.phase === 'night' ? C.shelteringNightBonus : 0);
+    // AUDIT-14 T7: a front on top of them is worth more than the standing climate.
+    const front = ctx.state.weatherFront;
+    const zone = getZone(ctx.state.arena, t.zone);
+    const frontNear = !!front && (front.zone === t.zone || (zone?.adjacent ?? []).includes(front.zone));
+    const severity = frontNear ? 1 : E14.shelteringClimateOnlyScale;
+    return C.shelteringBase * severity + shelterSkill(t) + (ctx.state.phase === 'night' ? C.shelteringNightBonus : 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -494,10 +556,28 @@ export function keepFire(ctx: SimContext, t: Tribute): boolean {
 
 /** N24 Kingmaker: picks the ally worth following and tells the group so. */
 export function crownAlly(ctx: SimContext, t: Tribute): boolean {
-    const candidates = getAlive(ctx.state).filter(o => o.id !== t.id && isActive(o)
-        && (allied(o, t) || (o.zone === t.zone && getRel(t, o.id) > 0)));
+    // AUDIT-14 T11: "where everybody can hear" — the candidate is here, and
+    // the pick weighs how much the Kingmaker trusts them as well as their record.
+    const candidates = getAlive(ctx.state).filter(o => o.id !== t.id && isActive(o) && o.zone === t.zone
+        && (allied(o, t) || getRel(t, o.id) > 0));
     if (candidates.length === 0) return false;
-    const ward = candidates.reduce((best, o) => (o.trainingScore + o.kills > best.trainingScore + best.kills ? o : best));
+    const worth = (o: Tribute) => (1 + Math.max(0, getRel(t, o.id)) / 100)
+        * (o.trainingScore + o.kills + o.attributes.charisma / 2);
+    const ward = candidates.reduce((best, o) => (worth(o) > worth(best) ? o : best));
+    // ...and an ally who has no time for the Kingmaker, or holds a grudge
+    // against them, can say no.
+    const proud = getRel(ward, t.id) < 0 || hasVengeanceAgainst(ward, t.id);
+    if (proud && ctx.rng.chance(E14.crownRefuseChance)) {
+        ctx.logEvent(
+            `${t.name} tries to name ${ward.name} as the one worth following. ${ward.name} will not have it said about them.`,
+            [t.id, ward.id],
+            { category: 'alliance', zone: t.zone }
+        );
+        return true;
+    }
+    // AUDIT-14 E11: the old ward's crown goes when a new one is named.
+    const previous = t.crownedId ? ctx.state.tributes.find(o => o.id === t.crownedId) : undefined;
+    if (previous && previous.id !== ward.id && previous.crownedById === t.id) previous.crownedById = undefined;
     t.crownedId = ward.id;
     ward.crownedById = t.id;
     trainProficiency(t, 'teaching', ctx);

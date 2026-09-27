@@ -3730,6 +3730,17 @@ export interface GameState {
         items: string[];
         /** Set once somebody has found it — it is not found twice. */
         foundBy?: string;
+        /**
+         * AUDIT-14 E3: what kind of trace this is. A body's kit left where the
+         * hovercraft took it is not a camp somebody fled. Absent = 'camp'.
+         */
+        kind?: 'corpse' | 'camp' | 'scatter';
+        /**
+         * AUDIT-14 E13: the actual item instances, when the cache holds real
+         * kit (a corpse's, a scattered store). Handed over as they are —
+         * blood, wear and poison included — instead of re-minted by id.
+         */
+        kit?: Item[];
     }>;
     /**
      * §5.4: the extreme this run's weather is drifting toward, and how far
@@ -3745,6 +3756,8 @@ export interface GameState {
     /** AUDIT-13 W16: deaths per zone, and which bodies have been counted. */
     deathSites?: Record<string, number>;
     deathSitesNoted?: string[];
+    /** AUDIT-14 E15: the cycle each zone's death count last moved (recorded or decayed). */
+    deathSitesAt?: Record<string, number>;
     /** AUDIT-13 W15: the arena's day-8 finale mutation has happened. */
     arenaFinaleMutated?: boolean;
     /** §5.3: consecutive cycles the audience's excitement has sat flat. */

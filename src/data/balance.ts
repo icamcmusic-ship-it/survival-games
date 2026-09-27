@@ -4995,7 +4995,11 @@ export const STANCE_MODES = {
         healthThreshold: 25,
         /** Both hunger and thirst above this is a body out of options. */
         vitalThreshold: 80,
-        base: 3.6,
+        // AUDIT-14: 3.6 -> 3.9. The horn stopped haunting everybody for the
+        // whole Games (E15), so fewer tributes are broken and the emergency
+        // posture fell under the 1% stance floor; the same body in the same
+        // state reads it a little sooner.
+        base: 3.9,
         /** Combat power added by having nothing left to lose. */
         powerBonus: 2.5,
         /** ...and the tunnel vision that comes with it. */
@@ -11113,7 +11117,7 @@ export const AUDIT13_RELATIONS = {
      */
     romanceMinAge: 15,
     romanceAgeGap: 2,
-    romanceRampChance: 0.105,
+    romanceRampChance: 0.12,
     romanceRampCycles: 5,
     romanceRegard: 55,
     romanceSponsorBonus: 10,
@@ -11312,9 +11316,9 @@ export const AUDIT14_ARENA = {
     /** V1–V30: draw weight of each new universal beat. */
     universalBeatWeight: 0.45,
     /** A1–A42: draw weight of an arena-specific death in the five arenas over the tribute ceiling (W1). */
-    ceilingArenaDeathWeight: 1.6,
+    ceilingArenaDeathWeight: 1.9,
     /** A1–A42: kiln and canopy, the two nearest the W2 signature floor. */
-    lowSignatureArenaDeathWeight: 2.4,
+    lowSignatureArenaDeathWeight: 2.8,
     /** W7: nights within which the same night-rule line is not announced again. */
     nightRuleQuietNights: 3,
     /** W9: the day carnival's midway powers up all at once, its damage, and the base dodge. */
@@ -11323,4 +11327,87 @@ export const AUDIT14_ARENA = {
     carnivalFinaleDodge: 0.35,
     /** A1–A42: draw weight elsewhere. */
     arenaDeathWeight: 1,
+} as const;
+
+/**
+ * AUDIT-14 §3: engine fixes and tribute-logic knobs.
+ */
+export const AUDIT14_ENGINE = {
+    // ---- T1: stance choice is a draw from the top of the ranking, not an argmax.
+    /** How many of the ranked stances the draw considers. */
+    stanceSoftmaxTopN: 3,
+    /** Temperature floor, and what confusion and weak willpower add to it. */
+    stanceSoftmaxBaseTemp: 0.15,
+    stanceSoftmaxConfusionTemp: 0.4,
+    stanceSoftmaxWillpowerTemp: 0.15,
+
+    // ---- T7: the AUDIT-13 stance bases scale with the signal behind them.
+    /**
+     * Regrouping: the base scales from `regroupingHopFloor` at one hop to
+     * `regroupingHopCeil` at `regroupingHopCap` hops or more — a signal around
+     * the old flat base, not a cut to it.
+     */
+    regroupingHopFloor: 0.9,
+    regroupingHopCeil: 1.2,
+    regroupingHopCap: 3,
+    /** Regrouping: scale at zero and at full regard for the person walked back to. */
+    regroupingRegardFloor: 0.9,
+    regroupingRegardCeil: 1.15,
+    /** Mourning: scale at zero and at full regard for the dead. */
+    mourningRegardFloor: 0.9,
+    mourningRegardCeil: 1.3,
+    /** Sheltering: share kept when only the standing climate (no front) is biting. */
+    shelteringClimateOnlyScale: 0.8,
+
+    // ---- T13: the cold night rule reads the posture and the camp.
+    nightColdCampScale: 0.5,
+
+    // ---- T5: risk tolerance reads the room.
+    riskPerAllyHere: 0.05,
+    riskAllyCap: 0.15,
+    riskFearWeight: 0.2,
+    riskFollowedPenalty: 0.1,
+    riskPowerWeight: 0.05,
+    /** Power points per unit of the power term (the difference is divided by this). */
+    riskPowerDivisor: 10,
+
+    // ---- T4: the vengeance pull is aimed at the target, not any rival.
+    vengeancePull: 2.5,
+    /** Cycles without contact over which the pull fades to nothing. */
+    vengeancePullDecayCycles: 8,
+
+    // ---- T6: a look further out at water, allies and the sworn target.
+    fieldWater: 2,
+    fieldAlly: 1,
+    fieldVengeance: 1,
+    /** Thirst at or over which water pulls from further out. */
+    fieldThirstFrom: 40,
+    /** Hops the field looks out to. */
+    fieldMaxHops: 3,
+
+    // ---- T9: fear that is heard about, not only seen.
+    /** Fear of an ally's known killer per 100 regard for the ally. */
+    allyKillerFear: 10,
+    /** Kills at which a rumoured killer is feared on reputation, and how much. */
+    wantedKills: 3,
+    wantedFear: 5,
+
+    // ---- T10: where the quarry would go.
+    projectionConfidence: 0.6,
+    /** Tracking level at which the projection runs a second hop. */
+    projectionTwoHopTracking: 3,
+
+    // ---- T11: the Kingmaker's choice.
+    /** Chance an ally who dislikes the Kingmaker, or holds a grudge against them, refuses the crown. */
+    crownRefuseChance: 0.5,
+
+    // ---- T15: the endgame reads the other finalists.
+    /** Pull toward a zone within one hop of a believed finalist, for a high-risk finalist. */
+    endgameFinalistPull: 3,
+    /** Pull toward cover for a low-risk finalist. */
+    endgameCoverPull: 2,
+
+    // ---- T2: a hunt that cannot become Hunting becomes a stalk.
+    /** Chance per cycle a hunt the tribute cannot run is downgraded. */
+    huntDowngradeChance: 0.65,
 } as const;

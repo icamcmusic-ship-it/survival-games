@@ -63,6 +63,7 @@ export function betrayalIntent(ctx: SimContext, members: Tribute[]): boolean {
         if (!intent || intent.cycle >= cycle) continue;
         const victim = live.find(o => o.id === intent.targetId);
         if (!victim) continue; // lapseIntents has it
+        if (!allied(m, victim)) { standDown(ctx, m, victim, 'split'); continue; }
         // E6: a knife needs the two of them in one place. Apart, it waits a
         // cycle; apart for longer, it lapses on screen.
         if (victim.zone !== m.zone) {
@@ -82,7 +83,8 @@ export function betrayalIntent(ctx: SimContext, members: Tribute[]): boolean {
             [m.id, victim.id],
             { type: 'betrayal-warning-paid', important: true, category: 'betrayal', zone: m.zone },
         );
-        resolveBetrayal(ctx, m, victim, members);
+        // E8: the victim was warned a cycle ahead ("saw it coming").
+        resolveBetrayal(ctx, m, victim, members, undefined, true);
         return true;
     }
 
@@ -154,9 +156,11 @@ function standDown(ctx: SimContext, m: Tribute, o: Tribute, why: 'dead' | 'apart
  * silently into the holder's next group.
  */
 export function lapseIntents(ctx: SimContext) {
-    getAlive(ctx.state).forEach(m => {
+    ctx.state.tributes.forEach(m => {
         const intent = m.relationsArc?.betrayalIntent;
         if (!intent) return;
+        // E8: a dead holder's intent goes with them, silently.
+        if (m.status !== 'alive') { m.relationsArc!.betrayalIntent = undefined; return; }
         const o = ctx.state.tributes.find(x => x.id === intent.targetId);
         if (!o) { m.relationsArc!.betrayalIntent = undefined; return; }
         if (o.status !== 'alive') standDown(ctx, m, o, 'dead');
@@ -362,7 +366,8 @@ function wards(ctx: SimContext) {
     alive.forEach(young => {
         const arc = arcOf(young);
         if (young.age > AUDIT13_RELATIONS.wardYoungAge || arc.wardOf) return;
-        const elder = alive.find(o => o.age >= AUDIT13_RELATIONS.wardElderAge && allied(o, young) && !areLovers(o, young));
+        const elder = alive.find(o => o.age >= AUDIT13_RELATIONS.wardElderAge && allied(o, young) && !areLovers(o, young)
+            && !hasVengeanceAgainst(o, young.id) && !hasVengeanceAgainst(young, o.id));
         if (!elder) return;
         arc.wardOf = elder.id;
         // The guardian stand rides the protector machinery: a protector
@@ -385,6 +390,14 @@ function wards(ctx: SimContext) {
         if (!arc?.wardOf) return;
         const elder = ctx.state.tributes.find(o => o.id === arc.wardOf);
         if (!elder) return;
+        // AUDIT-14 E12: the bond is an alliance bond. It goes when the
+        // alliance does, or when either has sworn on the other.
+        if (elder.status === 'alive' && (!allied(elder, young)
+            || hasVengeanceAgainst(elder, young.id) || hasVengeanceAgainst(young, elder.id))) {
+            arc.wardOf = undefined;
+            elder.protectorBonds = (elder.protectorBonds ?? []).filter(id => id !== young.id);
+            return;
+        }
         if (elder.status === 'alive') {
             if (elder.zone !== young.zone) return;
             const skill = (Object.keys(elder.proficiencies ?? {}) as Proficiency[]).sort((x, y) => profOf(elder, y) - profOf(elder, x))[0];
@@ -393,8 +406,8 @@ function wards(ctx: SimContext) {
         }
         if (arc.inherited) return;
         arc.inherited = true;
-        // E12: nothing is inherited across a killing between them.
-        if (elder.lastDamage?.sourceId === young.id) return;
+        // AUDIT-14 E12: nothing is inherited across a killing between them.
+        if (elder.lastDamage?.sourceId === young.id || young.lastDamage?.sourceId === elder.id) return;
         const trait = elder.traits.find(tr => (TRAITS as readonly string[]).includes(tr) && !young.traits.includes(tr) && traitFits(young.traits, tr));
         if (!trait) return;
         young.traits.push(trait);

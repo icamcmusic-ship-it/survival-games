@@ -454,6 +454,10 @@ export function strandedZones(state: GameState): string[] {
             if (liveNeighbours.length === 0 || !liveNeighbours.every(n => cut.has(edgeKey(z.name, n)))) return false;
             // Sealed on purpose with nobody inside — every cut a pack's or
             // permanent — is a closed room, not a strand: nobody can walk in.
+            // A lockdown whose timer has just run out still holds its own cuts
+            // until `tickLockdowns` releases them later this cycle — occupied
+            // or not, that is a door about to open, not a strand.
+            if (liveNeighbours.every(n => state.arenaRuleState?.marks?.[LOCK_CUT_MARK + edgeKey(z.name, n)] !== undefined)) return false;
             const empty = !state.tributes.some(t => t.status === 'alive' && t.zone === z.name);
             const deliberate = liveNeighbours.every(n => {
                 const k = edgeKey(z.name, n);

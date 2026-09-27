@@ -14,6 +14,7 @@ import { clampTribute } from './vitals';
 import { enforceCapacity, giveItem } from './items';
 import { rollAmbush } from './stealth';
 import { getZone, zoneFeatures } from './map';
+import { leaveKit } from './abandonedCamps';
 import { loadFromViolence } from './loadBearing';
 import { noteFightOpened } from './runRecords';
 import { readOf, addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound, rattle } from './memory';
@@ -320,7 +321,16 @@ export function applyDamage(
 ): boolean {
     if (amount <= 0) return false;
     // AUDIT-13 W5: split the `hazard` catch-all at the one place damage lands.
-    if (record.code === 'hazard') record = { ...record, code: refineHazardCode(record.code, record.cause) };
+    // AUDIT-14 E10: "tribute" means a tribute did it. An arena site that
+    // wrote the code with no tribute behind it is classified from its words.
+    if (record.code === 'tribute' && record.kind !== 'tribute' && !record.sourceId) {
+        record = { ...record, code: classifyCause(record.cause, record.kind) };
+    }
+    // AUDIT-14 E9: ...and refine a broad arena code the same way.
+    if (record.code) {
+        const refined = refineHazardCode(record.code, record.cause, record.kind);
+        if (refined !== record.code) record = { ...record, code: refined };
+    }
     // You cannot wound a corpse. Without this, any caller that damages a
     // tribute killed earlier in the same pass silently overwrites the damage
     // record their obituary was built from.
@@ -2026,7 +2036,11 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         if (kept.length > 0) {
             ctx.state.abandonedCamps = ctx.state.abandonedCamps ?? [];
             if (!ctx.state.abandonedCamps.some(c => c.zone === victim.zone && c.foundBy === undefined)) {
-                ctx.state.abandonedCamps.push({ zone: victim.zone, ownerId: victim.id, ownerName: victim.name, cycle: cycleOf(ctx.state), items: kept.map(i => i.id) });
+                // AUDIT-14 E2: the kit leaves the body when it becomes a
+                // cache. It used to be copied, and the corpse sweep two days
+                // later cached the same items a second time.
+                victim.inventory = victim.inventory.filter(i => !kept.includes(i));
+                leaveKit(ctx, victim.zone, victim.id, victim.name, kept, 'corpse');
                 ctx.logEvent(`Nobody comes for ${victim.name}. What they were carrying stays in ${victim.zone}, and the whole arena heard where.`, [victim.id], { category: 'loot', zone: victim.zone });
             }
         }
@@ -2356,14 +2370,7 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         if (record && carrier && record.sharedCache.length > 0) {
             const scattered = emptyCache(record);
             delete record.roles![carrier];
-            ctx.state.abandonedCamps = ctx.state.abandonedCamps ?? [];
-            ctx.state.abandonedCamps.push({
-                zone: victim.zone,
-                ownerId: victim.id,
-                ownerName: victim.name,
-                cycle: cycleOf(ctx.state),
-                items: scattered.map(i => i.id),
-            });
+            leaveKit(ctx, victim.zone, victim.id, victim.name, scattered, 'scatter');
             ctx.logEvent(
                 `${victim.name} was carrying everything the group had. It is in ${victim.zone} now, in the open, `
                 + `and whoever comes through next will find ${scattered.map(i => i.name).join(', ')} before any of them get back to it.`,

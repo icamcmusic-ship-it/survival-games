@@ -66,6 +66,7 @@
     "test:credibility": "tsx scripts/check-credibility.ts",
     "test:replayability": "tsx scripts/check-replayability.ts",
     "test:warnings": "tsx scripts/check-warnings.ts",
+    "test:audit14-engine": "tsx scripts/check-audit14-engine.ts",
     "test:review-fixes": "tsx scripts/check-review-fixes.ts",
     "test:audit12": "tsx scripts/check-audit12.ts",
     "test:arena-deathmix": "tsx scripts/check-arena-deathmix.ts",

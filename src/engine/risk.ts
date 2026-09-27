@@ -1,7 +1,10 @@
 import { riskShift } from './arenaDepth';
 import { Tribute } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
-import { RISK } from '../data/balance';
+import { AUDIT14_ENGINE as E14, RISK, STANCE } from '../data/balance';
+import { allied } from './alliance';
+import { fearFraction } from './fear';
+import { isBeingFollowed } from './intent';
 import { SimContext, getAlive } from './context';
 import { effectiveCaution } from './archetypeHooks';
 import { inventoryValue } from './items';
@@ -43,5 +46,33 @@ export function riskTolerance(ctx: SimContext, t: Tribute): number {
     // AUDIT-11 §5: the late-game curve — desperation, turned hoarders, broken pacifists.
     risk += riskShift(ctx.state, t);
 
+    // AUDIT-14 T5: the room. Company, the most frightening person here, being
+    // followed, and how the best hostile here measures up against them.
+    risk += roomRisk(ctx, t);
+
     return Math.max(-1, Math.min(1, risk));
+}
+
+function powerOf(o: Tribute): number {
+    return o.attributes.strength + o.attributes.agility
+        + (o.inventory.some(i => i.type === 'weapon') ? STANCE.ownWeaponBonus : 0)
+        + o.health / STANCE.ownHealthDivisor;
+}
+
+/** AUDIT-14 T5: what the people in this zone do to a tribute's nerve. */
+function roomRisk(ctx: SimContext, t: Tribute): number {
+    let allies = 0;
+    let worstFear = 0;
+    let bestHostile = 0;
+    ctx.state.tributes.forEach(o => {
+        if (o.status !== 'alive' || o.id === t.id || o.zone !== t.zone) return;
+        if (allied(o, t)) { allies += 1; return; }
+        worstFear = Math.max(worstFear, fearFraction(t, o.id));
+        bestHostile = Math.max(bestHostile, powerOf(o));
+    });
+    let r = Math.min(E14.riskAllyCap, allies * E14.riskPerAllyHere);
+    r -= E14.riskFearWeight * worstFear;
+    if (isBeingFollowed(ctx, t)) r -= E14.riskFollowedPenalty;
+    if (bestHostile > 0) r += E14.riskPowerWeight * (powerOf(t) - bestHostile) / E14.riskPowerDivisor;
+    return r;
 }

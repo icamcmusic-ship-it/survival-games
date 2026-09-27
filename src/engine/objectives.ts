@@ -2,7 +2,7 @@ import { targetDrawOf } from './targeting';
 import { hiddenFromHunt } from './traitHooks';
 import { GameState, Objective, Tribute, Zone } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
-import { AUDIT12_TRIBUTES, AUDIT13_CAREERS, AUDIT14_RELATIONS, ENDGAME, ESCALATION, PERCEPTION, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, MEMORY, MOVEMENT, OBJECTIVES, PLANNING, REPUTATION_TARGETING, RISK, STANDING_GOAL } from '../data/balance';
+import { AUDIT12_TRIBUTES, AUDIT13_CAREERS, AUDIT14_RELATIONS, ENDGAME, ESCALATION, PERCEPTION, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, MEMORY, MOVEMENT, OBJECTIVES, PLANNING, REPUTATION_TARGETING, RISK, STANDING_GOAL, AUDIT14_ENGINE } from '../data/balance';
 import { SimContext } from './context';
 import { cycleOf, cyclesSinceContact, ensureMemory, hasVengeanceAgainst, impressionOf, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
 import { getZone, hopsTo, nextHopToward, severedEdgeSet, zoneFeatures } from './map';
@@ -21,6 +21,7 @@ import { fill } from './encounters';
 import { isAggressiveStance } from '../data/stances';
 import { objectiveBiasFor, targetPreferenceScore } from './archetypeHooks';
 import { resolveOf } from './resolve';
+import { canRunHunt } from './stance';
 
 /**
  * Intentions.
@@ -940,6 +941,7 @@ function nearestZoneMatching(
  */
 export function updateObjective(ctx: SimContext, t: Tribute, here: Tribute[]) {
     commitmentByCaution(ctx, t, here);
+    downgradeUnrunnableHunt(ctx, t);
     if (isObjectiveValid(ctx, t)) {
         // §3.2: being torn is now cumulative. Three cycles pulled the same two
         // ways and the runner-up wins outright, loudly — the tension system
@@ -1360,4 +1362,21 @@ export function objectiveLabel(state: { tributes: Tribute[] }, t: Tribute): stri
         }
         default: return 'Surviving';
     }
+}
+
+/**
+ * AUDIT-14 T2: a hunt the tribute cannot run becomes a stalk.
+ *
+ * `hunt` was the objective on 40% of tribute-cycles and the Hunting stance on
+ * 1.7%: the objective walked them toward the quarry while the stance said
+ * Evasive or Defensive, which read as an aimless hunt. When they lack the
+ * fieldcraft (and the oath) that Hunting needs *and* their posture is not a
+ * fighting one, the intention is what it really is — following, not closing.
+ */
+function downgradeUnrunnableHunt(ctx: SimContext, t: Tribute) {
+    const o = t.objective;
+    if (o?.kind !== 'hunt' || isAggressiveStance(t.stance)) return;
+    if (canRunHunt(t)) return;
+    if (!ctx.rng.chance(AUDIT14_ENGINE.huntDowngradeChance)) return;
+    t.objective = { kind: 'stalk', targetId: o.targetId, expires: o.expires };
 }
