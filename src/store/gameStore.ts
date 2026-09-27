@@ -1179,16 +1179,22 @@ export const gameActions = {
      * formed", both played from the reaping with the player's own
      * interventions replayed. Yields between branches like `runWhatIf`.
      */
-    async runReapingWhatIf(kind: 'never-reaped' | 'no-alliance', subjectId: string, onProgress?: (done: number, total: number) => void) {
+    async runReapingWhatIf(kind: 'never-reaped' | 'no-alliance' | 'no-intervention', subjectId: string, onProgress?: (done: number, total: number) => void) {
         const { gameState } = gameStore.getState();
         const reaping = reapingState;
         if (!gameState || !reaping || reaping.seed !== gameState.seed) return null;
-        const { neverReaped, allianceNeverFormed } = await loadEngine();
+        const { neverReaped, allianceNeverFormed, interventionUndone } = await loadEngine();
         await new Promise(resolve => setTimeout(resolve, 0));
         if (gameStore.getState().gameState !== gameState) return null;
         onProgress?.(0, 1);
         if (kind === 'never-reaped') {
             const r = neverReaped(reaping, gameState, subjectId);
+            onProgress?.(1, 1);
+            return r ?? null;
+        }
+        // AUDIT-14 F6: one of the player's own interventions, taken back.
+        if (kind === 'no-intervention') {
+            const r = interventionUndone(reaping, gameState, Number(subjectId));
             onProgress?.(1, 1);
             return r ?? null;
         }

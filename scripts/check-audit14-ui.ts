@@ -18,6 +18,8 @@ import { scenarioCast } from '../src/engine/season/scenarios';
 import { STORY_CHAINS } from '../src/engine/season/storyChains';
 import { COMMENTATORS, SCENARIO_CARDS, STORY_CHAIN_META } from '../src/data/replayCards';
 import { sendPlayerParachute } from '../src/engine/playerSponsor';
+import { interventionUndone } from '../src/engine/season/whatIfBranches';
+import { snapshotState } from '../src/utils/snapshot';
 import { decodeCampaignResult, encodeCampaign } from '../src/utils/campaignLink';
 import { PANEM_SPEC, careerTotals, dailyStreakOf, foldDailyAndWeekly } from '../src/utils/panemStorage';
 import { HOF_CAP, importHallOfFame } from '../src/utils/hofStorage';
@@ -193,6 +195,24 @@ async function main() {
             lines.add(line.replace(t.name, 'X').replace(t.zone, 'Z').replace(/finds .*?[.:]/, 'finds I.'));
         }
         assert.ok(lines.size >= 3, `only ${lines.size} distinct parachute lines`);
+    });
+
+    await test('F6: "I had not done this" replays the Games without one intervention', () => {
+        const reaping = initialRunState({ seed: 'A14-F6', arenaId: ARENAS[0].id, config: DEFAULT_GAME_CONFIG });
+        const target = reaping.tributes[0].id;
+        const start = snapshotState(reaping);
+        start.plannedInterventions = [{ cycle: 3, type: 'parachute', targetId: target, itemId: 'bandages' }];
+        const sim = new Simulator(start);
+        let guard = 4000;
+        while (guard-- > 0 && sim.advance()) { /* to the end */ }
+        const actual = sim.getState();
+        const mine = (actual.interventionLog ?? []).filter(r => !r.scheduled);
+        assert.ok(mine.length >= 1, 'the replayed parachute is in the log');
+        const r = interventionUndone(reaping, actual, 0, 2);
+        assert.ok(r, 'a result');
+        assert.equal(r!.kind, 'no-intervention');
+        assert.equal(r!.branches.length, 2);
+        assert.match(r!.subject, /parachute/);
     });
 
     await test('U2: the save carries the undo high-water mark', () => {

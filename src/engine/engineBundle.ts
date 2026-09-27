@@ -21,5 +21,5 @@ export { BRANCHABLE, playBranch, playerInterventionsAfter, summariseBranches } f
 export type { WhatIfResult } from './whatIf';
 export { WHAT_IF } from '../data/balance';
 // AUDIT-12 wave 3: the reaping counterfactuals.
-export { allianceNeverFormed, counterfactualChallenge, neverReaped } from './season/whatIfBranches';
+export { allianceNeverFormed, counterfactualChallenge, interventionUndone, neverReaped } from './season/whatIfBranches';
 export type { ChallengeResult, CounterfactualResult } from './season/whatIfBranches';
