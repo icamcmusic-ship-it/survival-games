@@ -198,21 +198,21 @@ export const EXTRA_ARENA_EVENTS_GROUP10: Record<string, ArenaEventDef[]> = {
             escapeText: '{tribute} hears the frame creak over {zone} and steps sideways as the glass lands.',
             cause: 'Struck by a falling pane of glass', code: 'impact',
             damage: 38, bleeding: true, terrains: ['open'], requires: { storm: true },
-        }),
+        }, WC),
         death(['The Aquatic Wing'], {
             id: 'gh-a14-aquatic-intake',
             text: 'The pond intake in {zone} pulls {tribute} against the grate.',
             escapeText: '{tribute} feels the pull in {zone} and swims across it rather than against it.',
             cause: 'Held against the pond intake grate', code: 'drowning',
             damage: 38, terrains: ['water'],
-        }),
+        }, WC),
         death(['The Boiler House'], {
             id: 'gh-a14-boiler-steam',
             text: 'The boiler in {zone} vents at midnight into the corridor where {tribute} is hiding.',
             escapeText: '{tribute} hears the valve start to scream in {zone} and gets out of the corridor.',
             cause: 'Scalded by the boiler venting at midnight', code: 'burns',
             damage: 38, burned: true, terrains: ['urban'], requires: { time: 'night' },
-        }),
+        }, WC),
     ],
     wardblock: [
         death(['Cell Block A', 'Cell Block B', 'Cell Block C'], {
@@ -478,6 +478,27 @@ const KILN_EXTRA: ArenaEventDef[] = [
     },
 ];
 EVENTS.kiln = [...KILN_EXTRA, ...EVENTS.kiln];
+
+// W2: solar's own deaths are almost all burns that finish later as status
+// deaths; two that land outright keep it over the signature floor.
+EVENTS.solar = [
+    {
+        id: 'so-a14-mirror-focus', weight: WL * 2,
+        text: 'The arena turns its mirrors on {zone} at noon, and the spot where they meet walks slowly across the ground until it finds {tribute}.',
+        escapeText: '{tribute} sees the ground start to smoke in {zone} and runs across the line of the bright spot, not along it.',
+        cause: 'Burned where the arena\'s mirrors met', code: 'burns',
+        dodgeStat: 'agility', dodgeAlt: 'intelligence', dodgeDifficulty: 7,
+        damage: 58, burned: true, terrains: ['desert', 'open'], requires: { time: 'day' },
+    },
+    {
+        id: 'so-a14-glass-crust', weight: WL * 2,
+        text: 'The sand in {zone} has been fused to a glass crust by the heat. It holds until {tribute} is halfway across, and the edges are knives.',
+        escapeText: '{tribute} hears the crust tick under the first step in {zone} and goes round by the rock.',
+        cause: 'Cut to pieces going through a crust of fused glass', code: 'bleeding',
+        dodgeStat: 'agility', dodgeAlt: 'intelligence', dodgeDifficulty: 7,
+        damage: 52, bleeding: true, terrains: ['desert', 'open', 'highland'],
+    },
+];
 
 for (const [id, list] of Object.entries(EVENTS)) {
     EXTRA_ARENA_EVENTS_GROUP10[id] = [...(EXTRA_ARENA_EVENTS_GROUP10[id] ?? []), ...list];

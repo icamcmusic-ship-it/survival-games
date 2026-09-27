@@ -11255,7 +11255,7 @@ export const AUDIT14_ARENA = {
     /** W2: floor on `lastDamage.signature` as a share of non-tribute deaths, per arena. */
     lastDamageSignatureMin: 0.05,
     /** D1–D30: draw weight of each new universal death (gated, so small). */
-    universalDeathWeight: 0.35,
+    universalDeathWeight: 0.2,
     /** V1–V30: draw weight of each new universal beat. */
     universalBeatWeight: 0.45,
     /** A1–A42: draw weight of an arena-specific death in the five arenas over the tribute ceiling (W1). */
