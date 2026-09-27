@@ -98,6 +98,7 @@ jobs:
       # AUDIT-13 §16: every new trait, skill, archetype, quirk and stance
       # reaches its hook in a real run.
       - run: npm run test:audit13-content
+      - run: npm run test:zone-strip
       # AUDIT-10 batch 2: the shared legal-action contract. "Validated twice"
       # is not something a reader can check by inspection.
       - run: npm run test:actions

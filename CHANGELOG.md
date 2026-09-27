@@ -1,5 +1,72 @@
 # Changelog
 
+## AUDIT-13 implementation
+
+Implements `AUDIT-13.md`. The numbers below come from the check scripts named in each bullet, at the run counts given.
+
+- **Careers at the horn (§3.1 K1–K6, §5 T5–T8):**
+  - What changed:
+    - Outsiders in the scrum now steer away from the pack.
+    - Careers go in together (gang-up chance 0.8, whole pack).
+    - Fear an outsider puts into a Career is scaled to 0.2 for a volunteer and 0.65 for a reaped Career.
+    - Careers retreat less against outsiders.
+    - The "unworthy" break-off is now a re-target, not a retreat.
+    - A reaped Career may break from the pack early.
+    - The horn plan and motive now decide the gong line, with new `shield` and `honour` options.
+    - Fear can now resolve.
+  - Results:
+    - Career horn deaths fell from ~23% to ~6–9%; volunteers from ~23% to ~6–8%.
+    - Careers holding ≥30 fear of an outsider on day 2 fell from 57% to 0.5%.
+  - Mid-game counterweights: day-3+ pack walkouts, a hunt bonus against a lone Career, and an earlier schism. These keep Career victors at 45.9% (guard ≤55%, n=1,600).
+  - Guard: `test:audit13-careers`.
+- **Engine (§3.2):**
+  - B1/B2: convergence and early collapse evict tributes; the border no longer reopens convergence closures. Both are soak invariants.
+  - B3: posthumous bleed-outs are coded `bleeding` with no killer.
+  - B4: dead ids leave `memberIds`.
+  - B5: the abandoned-work line fires once.
+  - B6: a corpse's kit becomes a zone cache after two days.
+  - An epilogue that could not quote a credited kill now falls back to the death line.
+- **Arenas (§8):**
+  - W1/W2: rescue-line causes give plain zone names and draw from six materials; flat-ground anchor failures are coded `collapse`.
+  - W9: the goodbye room narrates 7 scenes plus one summary line.
+  - W11–W16, in `arenaDynamics.ts`: zone states (damaged, ruined, flooded, burning, ash, regrowth) that change forage and concealment; three-step weather chains; night rules for 17 arenas with a Hiding night bonus; a day-8 finale mutation; haunted death sites.
+  - `convergeExtraZonesPerCycle` 1 → 0, since closures are now permanent.
+- **Deaths and events (§8 W3/W5, §9, §10):**
+  - Arena-worded status deaths: 3 variants × 5 codes × 55 arenas.
+  - Six new cause codes: crush, impact, electrocution, sound, animal, exposure-pressure. `refineHazardCode` re-codes catch-all hazards (523 → 337 distinct causes).
+  - New content: D1–D76 deaths, V1–V76 events, extra deaths and events for the eight thinnest arenas, and sporefields mycelium mutts. It lives in `universal13.ts`, `group8.ts` and `group9.ts`.
+- **Relationships (§6 R1–R7):**
+  - R1: a cohesion floor (alliance median life 2 → 4 cycles), and splinter reunions and feuds.
+  - R2: `endReason` on every ended alliance.
+  - R3: a betrayal-intent score with a warning beat.
+  - R4: a district-partner arc.
+  - R5: slow-burn romance.
+  - R6: a vengeance cap and a vengeance-cooled beat.
+  - R7: in-arena wards.
+  - Stance hysteresis: after a break-off, the tribute holds Evasive one extra cycle, and a conditional stance can't win on a near-tie. This fixes the stance-thrashing soak failure seen once Careers survived.
+  - Guard: `test:audit13-relations`.
+- **Balance and new content (§7, §16):**
+  - Rebalanced at n=1,600; every `test:metrics` guard holds, and mean run length is 10.08 days.
+  - Adds 16 traits, 6 skills, 6 archetypes (firekeeper, kingmaker, ratcatcher, pilgrim, mourner, lamplighter), 6 quirks and 3 stances (Regrouping, Mourning, Sheltering). Their hooks are in `audit13Content.ts`, guarded by `test:audit13-content`.
+  - Skipped, because the n=1,600 data did not support them: A2–A4, A9–A12, A19, A23, A24.
+  - A17 (the Gambler change) was reverted because it shortened runs below the floor.
+- **UI (§3.3, §4):**
+  - U1: fixed the double commas left by stripping zone names (`test:zone-strip`).
+  - The finished Games now links onward to the debrief.
+  - "Skip to the gong" sounds the gong.
+  - One page counter; an honest filters dot; a CTA on the empty chronicle.
+  - Item grammar ("some Throwing Axes").
+  - QOL: debrief jump links and collapsed achievements; chronicle search and previous/next death; autoplay with a pace setting; keyboard shortcuts; an epilogue recap; labelled day ticks; "Copy this page"; undo; last arena remembered.
+- **Side systems and replayability (§11–§13):**
+  - S1–S4 are now surfaced: story-chain chapters, returning grudges and nemeses, arena mastery badges, patron's regret. Surfacing S1 also fixed a bug where chain progress was saved by arena name but read by id.
+  - S5–S7: daily history and streaks, a8-bought-nothing fixed (100% → ~2%), season bankroll.
+  - P1–P8: scenario cards, a change-the-winner challenge, district legacy drift, commentator voices, weekly rules, draft mode, victor-return Quell, arena scars.
+- **Achievements and names (§13–§15):**
+  - H1–H5: relabels, tightened thresholds, a scripted-player mode in `check-achievements`, museum/tour links.
+  - 37 new achievements.
+  - Rarity labels re-measured with `fix:rarity`. The Provider now needs 3 forages; "Seventeen Days" replaces Twenty Days.
+  - 140 new single given names. The other 19 collided with mentor names.
+
 ## AUDIT-12 implementation
 
 Implements `AUDIT-12.md` end to end.
