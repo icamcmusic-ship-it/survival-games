@@ -4321,6 +4321,10 @@ export type EventType =
     | 'vengeance-cooled'
     | 'ward-bond'
     | 'ward-inheritance'
+    /* AUDIT-14 §5 (RB3, RB8): the oath that comes back, the tell that resolves. */
+    | 'vengeance-resworn'
+    | 'betrayal-warning-paid'
+    | 'betrayal-stood-down'
     | 'watch-posted'
     | 'weapon-poisoned'
     | 'weather-fronts'

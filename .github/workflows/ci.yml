@@ -95,6 +95,7 @@ jobs:
       # the fear and retreat numbers that used to put them there.
       - run: npm run test:audit13-careers
       - run: npm run test:audit13-relations
+      - run: npm run test:audit14-relations
       # AUDIT-13 §16: every new trait, skill, archetype, quirk and stance
       # reaches its hook in a real run.
       - run: npm run test:audit13-content
