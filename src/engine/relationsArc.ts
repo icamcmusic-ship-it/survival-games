@@ -149,14 +149,13 @@ export function betrayalIntent(ctx: SimContext, members: Tribute[]): boolean {
  * target may strike first or be somewhere else when the knife comes.
  */
 function noticeTell(ctx: SimContext, m: Tribute, o: Tribute, live: Tribute[]) {
-    const K = AUDIT14_RELATIONS;
-    const chance = (w: Tribute) => K.noticeBase + w.attributes.intelligence * K.noticePerIntelligence
-        + profOf(w, 'vigilance') * K.noticePerVigilance;
+    const chance = (w: Tribute) => AUDIT14_RELATIONS.noticeBase + w.attributes.intelligence * AUDIT14_RELATIONS.noticePerIntelligence
+        + profOf(w, 'vigilance') * AUDIT14_RELATIONS.noticePerVigilance;
     let by: Tribute | undefined;
     if (ctx.rng.chance(chance(o))) by = o;
     else {
         by = live.find(w => w.id !== m.id && w.id !== o.id && w.zone === o.zone
-            && w.attributes.intelligence >= K.noticeAllyIntelligence && ctx.rng.chance(chance(w)));
+            && w.attributes.intelligence >= AUDIT14_RELATIONS.noticeAllyIntelligence && ctx.rng.chance(chance(w)));
     }
     if (!by) return;
     arcOf(o).watchful = { fromId: m.id, cycle: cycleOf(ctx.state) };

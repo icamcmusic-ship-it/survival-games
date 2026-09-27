@@ -5,7 +5,7 @@ import { ITEMS, IMPROVISED_ITEMS } from '../data/constants';
 import { craftOf } from '../data/districts';
 import {
     drownedOnce, hasHandMeDown, hasIronLungs, hasSharpElbows, hasShortFuse, hasSoftStep, isFeverProof,
-    isHornShy, isLateBloomer, isQuickStudy, isRearguard, isSoreLoser,
+    isHornShy, isLateBloomer, isQuickStudy, isRearguard, isSoreLoser, isTrapwise, sleepsLight,
 } from '../data/traits';
 import { cycleOf, ensureMemory, improveRead, noteRivalSighting, rememberedRivals, swearVengeance } from './memory';
 import { allianceOf, allied } from './alliance';
@@ -650,7 +650,7 @@ export function liftPurse(ctx: SimContext, t: Tribute): boolean {
     const mark = ctx.rng.pickOrUndefined(marks);
     if (!mark) return false;
     const wake = C.liftWakeBase + profOf(mark, 'vigilance') * C.liftWakePerVigilance
-        + (mark.traits.includes('Light Sleeper') ? C.liftWakeBase : 0);
+        + (sleepsLight(mark) ? C.liftWakeBase : 0);
     if (ctx.rng.chance(wake)) {
         ctx.logEvent(`${t.name}'s hand is in ${mark.name}'s pack in ${t.zone} when ${mark.name}'s eyes open.`,
             [t.id, mark.id], { type: 'cutpurse-lift', important: true, category: 'combat', zone: t.zone });
@@ -704,7 +704,7 @@ export function snareHunt(ctx: SimContext, t: Tribute): boolean {
     }
     const zones = new Set(lines.map(l => l.zone));
     const quarry = ctx.rng.pickOrUndefined(getAlive(ctx.state).filter(o => o.id !== t.id && zones.has(o.zone) && isActive(o)
-        && !allied(o, t) && !o.traits.includes('Trapwise') && profOf(o, 'tracking') < C.snareTrackerLevel));
+        && !allied(o, t) && !isTrapwise(o) && profOf(o, 'tracking') < C.snareTrackerLevel));
     if (!quarry) return false;
     const line = lines.find(l => l.zone === quarry.zone)!;
     ctx.state.traps = (ctx.state.traps ?? []).filter(tr => tr !== line);

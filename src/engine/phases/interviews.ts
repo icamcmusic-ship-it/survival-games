@@ -1,3 +1,4 @@
+import { playsToCrowd } from '../../data/traits';
 import { AUDIT14_CONTENT as A14 } from '../../data/balance';
 import { Proficiency } from '../../models/types';
 import { craftOf } from '../../data/districts';
@@ -210,7 +211,7 @@ function angleWeights(t: Tribute): Array<[typeof INTERVIEW_SCENARIOS[number], nu
                 break;
             case 'The Showboat':
                 weight += t.attributes.charisma * A14.angleShowboatPerCharisma;
-                if (t.traits.includes('Showman') || t.traits.includes('Crowd-Pleaser')) weight += A14.angleShowboatTrait;
+                if (playsToCrowd(t)) weight += A14.angleShowboatTrait;
                 break;
             case 'The Scrapper':
                 weight += (t.attributes.strength + t.attributes.endurance) * A14.angleScrapperPerBody;

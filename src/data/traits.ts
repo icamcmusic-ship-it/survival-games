@@ -1578,5 +1578,11 @@ export const hasIronLungs = (t: { traits: string[] }) => t.traits.includes('Iron
 export const hasSharpElbows = (t: { traits: string[] }) => t.traits.includes('Sharp Elbows');
 export const hasHandMeDown = (t: { traits: string[] }) => t.traits.includes('Hand-Me-Down');
 export const hasShortFuse = (t: { traits: string[] }) => t.traits.includes('Short Fuse');
+/** Read by the Cutpurse's lift: wakes at a touch. */
+export const sleepsLight = (t: { traits: string[] }) => t.traits.includes('Light Sleeper');
+/** Read by the Poacher's snare: knows a trap when they see one. */
+export const isTrapwise = (t: { traits: string[] }) => t.traits.includes('Trapwise');
+/** Read by the Showboat interview angle. */
+export const playsToCrowd = (t: { traits: string[] }) => t.traits.includes('Showman') || t.traits.includes('Crowd-Pleaser');
 /** AUDIT-13 A8: the grudge that does not fade. */
 export const hasLongMemory = (t: { traits: string[] }) => t.traits.includes('Long Memory');
