@@ -427,7 +427,8 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
      * window, and nobody hostile here. Sheltering: weather on them or coming, and the skill to get
      * under something. The payoffs are in `audit13Content.ts`.
      */
-    Regrouping: (ctx, t) => stickyHold(t, 'Regrouping') || regroupingAvailable(ctx, t),
+    // Walking back to your people is not something you do with a hostile in arm's reach.
+    Regrouping: (ctx, t, sig) => stickyHold(t, 'Regrouping') || (sig.hostile === 0 && regroupingAvailable(ctx, t)),
     // Nobody sits down with a body while somebody hostile is standing over it.
     Mourning: (ctx, t, sig) => stickyHold(t, 'Mourning') || (sig.hostile === 0 && mourningAvailable(ctx, t)),
     // Somebody past caring (Desperate's own test) does not stop to build a roof.

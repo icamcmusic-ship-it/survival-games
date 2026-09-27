@@ -10881,9 +10881,7 @@ export const AUDIT12_WAVE2_TRIBUTES = {
     hidingThirst: 2,
     /** Parleying: the risk tolerance at or under which talking comes first. */
     parleyingRiskMax: -0.15,
-    // AUDIT-13 §16: 4.4 -> 4.8. Regrouping and Mourning compete for the same
-    // cycles and took Parleying to 1.3%, the rarest stance.
-    parleyingBase: 4.8,
+    parleyingBase: 4.4,
     parleyingPerCharisma: 0.12,
     /** Parleying: fear each failed talk adds. */
     parleyingFailFear: 12,
@@ -11224,7 +11222,7 @@ export const AUDIT13_CONTENT = {
 
     // ---- stances ---------------------------------------------------------
     /** N35 Regrouping: score, the cost of a hostile here, ambush relief, and the pull toward an ally's zone. */
-    regroupingBase: 8.2,
+    regroupingBase: 9.5,
     regroupingHostilePenalty: 0.8,
     regroupingAmbushRelief: 0.2,
     regroupingPull: 3,
@@ -11241,7 +11239,7 @@ export const AUDIT13_CONTENT = {
     /** N37 Sheltering: shelter skill needed, score, exposure kept, the costs, and the tracker who still finds them. */
     shelteringSkillMin: 0.15,
     shelteringPerCarpentry: 0.1,
-    shelteringBase: 7.3,
+    shelteringBase: 6.8,
     shelteringNightBonus: 1,
     shelteringExposureScale: 0.5,
     shelteringHunger: 0.5,
