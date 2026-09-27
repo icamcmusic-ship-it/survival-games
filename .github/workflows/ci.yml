@@ -186,6 +186,7 @@ jobs:
 
       # Saves written by an older build must still open.
       - run: npm run test:storage
+      - run: npm run test:audit14-ui
 
       - run: npm run build
 

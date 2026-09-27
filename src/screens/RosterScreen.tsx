@@ -68,7 +68,10 @@ export function RosterPanel({
     // as the Games have not started, which is what it always meant.
     // AUDIT-9 B14: the same predicate the store enforces, rather than a second
     // copy of the rule that disagreed with it.
-    const bettingOpen = sideBettingOpen(phase);
+    // AUDIT-14 U2: and closed while the player has undone past something they
+    // already watched — the engine would replay it line for line.
+    const wagersLocked = gameActions.wagersLocked();
+    const bettingOpen = sideBettingOpen(phase) && !wagersLocked;
     const sideBets = useStore(gameStore, s => s.sideBets);
     // §6.1: the live proposition board. Eleven markets exist in the engine;
     // the roster hardcoded three at a fixed stake with no price shown.
@@ -88,7 +91,9 @@ export function RosterPanel({
         target?: { targetDistrict?: number; line?: number },
     ) => {
         if (!gameActions.placeSideBet(kind, sideStake, targetId, target ?? {})) {
-            setSideBetError(sideBettingOpen(phase)
+            setSideBetError(wagersLocked
+                ? 'Wagers are locked: you have already seen what happens next.'
+                : sideBettingOpen(phase)
                 ? 'The book will not take that wager.'
                 : 'The book closed when the gong went.');
         }
@@ -184,7 +189,7 @@ export function RosterPanel({
                 <p className="text-[var(--color-ink-500)] text-xs">
                     {tributes.filter(t => t.status === 'alive').length} standing of {tributes.length} reaped
                     · {tributes.filter(t => t.isCareer).length} careers
-                    {!bettingOpen && ' · betting closed'}
+                    {!bettingOpen && (wagersLocked ? ' · betting locked after undo' : ' · betting closed')}
                 </p>
                 {/* AUDIT-9 B14: the refusal, where the player is looking. Lives
                     outside the `bettingOpen` block so a wager refused *because*

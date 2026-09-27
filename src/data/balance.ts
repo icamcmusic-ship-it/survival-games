@@ -10210,8 +10210,17 @@ export const CAMPAIGN_ARC = {
 export const STALE_LINES = {
     /** Days a seen template counts as stale. */
     windowDays: 3,
-    /** Most template hashes remembered. */
-    cap: 800,
+    /**
+     * Most template hashes remembered. AUDIT-14 P7: was 800, which one run
+     * (about 1,200-1,500 templates) overflowed on its own.
+     */
+    cap: 6000,
+    /**
+     * AUDIT-14 P7: a template also stays stale for this many runs, however
+     * few days they were spread over. A heavy player replays several times a
+     * day, and a window keyed on days alone forgot nothing for them.
+     */
+    windowRuns: 5,
 } as const;
 
 /**
@@ -11274,4 +11283,19 @@ export const AUDIT14_RELATIONS = {
      * scaled by (100 - regard) / (100 - regardSoftCap).
      */
     regardSoftCap: 85,
+} as const;
+
+/**
+ * AUDIT-14 F5: the booth's second verb — a paid note, no item. Cheaper than
+ * any parachute, and worth only what being noticed is worth.
+ */
+export const SPONSOR_NOTE = {
+    /** Flat price of a note. */
+    cost: 30,
+    /** Sanity a note restores. */
+    sanityGain: 5,
+    /** Sponsor trust it adds. */
+    trustGain: 2,
+    /** Notes one tribute can receive in a Games; past this the Capitol stops delivering them. */
+    maxPerTribute: 3,
 } as const;

@@ -137,6 +137,12 @@ export interface SavedRun {
      * thing dropped when a save will not fit.
      */
     reaping?: GameState;
+    /**
+     * AUDIT-14 U2: phases undone and not yet re-played. While above zero the
+     * book is closed, so a reload cannot launder an undo into a fresh wager.
+     * Absent on older saves, which reads as zero.
+     */
+    seenAhead?: number;
 }
 
 /**
@@ -821,7 +827,7 @@ export function normalizeGameState(raw: unknown): GameState | null {
         lastPickedText: asObjMap<string>(r.lastPickedText),
         // AUDIT-11 §12: the stale-line snapshot, the prediction slip and the
         // legacy tributes. Absent on older saves, and absent stays absent.
-        staleLines: Array.isArray(r.staleLines) ? asStrArray(r.staleLines).slice(0, 2000) : undefined,
+        staleLines: Array.isArray(r.staleLines) ? asStrArray(r.staleLines).slice(0, 6000) : undefined,
         prediction: normalizePrediction(r.prediction),
         // AUDIT-13 P6/S6: the draft and the opening purse. Absent stays absent.
         draft: Array.isArray(r.draft) ? [...new Set(asStrArray(r.draft))].slice(0, AUDIT13_SIDE.draftSize) : undefined,
@@ -1028,6 +1034,8 @@ export function normalizeSavedRun(raw: unknown): SavedRun | null {
         savedAt: Number.isNaN(Date.parse(savedAt)) ? new Date(0).toISOString() : savedAt,
         note: typeof r.note === 'string' ? r.note.slice(0, 120) : undefined,
         reaping: r.reaping !== undefined ? normalizeGameState(r.reaping) ?? undefined : undefined,
+        seenAhead: typeof r.seenAhead === 'number' && Number.isFinite(r.seenAhead) && r.seenAhead > 0
+            ? Math.min(64, Math.floor(r.seenAhead)) : undefined,
     };
 }
 

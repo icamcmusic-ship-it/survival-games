@@ -1,3 +1,4 @@
+import { isHaunted } from '../ui/zoneStatus';
 import React, { useMemo, useState } from 'react';
 import { Hint } from '../components/Hint';
 import { NotableEvidence } from '../utils/notables';
@@ -483,6 +484,31 @@ export function EndScreen({
                                 <span className="chip chip-accent">{mostDangerousZone.count} {mostDangerousZone.count === 1 ? 'death' : 'deaths'}</span>
                             </div>
                         </div>
+
+                        {/* AUDIT-14 F2: counters the engine kept and nothing showed. */}
+                        {(() => {
+                            const changed = Object.values(gameState.zoneStates ?? {}).filter(z => z.kind !== 'intact').length;
+                            const haunted = Object.keys(gameState.deathSites ?? {}).filter(z => isHaunted(gameState, z)).length;
+                            const rows: Array<[string, number]> = ([
+                                ['items the sponsors put into the arena', gameState.giftedQuantity ?? 0],
+                                ['weather chains that ran their course', gameState.weatherChainsCompleted ?? 0],
+                                ['sectors the arena changed', changed],
+                                ['haunted sectors', haunted],
+                                ['hazards that left the ground changed', gameState.hazardAftermaths ?? 0],
+                                ['muster payouts', gameState.musterPayouts ?? 0],
+                            ] as Array<[string, number]>).filter(([, n]) => n > 0);
+                            if (rows.length === 0) return null;
+                            return (
+                                <div data-testid="arena-ledger">
+                                    <h3 className="panel-title">The arena&rsquo;s ledger</h3>
+                                    <ul className="mt-2 space-y-0.5 text-xs font-mono">
+                                        {rows.map(([label, n]) => (
+                                            <li key={label}><span className="text-[var(--ink)] font-bold">{n}</span> <span className="text-[var(--color-ink-200)]">{label}</span></li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            );
+                        })()}
 
                         <div>
                             <h3 className="panel-title">Cause of death</h3>

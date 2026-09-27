@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { EdgeRule, GameState, Tribute } from '../models/types';
 import { edgeKey, effectiveResources } from '../engine/map';
+import { HAUNTED_BADGE, isHaunted, zoneStateBadge, zoneStatusClause } from '../ui/zoneStatus';
 import { GRAPH_MIN_WIDTH_PX, NODE_HIT_R, NODE_R, VIEW_W, VIEW_H, layoutZones } from './arenaLayout';
 
 /**
@@ -172,6 +173,7 @@ export function ArenaGraph({ gameState, selectedZone, onSelectZone, tributes }: 
                             `${occupants.length} tribute${occupants.length === 1 ? '' : 's'} present.` +
                             `${zoneDeaths > 0 ? ` ${zoneDeaths} died here.` : ''}` +
                             `${hasCamp ? ' A camp stands here.' : ''}` +
+                            zoneStatusClause(gameState, zone.name) +
                             `${isCollapsed ? ' Out of bounds.' : ''}${deadEnd && !isCollapsed ? ' Dead end.' : ''}`
                         }
                         onClick={() => onSelectZone(isSelected ? null : zone.name)}
@@ -251,6 +253,25 @@ export function ArenaGraph({ gameState, selectedZone, onSelectZone, tributes }: 
                                 </text>
                             </>
                         )}
+                        {/* AUDIT-14 F1: what the arena has done to this sector,
+                            and whether its dead weigh on whoever camps here. */}
+                        {(() => {
+                            const badge = zoneStateBadge(gameState, zone.name);
+                            const haunted = isHaunted(gameState, zone.name);
+                            if (!badge && !haunted) return null;
+                            return (
+                                <text
+                                    x={p.x + NODE_R - 4} y={p.y + NODE_R - 3}
+                                    textAnchor="middle" dominantBaseline="middle"
+                                    style={{ fontSize: 11, fontWeight: 800 }}
+                                    fill="var(--cat-hazard)"
+                                    data-testid="zone-state-glyph"
+                                >
+                                    <title>{[badge?.label, haunted ? HAUNTED_BADGE.label : undefined].filter(Boolean).join(' · ')}</title>
+                                    {badge?.glyph ?? ''}{haunted ? HAUNTED_BADGE.glyph : ''}
+                                </text>
+                            );
+                        })()}
                         {/* §2.9: somebody has built something here. */}
                         {hasCamp && !isCollapsed && (
                             <text

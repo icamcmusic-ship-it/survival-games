@@ -3375,6 +3375,14 @@ export interface GameState {
      */
     playerPurseAtStart?: number;
     /**
+     * AUDIT-14 S5: the UTC date (YYYY-MM-DD) on which a daily seed was launched,
+     * set only when the seed is *that day's* daily. A daily seed typed in on
+     * another date is practice and is not recorded in the daily history.
+     */
+    launchedOn?: string;
+    /** AUDIT-14 S7: the week key a weekly-rules run was launched under, so a run that finishes after the week rolls over is still recorded. */
+    launchWeekKey?: string;
+    /**
      * AUDIT-11 §12: hashes of flavour templates this player has seen in recent
      * sessions, snapshotted at creation so a save resumes with the same wording.
      * `pickText` prefers a line not in this set after its draw; no extra draws.
@@ -4301,6 +4309,8 @@ export type EventType =
     | 'triangle-formed'
     | 'triangle-jealousy'
     | 'tribute-paid'
+    // AUDIT-14 S10: a training failure, formerly logged as 'tribute-paid'.
+    | 'training-flub'
     | 'tribute-paid-information'
     | 'truce-held'
     | 'truce-outlived'

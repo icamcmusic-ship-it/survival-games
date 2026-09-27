@@ -94,7 +94,13 @@ function ChallengeWhatIf({ gameState }: { gameState: GameState }) {
  */
 function ReapingWhatIf({ gameState }: { gameState: GameState }) {
     const available = useMemo(() => gameActions.canRunReapingWhatIf(), []);
-    const [kind, setKind] = useState<'never-reaped' | 'no-alliance'>('never-reaped');
+    const [kind, setKind] = useState<'never-reaped' | 'no-alliance' | 'no-intervention'>('never-reaped');
+    // AUDIT-14 F6: the player's own interventions, in order, for "undo this one".
+    const mine = useMemo(() => (gameState.interventionLog ?? []).filter(r => !r.scheduled), [gameState]);
+    const describe = (r: { type: string; targetId?: string; cycle: number; itemId?: string }) => {
+        const who = gameState.tributes.find(t => t.id === r.targetId)?.name;
+        return `${r.type === 'parachute' ? `parachute${r.itemId ? ` (${r.itemId})` : ''}` : r.type}${who ? ` → ${who}` : ''} · cycle ${r.cycle}`;
+    };
     const alliances = useMemo(() => Object.values(gameState.alliances ?? {}).filter(a => a.memberIds.length >= 2), [gameState]);
     const victor = gameState.tributes.find(t => t.status === 'alive');
     const [subject, setSubject] = useState<string>(victor?.id ?? gameState.tributes[0]?.id ?? '');
@@ -117,16 +123,19 @@ function ReapingWhatIf({ gameState }: { gameState: GameState }) {
             <div className="flex flex-wrap items-center gap-2">
                 <select className="field text-xs w-auto max-w-full min-w-0" aria-label="Which counterfactual" value={kind} disabled={busy}
                     onChange={e => {
-                        const k = e.target.value as 'never-reaped' | 'no-alliance';
+                        const k = e.target.value as 'never-reaped' | 'no-alliance' | 'no-intervention';
                         setKind(k);
                         setResult(null);
-                        setSubject(k === 'no-alliance' ? alliances[0]?.id ?? '' : victor?.id ?? gameState.tributes[0]?.id ?? '');
+                        setSubject(k === 'no-alliance' ? alliances[0]?.id ?? '' : k === 'no-intervention' ? '0' : victor?.id ?? gameState.tributes[0]?.id ?? '');
                     }}>
                     <option value="never-reaped">…this tribute was never reaped</option>
                     {alliances.length > 0 && <option value="no-alliance">…this alliance never formed</option>}
+                    {mine.length > 0 && <option value="no-intervention">…I had not done this</option>}
                 </select>
                 <select className="field text-xs w-auto max-w-full min-w-0" aria-label="About whom" value={subject} disabled={busy} onChange={e => { setSubject(e.target.value); setResult(null); }}>
-                    {kind === 'never-reaped'
+                    {kind === 'no-intervention'
+                        ? mine.map((r, i) => <option key={i} value={String(i)}>{describe(r)}</option>)
+                        : kind === 'never-reaped'
                         ? [...gameState.tributes].sort((a, b) => a.district - b.district).map(t => <option key={t.id} value={t.id}>D{t.district} · {t.name}</option>)
                         : alliances.map(a => <option key={a.id} value={a.id}>{a.name ?? a.memberIds.map(id => gameState.tributes.find(t => t.id === id)?.name ?? '?').join(', ')}</option>)}
                 </select>

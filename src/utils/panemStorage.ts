@@ -14,8 +14,9 @@ import { COIN_ECONOMY } from '../data/balance';
 import { arenaLaws } from '../engine/gamesProfile';
 import { Notable, runDelta, runNotables, victorsOf } from './notables';
 import { ARENAS } from '../data/constants';
-import { dailyDateOf, dailySeed, weeklyRules } from '../data/replayHooks';
+import { dailyDateOf, dailySeed } from '../data/replayHooks';
 import { scenarioCard } from '../data/replayCards';
+import { scenarioCast } from '../engine/season/scenarios';
 import { ARENA_MUTTS } from '../data/mutts';
 import { deathCausesInRun } from '../engine/encounters';
 import { deathCodeOf } from '../engine/causes';
@@ -479,6 +480,48 @@ export const RECORD_DEFS: Array<{
     },
 ];
 
+/*
+ * AUDIT-14 S2: `asObjMap` passes every value through, so a hand-edited or
+ * corrupted book with `districtCrowns:{3:null}` reached `careerTotals` and
+ * crashed the Record Book screen, and `recentRuns:[null]` reached continuity
+ * during reaping. Every map entry is now rebuilt the way `campaignLink`
+ * already rebuilds a link's: non-object members, and members without the
+ * numbers the readers do arithmetic on, are dropped.
+ */
+function finiteOr(value: unknown): number | undefined {
+    return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+function validMap<T>(value: unknown, keep: (entry: Record<string, unknown>) => boolean): Record<string, T> {
+    const out: Record<string, T> = {};
+    for (const [key, member] of Object.entries(asObjMap<unknown>(value))) {
+        const entry = asRecord(member);
+        if (entry && keep(entry)) out[key] = entry as unknown as T;
+    }
+    return out;
+}
+function validStamp(value: unknown): boolean {
+    const s = asRecord(value);
+    return !!s && typeof s.name === 'string' && typeof s.archetype === 'string' && finiteOr(s.run) !== undefined;
+}
+const validRecordHolder = (e: Record<string, unknown>) => finiteOr(e.value) !== undefined && typeof e.name === 'string';
+const validGamemaker = (e: Record<string, unknown>) =>
+    ['games', 'victors', 'totalDays', 'deaths'].every(k => finiteOr(e[k]) !== undefined);
+const validCrown = (e: Record<string, unknown>) =>
+    finiteOr(e.victories) !== undefined && validStamp(e.first) && validStamp(e.latest)
+    && Array.isArray(e.archetypes) && (e.archetypes as unknown[]).every(a => typeof a === 'string');
+const validMentor = (e: Record<string, unknown>) =>
+    typeof e.name === 'string' && typeof e.archetype === 'string' && finiteOr(e.run) !== undefined;
+const validDaily = (e: Record<string, unknown>) =>
+    finiteOr(e.day) !== undefined && finiteOr(e.deaths) !== undefined && typeof e.date === 'string';
+function validRecentRuns(value: unknown): PanemRecords['recentRuns'] {
+    if (!Array.isArray(value)) return undefined;
+    return value.filter(member => {
+        const e = asRecord(member);
+        return !!e && finiteOr(e.day) !== undefined && finiteOr(e.deaths) !== undefined
+            && (e.victorDistrict === undefined || finiteOr(e.victorDistrict) !== undefined);
+    }) as PanemRecords['recentRuns'];
+}
+
 /**
  * v0 — unversioned `PanemRecords`, written before the envelope existed. Note
  *      that the old reader dropped `patronDistrict` and `gamemakerRecords`
@@ -497,7 +540,10 @@ export const PANEM_SPEC: StorageSpec<PanemRecords> = {
         const patron = asNum(r.patronDistrict, NaN);
         return {
             runs: Math.max(0, asNum(r.runs, 0)),
-            victors: Math.max(0, asNum(r.victors, 0)),
+            // AUDIT-14 S11: at most two crowns a Games (a dual win), the same
+            // bound `campaignLink` enforces, so a book the game loads always
+            // produces a run link the game accepts.
+            victors: Math.min(Math.max(0, asNum(r.runs, 0)) * 2, Math.max(0, asNum(r.victors, 0))),
             // AUDIT-9 B03: retired ids forward to their survivor. This runs on
             // every read, not only on a version bump, which is what makes it
             // reach stores already written at the current version.
@@ -505,8 +551,8 @@ export const PANEM_SPEC: StorageSpec<PanemRecords> = {
                 asStrArray(r.unlocked),
                 asObjMap<{ run: number; date: string }>(r.unlockedAt),
             ),
-            bests: asObjMap<RecordHolder>(r.bests),
-            gamemakerRecords: asObjMap<GamemakerRecord>(r.gamemakerRecords),
+            bests: validMap<RecordHolder>(r.bests, validRecordHolder),
+            gamemakerRecords: validMap<GamemakerRecord>(r.gamemakerRecords, validGamemaker),
             patronDistrict: Number.isFinite(patron) ? patron : undefined,
             // §9: a store written before multi-patronage carries only the
             // single field; seeding the list from it keeps the purchase the
@@ -516,9 +562,9 @@ export const PANEM_SPEC: StorageSpec<PanemRecords> = {
                 : (Number.isFinite(patron) ? [patron] : []),
             arenasBought: asStrArray(r.arenasBought),
             stipendsTaken: Math.max(0, asNum(r.stipendsTaken, 0)),
-            dailyBests: asObjMap<{ day: number; deaths: number; victorName?: string; victorDistrict?: number; date: string }>(r.dailyBests),
-            victorMentors: asObjMap<{ name: string; archetype: string; run: number }>(r.victorMentors),
-            districtCrowns: asObjMap<DistrictCrown>(r.districtCrowns),
+            dailyBests: validMap<{ day: number; deaths: number; victorName?: string; victorDistrict?: number; date: string }>(r.dailyBests, validDaily),
+            victorMentors: validMap<{ name: string; archetype: string; run: number }>(r.victorMentors, validMentor),
+            districtCrowns: validMap<DistrictCrown>(r.districtCrowns, validCrown),
             arenasWon: asStrArray(r.arenasWon),
             quellsSeen: asStrArray(r.quellsSeen),
             deathsSeen: asStrArray(r.deathsSeen),
@@ -551,11 +597,9 @@ export const PANEM_SPEC: StorageSpec<PanemRecords> = {
                 if (!term || typeof term.name !== 'string') return undefined;
                 return { name: term.name, runsServed: Math.max(0, asNum(term.runsServed, 0)) };
             })(),
-            recentRuns: Array.isArray(r.recentRuns)
-                ? (r.recentRuns as PanemRecords['recentRuns'])
-                : undefined,
+            recentRuns: validRecentRuns(r.recentRuns),
             heirlooms: r.heirlooms !== undefined
-                ? asObjMap<{ token: string; quirk?: string; fromName: string; run: number }>(r.heirlooms)
+                ? validMap<{ token: string; quirk?: string; fromName: string; run: number }>(r.heirlooms, e => typeof e.token === 'string' && typeof e.fromName === 'string' && finiteOr(e.run) !== undefined)
                 : undefined,
             // AUDIT-11 §8/§12: the campaign arc, predictions, parlays and
             // bankrolls. All optional; a store from before them reads as none.
@@ -726,9 +770,14 @@ export interface RunOutcome {
  * AUDIT-13 S5: consecutive calendar days, ending at the newest daily played,
  * with a daily in the history. Dates are the daily seed's own UTC date.
  */
-export function dailyStreakOf(history: SeasonLedger['dailyHistory']): number {
+export function dailyStreakOf(history: SeasonLedger['dailyHistory'], now: Date = new Date()): number {
     const days = [...new Set((history ?? []).map(d => d.date))].sort().reverse();
     if (days.length === 0) return 0;
+    // AUDIT-14 S4: a streak is live only if its newest daily is today's or
+    // yesterday's (UTC). Seven dailies from last year are not a streak now.
+    const today = Date.parse(now.toISOString().slice(0, 10));
+    const sinceNewest = (today - Date.parse(days[0])) / 86_400_000;
+    if (!(sinceNewest >= 0 && sinceNewest <= 1)) return 0;
     let streak = 1;
     for (let i = 1; i < days.length; i++) {
         const gap = (Date.parse(days[i - 1]) - Date.parse(days[i])) / 86_400_000;
@@ -744,9 +793,14 @@ export function dailyStreakOf(history: SeasonLedger['dailyHistory']): number {
  * week's best slip under this week's rules.
  */
 export function foldDailyAndWeekly(ledger: SeasonLedger | undefined, state: GameState): SeasonLedger | undefined {
-    const date = dailyDateOf(state.seed);
-    const weekly = weeklyRules();
-    if (!date && state.seed !== weekly.seed) return ledger;
+    // AUDIT-14 S5: only the daily launched on its own date counts; a past
+    // date's seed typed into the box is practice. S7: the weekly is matched on
+    // the week it was launched under, not the week it happens to end in.
+    const seedDate = dailyDateOf(state.seed);
+    const date = seedDate && state.launchedOn === seedDate ? seedDate : undefined;
+    const weeklyKey = state.launchWeekKey && state.seed === state.launchWeekKey.replace(/^week-/, 'weekly-')
+        ? state.launchWeekKey : undefined;
+    if (!date && !weeklyKey) return ledger;
     const next: SeasonLedger = { ...(ledger ?? {}) };
     const victor = victorsOf(state)[0];
     const slip = scorePrediction(state, state.prediction);
@@ -755,11 +809,15 @@ export function foldDailyAndWeekly(ledger: SeasonLedger | undefined, state: Game
             date, seed: state.seed, victorName: victor?.name, victorDistrict: victor?.district,
             ...(state.prediction?.winnerId ? { pickRight: !!victor && state.prediction.winnerId === victor.id } : {}),
         };
-        next.dailyHistory = [row, ...(next.dailyHistory ?? []).filter(d => d.date !== date)]
-            .sort((a, b) => b.date.localeCompare(a.date)).slice(0, AUDIT13_SIDE.dailyHistoryCap);
+        // AUDIT-14 S6: the *first* completed run of a date is the result.
+        // Replays are practice and never overwrite it (or its pickRight).
+        if (!(next.dailyHistory ?? []).some(d => d.date === date)) {
+            next.dailyHistory = [row, ...(next.dailyHistory ?? [])]
+                .sort((a, b) => b.date.localeCompare(a.date)).slice(0, AUDIT13_SIDE.dailyHistoryCap);
+        }
     }
-    if (state.seed === weekly.seed && slip && (!next.weeklyBest || next.weeklyBest.key !== weekly.key || slip.score > next.weeklyBest.score)) {
-        next.weeklyBest = { key: weekly.key, score: slip.score, max: slip.max };
+    if (weeklyKey && slip && (!next.weeklyBest || next.weeklyBest.key !== weeklyKey || slip.score > next.weeklyBest.score)) {
+        next.weeklyBest = { key: weeklyKey, score: slip.score, max: slip.max };
     }
     return next;
 }
@@ -1165,7 +1223,10 @@ export function commitRun(state: GameState): RunOutcome {
     newAchievements.forEach(id => { records.unlockedAt![id] = stamp; });
     // AUDIT-13 P1: a scenario card whose own achievement this run earned.
     const card = scenarioCard(state.config.scenario);
-    if (card && earned.includes(card.achievement)) {
+    // AUDIT-14 F3: a card with no achievement of its own is won by crowning one of its cast.
+    const cardWon = card && (card.achievement ? earned.includes(card.achievement)
+        : winners.some(w => scenarioCast(state).some(c => c.id === w.id)));
+    if (card && cardWon) {
         records.ledger = { ...(records.ledger ?? {}), scenariosWon: [...new Set([...(records.ledger?.scenariosWon ?? []), card.id])] };
     }
 

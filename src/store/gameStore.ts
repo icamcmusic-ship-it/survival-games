@@ -5,7 +5,7 @@ import { noteRunLines, readStaleLines } from '../utils/staleLines';
 import { PARLAY } from '../data/balance';
 import { balanceFingerprint, balanceMatches } from '../engine/balanceFingerprint';
 import { Bet, REWIND_PERSIST, SAVED_RUN_SPEC, SAVE_SLOT_SPECS, SavedRun, SideBet, SideBetKind, packRewind } from '../utils/saveMigrations';
-import { SIDE_BETS } from '../data/balance';
+import { SIDE_BETS, SPONSOR_NOTE } from '../data/balance';
 import { SideBetTarget, SideQuote, priceSideBet, quoteSideMarkets, settleSideBet, sideBettingOpen, marketRulesOf } from '../engine/sideMarkets';
 import { STARTING_COINS, readCoins, writeCoins } from '../utils/prefsStorage';
 import { clearAllStoredData } from '../utils/storage';
@@ -18,6 +18,7 @@ import { RNG } from '../utils/rng';
 import type { Simulator } from '../engine/simulator';
 import type { GamemakerEventType } from '../engine/gamemaker';
 import { createStore } from './createStore';
+import { dailyDateOf, dailySeed, weeklyRules } from '../data/replayHooks';
 import { PanemRecords, campaignSnapshotOf, RunOutcome, addPatronDistrict, buyArena, clearPanem, commitRun, dropPatronDistrict, noteBankroll, noteStipendTaken, openParlay, readPanem, setParlayLeg, settleParlay } from '../utils/panemStorage';
 import type { SponsorResult } from '../engine/playerSponsor';
 import { readPrefs } from './prefsStore';
@@ -239,6 +240,7 @@ function writeSave() {
         // checkpoint — see its comment for why that is exact.
         ...packRewind(rewindDepth > 0 ? rewindStack.slice(-rewindDepth) : [], log),
         bets, sideBets, betsResolved, hofSaved, isReplayedRun, savedAt,
+        seenAhead,
         // Batch 6: which balance produced this run, so a resume after a knob
         // has moved can say so instead of silently stitching two rule sets
         // together. See `SavedRun.balanceFingerprint`.
@@ -344,9 +346,37 @@ function summarize(slot: number, saved: SavedRun): SlotSummary {
 const REWIND_CAP = 16;
 let rewindStack: GameState[] = [];
 
+/*
+ * AUDIT-14 U2: how many phases the player has undone and not yet re-played.
+ *
+ * The engine is deterministic, so a player who watched the bloodbath, pressed
+ * Undo twice and found the book open again was betting on a future they had
+ * already seen (and could cash a wager out at a price from before a death they
+ * had watched). Undo moves this forward; every advance pays one back. While it
+ * is above zero the player is standing behind their own high-water mark, and
+ * the book takes no wagers and buys none back. It is not restored by undo and
+ * travels with the save.
+ */
+let seenAhead = 0;
+
 function pushRewind(state: GameState) {
     rewindStack.push(snapshotState(state));
     if (rewindStack.length > REWIND_CAP) rewindStack.shift();
+    if (seenAhead > 0) seenAhead -= 1;
+}
+
+/**
+ * AUDIT-14 S5/S7: a daily counts only on its own date and a weekly under the
+ * week it was started in. Both are stamped here, at launch, rather than
+ * inferred from the seed when the run is committed.
+ */
+function launchStamp(seed: string): { launchedOn?: string; launchWeekKey?: string } {
+    const now = new Date();
+    const out: { launchedOn?: string; launchWeekKey?: string } = {};
+    if (seed === dailySeed(now)) out.launchedOn = dailyDateOf(seed);
+    const weekly = weeklyRules(now);
+    if (seed === weekly.seed) out.launchWeekKey = weekly.key;
+    return out;
 }
 
 /** AUDIT-12 wave 3: the run at its reaping, for the reaping counterfactuals. */
@@ -357,6 +387,7 @@ function clearRewind() {
     // AUDIT-11 E11: anything still holding a reference to the old ring (an
     // in-flight what-if) can tell the run underneath it has gone.
     rewindGeneration++;
+    seenAhead = 0;
 }
 
 /** AUDIT-11 E11: bumped whenever the ring is replaced by another run's. */
@@ -377,6 +408,7 @@ const pendingLogLength = new WeakMap<GameState, number>();
 function pushRewindLite(state: GameState) {
     const snap = snapshotState({ ...state, log: [] });
     pendingLogLength.set(snap, state.log.length);
+    if (seenAhead > 0) seenAhead -= 1;
     rewindStack.push(snap);
     if (rewindStack.length > REWIND_CAP) rewindStack.shift();
 }
@@ -402,8 +434,9 @@ function rehydrateRewind(log: GameState['log']) {
  * button comes back working but shallower — which the UI says out loud
  * rather than leaving the player to discover.
  */
-function restoreRewind(snaps: GameState[] | undefined) {
+function restoreRewind(snaps: GameState[] | undefined, ahead = 0) {
     rewindStack = (snaps ?? []).slice(-REWIND_CAP);
+    seenAhead = Math.max(0, Math.floor(ahead));
 }
 
 function saveHallOfFame(state: GameState): WriteResult {
@@ -621,6 +654,13 @@ function settleBook(state: GameState) {
  * large enough that the yields don't dominate the run.
  */
 const RUN_BATCH_SIZE = 20;
+/*
+ * AUDIT-14 Q1: a "turn" is a whole phase, and late phases with 12+ districts
+ * cost tens of milliseconds each, so twenty of them made one 540 ms task and a
+ * Cancel button that felt dead. The loop now also yields whenever this much
+ * wall time has passed since the last yield, whatever the turn count.
+ */
+const RUN_YIELD_MS = 30;
 
 interface ActiveRun {
     cancelled: boolean;
@@ -680,6 +720,8 @@ export const gameActions = {
         // button the UI drew in between returned false and the click ignored
         // it.
         if (!gameState || !sideBettingOpen(gameState.phase)) return false;
+        // AUDIT-14 U2: no wagers on a future the player has already watched.
+        if (seenAhead > 0) return false;
         if (stake <= 0 || coins < stake) return false;
         // §6.1: the price comes off the live board, not a fixed table — an
         // unpriceable wager (first blood on nobody, a district with no
@@ -720,6 +762,8 @@ export const gameActions = {
         const { gameState, bets, coins, betsResolved } = gameStore.getState();
         const bet = bets[tributeId];
         if (!gameState || !bet || betsResolved || !engine || gameState.phase === 'ended') return 0;
+        // AUDIT-14 U2: and no buy-back at a price from before a death they saw.
+        if (seenAhead > 0) return 0;
         const tribute = gameState.tributes.find(t => t.id === tributeId);
         if (!tribute) return 0;
         // AUDIT-9 B15: the store refuses an invalid cash-out on its own
@@ -951,7 +995,7 @@ export const gameActions = {
         if (!gameState || gameState.phase === 'ended') return false;
         const spec = SAVE_SLOT_SPECS[slot - 1];
         return tryWriteStored(spec, {
-            gameState, bets, sideBets, betsResolved, hofSaved, isReplayedRun,
+            gameState, bets, sideBets, betsResolved, hofSaved, isReplayedRun, seenAhead,
             ...packRewind(rewindStack.slice(-REWIND_PERSIST), gameState.log),
             savedAt: new Date().toISOString(),
         } as SavedRun) !== 'quota' && persistenceMode() === 'persistent';
@@ -975,7 +1019,7 @@ export const gameActions = {
         // §2.2: whatever undo history travelled with the save comes back with
         // it. A save from before the stack was persisted has none, and resumes
         // exactly as it used to.
-        restoreRewind(saved.rewind);
+        restoreRewind(saved.rewind, saved.seenAhead);
         reapingState = saved.reaping ?? null;
         autosaveNote = saved.note;
         const { Simulator } = await loadEngine();
@@ -1135,16 +1179,22 @@ export const gameActions = {
      * formed", both played from the reaping with the player's own
      * interventions replayed. Yields between branches like `runWhatIf`.
      */
-    async runReapingWhatIf(kind: 'never-reaped' | 'no-alliance', subjectId: string, onProgress?: (done: number, total: number) => void) {
+    async runReapingWhatIf(kind: 'never-reaped' | 'no-alliance' | 'no-intervention', subjectId: string, onProgress?: (done: number, total: number) => void) {
         const { gameState } = gameStore.getState();
         const reaping = reapingState;
         if (!gameState || !reaping || reaping.seed !== gameState.seed) return null;
-        const { neverReaped, allianceNeverFormed } = await loadEngine();
+        const { neverReaped, allianceNeverFormed, interventionUndone } = await loadEngine();
         await new Promise(resolve => setTimeout(resolve, 0));
         if (gameStore.getState().gameState !== gameState) return null;
         onProgress?.(0, 1);
         if (kind === 'never-reaped') {
             const r = neverReaped(reaping, gameState, subjectId);
+            onProgress?.(1, 1);
+            return r ?? null;
+        }
+        // AUDIT-14 F6: one of the player's own interventions, taken back.
+        if (kind === 'no-intervention') {
+            const r = interventionUndone(reaping, gameState, Number(subjectId));
             onProgress?.(1, 1);
             return r ?? null;
         }
@@ -1160,6 +1210,20 @@ export const gameActions = {
         gameStore.setState({ panem: setApprenticeshipChoice(district, skill) });
     },
 
+    /**
+     * AUDIT-14 U2: true while the player stands behind a phase they already
+     * watched. The book is closed to new wagers and cash-outs until they have
+     * re-played back up to it.
+     */
+    wagersLocked(): boolean {
+        return seenAhead > 0;
+    },
+
+    /** How many phases the player must re-play before the book reopens. */
+    phasesBehind(): number {
+        return seenAhead;
+    },
+
     /** Whether a step back is currently possible. */
     canStepBack(): boolean {
         const { gameState, runProgress } = gameStore.getState();
@@ -1170,6 +1234,7 @@ export const gameActions = {
     stepBack() {
         if (!gameActions.canStepBack() || !engine) return;
         const prev = rewindStack.pop()!;
+        seenAhead += 1;
         gameStore.setState({ gameState: prev, simulator: new engine.Simulator(prev) });
         persistRun();
     },
@@ -1202,6 +1267,7 @@ export const gameActions = {
         if (index < 0 || index >= rewindStack.length) return;
         const target = rewindStack[rewindStack.length - 1 - index];
         rewindStack = rewindStack.slice(0, rewindStack.length - 1 - index);
+        seenAhead += index + 1;
         gameStore.setState({ gameState: target, simulator: new engine.Simulator(target) });
         persistRun();
     },
@@ -1495,6 +1561,8 @@ export const gameActions = {
             veteransSeated: veterans.length > 0 ? veterans : undefined,
             // AUDIT-13 S6: the purse at the gong, for Bought Nothing.
             playerPurseAtStart: gameStore.getState().coins,
+            // AUDIT-14 S5/S7: which daily or weekly this is, fixed at launch.
+            ...launchStamp(safeSeed),
             ...(legacy.length > 0 ? { legacyTributeIds: legacy } : {}),
             // AUDIT-11 §12: recently seen flavour lines, snapshotted here so the
             // engine never reads storage and a save rewords identically.
@@ -1677,6 +1745,7 @@ export const gameActions = {
             // Ceiling well above any realistic run; the phase guards below are
             // what actually terminate the loop.
             let guard = 2000;
+            let sinceYield = Date.now();
             while (state.phase !== 'ended' && guard-- > 0) {
                 // Checked before every step, not just at batch boundaries, so a
                 // cancelled loop cannot land another turn after the player has
@@ -1699,10 +1768,11 @@ export const gameActions = {
                 state = simulator.getState();
                 turns++;
 
-                if (turns % RUN_BATCH_SIZE === 0) {
+                if (turns % RUN_BATCH_SIZE === 0 || Date.now() - sinceYield >= RUN_YIELD_MS) {
                     publishProgress(state, turns);
                     await yieldToBrowser();
                     if (stale()) return;
+                    sinceYield = Date.now();
                 }
             }
 
@@ -1777,6 +1847,18 @@ export const gameActions = {
         const result = sendPlayerParachute(state, tributeId, itemId);
         if (!result.ok) return result;
 
+        gameActions.setCoins(coins - result.cost);
+        gameActions.syncFromSimulator();
+        return result;
+    },
+
+    /** AUDIT-14 F5: the booth's second verb, a paid note. */
+    sponsorNote(tributeId: string): SponsorResult {
+        const { simulator, coins } = gameStore.getState();
+        if (!simulator || !engine) return { ok: false, cost: 0, message: 'No Games are running.' };
+        if (coins < SPONSOR_NOTE.cost) return { ok: false, cost: SPONSOR_NOTE.cost, message: `A note costs ${SPONSOR_NOTE.cost} coins. You have ${coins}.` };
+        const result = engine.sendPlayerNote(simulator.getState(), tributeId);
+        if (!result.ok) return result;
         gameActions.setCoins(coins - result.cost);
         gameActions.syncFromSimulator();
         return result;

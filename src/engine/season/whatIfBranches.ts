@@ -22,7 +22,7 @@ import { playerInterventionsAfter } from '../whatIf';
  * the only thing that differs is the one fact the question is about.
  */
 export interface CounterfactualResult {
-    kind: 'never-reaped' | 'no-alliance';
+    kind: 'never-reaped' | 'no-alliance' | 'no-intervention';
     /** The tribute or alliance the question was about. */
     subject: string;
     actualVictorIds: string[];
@@ -102,6 +102,29 @@ export function allianceNeverFormed(reaping: GameState, actual: GameState, membe
         ends.push(runToEnd(start, k === 0 ? undefined : `ally-${k}`));
     }
     return summarise('no-alliance', label, actual, ends);
+}
+
+/**
+ * AUDIT-14 F6: "undo this intervention". The same Games from the reaping with
+ * every one of the player's interventions replayed except the one picked —
+ * the gift not sent, the command not given. `index` counts the player's own
+ * interventions in the order they happened (`playerInterventionsAfter`).
+ */
+export function interventionUndone(reaping: GameState, actual: GameState, index: number, count = 4): CounterfactualResult | undefined {
+    if (reaping.phase !== 'reaping' && reaping.phase !== 'setup') return undefined;
+    const all = playerInterventionsAfter(reaping, actual);
+    const dropped = all[index];
+    if (!dropped) return undefined;
+    const planned = all.filter((_, i) => i !== index);
+    const who = reaping.tributes.find(t => t.id === dropped.targetId)?.name;
+    const subject = `${dropped.type === 'parachute' ? 'the parachute' : dropped.type === 'note' ? 'the note' : `the ${dropped.type} command`}${who ? ` to ${who}` : ''}`;
+    const ends: GameState[] = [];
+    for (let k = 0; k < count; k++) {
+        const start = snapshotState(reaping);
+        if (planned.length) start.plannedInterventions = planned.map(p => ({ ...p }));
+        ends.push(runToEnd(start, k === 0 ? undefined : `undo-${k}`));
+    }
+    return summarise('no-intervention', subject, actual, ends);
 }
 
 /**

@@ -1,4 +1,5 @@
 import { accusersOf } from '../engine/accusations';
+import { SPONSOR_NOTE } from '../data/balance';
 import { PERSONA_BLOC_AFFINITY, PERSONA_FAMILY, PERSONA_FAMILY_LABEL } from '../data/personas';
 import React, { useEffect, useId, useMemo, useState } from 'react';
 import { Hint } from './Hint';
@@ -171,6 +172,12 @@ function SponsorPanel({ tribute, gameState }: { tribute: Tribute; gameState: Gam
                             );
                         })}
                     </div>
+                    {/* AUDIT-14 F5: a note, no item. */}
+                    <button type="button" className="btn btn-sm btn-ghost mt-2" data-testid="send-note"
+                        disabled={coins < SPONSOR_NOTE.cost}
+                        onClick={() => setMessage(gameActions.sponsorNote(tribute.id).message)}>
+                        Send a note instead · {SPONSOR_NOTE.cost}
+                    </button>
                 </>
             )}
             {message && <p className="text-sm mt-2 text-[var(--gold-text)]">{message}</p>}

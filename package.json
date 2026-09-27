@@ -10,6 +10,7 @@
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit && eslint .",
     "test:sim": "tsx scripts/soak.ts",
+    "test:audit14-ui": "tsx scripts/check-audit14-ui.ts",
     "test:knobs": "tsx scripts/check-balance-knobs.ts",
     "test:storage": "tsx scripts/check-storage-migrations.ts",
     "test:undeclared-knobs": "tsx scripts/check-undeclared-knobs.ts",

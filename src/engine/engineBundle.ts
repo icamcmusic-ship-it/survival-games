@@ -15,11 +15,11 @@ export { generateTributes } from './generator';
 export { generateArena } from './arenaGenerator';
 export { resolveArenaForRun } from './arenaSetup';
 export { configForProfile, gamesProfileFor } from './gamesProfile';
-export { sendPlayerParachute, sponsorCost, sponsorableItems } from './playerSponsor';
+export { sendPlayerNote, sendPlayerParachute, sponsorCost, sponsorableItems } from './playerSponsor';
 export { tributeOdds } from './odds';
 export { BRANCHABLE, playBranch, playerInterventionsAfter, summariseBranches } from './whatIf';
 export type { WhatIfResult } from './whatIf';
 export { WHAT_IF } from '../data/balance';
 // AUDIT-12 wave 3: the reaping counterfactuals.
-export { allianceNeverFormed, counterfactualChallenge, neverReaped } from './season/whatIfBranches';
+export { allianceNeverFormed, counterfactualChallenge, interventionUndone, neverReaped } from './season/whatIfBranches';
 export type { ChallengeResult, CounterfactualResult } from './season/whatIfBranches';

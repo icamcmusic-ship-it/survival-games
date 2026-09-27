@@ -195,6 +195,49 @@ const COMMENTATOR_BEATS: Record<string, Record<string, string[]>> = {
             '{3} is struck from the District {2} column. {1} is the column now.',
         ],
     },
+    // AUDIT-14 F3: three more voices.
+    bookmaker: {
+        [FIXED_BEATS[0].variants[0]]: [
+            'The gong, and the book is closed. {1} runners away, and the favourites are already moving to the horn.',
+            'And they are off: {1} tributes, and the early money is on nobody from the outer districts.',
+        ],
+        [FIXED_BEATS[1].variants[0]]: [
+            '{1} cannon(s) at the horn. Anyone who took the under is tearing up a slip.',
+            'Bloodbath settled at {1} cannon(s). The prices on the rest of the field have moved accordingly.',
+        ],
+        [FIXED_BEATS[3].variants[0]]: [
+            '{3} is out, and District {2} is down to a single runner: {1}, and the price has lengthened.',
+            'Scratch {3} from District {2}. {1} carries every ticket the district has left.',
+        ],
+    },
+    historian: {
+        [FIXED_BEATS[0].variants[0]]: [
+            'The gong sounds, as it has for every Games before this one. {1} tributes leave their plates.',
+            'The gong. {1} tributes run, and the historians start counting how this one will compare.',
+        ],
+        [FIXED_BEATS[1].variants[0]]: [
+            '{1} cannon(s) at the Cornucopia. The record books will want to know whether that is a lot.',
+            'The bloodbath ends at {1} cannon(s). Older viewers will remember worse, and say so.',
+        ],
+        [FIXED_BEATS[3].variants[0]]: [
+            'District {2} loses {3}. Not for the first time, {1} is the last of the district left in the Games.',
+            '{3} falls. As so often in District {2}\'s history, it comes down to one tribute: {1}.',
+        ],
+    },
+    poet: {
+        [FIXED_BEATS[0].variants[0]]: [
+            'One note from the gong, and {1} lives go running into the light.',
+            'The gong, like a door slammed somewhere far away. {1} tributes step through it.',
+        ],
+        [FIXED_BEATS[1].variants[0]]: [
+            '{1} cannon(s), and then a silence the cameras do not know what to do with.',
+            'The horn is quiet now. {1} cannon(s), each one a name the wind forgets.',
+        ],
+        [FIXED_BEATS[3].variants[0]]: [
+            '{3} is gone from District {2}. {1} walks on alone, carrying the both of them.',
+            'The arena takes {3}. District {2} is only {1} now, a single light left on in a house.',
+        ],
+    },
     rebel: {
         [FIXED_BEATS[0].variants[0]]: [
             'The gong. {1} children are sent running at each other, and the Capitol calls it a show.',

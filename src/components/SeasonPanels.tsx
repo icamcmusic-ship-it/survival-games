@@ -159,7 +159,15 @@ function SetupReplayRows({ config, setConfig, arenaId, onPlayRules }: {
                     <select className="field text-xs w-auto" data-testid="scenario-card" value={config.scenario ?? ''}
                         onChange={e => setConfig(c => ({ ...c, scenario: e.target.value || undefined }))}>
                         <option value="">none</option>
-                        {SCENARIO_CARDS.map(c => <option key={c.id} value={c.id}>{c.name}{ledger?.scenariosWon?.includes(c.id) ? ' (won)' : ''}</option>)}
+                        {/* AUDIT-14 S9: a card that cannot be what it says with this many districts is offered, but disabled. */}
+                        {SCENARIO_CARDS.map(c => {
+                            const tooFew = (c.minDistricts ?? 0) > config.districtCount;
+                            return (
+                                <option key={c.id} value={c.id} disabled={tooFew}>
+                                    {c.name}{ledger?.scenariosWon?.includes(c.id) ? ' (won)' : ''}{tooFew ? ` (needs ${c.minDistricts}+ districts)` : ''}
+                                </option>
+                            );
+                        })}
                     </select>
                 </label>
                 <label className="flex items-center gap-1.5">

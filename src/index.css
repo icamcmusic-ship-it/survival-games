@@ -1554,6 +1554,24 @@ input[type="range"]:focus-visible {
         height: 1.25rem;
         box-sizing: content-box;
         flex: none;
+        position: relative;
+    }
+    /* AUDIT-14 U3: the mark is drawn by ::after, always 10x20 and centred, in
+       the colour the markup passes as --tick. The button itself stays
+       transparent, so however large the phone rules make the tap target, the
+       marks never grow into overlapping 40x70 slabs. */
+    .scrubber-tick::after {
+        content: '';
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        width: 0.625rem;
+        height: 1.25rem;
+        transform: translate(-50%, -50%);
+        box-sizing: border-box;
+        background: var(--tick, var(--paper-flush));
+        border: 1px solid var(--color-ink-700);
+        pointer-events: none;
     }
 
     /*
