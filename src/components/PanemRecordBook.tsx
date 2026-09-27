@@ -304,7 +304,7 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
                                     {shelf.items.map(item => item.seen ? (
                                         <span key={item.key} className="chip">{item.name}</span>
                                     ) : (
-                                        <span key={item.key} className="chip text-[var(--color-ink-600)]" aria-label="Not yet seen" title="Not yet seen">
+                                        <span key={item.key} className="chip text-[var(--color-ink-500)]" aria-label="Not yet seen" title="Not yet seen">
                                             {'▒'.repeat(Math.min(10, Math.max(3, Math.round(item.name.length / 2))))}
                                         </span>
                                     ))}
