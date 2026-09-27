@@ -2,7 +2,7 @@ import { Alliance, CharterRule, Tribute } from '../models/types';
 import { easeSuspicion, noteFormerAllies, raiseSuspicion } from './memory';
 import { SUSPICION, CHARTER, ENDGAME, ALLIANCES } from '../data/balance';
 import { SimContext, getAlive } from './context';
-import { allianceOf, cacheDivisionLine, distributeCache } from './alliance';
+import { allianceOf, cacheDivisionLine, distributeCache, inCohesionFloor, noteAllianceEnd } from './alliance';
 import { noteBreach } from './alliancePolitics';
 import { adjustRel, getRel } from './relationships';
 import { RNG } from '../utils/rng';
@@ -145,7 +145,8 @@ export function enforceCharters(ctx: SimContext) {
         const splitAt = Math.min(ENDGAME.fieldSize, Math.max(2, record.pactSwornField
             ? record.pactSwornField - ALLIANCES.pactThresholdSlack
             : ENDGAME.fieldSize));
-        if (record.charter.includes('split-at-eight') && alive.length <= splitAt) {
+        // AUDIT-13 R1: the clause waits out the cohesion floor, like a pact.
+        if (record.charter.includes('split-at-eight') && alive.length <= splitAt && !inCohesionFloor(ctx.state, record)) {
             // A clean parting is still a parting: it leaves the ex-ally memory
             // behind, and it is worth a small warmth for a promise kept — not
             // a *breach* cost, which is the constant this used to reuse.
@@ -156,6 +157,7 @@ export function enforceCharters(ctx: SimContext) {
             // point ceases to exist.
             const division = distributeCache(ctx, record, members);
             members.forEach(m => { delete m.allianceId; });
+            noteAllianceEnd(ctx.state, record.id, 'pact-expired'); // AUDIT-13 R2
             members.forEach(m => members.forEach(o => {
                 if (o.id !== m.id) adjustRel(m, o.id, CHARTER.honouredPartingRegard);
             }));

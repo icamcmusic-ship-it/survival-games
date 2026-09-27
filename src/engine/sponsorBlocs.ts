@@ -1,6 +1,7 @@
 import { GameState, Tribute } from '../models/types';
 import { personaBlocAffinity } from '../data/personas';
 import { SimContext } from './context';
+import { legacySponsorLean } from './season/replayability';
 
 /**
  * §9.4: sponsor blocs.
@@ -30,7 +31,8 @@ export const SPONSOR_BLOCS: SponsorBloc[] = [
         name: 'the old victors’ families',
         seal: 'The parachute bears the seal of the old victors’ families — pedigree paying for pedigree.',
         budget: 600,
-        prefer: (_state, t) => 0.2
+        // AUDIT-13 P3: pedigree money follows a district's drifted legacy.
+        prefer: (state, t) => 0.2 + Math.max(-1, legacySponsorLean(state, t))
             + (t.isCareer ? 3 : 0)
             + (t.trainingScore >= 9 ? 2 : 0)
             + ([1, 2, 4].includes(t.district) ? 1 : 0)

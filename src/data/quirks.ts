@@ -1030,6 +1030,62 @@ export const QUIRKS: Quirk[] = [
             'Nobody in {zone} hears what {name} whispers before walking off into the dark, which is the idea.',
         ],
     },
+    // AUDIT-13 §16 N29-N34: six more, each with a hook (see QUIRK_MODS and
+    // `engine/audit13Content.ts`).
+    {
+        label: 'counts their steps between trees',
+        lines: [
+            '{name} walks {zone} with their lips moving, counting, and stops dead at a number only they know.',
+            'Somebody could ask {name} how far it is across {zone} and get an answer to the pace.',
+            '{name} loses count halfway across {zone}, goes back to the last tree, and starts again.',
+            'In {zone} {name} scratches a tally into a trunk: steps from here to water, for later.',
+        ],
+    },
+    {
+        label: 'sleeps with one boot off',
+        lines: [
+            '{name} beds down in {zone} with one boot on and one beside their hand.',
+            'In {zone} {name} unlaces exactly one boot, the way they always have, and sleeps better than anybody near them.',
+            '{name} wakes in {zone} and reaches for the boot before anything else.',
+            'The boot {name} took off in {zone} is the first thing they put on and the last thing they think about.',
+        ],
+    },
+    {
+        label: 'licks the blade before a fight',
+        lines: [
+            '{name} draws the edge across their tongue in {zone} and grins with a red mouth.',
+            'Whoever is watching {name} in {zone} sees them taste the blade, and decides not to be the one it is for.',
+            'In {zone} {name} licks the flat of the knife, spits, and looks around for somebody.',
+            '{name} does the thing with the blade and the tongue in {zone}. It works on the audience, too.',
+        ],
+    },
+    {
+        label: 'keeps the first thing they find',
+        lines: [
+            '{name} turns the first thing they ever found in here over in their hands in {zone}, and puts it back in the same pocket.',
+            'In {zone} {name} checks that it is still there. It is always still there.',
+            '{name} would give up anything in the pack in {zone} except the one thing, and everybody who has asked knows it.',
+            '{name} holds the keepsake up to the light in {zone}, as if it might have changed since the gong.',
+        ],
+    },
+    {
+        label: 'hums a lullaby for the dead',
+        lines: [
+            'When the cannon goes, {name} hums something slow in {zone} until it is finished.',
+            '{name} hums a lullaby in {zone} with nobody to hear it but whoever the sky is about to show.',
+            'In {zone} {name} catches themselves humming it again, and does not stop.',
+            'The tune {name} hums in {zone} is one every district knows and nobody sings in public.',
+        ],
+    },
+    {
+        label: 'never eats the last of anything',
+        lines: [
+            '{name} holds the last piece of food in {zone}, looks at it for a long time, and wraps it up again.',
+            'In {zone} {name} goes hungry rather than finish what is left. There must always be something left.',
+            '{name} shares out a ration in {zone} and makes very sure there is a crumb over for later.',
+            '{name} in {zone}, stomach loud, and the last of it untouched in the pack.',
+        ],
+    },
 ];
 
 /**
@@ -1169,6 +1225,14 @@ export const QUIRK_MODS: Record<string, Partial<Record<TraitMod, number>>> = {
     'refuses to say the arena\'s name': { resolveDrift: 0.2, sponsorAppeal: -0.3 },
     'counts their own heartbeats': { fearGain: -0.08, sanityDrain: -0.05 },
     'hums the anthem wrong': { excitement: 0.1, concealment: -0.02 },
+    // AUDIT-13 §16 N29-N34. N29's navigation training, N32's keepsake and N34's
+    // skipped meal are hooks, not numbers (see `engine/audit13Content.ts`).
+    'counts their steps between trees': { nightMovement: -0.1 },
+    'sleeps with one boot off': { fatigueNight: -0.5, retreat: -0.02 },
+    'licks the blade before a fight': { intimidation: 0.1, poisonResist: -0.05 },
+    'keeps the first thing they find': {},
+    'hums a lullaby for the dead': { griefResist: 0.08, concealment: -0.02 },
+    'never eats the last of anything': { hungerDrain: 0.3 },
 };
 
 /**
@@ -1227,6 +1291,8 @@ const MOD_PHRASES: Partial<Record<TraitMod, [string, string]>> = {
     fearGain: ['frightens more easily', 'frightens less easily'],
     muttDamage: ['takes more from mutts', 'takes less from mutts'],
     capacity: ['carries more', 'carries less'],
+    // AUDIT-13 N31.
+    intimidation: ['is more frightening', 'is less frightening'],
 };
 
 /** "notices more; goes hungry faster" — or undefined for a quirk with no row. */

@@ -16,7 +16,7 @@ import {
     Objective, StandingGoal, Tribute, TributeMemory, Vitals,
 } from '../models/types';
 import { DEFAULT_GAME_CONFIG } from '../data/constants';
-import { ALLIANCES, ARENA_DEATH_BUDGET, BLOC_TREATY, BLOODBATH } from '../data/balance';
+import { ALLIANCES, ARENA_DEATH_BUDGET, AUDIT13_SIDE, BLOC_TREATY, BLOODBATH } from '../data/balance';
 import { CONDITIONS, FRAMES, conditionOf, frameOf } from '../engine/physique';
 import { ARCHETYPES as ARCHETYPE_DEFS } from '../data/archetypes';
 import { isKnownStance } from '../data/stances';
@@ -54,6 +54,7 @@ export interface Bet {
  */
 import { SIDE_BET_KINDS, SideBetKind } from '../engine/sideMarkets';
 import { compatibleMutators, mutatorCap } from '../data/mutators';
+import { COMMENTATOR_IDS, SCENARIO_CARDS } from '../data/replayCards';
 export type { SideBetKind };
 export interface SideBet {
     kind: SideBetKind;
@@ -652,6 +653,9 @@ const CONFIG_RULES: ConfigRules = {
         ? compatibleMutators(r.mutators.filter((m): m is string => typeof m === 'string'), mutatorCap({ gauntlet: r.gauntlet === true }))
         : undefined,
     gauntlet: r => (r.gauntlet === true ? true : undefined),
+    // AUDIT-13 P1/P4: unknown ids are dropped rather than trusted.
+    scenario: r => (typeof r.scenario === 'string' && SCENARIO_CARDS.some(c => c.id === r.scenario) ? r.scenario : undefined),
+    commentator: r => (typeof r.commentator === 'string' && COMMENTATOR_IDS.includes(r.commentator) ? r.commentator : undefined),
     // AUDIT-7 §1.2: the four that were being dropped.
     vanillaRules: r => asBool(r.vanillaRules, DEFAULT_GAME_CONFIG.vanillaRules ?? false),
     singleVictor: r => asBool(r.singleVictor, DEFAULT_GAME_CONFIG.singleVictor ?? false),
@@ -819,6 +823,9 @@ export function normalizeGameState(raw: unknown): GameState | null {
         // legacy tributes. Absent on older saves, and absent stays absent.
         staleLines: Array.isArray(r.staleLines) ? asStrArray(r.staleLines).slice(0, 2000) : undefined,
         prediction: normalizePrediction(r.prediction),
+        // AUDIT-13 P6/S6: the draft and the opening purse. Absent stays absent.
+        draft: Array.isArray(r.draft) ? [...new Set(asStrArray(r.draft))].slice(0, AUDIT13_SIDE.draftSize) : undefined,
+        playerPurseAtStart: typeof r.playerPurseAtStart === 'number' && Number.isFinite(r.playerPurseAtStart) ? Math.max(0, r.playerPurseAtStart) : undefined,
         legacyTributeIds: Array.isArray(r.legacyTributeIds) ? asStrArray(r.legacyTributeIds) : undefined,
         zoneDepletion: asNumMap(r.zoneDepletion),
         zoneEffects: asObjMap(r.zoneEffects),

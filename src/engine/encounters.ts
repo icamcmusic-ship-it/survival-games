@@ -1,4 +1,5 @@
 import { Terrain, Tribute, attr } from '../models/types';
+import { afterForage, anglingForage, neverPoisonous, noteStitched } from './audit13Content';
 import { noteParleyFailed } from './traitHooks';
 import { adaptArenaEvent, applyEventMechanic } from './season/eventMechanics';
 import { mentorWarningBonus } from './season/carry';
@@ -44,6 +45,7 @@ import { isAggressiveStance, isDefensiveStance, isEvasiveStance } from '../data/
 import { exhaustedHere, freshGround, isBeingFollowed, layFalseTrail, noteForageFailure, noteForageSuccess } from './intent';
 import { loseSanity } from './sanityBands';
 import { noteMilestone } from './milestones';
+import { zoneForageScale } from './arenaDynamics';
 
 export function fill(template: string, vars: Record<string, string>): string {
     return Object.entries(vars).reduce(
@@ -213,7 +215,8 @@ function applyEventTo(ctx: SimContext, t: Tribute, event: ArenaEventDef, narrate
     }
     if (event.heal) t.health = Math.min(100, t.health + event.heal);
     if (event.bleeding) openWound(t, BLEEDING.hazardSeverity);
-    if (event.poisoned) injure(t, 'poisoned');
+    // AUDIT-13 N13: food the arena hands a Bitter Root is never the poisoned kind.
+    if (event.poisoned && !(event.feed && neverPoisonous(t))) injure(t, 'poisoned');
     if (event.burned) injure(t, 'burned');
     if (event.frostbitten) injure(t, 'frostbitten');
     if (event.infected) injure(t, 'infected');
@@ -831,7 +834,8 @@ function attemptForage(
         noteForageFailure(t, t.zone);
         return false;
     }
-    if (!ctx.rng.chance(chance)) {
+    // AUDIT-13 W11: burned, flooded or ruined ground feeds nobody as well.
+    if (!ctx.rng.chance(chance * zoneForageScale(ctx.state, t.zone))) {
         depleteZone(ctx.state, t.zone, ZONES.depletionPerAttempt * AUDIT12_TRIBUTES.forageDepletionScale);
         // §3.2: repeated failure in the same place is a fact about the place,
         // and eventually a decision rather than a modifier. See `exhaustedHere`.
@@ -863,6 +867,8 @@ function attemptForage(
     trainProficiency(t, 'scavenging', undefined, PROFICIENCY.scavengingForageShare);
     trainProficiency(t, 'herbalism', undefined, PROFICIENCY.herbalismForageShare);
     noteForageSuccess(t, t.zone);
+    // AUDIT-13 N17 / N13: fishing trains angling; a Bitter Root's find can taste of despair.
+    afterForage(ctx, t);
     // §3.10: anybody standing here watched them do it.
     observeProficiency(ctx, t, 'forage');
     // AUDIT-12 §5 hunger that bites: ground is stripped faster than it regrows.
@@ -923,6 +929,8 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
         && (zone?.terrain === 'water' || zone?.terrain === 'wetland');
     const rawForageChance = ZONES.baseForageChance
         + (fishing ? ZONES.fishingBonus : 0)
+        // AUDIT-13 N17: `angling` is fishing without the kit.
+        + anglingForage(t, zone)
         // §11.5: a light after dark turns groping into searching.
         + (arenaIsDark(ctx.state) && hasTool(t, 'light') ? TOOLS.lightNightForageBonus : 0)
         + available * ZONES.yieldForageWeight
@@ -1080,6 +1088,8 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
         if (ally) {
             if (ally.injuries.bleeding && ctx.rng.chance(STANCE_MODES.nursing.staunchBase + profOf(t, 'medicine') * STANCE_MODES.nursing.staunchPerMedicine)) {
                 clearBleeding(ally);
+                // AUDIT-13 N1: a Stitch-Fingered staunch is a clean one.
+                noteStitched(ctx, t, ally);
                 // B3-03: the fact, beside the sentence about it.
                 noteMilestone(ctx, 'bleeding-stopped', [t.id, ally.id]);
                 ctx.logEvent(`${t.name} gets ${ally.name}'s bleeding stopped in ${t.zone}.`, [t.id, ally.id], { category: 'injury', zone: t.zone });

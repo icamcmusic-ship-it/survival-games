@@ -1,4 +1,5 @@
 import { scarCoverShift, weatherConcealment } from './arenaDepth';
+import { audit13AmbushShift, audit13Awareness, mudSkinConcealment } from './audit13Content';
 import { profOf, trainProficiency } from './proficiency';
 import { Tribute, Zone } from '../models/types';
 import { zoneFeatures } from './map';
@@ -12,6 +13,7 @@ import { isAggressiveStance, isEvasiveStance } from '../data/stances';
 import { allied } from './alliance';
 import { acousticsConcealmentShift, sightlineAmbush, sightlineConcealment, arenaIsDark } from './arenaRules';
 import { MUTATOR_TUNING, hasMutator } from '../data/mutators';
+import { nightHideBonus, zoneConcealmentDelta } from './arenaDynamics';
 
 /**
  * Concealment and awareness — the two halves of whether one tribute ever finds
@@ -121,6 +123,8 @@ export function concealment(
     value += concealmentModifier(t) * STEALTH.coverGradeScale;
     // Traits that change how well someone disappears into the ground.
     value += traitMod(t, 'concealment');
+    // AUDIT-13 N5: Mud-Skinned counts twice over in the reeds.
+    value += mudSkinConcealment(t, zone);
     if (hasTool(t, 'light')) value -= STEALTH.lightConcealmentPenalty;
     // A group leaves a group's worth of tracks.
     value -= Math.min(3, alliesPresent) * STEALTH.groupPenalty;
@@ -162,6 +166,8 @@ export function awareness(t: Tribute, dark = false): number {
     // past caring has stopped watching anything but the next few feet.
     if (t.stance === 'Hunting') value += STANCE_MODES.hunting.awarenessBonus;
     if (t.stance === 'Desperate') value -= STANCE_MODES.desperate.awarenessPenalty;
+    // AUDIT-13 N36: Mourning is standing over somebody with your eyes on the ground.
+    value += audit13Awareness(t);
 
     // A light in your hand is the difference between watching the treeline and
     // guessing at it — and it is the reason everyone else can see you.
@@ -202,6 +208,10 @@ export function isNoticed(ctx: SimContext, hider: Tribute, seeker: Tribute, zone
     // AUDIT-11 §7: the weather layer and the ground's scars (arenaDepth.ts).
     hidden0 += weatherConcealment(ctx.state, seeker) + scarCoverShift(ctx.state, hider.zone);
     hidden0 *= sightlineConcealment(ctx.state);
+    // AUDIT-13 W11/W13: what the ground has been through, and the dark
+    // rewarding whoever has committed to hiding in it.
+    if (zone) hidden0 += zoneConcealmentDelta(ctx.state, zone.name);
+    hidden0 += nightHideBonus(ctx.state, hider, dark);
     let hidden = Math.min(
         STEALTH.maxConcealment,
         Math.max(0, hidden0 + advantage * STEALTH.perPointAdvantage)
@@ -303,6 +313,8 @@ export function rollAmbush(ctx: SimContext, attacker: Tribute, defender: Tribute
     chance += traitMod(attacker, 'ambush');
     // AUDIT-12 T15 / §16: a Mimic's lure, the Ambush skill, and a Scout-Runner's warning.
     chance += lureAmbushBonus(ctx, attacker, defender) + ambushSkillShift(ctx, attacker, defender);
+    // AUDIT-13 N14 / N35: Deadfall Mind on held, trapped ground; Regrouping watching its back.
+    chance += audit13AmbushShift(ctx, attacker, defender);
     if (isAggressiveStance(defender.stance)) chance -= 0.1;
 
     return ctx.rng.chance(Math.max(0, Math.min(STEALTH.maxAmbushChance, chance)));

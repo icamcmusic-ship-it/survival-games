@@ -3,7 +3,7 @@ import { ITEMS } from '../data/constants';
 import { legacyOf, LegacyTier } from '../data/districts';
 import { arenaHasLaw } from './gamesProfile';
 import { MENTOR_PARACHUTE_TEXTS, MENTOR_PLEA_FAILED_TEXTS, MENTOR_POINTED_TEXTS, MENTOR_TIER_PARACHUTE, MENTOR_TIER_WITHHELD, MENTOR_WITHHELD_TEXTS } from '../data/flavorText';
-import { giveItem, itemPhrase } from './items';
+import { capitaliseSentences, giveItem, itemPhrase } from './items';
 import { cycleOf, ensureMemory } from './memory';
 import { clampTribute } from './vitals';
 import { getZone, zoneFeatures } from './map';
@@ -195,11 +195,11 @@ export function processMentorPleas(ctx: SimContext, alive: Tribute[]): Set<strin
                     clampTribute(t);
                     helped.add(t.id);
                     ctx.logEvent(
-                        ctx.pickText(MENTOR_POINTED_TEXTS)
+                        capitaliseSentences(ctx.pickText(MENTOR_POINTED_TEXTS)
                             .split('{mentor}').join(mentor)
                             .split('{tribute}').join(t.name)
                             .split('{item}').join(itemPhrase(gift))
-                            .split('{zone}').join(t.zone),
+                            .split('{zone}').join(t.zone)),
                         [t.id],
                         { important: true, category: 'sponsor' }
                     );
@@ -259,12 +259,12 @@ export function processMentorPleas(ctx: SimContext, alive: Tribute[]): Set<strin
         helped.add(t.id);
 
         ctx.logEvent(
-            ctx.pickText(mentorVoice(t, MENTOR_TIER_PARACHUTE, MENTOR_PARACHUTE_TEXTS))
+            capitaliseSentences(ctx.pickText(mentorVoice(t, MENTOR_TIER_PARACHUTE, MENTOR_PARACHUTE_TEXTS))
                 .split('{mentor}').join(mentor)
                 .split('{tribute}').join(t.name)
                 .split('{item}').join(itemPhrase(gift))
                 .split('{zone}').join(t.zone)
-                .split('{need}').join(NEED_PHRASES[need]),
+                .split('{need}').join(NEED_PHRASES[need])),
             [t.id],
             { important: true, category: 'sponsor' }
         );

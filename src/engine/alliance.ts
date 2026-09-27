@@ -1,7 +1,8 @@
 import { traitMod } from '../data/traits';
+import { crownLeadership } from './audit13Content';
 import { ARCHETYPES } from '../data/archetypes';
-import { Alliance, AllianceRole, EventType, GameState, Item, Tribute } from '../models/types';
-import { ALLIANCES, PROFICIENCY, RELATIONSHIPS, ROMANCE } from '../data/balance';
+import { Alliance, AllianceEndReason, AllianceRole, EventType, GameState, Item, Tribute } from '../models/types';
+import { ALLIANCES, AUDIT13_RELATIONS, PROFICIENCY, RELATIONSHIPS, ROMANCE } from '../data/balance';
 import { announceCharter, rollCharter } from './allianceCharter';
 import { SimContext, getAlive } from './context';
 import { cycleOf, noteFormerAllies, noteSharedCycle } from './memory';
@@ -151,7 +152,7 @@ export function pickLeader(members: Tribute[]): Tribute {
         // AUDIT-6 §12.2 `leadership`: whether people actually follow this one.
         const score = (t: Tribute) =>
             t.attributes.charisma * 1.6 + t.attributes.strength + t.trainingScore * 0.5 + t.kills * 2
-            + traitMod(t, 'leadership');
+            + traitMod(t, 'leadership') + crownLeadership(t);
         return score(m) > score(best) ? m : best;
     });
 }
@@ -455,6 +456,7 @@ export function mergeAllianceRecords(ctx: SimContext, keepId: string, absorbedId
     const records = allianceRecords(ctx.state);
     const keep = records[keepId];
     const absorbed = records[absorbedId];
+    if (absorbed) { absorbed.endReason = 'merged'; closeChronicle(ctx.state, absorbed, 'merged'); }
     delete records[absorbedId];
     if (!keep) return registerAlliance(ctx, keepId, members);
 
@@ -558,7 +560,9 @@ function resolveSuccession(ctx: SimContext, record: Alliance, members: Tribute[]
                 // politics sweep back-filled a bare one — no pact, no charter,
                 // no roles, and an array-order leader in between — so no camp
                 // formed by a schism could ever swear to anything.
-                registerAlliance(ctx, splinterId, withHeir);
+                registerAlliance(ctx, splinterId, withHeir).splitFrom = record.id;
+                record.splitFrom = splinterId;
+                noteAllianceEnd(ctx.state, record.id, 'splinter');
                 record.memberIds = withFavourite.map(m => m.id);
                 record.leaderId = favourite.id;
                 record.successorId = undefined;
@@ -627,7 +631,8 @@ export function fractureBlocs(ctx: SimContext) {
 
         const splinterId = `alliance-fracture-${id}-${cycleOf(ctx.state)}`;
         rest.forEach(m => { m.allianceId = splinterId; });
-        registerAlliance(ctx, splinterId, rest);
+        registerAlliance(ctx, splinterId, rest).splitFrom = id;
+        record.splitFrom = splinterId;
         record.memberIds = loyal.map(m => m.id);
         record.leaderId = leader.id;
         record.successorId = undefined;
@@ -664,7 +669,7 @@ export function pruneDeadAlliances(ctx: SimContext) {
             if (living.length >= 2) repairStructure(ctx, record, living);
             return;
         }
-        recordAllianceState(ctx.state, record);
+        closeChronicle(ctx.state, record, 'attrition');
         distributeCache(ctx, record, []);
         delete records[id];
     });
@@ -729,6 +734,56 @@ export function recordAllianceState(state: GameState, record: Alliance) {
     entry.lastCycle = cycle;
 }
 
+/**
+ * AUDIT-13 R1: the cohesion floor. A group younger than
+ * `cohesionFloorCycles` does not come apart on its own (trust rot, a pact
+ * falling due, being absorbed in a merger) unless something gave it a reason:
+ * a breach on the record, a faction, or somebody in it going short. Groups
+ * were reshuffling faster than a story could form around them — the median
+ * lasted two cycles. Deaths, betrayals and suspicion are unaffected; they are
+ * triggers in their own right.
+ */
+export function inCohesionFloor(state: GameState, record: Alliance | undefined): boolean {
+    if (!record) return false;
+    if (cycleOf(state) - (record.formedCycle ?? 0) >= AUDIT13_RELATIONS.cohesionFloorCycles) return false;
+    if (Object.keys(record.breachesBy ?? {}).length > 0) return false;
+    if ((record.factions?.length ?? 0) > 0) return false;
+    const members = membersOf(state, record.id);
+    return !members.some(m => m.vitals.hunger >= AUDIT13_RELATIONS.cohesionShortageVital
+        || m.vitals.thirst >= AUDIT13_RELATIONS.cohesionShortageVital);
+}
+
+/**
+ * AUDIT-13 R2: note why a group is ending, at the moment it ends.
+ *
+ * Called by every path that strips an `allianceId`, right after it does. It
+ * only writes when the group is now below two living members, so a betrayer
+ * walking out of a group of four leaves no false epitaph — the group has not
+ * ended. The last write before the record is dropped is the reason it ended.
+ */
+export function noteAllianceEnd(state: GameState, id: string | undefined, reason: AllianceEndReason, byId?: string) {
+    if (!id) return;
+    const record = state.alliances?.[id];
+    if (!record || membersOf(state, id).length >= 2) return;
+    record.endReason = reason;
+    record.endedById = byId;
+    closeChronicle(state, record, reason);
+}
+
+/**
+ * AUDIT-13 R2: write the ending onto the durable chronicle. Every path that
+ * deletes an alliance record passes through here; `fallback` is what the
+ * deleting path can say for itself when no departure path wrote a reason.
+ */
+export function closeChronicle(state: GameState, record: Alliance, fallback: AllianceEndReason) {
+    recordAllianceState(state, record);
+    const entry = state.allianceChronicle?.find(e => e.id === record.id);
+    if (!entry) return;
+    entry.endReason = record.endReason ?? fallback;
+    if (record.endedById) entry.endedById = record.endedById;
+    if (record.splitFrom) entry.splitFrom = record.splitFrom;
+}
+
 export function reconcileAlliances(ctx: SimContext) {
     const records = allianceRecords(ctx.state);
 
@@ -769,6 +824,9 @@ export function reconcileAlliances(ctx: SimContext) {
                 );
             }
             members.forEach(m => { delete m.allianceId; });
+            // AUDIT-13 R2: nobody wrote a departure, so the group was worn
+            // down to one by deaths.
+            closeChronicle(ctx.state, records[id], 'attrition');
             delete records[id];
             return;
         }

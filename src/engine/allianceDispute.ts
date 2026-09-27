@@ -1,7 +1,7 @@
 import { Alliance, AllianceDisputeRecord, Item, Tribute } from '../models/types';
 import { SimContext } from './context';
 import { ALLIANCE_DISPUTE } from '../data/balance';
-import { allianceRecords, membersOf, allied } from './alliance';
+import { allianceRecords, membersOf, allied, noteAllianceEnd } from './alliance';
 import { cycleOf } from './memory';
 import { adjustRel, adjustTrust, getRel } from './relationships';
 import { isActive } from './downed';
@@ -446,6 +446,7 @@ function holdHearing(ctx: SimContext, record: Alliance, members: Tribute[], abse
             - (leader ? Math.max(0, getRel(m, leader.id)) * ALLIANCE_DISPUTE.walkoutPerRegard : 0);
         if (ctx.rng.chance(bitter)) {
             delete m.allianceId;
+            noteAllianceEnd(ctx.state, record.id, 'walkout', m.id); // AUDIT-13 R2
             walkouts.push(m.id);
         }
     });

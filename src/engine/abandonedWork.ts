@@ -100,11 +100,15 @@ export function tickAbandonedWork(ctx: SimContext) {
         if (here.length === 0) {
             const before = project.hoursDone;
             const lost = damageProject(ctx.state, project.zone, project.level, PROJECTS.weatherHoursPerCycle);
-            if (lost > 0 && before >= PROJECTS.weatherNoticeHours) {
+            // AUDIT-13 B5: once per abandonment, not every cycle (the same frame
+            // was logged D14 day, D14 night, D15, D16…), and the builders on the
+            // line only while they are alive — a memorial is not an action.
+            if (lost > 0 && before >= PROJECTS.weatherNoticeHours && project.decayNotedFor !== project.lastCycle) {
+                project.decayNotedFor = project.lastCycle;
                 ctx.logEvent(
                     `The half-built frame in ${project.zone} has nobody left tending it. The weather is taking it `
                     + `back a piece at a time, and there is still enough of it standing to be worth somebody's afternoon.`,
-                    [...owners],
+                    owners.filter(id => ctx.state.tributes.find(o => o.id === id)?.status === 'alive'),
                     { category: 'survival', zone: project.zone },
                 );
             }

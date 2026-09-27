@@ -1,4 +1,5 @@
 import { GameState, RivalRecord, Tribute, TributeMemory, ZoneMemory } from '../models/types';
+import { deafToCannon } from './audit13Content';
 import { grudgeDecayScale, scarReaderSees } from './traitHooks';
 import { FEAR, HUNTING, INTEL, MEMORY, NOISE, PERCEPTION, RELATIONSHIPS, RIVAL_READ, SANITY_BANDS, SUSPICION, ZONES } from '../data/balance';
 import { arenaHasLaw } from './gamesProfile';
@@ -342,7 +343,8 @@ export function broadcastDeath(ctx: SimContext, victim: Tribute, killer?: Tribut
         // false impression like a half-heard death. Direct contact (a landed
         // hit — see reduceFear) is what corrects it. None of this happens at
         // all with no cannon to hear in the first place.
-        if (!witnessed && !silent && killer && killer.id !== other.id
+        // AUDIT-13 N10: a Tin Ear never takes fright at a cannon.
+        if (!witnessed && !silent && killer && killer.id !== other.id && !deafToCannon(other)
             && killZone?.adjacent.includes(other.zone)
             && ctx.rng !== undefined) {
             if (ctx.rng.chance(FEAR.misattributionChance)) {

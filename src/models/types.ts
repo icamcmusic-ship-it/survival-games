@@ -41,6 +41,9 @@ export type InterviewPersona =
  * `stanceFamily()` in `data/stances.ts`, which maps each new stance onto the
  * one of the original three it behaves like.
  */
+/** AUDIT-13 W11: the state machine a zone moves through. */
+export type ZoneStateKind = 'intact' | 'damaged' | 'ruined' | 'flooded' | 'burning' | 'ash' | 'regrowth';
+
 export type Stance =
     | 'Aggressive'
     | 'Defensive'
@@ -67,7 +70,11 @@ export type Stance =
     | 'Patrolling'
     // AUDIT-12 §16: going to ground on purpose, and talking first.
     | 'Hiding'
-    | 'Parleying';
+    | 'Parleying'
+    // AUDIT-13 N35-N37: finding the pack again, standing over the dead, and getting out of the weather.
+    | 'Regrouping'
+    | 'Mourning'
+    | 'Sheltering';
 
 export type ArchetypeId =
     | 'career' | 'strategist' | 'survivalist' | 'protector' | 'trickster' | 'wildcard' | 'underdog'
@@ -124,7 +131,9 @@ export type ArchetypeId =
     // AUDIT-11 §16: the pilot four.
     | 'hermit' | 'showrunner' | 'healer-pacifist' | 'engineer'
     // AUDIT-12 §16: five more, each with a signature of its own.
-    | 'scout-runner' | 'turncoat' | 'guardian' | 'forger' | 'gambler';
+    | 'scout-runner' | 'turncoat' | 'guardian' | 'forger' | 'gambler'
+    // AUDIT-13 §16 N23-N28.
+    | 'firekeeper' | 'kingmaker' | 'ratcatcher' | 'pilgrim' | 'mourner' | 'lamplighter';
 
 export interface Attributes {
     strength: number;
@@ -324,7 +333,14 @@ export type Proficiency = 'forage' | 'melee' | 'ranged' | 'medicine' | 'tracking
      * somebody else packed away; `ambush` is the Shadowing payoff as a craft;
      * `animalHandling` is the missing AUDIT-11 skill.
      */
-    | 'evasion' | 'rationing' | 'salvage' | 'ambush' | 'animalHandling';
+    | 'evasion' | 'rationing' | 'salvage' | 'ambush' | 'animalHandling'
+    /*
+     * AUDIT-13 §16 N17-N22: six more, each owning a read site that had no
+     * skill behind it — fish in a water zone, a lie that lands, the price of a
+     * deal, reading the weather before it arrives, passing a skill on, and
+     * actually resting when resting.
+     */
+    | 'angling' | 'mimicry' | 'bartering' | 'weathercraft' | 'teaching' | 'resting';
 
 /** Why a tribute is walking somewhere. Drives the chronicle copy as well as the route. */
 export type ObjectiveReason = 'water' | 'shelter' | 'feast' | 'ally' | 'forage'
@@ -439,6 +455,8 @@ export interface Item {
     id: string;
     name: string;
     type: 'weapon' | 'food' | 'water' | 'medical' | 'utility' | 'armour' | 'tool';
+    /** AUDIT-13 N32: the first thing a tribute with that quirk found. Never stolen. */
+    keepsake?: boolean;
     /** Current condition. Weapons degrade with use; at 0 they are dropped. */
     durability?: number;
     /** What `durability` started at, so condition can be read as a fraction. */
@@ -776,6 +794,11 @@ export type DeathCauseCode =
     | 'nightlock' | 'self-inflicted'
     // The arena itself.
     | 'drowning' | 'fall' | 'collapse' | 'border' | 'trap' | 'machinery' | 'hazard'
+    // AUDIT-13 W5: what used to fall through to the catch-all `hazard`. A
+    // crush is weight landing on you, an impact is being thrown into
+    // something (or something thrown into you), `exposure-pressure` is air or
+    // water pressure rather than temperature.
+    | 'crush' | 'impact' | 'electrocution' | 'sound' | 'animal' | 'exposure-pressure'
     // The things the Capitol put in it.
     | 'mutt' | 'gamemaker'
     /** Nothing claimed it. `check-cause-codes` fails the build on this. */
@@ -1280,6 +1303,25 @@ export interface Tribute {
      * Biases resolve and vengeance, and pays off in the epilogue interview.
      */
     motive?: 'family' | 'partner' | 'prove' | 'honour' | 'escape';
+    /**
+     * AUDIT-13 §6: per-tribute state for the relationship arcs (R3-R7). One
+     * optional bag rather than a field per arc; see `engine/relationsArc.ts`.
+     */
+    relationsArc?: {
+        /** R3: the ally this tribute has been seen counting the knives over. */
+        betrayalIntent?: { targetId: string; cycle: number };
+        /** R4: beats already given, so each lands once. */
+        partnerSearched?: boolean;
+        lastOfDistrict?: boolean;
+        standoff?: boolean;
+        /** R5: slow-burn rapport with each ally, in shared cycles. */
+        rapport?: Record<string, number>;
+        /** R6: vengeance targets already let go of. */
+        cooled?: string[];
+        /** R7: the elder ally this tribute is ward to, and whether they inherited. */
+        wardOf?: string;
+        inherited?: boolean;
+    };
     /** §3.5: they went all the way down once; some of it never comes back. */
     sanityScarred?: boolean;
     /**
@@ -1572,6 +1614,31 @@ export interface Tribute {
     ambushWarnedUntil?: number;
     /** Parleying: talks that failed this run. */
     parleysFailed?: number;
+    /*
+     * AUDIT-13 §16 (N1-N37): per-tribute state the new traits, archetypes and
+     * stances keep, all read in `engine/audit13Content.ts`. Optional; an older
+     * save reads as "never happened".
+     */
+    /** N1 Stitch-Fingered: a dressing from one keeps infection off until this cycle. */
+    stitchedUntil?: number;
+    /** N12 Borrowed Luck: the one lethal blow that did not take has been spent. */
+    luckSpent?: boolean;
+    /** N23 Firekeeper: nights with a fire lit; and the hearth, once kept, lasts until this cycle. */
+    fireNights?: number;
+    hearthUntil?: number;
+    /** N24 Kingmaker: the ally they are crowning. */
+    crownedId?: string;
+    /** N24 Kingmaker: set on the ally being crowned — the Kingmaker's id. */
+    crownedById?: string;
+    /** N26 Pilgrim: the landmark picked at the reaping, and whether they reached it. */
+    pilgrimZone?: string;
+    pilgrimArrived?: boolean;
+    /** N28 Lamplighter: the route they marked is safe to walk until this cycle. */
+    beaconUntil?: number;
+    /** N36 Mourning: whose death, who did it (if known), and when. */
+    mourning?: { victimId: string; killerId?: string; cycle: number };
+    /** N2 Loud Heart: an ally with one is in the zone this cycle, so fear sticks less. */
+    heartened?: boolean;
     /** A1: cycles the tribute has been dug in — read by the Fortified payoffs. */
     fortifiedCycles?: number;
     /**
@@ -1996,7 +2063,19 @@ export interface AllianceRecollection {
     formedCycle: number;
     /** The last cycle it was observed holding together. */
     lastCycle: number;
+    /**
+     * AUDIT-13 R2: how it ended, written by whichever path took it below two
+     * members (or removed the record). Absent while the group still stands.
+     */
+    endReason?: AllianceEndReason;
+    /** AUDIT-13 R2: who ended it, where one person did (betrayer, walker). */
+    endedById?: string;
+    /** AUDIT-13 R1: the group this one split away from, if it was a splinter. */
+    splitFrom?: string;
 }
+
+/** AUDIT-13 R2: the ways an alliance stops being one. */
+export type AllianceEndReason = 'attrition' | 'splinter' | 'betrayal' | 'pact-expired' | 'walkout' | 'merged' | 'victor';
 
 export interface Alliance {
     id: string;
@@ -2004,6 +2083,13 @@ export interface Alliance {
     leaderId: string;
     memberIds: string[];
     formedCycle: number;
+    /** AUDIT-13 R1: the group this one split from; both halves carry it. */
+    splitFrom?: string;
+    /** AUDIT-13 R1: the two halves have met again and had it out (reunion or feud). */
+    splitSettled?: boolean;
+    /** AUDIT-13 R2: set by the path that took the group below two members. */
+    endReason?: AllianceEndReason;
+    endedById?: string;
     /**
      * §4.5: what the broadcast calls them. An alliance with a name is a brand
      * the crowd tracks — 'the Career pack' was the only group that ever had
@@ -2989,6 +3075,10 @@ export interface GameConfig {
     mutators?: string[];
     /** AUDIT-12 wave 3 §11: gauntlet mode — up to four mutators, scored into the Hall of Fame. */
     gauntlet?: boolean;
+    /** AUDIT-13 P1: a scenario card (`engine/season/scenarios.ts`) applied at the reaping. */
+    scenario?: string;
+    /** AUDIT-13 P4: the recap voice the fixed beats are re-skinned in. Prose only. */
+    commentator?: string;
 }
 
 import type { GamesProfile } from '../engine/gamesProfile';
@@ -3273,6 +3363,17 @@ export interface GameState {
      * bloodbath and scored when the Games end. Read by nothing in the engine.
      */
     prediction?: Prediction;
+    /**
+     * AUDIT-13 P6: the player's draft — up to four tribute ids picked before
+     * the bloodbath, scored on where they finish. Read by nothing in the engine.
+     */
+    draft?: string[];
+    /**
+     * AUDIT-13 S6: the player's Capitol Coins when the Games began, so an
+     * achievement about not spending can tell "could not afford a gift" from
+     * "chose not to". Snapshotted by the store; absent headless.
+     */
+    playerPurseAtStart?: number;
     /**
      * AUDIT-11 §12: hashes of flavour templates this player has seen in recent
      * sessions, snapshotted at creation so a save resumes with the same wording.
@@ -3628,6 +3729,16 @@ export interface GameState {
      * cycle; a run now has a season.
      */
     climateDrift?: { toward: 'heat' | 'cold' | 'wet' | 'dry'; progress: number };
+    /** AUDIT-13 W11: zones that have been through something. Absent means intact. */
+    zoneStates?: Record<string, { kind: ZoneStateKind; since: number }>;
+    /** AUDIT-13 W12: the three-step weather chain in progress, if any. */
+    weatherChain?: { name: string; step: number; cycle: number };
+    weatherChainsCompleted?: number;
+    /** AUDIT-13 W16: deaths per zone, and which bodies have been counted. */
+    deathSites?: Record<string, number>;
+    deathSitesNoted?: string[];
+    /** AUDIT-13 W15: the arena's day-8 finale mutation has happened. */
+    arenaFinaleMutated?: boolean;
     /** §5.3: consecutive cycles the audience's excitement has sat flat. */
     excitementFlatCycles?: number;
     /** §5.3: last cycle's excitement total, so "flat" can mean unchanged. */
@@ -3818,6 +3929,8 @@ export interface GameState {
         workerIds: string[];
         /** The cycle it was last touched, so an abandoned site reads as one. */
         lastCycle: number;
+        /** AUDIT-13 B5: the `lastCycle` the decay line was logged for, so it is said once per abandonment. */
+        decayNotedFor?: number;
     }>;
     gamemakerCommands?: number;
     /**
@@ -4131,6 +4244,8 @@ export type EventType =
     // AUDIT-12 wave 2: trait hooks and the §16 archetypes.
     | 'mimic-lure' | 'twitchy-hit' | 'oath-kept' | 'self-splint' | 'parley-failed'
     | 'scout-warning' | 'turncoat-coup' | 'guardian-stand' | 'forged-weapon' | 'gambler-wager'
+    // AUDIT-13 §16 N23-N28: the six new set pieces.
+    | 'hearth-kept' | 'kingmaker-crown' | 'pest-sweep' | 'pilgrim-arrival' | 'mourner-vigil' | 'beacon-lit'
     | 'sepsis-deepened'
     | 'sepsis-treated'
     | 'shelter-built'
@@ -4195,6 +4310,17 @@ export type EventType =
     | 'vengeance-paid'
     | 'vengeance-soloed'
     | 'vengeance-stolen'
+    /* AUDIT-13 §6 (R1, R3-R7): relationship arcs. */
+    | 'alliance-reunion'
+    | 'alliance-feud'
+    | 'betrayal-warning'
+    | 'partner-search'
+    | 'last-of-district'
+    | 'partner-standoff'
+    | 'romance-slow-burn'
+    | 'vengeance-cooled'
+    | 'ward-bond'
+    | 'ward-inheritance'
     | 'watch-posted'
     | 'weapon-poisoned'
     | 'weather-fronts'

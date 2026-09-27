@@ -12,7 +12,7 @@ import { SPONSOR_TEXTS } from '../data/flavorText';
 import { drawFromBloc } from './sponsorBlocs';
 import { arenaLogicalWeight, biddingWar, logicalGiftNote } from './season/sponsorWars';
 import { clampTribute } from './vitals';
-import { itemPhrase } from './items';
+import { capitaliseSentences, itemPhrase } from './items';
 import { ensureMemory } from './memory';
 import { mentorGenerosity, processMentorPleas } from './mentors';
 import { Item, Tribute } from '../models/types';
@@ -204,10 +204,10 @@ export function processSponsors(ctx: SimContext) {
         ensureMemory(t).giftsReceived += 1;
         clampTribute(t);
 
-        const text = ctx.pickText(SPONSOR_TEXTS)
+        const text = capitaliseSentences(ctx.pickText(SPONSOR_TEXTS)
             .split('{tribute}').join(t.name)
             .split('{item}').join(itemPhrase(gift))
-            .split('{zone}').join(t.zone);
+            .split('{zone}').join(t.zone));
         ctx.logEvent(
             tier >= 2
                 ? `${text} The Capitol does not send these lightly — this is the ${ordinal(ensureMemory(t).giftsReceived)} parachute for ${t.name}. ${bloc.seal}`

@@ -23,7 +23,8 @@ import type { SponsorResult } from '../engine/playerSponsor';
 import { readPrefs } from './prefsStore';
 import { scopeFollowCamToSeed } from './chronicleStore';
 import { seatVeterans } from '../engine/veterans';
-import { AUDIT12_UI, AUDIT12_WAVE3, COIN_ECONOMY, VETERANS } from '../data/balance';
+import { victorReturnPool } from '../engine/season/replayability';
+import { AUDIT12_UI, AUDIT12_WAVE3, AUDIT13_SIDE, COIN_ECONOMY, VETERANS } from '../data/balance';
 import { directorEffectLine } from '../engine/season/directorEffect';
 import { gauntletScoreOf } from '../engine/season/gauntlet';
 import { killLedgerOf } from '../engine/season/killLedger';
@@ -126,6 +127,8 @@ export interface GameStoreState {
      * called from five places that have nothing to do with this.
      */
     grudgeMatchIds: string[];
+    /** AUDIT-13 P7: seat the player's own Hall of Fame victors in the next Games. */
+    victorReturnQuell: boolean;
 }
 
 /** Live counters for the Run-to-End progress readout. */
@@ -473,6 +476,7 @@ export const gameStore = createStore<GameStoreState>({
     panem: readPanem(),
     lastRunOutcome: null,
     grudgeMatchIds: [],
+    victorReturnQuell: false,
     runProgress: null,
 });
 
@@ -785,6 +789,47 @@ export const gameActions = {
         gameActions.syncFromSimulator();
         persistRun();
         return true;
+    },
+
+    /**
+     * AUDIT-13 P6: draft a tribute (or release one). Up to four, and only
+     * while side betting is open, like the slip. Returns whether it changed.
+     */
+    toggleDraftPick(tributeId: string): boolean {
+        const { gameState, simulator } = gameStore.getState();
+        if (!gameState || !simulator || !sideBettingOpen(gameState.phase)) return false;
+        const live = simulator.getState();
+        if (!live.tributes.some(t => t.id === tributeId)) return false;
+        const cur = live.draft ?? [];
+        if (cur.includes(tributeId)) live.draft = cur.filter(id => id !== tributeId);
+        else if (cur.length < AUDIT13_SIDE.draftSize) live.draft = [...cur, tributeId];
+        else return false;
+        if (live.draft.length === 0) delete live.draft;
+        gameActions.syncFromSimulator();
+        persistRun();
+        return true;
+    },
+
+    /** AUDIT-13 P7: reap the player's own Hall of Fame victors again in the next Games. */
+    setVictorReturnQuell(on: boolean) {
+        gameStore.setState({ victorReturnQuell: on });
+    },
+
+    /**
+     * AUDIT-13 P2: the counterfactual challenge. The player names one
+     * intervention — a parachute to somebody, or a Gamemaker command at them —
+     * at a cycle of this Games; the whole Games is played again from the
+     * reaping with it added to their own, and the answer is whether the crown
+     * changed hands.
+     */
+    async runCounterfactualChallenge(pick: InterventionRecord) {
+        const { gameState } = gameStore.getState();
+        const reaping = reapingState;
+        if (!gameState || !reaping || reaping.seed !== gameState.seed) return null;
+        const { counterfactualChallenge } = await loadEngine();
+        await new Promise(resolve => setTimeout(resolve, 0));
+        if (gameStore.getState().gameState !== gameState) return null;
+        return counterfactualChallenge(reaping, gameState, pick) ?? null;
     },
 
     /** AUDIT-11 §8: open a parlay spanning the next `legs` Games. */
@@ -1250,6 +1295,7 @@ export const gameActions = {
             runProgress: null,
             // The archive these ids pointed into is gone with everything else.
             grudgeMatchIds: [],
+    victorReturnQuell: false,
         });
     },
 
@@ -1390,6 +1436,19 @@ export const gameActions = {
         // persist, so the same two victors were reaped again every run after.
         if (grudge.length > 0) gameStore.setState({ grudgeMatchIds: [] });
 
+        // AUDIT-13 P7: a victor-return Quell. The player's own most recent
+        // victors are reaped again — traits carried by `seatVeterans`, the
+        // same graft as a Grudge Match, so the seed's cast and rolls are
+        // untouched — and the setting, like the Grudge Match, is for this
+        // Games only. Never on a pinned replay, for the reason below.
+        if (veterans.length === 0 && pinnedCampaign === undefined && gameStore.getState().victorReturnQuell) {
+            const pool = victorReturnPool(readHallOfFame());
+            if (pool.length > 0) {
+                veterans = seatVeterans(safeSeed, tributes, pool.map(e => ({ ...e, winnerName: givenName(e.winnerName) })), AUDIT13_SIDE.victorReturnSeats);
+            }
+            gameStore.setState({ victorReturnQuell: false });
+        }
+
         // AUDIT-11 §12: legacy tributes. In a Quell (or, now and then, deep in
         // a campaign) one Hall of Fame victor is reaped again carrying the
         // traits they earned — under their given name only. Grafted like a
@@ -1434,6 +1493,8 @@ export const gameActions = {
             logCounter: 0,
             feastsHeld: 0,
             veteransSeated: veterans.length > 0 ? veterans : undefined,
+            // AUDIT-13 S6: the purse at the gong, for Bought Nothing.
+            playerPurseAtStart: gameStore.getState().coins,
             ...(legacy.length > 0 ? { legacyTributeIds: legacy } : {}),
             // AUDIT-11 §12: recently seen flavour lines, snapshotted here so the
             // engine never reads storage and a save rewords identically.
@@ -1550,11 +1611,14 @@ export const gameActions = {
     /**
      * AUDIT-12 §4: "Skip to the gong". Runs every pre-Games stage still ahead
      * — reaping ceremony, train, parade, training, scores, interviews — and
-     * stops with the gong itself unsounded, so the bloodbath is still the
+     * the gong, stopping before the bloodbath runs, so that is still the
      * player's own press. Each stage is the same `nextPhase` a click runs.
      */
     skipToGong(): boolean {
-        const PRE = new Set(['setup', 'roster', 'reaping', 'square', 'train', 'parade', 'training', 'training1', 'training2', 'training3', 'scores']);
+        // AUDIT-13 U3: 'interviews' is in the set, so the skip sounds the gong
+        // itself and lands on the bloodbath page — it used to stop one press
+        // short, on "Stage 9 of 9", with "Sound the gong" still to press.
+        const PRE = new Set(['setup', 'roster', 'reaping', 'square', 'train', 'parade', 'training', 'training1', 'training2', 'training3', 'scores', 'interviews']);
         let guard = 0;
         let moved = false;
         while (guard++ < 20) {

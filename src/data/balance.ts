@@ -1806,7 +1806,10 @@ export const BLOODBATH = {
      * separate duels can produce four. Ganging up is more frightening and less
      * productive, which is a real thing about packs and not a bug.
      */
-    packGangUpChance: 0.6,
+    // AUDIT-13 K2: 0.8. The throughput note above is why the pack kills
+    // fewer this way; the point now is that it also dies less — four on one is
+    // the safest place a Career can be at the horn.
+    packGangUpChance: 0.8,
     /**
      * §23 (requests): extra damage a Career lands inside the killing zone, on
      * top of `killingZoneDamage`. They trained for this specific sixty
@@ -2308,7 +2311,15 @@ export const ESCALATION = {
      * border closes on an accelerated schedule: this many extra zones go out
      * of bounds per cycle on top of the ordinary collapse.
      */
-    convergeExtraZonesPerCycle: 1,
+    /*
+     * AUDIT-13 B2: 1 -> 0. The extra per-cycle closure only ever worked for the
+     * cycles before the border started, because the border's rebuild handed
+     * every convergence closure back. With the closures now permanent the
+     * convergence ring (the horn and its neighbours) plus the ordinary border
+     * is already the squeeze; keeping the extra sector on top cut full-field
+     * runs from 11.7 to 9.5 days in the soak.
+     */
+    convergeExtraZonesPerCycle: 0,
     /** Everyone driven into the convergence zone finds everyone else: encounter odds inside it. */
     convergeEncounterChance: 0.85,
     /**
@@ -4625,8 +4636,10 @@ export const MEMORY = {
      * time, which makes an oath cheap talk. A tribute holds this many; a new
      * one displaces the oldest, because a grudge you have replaced twice over
      * was never the thing organising your run.
+     * AUDIT-13 R6: 3 -> 2. 2845 sworn against 68 paid in 160 runs; two
+     * names a tribute is actually going after, not a list.
      */
-    maxOaths: 3,
+    maxOaths: 2,
     /** Threat impression added to a zone by a death witnessed there. */
     deathThreat: 1.0,
     /** Threat added by a death only heard as a cannon (location known from the sky). */
@@ -4701,6 +4714,13 @@ export const STANCE = {
     churnMax: 4,
     /** Extra cycles of hold per unit of accumulated churn. */
     churnHoldPerSwitch: 1.5,
+    /**
+     * AUDIT-13: extra cycles a posture imposed by a reaction (breaking off a
+     * fight) is held before the scorer may move them on. Getting clear takes
+     * longer than the exchange did; turning straight round into the next
+     * situation was two stance changes a fight for anybody who fought often.
+     */
+    reactionHold: 1,
     /** Health fractions that pull a tribute toward each stance. */
     evasiveHealth: 40,
     cautiousEvasiveHealth: 55,
@@ -5936,8 +5956,8 @@ export const ALLIANCES = {
     floorPactRegard: 32,
     schismEarliestCycle: 4,
     schismFieldShare: 0.7,
-    careerSchismEarliestCycle: 9,
-    careerSchismFactor: 0.3,
+    careerSchismEarliestCycle: 6,
+    careerSchismFactor: 0.8,
     /** Suspicion/fear across the faction line that counts as a real grievance. */
     schismGrievanceSuspicion: 22,
     schismGrievanceFear: 18,
@@ -9243,6 +9263,13 @@ export const STANCE_HOLD = {
     /** Score added to a still-valid conditional incumbent before the compare. */
     conditionalIncumbentBonus: 0.9,
     /**
+     * AUDIT-13: a conditional challenger that leads a lasting (non-conditional)
+     * runner-up by less than this is not worth entering — its precondition
+     * can lapse next cycle and the tribute is then bounced to that runner-up
+     * anyway, two changes for one decision. Take the lasting option.
+     */
+    conditionalEntryTieBand: 0.5,
+    /**
      * Fortified for anybody with a camp and the supplies to sit in it — a
      * fire, a shelter or a camouflaged position plus food and water is a
      * position worth keeping whether or not the ground is a chokepoint.
@@ -10337,8 +10364,7 @@ export const AUDIT11_EVENTS = {
     dodgeDifficultyBonus: 3,
 } as const;
 
-/* ========================================================================
- * AUDIT-12 §3.2 / §5 / §6 — tribute, alliance and side-system knobs.
+/* ================================================================= * AUDIT-12 §3.2 / §5 / §6 — tribute, alliance and side-system knobs.
  * Appended block; owned by the tributes/alliances workstream.
  * ====================================================================== */
 export const AUDIT12_TRIBUTES = {
@@ -10727,8 +10753,8 @@ export const AUDIT12_WAVE3 = {
         killPoints: 0.5,
     },
     museum: {
-        /** Pieces kept per arena. */
-        perArena: 5,
+        /** Pieces kept per arena. AUDIT-13 §14: 10 (was 5), so a full wing (`a13-museum-wing`) can exist. */
+        perArena: 10,
     },
     mastery: {
         victorsKept: 5,
@@ -10867,7 +10893,8 @@ export const AUDIT12_WAVE2_TRIBUTES = {
     scoutWarnTrust: 8,
     /** Turncoat: earliest day, and the smallest group worth taking over. */
     turncoatMinDay: 3,
-    turncoatMinMembers: 3,
+    // AUDIT-13 A18: 3 -> 2. A coup over one partner is still a coup; fired 12.6%.
+    turncoatMinMembers: 2,
     turncoatRegard: 25,
     turncoatSuspicion: 40,
     /** Warden-of-the-Weak: cycles added to a downed ally's window. */
@@ -10878,9 +10905,344 @@ export const AUDIT12_WAVE2_TRIBUTES = {
     /** Forger: bonus durability on what they make. */
     forgerDurability: 15,
     /** Gambler: the most the fight may look like, and the day the wager is on the board. */
+    // AUDIT-13 A17 proposed 0.47 and day 1 (the wager fired 10.9% at
+    // n=1,600). Tried: it fires ~30%, but every extra wager is a losing fight
+    // and the full-field run length in test:sim fell under its 10-day floor
+    // (9.95 against 10.01), so both stay until the run-length floor has room.
     gamblerOddsMax: 0.4,
     gamblerMinDay: 2,
     gamblerExcitement: 25,
     /** Gambler: what a visible weapon adds to how a bettor prices a fighter. */
     gamblerArmedWorth: 3,
+} as const;
+
+/**
+ * AUDIT-13 §11-§14: side systems surfaced, and the replayability layer on top
+ * of the season ledger. Presentation and meta-game knobs: a Games played
+ * without a record book behind it reads none of them except the scenario
+ * cards the player picks.
+ */
+export const AUDIT13_SIDE = {
+    /** S3: Games in one arena for bronze, silver and gold mastery. */
+    masteryTiers: [1, 3, 5] as readonly number[],
+    /** S4: a bloc's regret below this multiplier is worth a line in the sponsor panel. */
+    regretShownBelow: 0.95,
+    /** S5: dailies kept in the history, newest first. */
+    dailyHistoryCap: 30,
+    /** S7: slip points a season's bankroll is bought into with, and seasons kept on the leaderboard. */
+    seasonBuyIn: 10,
+    seasonBoardCap: 8,
+    /** P3: legacy drift a crown adds, the share kept each Games, and the drift one tier step takes. */
+    legacyCrownDrift: 1,
+    legacyKeep: 0.9,
+    legacyTierStep: 2,
+    /** P6: tributes a draft holds, and points by finishing place (index 0 is the victor). */
+    draftSize: 4,
+    draftPoints: [10, 6, 4, 3, 2, 1] as readonly number[],
+    /** P7: victors a victor-return Quell seats from the player's Hall of Fame. */
+    victorReturnSeats: 4,
+    /** P8: incidents kept per arena, and the threat a scarred zone carries from the first day. */
+    scarsPerArena: 2,
+    scarThreat: 12,
+} as const;
+
+/**
+ * AUDIT-13 §8 W1/W2/W9/W11–W16 and B6: the arena as something that changes,
+ * and the handful of fixes that came with it. Read by `arenaDynamics.ts`,
+ * `rescueLine.ts`, `stealth.ts`, `encounters.ts` and `pregames.ts`.
+ */
+export const AUDIT13_ARENA = {
+    /** W9: goodbye-room scenes the broadcast narrates; the rest share one line. */
+    goodbyeFeatured: 7,
+    /** W1/W2: rescue attempts on a downed tribute on flat ground are this much rarer. */
+    flatRescueScale: 0.5,
+    /** W11: forage multiplier by zone state. */
+    zoneForage: { intact: 1, damaged: 0.85, ruined: 0.6, flooded: 0.7, burning: 0.3, ash: 0.45, regrowth: 1.15 },
+    /** W11: concealment added by zone state (rubble hides, ash and fire do not). */
+    zoneHide: { intact: 0, damaged: 0.02, ruined: 0.06, flooded: -0.08, burning: -0.12, ash: -0.15, regrowth: 0.05 },
+    /** W11: chance non-signature arena damage moves a zone on (signature damage always does). */
+    damageAdvanceChance: 0.35,
+    burningCycles: 2,
+    ashCycles: 4,
+    regrowthCycles: 6,
+    floodCycles: 3,
+    /** W12: chance a chain starts in a cycle with none running. */
+    chainStartChance: 0.08,
+    /** W12: cycles between chain steps. */
+    chainStepCycles: 2,
+    /** W12: chance of moving to step 2, then step 3 — each weighted by the last. */
+    chainAdvanceChance: [0.55, 0.7],
+    /** W12: fatigue the middle step costs everyone. */
+    chainMidFatigue: 6,
+    /** W13: chance the arena's night rule acts on a given night. */
+    nightRuleChance: 0.6,
+    nightColdFatigue: 10,
+    nightSanity: 3,
+    /** W13: concealment bonus for the Hiding stance in the dark. */
+    nightHidingBonus: 0.06,
+    /** W15: the arena arc. Days 1..quiet are quiet; from finale on it mutates once. */
+    arcQuietUntilDay: 3,
+    arcFinaleFromDay: 8,
+    finaleRuinedZones: 2,
+    /** W16: deaths in a zone before it weighs on whoever stays there. */
+    hauntedSiteDeaths: 2,
+    hauntedSanity: 1,
+    /** B6: days a corpse keeps its kit before it is left as a cache. */
+    corpseKitDays: 2,
+} as const;
+
+/**
+ * AUDIT-13 §3.1 K1-K6 and §5 T5-T8: Careers at the horn, and what they are
+ * afraid of. Guarded by `test:audit13-careers`.
+ *
+ * The requirement: Careers died at the horn far too often, volunteers exactly
+ * as often as the reaped, and volunteers were frightened of outsiders. The
+ * horn is fixed here; the Career victor share that buys is paid back mid-game
+ * by the pack's own fracture, not by making the horn dangerous again.
+ */
+export const AUDIT13_CAREERS = {
+    /**
+     * K3: how much of a fright an outsider puts into a Career actually sticks.
+     * Trained for years for this; volunteers, who asked to be here, least of
+     * all. A reaped Career gets about half the discount (K5).
+     */
+    volunteerOutsiderFearScale: 0.2,
+    reapedOutsiderFearScale: 0.65,
+    /** K4 (a): fear and notoriety of an outsider as retreat terms, scaled. */
+    volunteerOutsiderRetreatScale: 0.15,
+    reapedOutsiderRetreatScale: 0.6,
+    /** K4 (b): the Career term (was 0.1), and the nerve of packmates in the zone. */
+    careerRetreatRelief: 0.2,
+    packInZoneRetreatRelief: 0.1,
+    /**
+     * K1: an outsider in the scrum steers away from the pack. Weight
+     * multiplier = max(floor, base + perStrength * (strength - 5)), then
+     * scaled up by grudge.
+     */
+    outsiderAvoidBase: 0.4,
+    outsiderAvoidPerStrength: 0.1,
+    outsiderAvoidFloor: 0.2,
+    /** K2: the pack goes through a target together, all of it (<= 4). */
+    packGangUpMax: 4,
+    /** K2: scrum-pick weight of a packmate, against ~1-3 for anybody else. */
+    packmateTargetWeight: 0.01,
+    /**
+     * T7: fear resolved by the fact of the person — watching a feared rival
+     * drop below `bleedHealth`, and winning an exchange against them.
+     */
+    sawThemBleedFear: 15,
+    bleedHealth: 40,
+    survivedThemFear: 10,
+    /**
+     * T8: the regard at which a dead tribute counts as "one of theirs" — the
+     * floor the Career pack is seeded at.
+     */
+    friendRegard: 45,
+    /**
+     * K6 balance: the pack's fracture after the horn. From this day, per
+     * day phase, the least-bound Career walks out, at this cost in regard both
+     * ways. This is the lever the horn fix is paid for with.
+     */
+    packFractureFromDay: 3,
+    packFractureChance: 0.35,
+    packFractureRegard: 30,
+    /** ...and how often a packmate standing there goes after them. */
+    packFractureFightChance: 0.8,
+    /** Rounds of that fight in which neither can break off: it is settled. */
+    packFractureLockedRounds: 3,
+    /** Hunt-target score an outsider adds for a Career with no packmate left. */
+    strayCareerHuntBonus: 45,
+} as const;
+
+/**
+ * AUDIT-13 §6: relationships and alliances. Guarded by
+ * `test:audit13-relations` (alliance median lifetime >= 4 cycles, every ended
+ * alliance records how it ended).
+ */
+export const AUDIT13_RELATIONS = {
+    /**
+     * R1: for this many cycles after forming, a group only comes apart
+     * voluntarily (rot, a pact coming due, a merger) with a trigger: a breach
+     * on the record, a faction, or somebody going short.
+     */
+    cohesionFloorCycles: 4,
+    /** R1: hunger or thirst at which a young group counts as going short. */
+    cohesionShortageVital: 80,
+    /**
+     * R1: two halves of a split who meet again (any of them in one zone,
+     * `reunionMinApart` cycles on) reunite when their cross-regard is at least this;
+     * otherwise they feud, at `feudRegardCost` regard both ways.
+     */
+    reunionRegard: 5,
+    /** R1: cycles apart before the halves of a split can settle it. */
+    reunionMinApart: 2,
+    feudRegardCost: 15,
+    /**
+     * R3: the betrayal-intent score, run from this field size down. Score =
+     * ambition x distrust x the ally's kit x (field size / alive). At
+     * `intentThreshold` the betrayer is seen counting the knives; a cycle
+     * later, if the pair are still allied, they strike.
+     */
+    intentFieldSize: 10,
+    intentThreshold: 0.15,
+    intentAmbitionFloor: 0.05,
+    intentKitNorm: 30,
+    intentKitCap: 1.5,
+    /** R4: regard for a district partner worth crossing the arena for. */
+    partnerSearchRegard: 15,
+    partnerSearchCycles: 3,
+    /** R4: resolve found by the last of a district, if they were this close to the partner. */
+    lastOfDistrictResolve: 15,
+    lastOfDistrictRegard: 40,
+    /** R4: the beat itself only once the field is this small. */
+    lastOfDistrictBeatField: 6,
+    /**
+     * R5: allies of an age (both >= `romanceMinAge`, within `romanceAgeGap`)
+     * sharing a camp build rapport, a cycle at a time with `romanceRampChance`;
+     * at `romanceRampCycles` shared cycles, with mutual regard at least
+     * `romanceRegard`, it is declared. The crowd pays extra for a slow burn.
+     */
+    romanceMinAge: 15,
+    romanceAgeGap: 2,
+    romanceRampChance: 0.12,
+    romanceRampCycles: 7,
+    romanceRegard: 55,
+    romanceSponsorBonus: 10,
+    /** R6: sworn targets unseen this many cycles are let go of. */
+    vengeanceCoolCycles: 6,
+    /**
+     * R7: an ally at least `wardElderAge` with one at most `wardYoungAge`
+     * takes them on. The elder teaches their best skill (`wardTeachShare` of
+     * a training step, per shared cycle).
+     */
+    wardElderAge: 17,
+    wardYoungAge: 14,
+    wardTeachShare: 0.5,
+    /** K5: per day phase before the pack fracture opens, a reaped Career's chance to break early. */
+    reapedEarlyBreakChance: 0.06,
+    /** T6: scrum-pick weight of a pact partner for a tribute here for honour. */
+    honourPactTargetWeight: 0.01,
+    /** T5: chance a guardian, protector or pact-bound tribute shields their partner at the gong. */
+    gongShieldChance: 0.5,
+} as const;
+
+/**
+ * AUDIT-13 §16 (N1-N37): the sixteen traits, six skills, six archetypes, six
+ * quirks and three stances added in this pass, read in
+ * `engine/audit13Content.ts` and at the sites that file names. Grouped by
+ * audit id so a row in the audit table is one search away from its knob.
+ */
+export const AUDIT13_CONTENT = {
+    // ---- traits ----------------------------------------------------------
+    /** N1 Stitch-Fingered: cycles a dressing keeps infection off, and what is left of the roll. */
+    stitchCycles: 6,
+    stitchInfectionScale: 0.75,
+    /** N2 Loud Heart: fear an ally in the zone picks up is cut by this share. */
+    loudHeartFearCut: 0.1,
+    /** N3 Bad Knee / N9 Ash-Lunged: proficiency levels lost on climbing / sprinting. */
+    badKneeClimbing: 1,
+    ashLungSprinting: 1,
+    /** N3 Bad Knee: extra fatigue on a crossing into high ground. */
+    badKneeHighlandFatigue: 1,
+    /** N4 Drowned Once: destination score a water crossing costs them. */
+    drownedOnceRefusal: 50,
+    /** N5 Mud-Skinned: how many times over the concealment row counts in marsh ground. */
+    mudSkinWetlandScale: 2,
+    /** N6 Bell-Voiced: signalling pull counted one zone further out, at this share. */
+    bellVoiceReachShare: 0.5,
+    /** N7 Two-Faced: chance a passed-on rumour is put in somebody else's mouth. */
+    twoFacedMisattribute: 0.3,
+    /** N9 Ash-Lunged: share of smoke and ash damage that lands. */
+    ashLungSmokeScale: 0.5,
+    /** N11 Hunger-Sharp: hunger at or over which it bites, the power it buys, and the Hunting pull. */
+    hungerSharpFrom: 30,
+    hungerSharpPower: 0.7,
+    hungerSharpHunting: 0.8,
+    /** N13 Bitter Root: chance a find sours in the mouth, and the sanity it costs. */
+    bitterRootChance: 0.2,
+    bitterRootSanity: 3,
+    /** N14 Deadfall Mind: ambush chance on ground they hold with their own traps on it. */
+    deadfallAmbush: 0.1,
+    /** N15 Slow Healer: extra cycles every wound takes, and the dressing chance lost on them. */
+    slowHealerCycles: 1,
+    slowHealerDressing: 0.1,
+    /** N16 Keeps Watch Alone: watch failure scale on a watch nobody shares. */
+    loneWatchScale: 0.6,
+
+    // ---- skills ----------------------------------------------------------
+    /** N17 angling: forage chance per level on water and wetland ground. */
+    anglingPerLevel: 0.04,
+    /** N18 mimicry: plant chance per level, and the level at which a thrown voice is a lure. */
+    mimicryPerLevel: 0.04,
+    mimicryLureLevel: 3,
+    /** N19 bartering: bargaining per level, on the `haggle` scale (the trait is the floor). */
+    barteringPerLevel: 0.12,
+    /** N20 weathercraft: exposure removed per level, and the floor. */
+    weathercraftPerLevel: 0.05,
+    weathercraftFloor: 0.6,
+    /** N21 teaching: student gain added per level; share of a lesson a watching teacher takes. */
+    teachingPerLevel: 0.25,
+    teachingWatchShare: 0.5,
+    /** N22 resting: sanity and night fatigue per level. */
+    restingSanityPerLevel: 0.5,
+    restingFatiguePerLevel: 0.5,
+
+    // ---- archetypes ------------------------------------------------------
+    /** N23 Firekeeper: nights a fire must burn, the chance they light one, the hearth's length, and its gifts. */
+    firekeeperNights: 1,
+    firekeeperLightChance: 0.6,
+    hearthCycles: 6,
+    hearthFatigue: 2,
+    hearthColdResist: 0.2,
+    hearthTargetDraw: 0.5,
+    /** N24 Kingmaker: leadership a crowned ally gains, and the sponsor trust the maker skims per cycle. */
+    crownLeadership: 1,
+    crownSponsorShare: 0.5,
+    /** N25 Ratcatcher: live traps the vermin sweep needs, and what it feeds. */
+    pestSweepTraps: 1,
+    /** N25: with no line down, the animal-handling level that does it by hand. */
+    pestSweepHandling: 1,
+    pestSweepFeed: 15,
+    /** N26 Pilgrim: pull toward the landmark, and the resolve and sponsor trust arriving buys. */
+    pilgrimPull: 6,
+    pilgrimResolve: 0.5,
+    pilgrimSponsor: 10,
+    /** N27 Mourner: grief resistance lost, power against an ally's killer, sanity a vigil restores. */
+    mournerGrief: 0.2,
+    mournerVengeance: 1.5,
+    vigilSanity: 10,
+    /** N28 Lamplighter: earliest day, the hazard damage that lands on a marked route, and how long it lasts. */
+    beaconMinDay: 2,
+    beaconHazardScale: 0.7,
+    beaconCycles: 2,
+
+    // ---- quirks ----------------------------------------------------------
+    /** N29: navigation training multiplier for the step-counter. */
+    stepCounterNavigation: 1.1,
+
+    // ---- stances ---------------------------------------------------------
+    /** N35 Regrouping: score, the cost of a hostile here, ambush relief, and the pull toward an ally's zone. */
+    regroupingBase: 9.5,
+    regroupingHostilePenalty: 0.8,
+    regroupingAmbushRelief: 0.2,
+    regroupingPull: 3,
+    /** N35: with no group, a friend this close, last seen this recently, is who they walk back to. */
+    regroupingFriendRegard: 35,
+    regroupingContactCycles: 6,
+    /** N36 Mourning: how long after the death it may start, score, awareness lost, sanity per cycle. */
+    mourningWindow: 3,
+    /** N36: regard for the dead at or over which it is mourning rather than merely grief. */
+    mourningRegard: 20,
+    mourningBase: 8.5,
+    mourningAwareness: 0.5,
+    mourningSanity: 2,
+    /** N37 Sheltering: shelter skill needed, score, exposure kept, the costs, and the tracker who still finds them. */
+    shelteringSkillMin: 0.15,
+    shelteringPerCarpentry: 0.1,
+    shelteringBase: 6.8,
+    shelteringNightBonus: 1,
+    shelteringExposureScale: 0.5,
+    shelteringHunger: 0.5,
+    shelteringFatigue: 0.5,
+    shelteringTrackedLevel: 3,
 } as const;

@@ -1,5 +1,5 @@
 import { HallOfFameEntry } from '../models/types';
-import { CampaignLedger, SeasonLedger, VictorCache } from '../models/seasonTypes';
+import { ArenaScar, BestScore, CampaignLedger, DailyResult, SeasonLedger, VictorCache } from '../models/seasonTypes';
 
 /**
  * AUDIT-12 wave 3: the season ledger's storage side.
@@ -124,6 +124,32 @@ function gauntlet(x: unknown): SeasonLedger['gauntletBest'] {
     return r && score !== undefined ? { score, mutators: strs(r.mutators, 4), seed: str(r.seed) ?? '', date: str(r.date, 40) ?? '' } : undefined;
 }
 
+// AUDIT-13 S5/S7/P3/P5/P6/P8: the new ledger fields, each dropped field by
+// field like the rest when a store holds something else.
+const daily = (x: unknown): DailyResult | undefined => {
+    const r = rec(x); const date = str(r?.date, 10); const seed = str(r?.seed, 60);
+    return r && date && seed
+        ? { date, seed, victorName: str(r.victorName, 60), victorDistrict: num(r.victorDistrict, 1, 16), pickRight: typeof r.pickRight === 'boolean' ? r.pickRight : undefined }
+        : undefined;
+};
+const scar = (x: unknown): ArenaScar | undefined => {
+    const r = rec(x); const zone = str(r?.zone, 60);
+    return r && zone && (r.kind === 'wipeout' || r.kind === 'override') ? { kind: r.kind, zone, run: num(r.run, 0) ?? 0 } : undefined;
+};
+const best = (x: unknown): BestScore | undefined => {
+    const r = rec(x); const score = num(r?.score, 0); const key = str(r?.key, 60);
+    return r && score !== undefined && key ? { score, max: num(r.max, 0) ?? 0, key } : undefined;
+};
+function seasonBank(x: unknown): SeasonLedger['seasonBank'] {
+    const r = rec(x); const n = num(r?.number, 1);
+    return r && n !== undefined ? { number: n, buyIn: num(r.buyIn, 0, 1e6) ?? 0, net: num(r.net, -1e6, 1e6) ?? 0, games: num(r.games, 0, 1000) ?? 0 } : undefined;
+}
+const boardRow = (x: unknown) => {
+    const r = rec(x); const n = num(r?.number, 1); const net = num(r?.net, -1e6, 1e6);
+    return n !== undefined && net !== undefined ? { number: n, net } : undefined;
+};
+const dedupe = (v: string[]) => [...new Set(v)];
+
 /** Drops `undefined` members so a round trip is exact. */
 function compact<T extends object>(o: T): T {
     Object.keys(o).forEach(k => { if ((o as Rec)[k] === undefined) delete (o as Rec)[k]; });
@@ -141,7 +167,7 @@ export function normalizeSeasonLedger(raw: unknown): SeasonLedger | undefined {
         rivalries: list(r.rivalries, rivalry, 12),
         nemeses: list(r.nemeses, nemesis, 8),
         arenaMastery: strRecord(r.arenaMastery, mastery, 256),
-        museum: strRecord(r.museum, v => list(v, piece, 5), 256),
+        museum: strRecord(r.museum, v => list(v, piece, 10), 256),
         storyChains: strRecord(r.storyChains, chain, 256),
         season: season(r.season),
         predictionBank: bank(r.predictionBank),
@@ -149,6 +175,17 @@ export function normalizeSeasonLedger(raw: unknown): SeasonLedger | undefined {
         announcedQuell: quell(r.announcedQuell),
         mentorArenas: numRecord(r.mentorArenas, mentorArena),
         upsetRewards: num(r.upsetRewards, 0),
+        dailyHistory: list(r.dailyHistory, daily, 60),
+        seasonBank: seasonBank(r.seasonBank),
+        seasonBoard: list(r.seasonBoard, boardRow, 20),
+        legacyDrift: numRecord(r.legacyDrift, v => num(v, -20, 20), 16),
+        arenaScars: strRecord(r.arenaScars, v => list(v, scar, 4), 256),
+        weeklyBest: best(r.weeklyBest),
+        draftBest: best(r.draftBest),
+        draftsPlayed: num(r.draftsPlayed, 0),
+        scenariosWon: Array.isArray(r.scenariosWon) ? dedupe(strs(r.scenariosWon, 32)) : undefined,
+        seasonCrowns: numRecord(r.seasonCrowns, v => num(v, 0, 100), 16),
+        bestSeasonCrowns: num(r.bestSeasonCrowns, 0),
     }));
 }
 
@@ -171,6 +208,8 @@ export function normalizeCampaignLedger(raw: unknown): CampaignLedger | undefine
         seasonMutator: str(r.seasonMutator, 40),
         mentorArenas: numRecord(r.mentorArenas, mentorArena, 16),
         oldVictorCache: cache(r.oldVictorCache),
+        legacyDrift: numRecord(r.legacyDrift, v => num(v, -20, 20), 16),
+        arenaScars: strRecord(r.arenaScars, v => list(v, scar, 4), 64),
     });
     return Object.keys(out).length > 0 ? clean(out) : undefined;
 }
@@ -198,6 +237,8 @@ export function campaignLedgerOf(ledger: SeasonLedger | undefined, archive: Hall
         seasonMutator: ledger?.season?.mutator,
         mentorArenas: ledger?.mentorArenas,
         oldVictorCache: victorCacheFrom(archive),
+        legacyDrift: ledger?.legacyDrift,
+        arenaScars: ledger?.arenaScars,
     });
     return Object.keys(out).length > 0 ? out : undefined;
 }

@@ -35,6 +35,7 @@ import { STANCE_PROFILES, STANCES } from '../data/stances';
 import { believedRumours } from '../engine/rumours';
 import { notorietyOf } from '../engine/notoriety';
 import { isVeteran } from '../engine/veterans';
+import { returningBadges } from '../engine/season/surfaced';
 import { charterSummary } from '../engine/allianceCharter';
 import { quirkEffect } from '../data/quirks';
 import { DayPanel } from './DayPanel';
@@ -45,6 +46,9 @@ const PROFICIENCY_LABELS: Record<string, string> = {
     forage: 'Foraging', melee: 'Melee', ranged: 'Ranged', medicine: 'Medicine', tracking: 'Tracking',
     persuasion: 'Persuasion', climbing: 'Climbing', swimming: 'Swimming', crafting: 'Crafting',
     stealth: 'Stealth', intimidation: 'Intimidation',
+    // AUDIT-13 §16 N17-N22.
+    angling: 'Angling', mimicry: 'Mimicry', bartering: 'Bartering', weathercraft: 'Weathercraft',
+    teaching: 'Teaching', resting: 'Resting',
 };
 
 /** A5: four tabs, defaulting to Overview. */
@@ -457,6 +461,16 @@ export function TributeModal({ tribute, gameState, onClose, onShowInChronicle, o
                                     and sponsor trust, and a floor on their training score.
                                 </Explainer>
                             )}
+                            {/* AUDIT-13 S2: the record book's carry-over, on the tribute it touches. One chip, the detail in its explainer. */}
+                            {(() => {
+                                const badges = returningBadges(gameState, tribute);
+                                if (badges.length === 0) return null;
+                                return (
+                                    <Explainer align="left" label={<span className="chip chip-gold" data-testid="carry-over-badge">{badges[0]}</span>} title="From earlier Games">
+                                        {badges.join('. ')}. Carried in from your record book at the reaping.
+                                    </Explainer>
+                                );
+                            })()}
                             <Explainer
                                 align="left"
                                 label={<span className="chip chip-accent">{archetype.name}</span>}

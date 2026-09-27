@@ -6,6 +6,7 @@ import { tickRescueAftermath, tickRescueLines } from '../rescueLine';
 import { enforceCapacity } from '../items';
 import { decayMemories, decayRelationships, decaySuspicion } from '../memory';
 import { tickTraitHooks } from '../traitHooks';
+import { tickAudit13Content } from '../audit13Content';
 import { decayFear } from '../fear';
 import { decayAllianceRegard, decayTrust } from '../relationships';
 import { tickForecasts } from '../hazardChain';
@@ -74,6 +75,8 @@ export function postActionUpkeep(ctx: SimContext) {
     // splint, the cost of Hiding), ahead of the rescue window so a lure that
     // puts somebody down leaves them inside it.
     tickTraitHooks(ctx);
+    // AUDIT-13 §16: the new traits', archetypes' and stances' per-cycle half.
+    tickAudit13Content(ctx);
     tickRescueLines(ctx);
     tickDowned(ctx);
     // ...and the beat a cycle or two later that reads what actually happened.

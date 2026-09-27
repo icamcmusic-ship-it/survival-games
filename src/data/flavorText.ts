@@ -573,6 +573,31 @@ export const CAESAR_QUESTIONS = {
             'Caesar asks {tribute} whether they are afraid of the mutts. {tribute} says animals are only frightening if you do not know what they want.',
             '"You grew up around animals?" Caesar asks. {tribute} says they grew up around things that bite, and that people are most of them.',
         ],
+        // AUDIT-13 §16 N17-N22.
+        angling: [
+            'Caesar asks {tribute} what they would do with a river. {tribute} says eat out of it, and describes how, and the audience goes quiet in the way it does for real knowledge.',
+            '"Patient with a line?" Caesar asks. {tribute} says the fish decide how patient, and they have never once been in a hurry.',
+        ],
+        mimicry: [
+            'Caesar asks {tribute} for a party trick. {tribute} says something in Caesar\'s own voice, and the laugh from the audience comes a beat too late.',
+            '"Could you fool somebody out there?" Caesar asks. {tribute} answers in a voice that is not theirs, and then in theirs: "I just did."',
+        ],
+        bartering: [
+            'Caesar asks {tribute} what they would trade for a way out. {tribute} asks what he is offering, and the audience enjoys watching him not have an answer.',
+            '"You drive a hard bargain?" Caesar asks. {tribute} says they drive a fair one, slowly, until the other person agrees it was fair.',
+        ],
+        weathercraft: [
+            'Caesar asks {tribute} what the weather will be tomorrow. {tribute} tells him, and it is a better forecast than the one on the Capitol screens.',
+            '"Does the cold bother you?" Caesar asks. {tribute} says the cold is only a problem for people who did not see it coming.',
+        ],
+        teaching: [
+            'Caesar asks {tribute} who taught them. {tribute} names three people, and then says they have taught more than that, and most of them are younger.',
+            '"Are you a leader?" Caesar asks. {tribute} says no, but they know how to make one, which is not the answer he wanted.',
+        ],
+        resting: [
+            'Caesar asks {tribute} how they are sleeping. {tribute} says well, every night, on purpose, and the audience laughs as if it were a joke.',
+            '"Nerves?" Caesar asks. {tribute} says nerves are for people who have not learned to put their head down when they can.',
+        ],
     },
     /** Keyed on the district's trade, so a tribute is asked about home properly. */
     district: [
@@ -2424,6 +2449,17 @@ export const GONG_DECISIONS = {
         '{tribute} finds cover at the edge of the ring and waits for the horn to thin out.',
         '{tribute} does not run at {horn} or away from it. They get out of the open and watch.',
     ],
+    /** AUDIT-13 T5: beside the person they swore to, between them and the ring. */
+    shield: [
+        '{tribute} goes to {other} at the gong and stays a half-step in front of them the whole way out of the ring.',
+        '{tribute} ignores {horn}. The only job {tribute} has in the first minute is keeping anybody off {other}.',
+        '{tribute} puts themself between {other} and the charge, and takes the first shove meant for them.',
+        '{tribute} and {other} leave the ring together, {tribute} walking backwards, watching everything that moves.',
+        '{tribute} reaches {other} and does not let anybody closer than arm’s length until they are clear.',
+        '{tribute} spends the first minute of the Games facing outwards, with {other} at their back.',
+        '{tribute} lets {horn} go without a look. {other} is the only thing in the ring worth guarding.',
+        '{tribute} catches {other} by the collar as they stumble off the plate and does not let go until the trees.',
+    ],
 } as const;
 
 export const BLOODBATH_TEXTS = {
@@ -3753,7 +3789,7 @@ export const DEBT_TEXTS = {
         "The {item} is the best thing {debtor} owns, which is why it is the only acceptable payment. {creditor} receives it in {zone} with the gravity it deserves.",
         "\"For the river,\" {debtor} says in {zone} — or the fire, or the night watch, whichever it was — and the {item} settles the account with {creditor}.",
         "{creditor} tries to wave it off. {debtor} sets the {item} down between them in {zone} and does not pick it back up. Some ledgers insist on closing.",
-        "What {creditor} did was worth more than an {item}. The {item} is what {debtor} has, in {zone}, and both of them let it stand for the rest.",
+        "What {creditor} did was worth more than anything in a pack. {debtor} hands over the {item} in {zone} anyway, and both of them let it stand for the rest.",
         "{debtor} has carried the debt longer than the {item}. In {zone}, finally, they get to put both down.",
     ],
     repayWatch: [

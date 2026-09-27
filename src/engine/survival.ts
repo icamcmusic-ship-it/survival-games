@@ -1,4 +1,5 @@
 import { Tribute, attr } from '../models/types';
+import { noteRest, restingFatigue, restingSanity } from './audit13Content';
 import { rationMeal, rationingDrain } from './traitHooks';
 import { ARENA_LAWS, CAREER_APPETITE, ZONES, POISONING, FATIGUE_MISTAKES, SANITY_BANDS, DRIFT, CRAFTING, INJURY_DAMAGE, INVENTORY, MEDICAL, QUELL_MECHANICS, RECOVERY, SANITY, TESSERAE, TOOLS, TRAIT_EFFECTS, UNIVERSAL_DEATHS, VITALS, WATER, SITUATIONAL_KIT , AUDIT12_TRIBUTES } from '../data/balance';
 import { SimContext, getAlive } from './context';
@@ -22,6 +23,7 @@ import { fearOf } from './fear';
 import { hasCamp } from './fieldcraft';
 import { applySepsisDrain, isSeptic, tickInfection, treatInfection } from './infection';
 import { SURVIVAL_TEXTS } from '../data/flavorText';
+import { skinCause } from '../data/causeSkins';
 import { fill } from './encounters';
 import { craftOf } from '../data/districts';
 import { traitMod } from '../data/traits';
@@ -172,7 +174,7 @@ function drainsFor(ctx: SimContext, t: Tribute, time: 'day' | 'night') {
     // AUDIT-12 §16: the Rationing skill.
     hunger -= rationingDrain(t);
     thirst += traitMod(t, 'thirstDrain');
-    fatigue += time === 'night' ? traitMod(t, 'fatigueNight') : traitMod(t, 'fatigueDay');
+    fatigue += time === 'night' ? traitMod(t, 'fatigueNight') - restingFatigue(t) : traitMod(t, 'fatigueDay');
     // Younger tributes burn through rations faster and sleep worse.
     if (t.age <= TRAIT_EFFECTS.youngAge) {
         hunger += TRAIT_EFFECTS.youngHungerPenalty;
@@ -397,7 +399,7 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
             : undefined;
         const bleedCause = opener
             ? `Bled out from a wound ${opener.name} opened`
-            : 'Bled out from untreated wounds';
+            : skinCause(ctx.state.arena.id, 'bleeding', t.id, 'Bled out from untreated wounds');
         if (applyDamage(ctx, t, bleedDamage(t), {
             cause: bleedCause,
             kind: 'status', code: 'bleeding',
@@ -407,18 +409,18 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
         }
     }
     if (t.injuries.infected) {
-        if (applyDamage(ctx, t, INJURY_DAMAGE.infected * gradeDamageScale(t, 'infected'), { cause: 'Succumbed to an infected wound', kind: 'status', code: 'infection' })) {
+        if (applyDamage(ctx, t, INJURY_DAMAGE.infected * gradeDamageScale(t, 'infected'), { cause: skinCause(ctx.state.arena.id, 'infection', t.id, 'Succumbed to an infected wound'), kind: 'status', code: 'infection' })) {
             reliefFor(t, 'infected');
         }
     }
     if (t.injuries.poisoned) {
-        if (applyDamage(ctx, t, INJURY_DAMAGE.poisoned * gradeDamageScale(t, 'poisoned'), { cause: 'Succumbed to poison', kind: 'status', code: 'poison' })) {
+        if (applyDamage(ctx, t, INJURY_DAMAGE.poisoned * gradeDamageScale(t, 'poisoned'), { cause: skinCause(ctx.state.arena.id, 'poison', t.id, 'Succumbed to poison'), kind: 'status', code: 'poison' })) {
             reliefFor(t, 'poisoned');
         }
         loseSanity(t, INJURY_DAMAGE.poisonSanity);
     }
     if (t.injuries.burned) {
-        if (applyDamage(ctx, t, INJURY_DAMAGE.burned * gradeDamageScale(t, 'burned'), { cause: 'Died of untreated burns', kind: 'status', code: 'burns' })) {
+        if (applyDamage(ctx, t, INJURY_DAMAGE.burned * gradeDamageScale(t, 'burned'), { cause: skinCause(ctx.state.arena.id, 'burns', t.id, 'Died of untreated burns'), kind: 'status', code: 'burns' })) {
             reliefFor(t, 'burned');
         }
     }
@@ -436,7 +438,7 @@ function applyStatusDamage(ctx: SimContext, t: Tribute) {
                 [t.id],
                 { category: 'survival' }
             );
-        } else if (applyDamage(ctx, t, INJURY_DAMAGE.frostbitten * gradeDamageScale(t, 'frostbitten'), { cause: 'Froze to death', kind: 'status', code: 'hypothermia' })) {
+        } else if (applyDamage(ctx, t, INJURY_DAMAGE.frostbitten * gradeDamageScale(t, 'frostbitten'), { cause: skinCause(ctx.state.arena.id, 'hypothermia', t.id, 'Froze to death'), kind: 'status', code: 'hypothermia' })) {
             reliefFor(t, 'frostbitten');
         }
     }
@@ -570,7 +572,9 @@ function consumeSupplies(ctx: SimContext, t: Tribute) {
     }
     if (t.vitals.hunger > VITALS.eatThreshold) {
         // AUDIT-12 §16: a Rationer eats half and keeps the other half.
-        const food = rationMeal(ctx, t) === 'saved'
+        // AUDIT-13 N34: ...and somebody who never eats the last of anything does not.
+        const meal = rationMeal(ctx, t);
+        const food = meal === 'skip' ? undefined : meal === 'saved'
             ? t.inventory.find(i => i.type === 'food')
             : consumeOne(t, i => i.type === 'food');
         if (food) {
@@ -820,6 +824,8 @@ function applyNaturalRecovery(ctx: SimContext, t: Tribute, time: 'day' | 'night'
     if (t.injuries.bleeding || t.injuries.infected || t.injuries.poisoned) return;
     if (t.vitals.hunger > RECOVERY.maxHunger || t.vitals.thirst > RECOVERY.maxThirst) return;
 
+    // AUDIT-13 N22: a night that qualifies is what the `resting` skill is made of.
+    noteRest(t, ctx);
     let amount = RECOVERY.nightHeal + Math.max(0, traitMod(t, 'sanityRecovery') / 2);
     const zone = getZone(ctx.state.arena, t.zone);
     if (zone && (zone.terrain === 'forest' || zone.terrain === 'ruins')) amount += RECOVERY.shelteredBonus;
@@ -947,7 +953,7 @@ function applySanityPressure(ctx: SimContext, t: Tribute, time: 'day' | 'night',
 
     // Temperament on the way up. On the way down it is applied inside
     // `loseSanity`, with every other loss in the game.
-    if (recovery > 0) recovery += traitMod(t, 'sanityRecovery');
+    if (recovery > 0) recovery += traitMod(t, 'sanityRecovery') + restingSanity(t);
 
     /**
      * Audit 4 §3.2: the gauge and the thirty scattered subtractions are one

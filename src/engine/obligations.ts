@@ -1,4 +1,5 @@
 import { GameState, Obligation, Tribute } from '../models/types';
+import { noteDealDone } from './audit13Content';
 import { oathHolds } from './traitHooks';
 import { SimContext, getAlive } from './context';
 import { AUDIT12_TRIBUTES, OBLIGATIONS } from '../data/balance';
@@ -167,6 +168,8 @@ export function keep(ctx: SimContext, o: Obligation, line: string) {
         // Trust is reliance, which is exactly what a kept promise buys.
         adjustTrust(to, from.id, OBLIGATIONS.keptTrust);
     }
+    // AUDIT-13 N19: a deal carried through is how `bartering` is learned.
+    noteDealDone(from, to, ctx);
     ctx.logEvent(line, [o.owedById, o.owedToId], { type: 'obligation-kept', category: 'alliance' });
 }
 

@@ -146,16 +146,70 @@ function fillGroups(template: string, groups: string[]): string {
  * The line to log instead of `text`: a variant of a fixed beat when `text` is
  * one, drawn through `pickText`; otherwise `text` unchanged.
  */
-export function rotateFixedBeat(pickText: (pool: string[]) => string, text: string): string {
+export function rotateFixedBeat(pickText: (pool: string[]) => string, text: string, commentator?: string): string {
     const crowd = CROWD_POOLS.get(text);
     if (crowd) return pickText(crowd);
     for (const beat of FIXED_BEATS) {
         const m = beat.pattern.exec(text);
         if (!m) continue;
-        return fillGroups(pickText(beat.variants), m.slice(1));
+        // AUDIT-13 P4: a commentator re-skins the beat from their own pool.
+        // Still drawn through `pickText`, so only the prose stream moves.
+        const voiced = commentator ? COMMENTATOR_BEATS[commentator]?.[beat.variants[0]] : undefined;
+        return fillGroups(pickText(voiced ?? beat.variants), m.slice(1));
     }
     return text;
 }
+
+/**
+ * AUDIT-13 P4: commentator personas. Each voice re-skins the fixed beats that
+ * fire in every run (keyed by the beat's original wording), so the same seed
+ * reads differently under a different voice. Groups are the same `{n}` as the
+ * beat's own variants, and every variant names exactly the same people.
+ */
+const COMMENTATOR_BEATS: Record<string, Record<string, string[]>> = {
+    showman: {
+        [FIXED_BEATS[0].variants[0]]: [
+            'And there it is, the gong! {1} tributes explode off their plates, and Panem holds its breath!',
+            'The gong! {1} of them, running! Ladies and gentlemen, the Games have begun!',
+        ],
+        [FIXED_BEATS[1].variants[0]]: [
+            '{1} cannon(s)! What an opening, what a bloodbath, and we have barely started!',
+            'Count them with me: {1} cannon(s). The Capitol has not seen a horn like it in years!',
+        ],
+        [FIXED_BEATS[3].variants[0]]: [
+            'Heartbreak for District {2}! {3} is gone, and {1} carries the whole district now!',
+            '{3} falls, and all eyes turn to {1}: the last hope of District {2}!',
+        ],
+    },
+    archivist: {
+        [FIXED_BEATS[0].variants[0]]: [
+            'Gong. {1} tributes leave the plates. The record begins.',
+            'The gong is logged. {1} tributes in motion.',
+        ],
+        [FIXED_BEATS[1].variants[0]]: [
+            'Bloodbath closed. {1} cannon(s), entered in the ledger.',
+            'End of the bloodbath: {1} cannon(s). Consistent with the recent average.',
+        ],
+        [FIXED_BEATS[3].variants[0]]: [
+            'District {2}: {3} deceased. {1} remains, the only entry left for the district.',
+            '{3} is struck from the District {2} column. {1} is the column now.',
+        ],
+    },
+    rebel: {
+        [FIXED_BEATS[0].variants[0]]: [
+            'The gong. {1} children are sent running at each other, and the Capitol calls it a show.',
+            'They ring the gong. {1} kids from home run because running is the only choice they were given.',
+        ],
+        [FIXED_BEATS[1].variants[0]]: [
+            '{1} cannon(s). That is {1} families who will get a box and a speech.',
+            'The bloodbath is over: {1} cannon(s). Somebody in the Capitol is refilling their glass.',
+        ],
+        [FIXED_BEATS[3].variants[0]]: [
+            'District {2} has lost {3}. {1} is all that is left of what the Capitol took from them this year.',
+            '{3} is dead. Remember the name. {1} is still out there for District {2}.',
+        ],
+    },
+};
 
 /** For tests and coverage scripts: how many variants each fixed beat carries. */
 export const FIXED_BEAT_VARIANT_COUNTS: number[] = FIXED_BEATS.map(b => b.variants.length);

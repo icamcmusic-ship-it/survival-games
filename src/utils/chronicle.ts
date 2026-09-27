@@ -58,13 +58,19 @@ export interface ChronicleFilter {
     importantOnly?: boolean;
     /** §2.7: "everything involving Rue" — one tribute's whole story. */
     tributeId?: string;
+    /** AUDIT-13 Q8: one chronicle page — a single (day, phase). */
+    page?: { day: number; phase: string };
+}
+
+function passesExportFilter(l: EventLog, f: ChronicleFilter): boolean {
+    return (!f.importantOnly || l.important)
+        && (!f.tributeId || l.tributesInvolved.includes(f.tributeId))
+        && (!f.page || (l.day === f.page.day && l.phase === f.page.phase));
 }
 
 export function chronicleMarkdown(state: GameState, filter: boolean | ChronicleFilter = false, facts = false): string {
     const f: ChronicleFilter = typeof filter === 'boolean' ? { importantOnly: filter } : filter;
-    const logs = state.log.filter(l =>
-        (!f.importantOnly || l.important)
-        && (!f.tributeId || l.tributesInvolved.includes(f.tributeId)));
+    const logs = state.log.filter(l => passesExportFilter(l, f));
     const byId = castLookup(state);
     const followed = f.tributeId ? state.tributes.find(t => t.id === f.tributeId) : undefined;
     const lines: string[] = [
@@ -112,9 +118,7 @@ export function chronicleText(
     if (format === 'prose') return chronicleProse(state, filter);
 
     const f: ChronicleFilter = typeof filter === 'boolean' ? { importantOnly: filter } : filter;
-    const logs = state.log.filter(l =>
-        (!f.importantOnly || l.important)
-        && (!f.tributeId || l.tributesInvolved.includes(f.tributeId)));
+    const logs = state.log.filter(l => passesExportFilter(l, f));
     const byId = castLookup(state);
     const bb = format === 'bbcode';
 
@@ -160,9 +164,7 @@ export function chronicleText(
  */
 export function chronicleProse(state: GameState, filter: boolean | ChronicleFilter = false): string {
     const f: ChronicleFilter = typeof filter === 'boolean' ? { importantOnly: filter } : filter;
-    const logs = state.log.filter(l =>
-        (!f.importantOnly || l.important)
-        && (!f.tributeId || l.tributesInvolved.includes(f.tributeId)));
+    const logs = state.log.filter(l => passesExportFilter(l, f));
     const { finished, winners } = outcomeOf(state);
     const subject = f.tributeId ? state.tributes.find(t => t.id === f.tributeId) : undefined;
 

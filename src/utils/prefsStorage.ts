@@ -11,6 +11,7 @@ import {
     readStored, writeStored,
 } from './storage';
 import { parseMutators, GAUNTLET_MAX_MUTATORS } from '../data/mutators';
+import { COMMENTATOR_IDS, SCENARIO_CARDS } from '../data/replayCards';
 
 export const STARTING_COINS = 1000;
 
@@ -156,6 +157,9 @@ export const CONFIG_SPEC: StorageSpec<GameConfig> = {
             // AUDIT-11 §12: the mutator cards the player last chose.
             mutators: Array.isArray(r.mutators) ? parseMutators(r.mutators.join(','), r.gauntlet === true ? GAUNTLET_MAX_MUTATORS : undefined) : undefined,
             ...(r.gauntlet === true ? { gauntlet: true } : {}),
+            // AUDIT-13 P1/P4: the scenario card and commentator the player last chose.
+            ...(typeof r.scenario === 'string' && SCENARIO_CARDS.some(c => c.id === r.scenario) ? { scenario: r.scenario } : {}),
+            ...(typeof r.commentator === 'string' && COMMENTATOR_IDS.includes(r.commentator) ? { commentator: r.commentator } : {}),
         };
     },
 };

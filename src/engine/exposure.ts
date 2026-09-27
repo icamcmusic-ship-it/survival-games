@@ -1,4 +1,5 @@
 import { earnTrait } from './earnedTraits';
+import { exposureScale } from './audit13Content';
 import { DeathCauseCode, Tribute } from '../models/types';
 import { injure } from './wounds';
 import { CLIMATE, CRAFTING, PHYSIQUE, PROFICIENCY, TOOLS , EARNED_TRAIT_RULES } from '../data/balance';
@@ -12,6 +13,7 @@ import { clampTribute } from './vitals';
 import { heatBurden, insulation, massOf } from './physique';
 import { traitMod } from '../data/traits';
 import { loseSanity } from './sanityBands';
+import { skinCause } from '../data/causeSkins';
 
 /**
  * One exposure system, used by both the arena's own climate and the
@@ -94,7 +96,8 @@ export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProf
     // real edge off the weather even with no built camp; bare flats take none.
     const zone = getZone(ctx.state.arena, t.zone);
     const zoneShelterScale = zone ? 1 - (zoneFeatures(zone).shelterQuality ?? 0) * PHYSIQUE.zoneShelterExposureReduction : 1;
-    const scale = (profile.intensity ?? 1) * shelterScale * zoneShelterScale;
+    // AUDIT-13 N20 / N23 / N37: weathercraft, a kept hearth, and Sheltering.
+    const scale = (profile.intensity ?? 1) * shelterScale * zoneShelterScale * exposureScale(ctx, t);
     const amount = (value: number | undefined) => Math.round((value ?? 0) * scale);
     const isHeat = !!profile.thirst || !!profile.heat;
 
@@ -162,7 +165,16 @@ export function applyExposure(ctx: SimContext, t: Tribute, profile: ExposureProf
     }
 
     if (profile.damage && (profile.damageChance === undefined || ctx.rng.chance(profile.damageChance * scale))) {
-        applyDamage(ctx, t, amount(profile.damage), { cause: profile.cause, code: profile.code, kind: 'climate' });
+        // AUDIT-13 W3: the standing climate's bare "Froze to death" (climate.ts)
+        // speaks in the arena's words; a named front or snap keeps its own.
+        const climateCause = profile.cause === 'Froze to death'
+            ? skinCause(ctx.state.arena.id, 'hypothermia', t.id, profile.cause)
+            : profile.cause;
+        applyDamage(ctx, t, amount(profile.damage), {
+            cause: climateCause,
+            code: profile.code ?? (climateCause !== profile.cause ? 'hypothermia' : undefined),
+            kind: 'climate',
+        });
     }
     // §7: heatstroke. A heat profile is one that works by taking water; a
     // tribute already parched and spent under it can collapse outright.

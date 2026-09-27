@@ -45,7 +45,18 @@ function gatherFacts(ctx: SimContext, winner: Tribute): RunFacts {
     const byId = new Map(ctx.state.tributes.map(t => [t.id, t]));
     const involving = (l: EventLog) => l.tributesInvolved.includes(winner.id);
 
-    const kills = log.filter(l => l.category === 'kill' && involving(l));
+    let kills = log.filter(l => l.category === 'kill' && involving(l));
+    // AUDIT-13: a kill the victor is credited with can land without a
+    // 'kill'-category line (a bleed-out or an arena finish logged as a death).
+    // Fall back to the death lines naming both the victor and one of their
+    // victims, so the interview still has the moment to quote.
+    if (kills.length === 0 && winner.kills > 0) {
+        const victims = new Set(ctx.state.tributes
+            .filter(t => t.status === 'dead' && t.lastDamage?.sourceId === winner.id)
+            .map(t => t.id));
+        kills = log.filter(l => involving(l) && l.tributesInvolved.some(id => victims.has(id))
+            && (l.category === 'death' || l.category === 'combat'));
+    }
     const betrayals = log.filter(l => l.category === 'betrayal' && involving(l));
     const sponsorGifts = log.filter(l => l.category === 'sponsor' && involving(l));
     const romance = [...log].reverse().find(l => l.category === 'romance' && involving(l));

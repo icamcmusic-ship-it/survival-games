@@ -4,7 +4,7 @@ import { RNG } from '../../utils/rng';
 import {
     CHARIOT_ANGLES, DISTRICT_SALUTE, DISTRICT_TOKENS, GOODBYE_SCENES, REAPING_CROWDS, STYLISTS, TRAIN_SCENES,
 } from '../../data/pregames';
-import { CONTINUITY, PREGAMES } from '../../data/balance';
+import { AUDIT13_ARENA, CONTINUITY, PREGAMES } from '../../data/balance';
 import { addExcitement } from '../audience';
 import { adjustRel, getRel } from '../relationships';
 import { clampTribute } from '../vitals';
@@ -14,6 +14,7 @@ import { resolveContinuity, standingEffect, standingLine } from '../continuity';
 import { addNotoriety } from '../notoriety';
 import { applyCampaignArc, campaignOf } from '../campaign';
 import { applyLedgerAtReaping } from '../season/carry';
+import { applyScenario } from '../season/scenarios';
 import { directorTaste } from '../../data/directors';
 import { ordinal } from '../gamesProfile';
 import { loseSanity } from '../sanityBands';
@@ -158,6 +159,7 @@ export function processSquare(ctx: SimContext) {
         adjustRel(a, b.id, Math.min(0, regard - getRel(a, b.id)));
         adjustRel(b, a.id, Math.min(0, regard - getRel(b, a.id)));
     }).forEach(line => ctx.logEvent(line.text, line.ids, { important: true, category: 'system' }));
+    applyScenario(ctx, cast); // AUDIT-13 P1: the scenario card, before the ledger reads the cast
     applyLedgerAtReaping(ctx, cast); // AUDIT-12 wave 3: apprenticeships, reunions, rivalries, nemeses
 
     // §10.4: the small continuity thread. Somebody from this district died in
@@ -246,6 +248,17 @@ export function processSquare(ctx: SimContext) {
     });
 
     // ---- 2. The goodbye room ----
+    // AUDIT-13 W9: 24 tributes drawing from a pool of about 30 scenes fired
+    // nearly the whole pool every run. The broadcast features a handful — the
+    // volunteers first, then whoever the cameras pick — and the rest of the
+    // room goes by in one line. The mechanical effect of the visit still
+    // applies to everybody; only the narration is capped.
+    const featured = new Set([
+        ...cast.filter(t => t.volunteered),
+        // Its own stream, so choosing who is filmed moves nothing else in the run.
+        ...new RNG(`${ctx.state.seed}-goodbye-featured`).shuffle(cast.filter(t => !t.volunteered)),
+    ].slice(0, AUDIT13_ARENA.goodbyeFeatured).map(t => t.id));
+    const unfeatured: string[] = [];
     cast.forEach(t => {
         // §6.9: the district token, pressed into their hands here. Stored on
         // the tribute so the broadcast can find it again — at the sheet, at
@@ -274,7 +287,8 @@ export function processSquare(ctx: SimContext) {
         }
         const scene = ctx.pickText(GOODBYE_SCENES);
         const alone = scene.startsWith('Nobody comes');
-        ctx.logEvent(fill(scene, { tribute: t.name }), [t.id], { category: 'sanity' });
+        if (featured.has(t.id)) ctx.logEvent(fill(scene, { tribute: t.name }), [t.id], { category: 'sanity' });
+        else unfeatured.push(t.id);
         if (alone) {
             loseSanity(t, PREGAMES.aloneGoodbyeSanity);
             // The Capitol has always liked a tribute nobody came for.
@@ -284,6 +298,15 @@ export function processSquare(ctx: SimContext) {
         }
         clampTribute(t);
     });
+    if (unfeatured.length > 0) {
+        const names = unfeatured.map(id => cast.find(t => t.id === id)!.name);
+        ctx.logEvent(
+            `The cameras do not stay for the rest of the goodbyes. ${names.length === 1 ? names[0] : `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`} `
+            + `get their hour in the room with whoever came, and the Capitol does not see any of it.`,
+            unfeatured,
+            { category: 'sanity' }
+        );
+    }
 
 }
 

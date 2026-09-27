@@ -146,6 +146,40 @@ export interface MentorArena {
     bestSkill?: string;
 }
 
+/** AUDIT-13 S5: one daily seed, as it went. */
+export interface DailyResult {
+    /** Local calendar date, YYYY-MM-DD. */
+    date: string;
+    seed: string;
+    victorName?: string;
+    victorDistrict?: number;
+    /** Whether the player's slip named the victor; absent when no slip was filled. */
+    pickRight?: boolean;
+}
+
+/** AUDIT-13 S7: the season's own bankroll, bought into from the slip bankroll. */
+export interface SeasonBank {
+    number: number;
+    buyIn: number;
+    /** Slip points won less stakes, across this season's Games so far. */
+    net: number;
+    games: number;
+}
+
+/** AUDIT-13 P8: an arena incident that leaves a mark on the arena. */
+export interface ArenaScar {
+    kind: 'wipeout' | 'override';
+    zone: string;
+    run: number;
+}
+
+/** AUDIT-13 P5/P6: the best score a weekly rules card, or a draft, has made. */
+export interface BestScore {
+    score: number;
+    max: number;
+    key: string;
+}
+
 /** What persists in the record book. Every field optional. */
 export interface SeasonLedger {
     apprenticeships?: Record<number, ApprenticeChoice>;
@@ -163,6 +197,25 @@ export interface SeasonLedger {
     announcedQuell?: AnnouncedQuell;
     mentorArenas?: Record<number, MentorArena>;
     upsetRewards?: number;
+    /** AUDIT-13 S5: dailies played, newest first, and the running streak of consecutive days. */
+    dailyHistory?: DailyResult[];
+    /** AUDIT-13 S7: this season's bankroll, and the closed seasons' results, best first. */
+    seasonBank?: SeasonBank;
+    seasonBoard?: Array<{ number: number; net: number }>;
+    /** AUDIT-13 P3: per-district legacy drift from crowns across seasons (+ up, - down). */
+    legacyDrift?: Record<number, number>;
+    /** AUDIT-13 P8: incidents that scarred an arena, keyed like the museum. */
+    arenaScars?: Record<string, ArenaScar[]>;
+    /** AUDIT-13 P5: the best slip under each week's rules card, keyed by week. */
+    weeklyBest?: BestScore;
+    /** AUDIT-13 P6: the best draft, and how many drafts have been scored. */
+    draftBest?: BestScore;
+    draftsPlayed?: number;
+    /** AUDIT-13 P1: scenario cards whose own achievement has been won. */
+    scenariosWon?: string[];
+    /** AUDIT-13 §14: districts a season has seen win three Games, for Three Crowns. */
+    seasonCrowns?: Record<number, number>;
+    bestSeasonCrowns?: number;
 }
 
 /** The slice of the ledger a run is created under. */
@@ -177,6 +230,10 @@ export interface CampaignLedger {
     seasonMutator?: string;
     mentorArenas?: Record<number, MentorArena>;
     oldVictorCache?: VictorCache;
+    /** AUDIT-13 P3: legacy drift, read by the sponsor blocs. */
+    legacyDrift?: Record<number, number>;
+    /** AUDIT-13 P8: incidents that scarred each arena, keyed like the museum. */
+    arenaScars?: Record<string, ArenaScar[]>;
 }
 
 export interface KillLedgerEntry {
@@ -194,6 +251,8 @@ export interface SeasonRunState {
     directorFired?: string[];
     /** 0-100: how hard the Gamemakers have leaned on the field. */
     cruelty?: number;
+    /** AUDIT-13 §14: the highest the meter reached this Games. */
+    crueltyPeak?: number;
     /** The cruelty meter's recent entries, newest last. */
     crueltyLog?: Array<{ cycle: number; amount: number; why: string }>;
     /** Multiplier on a bloc's generosity after its tribute died soon after a gift. */

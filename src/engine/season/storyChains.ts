@@ -83,7 +83,9 @@ function arenaKey(state: GameState): string {
 
 /** Which chain this arena is on, and from which step, given the campaign's memory of it. */
 export function chainFor(state: GameState): { chain: StoryChain; step: number } {
-    const saved = campaignOf(state.campaign).ledger?.storyChains?.[arenaKey(state)];
+    // AUDIT-13 S1: progress saved before the key fix sits under the arena's name.
+    const chains = campaignOf(state.campaign).ledger?.storyChains;
+    const saved = chains?.[arenaKey(state)] ?? chains?.[state.arena.name];
     const completed = saved?.completed ?? 0;
     const unfinished = saved && saved.step > 0 && saved.step < S.steps ? saved : undefined;
     const chain = (unfinished && STORY_CHAINS.find(c => c.id === unfinished.chainId))

@@ -6,7 +6,7 @@
  */
 import { createStore } from './createStore';
 import {
-    STORAGE_KEYS, StorageSpec, asBool, asRecord, asStr, asStrArray, readStored, writeStored,
+    STORAGE_KEYS, StorageSpec, asBool, asNum, asRecord, asStr, asStrArray, readStored, writeStored,
 } from '../utils/storage';
 
 export type Units = 'imperial' | 'metric';
@@ -128,6 +128,13 @@ export interface Prefs {
      * the oaths, the moments a mind actually goes.
      */
     quietSanity: boolean;
+    /**
+     * AUDIT-13 Q3: seconds between stages when the chronicle plays itself.
+     * The play state is per-visit; the pace is a preference.
+     */
+    chronicleAutoDelay: number;
+    /** AUDIT-13 Q10: the arena last started, prefilled on the next setup. */
+    lastArenaId: string | null;
 }
 
 /** §(requests): the chronicle's two registers. See `Prefs.chronicleStyle`. */
@@ -153,6 +160,8 @@ export const DEFAULT_PREFS: Prefs = {
     fullscreenOnStart: true,
     chronicleStyle: 'broadcast',
     quietSanity: true,
+    chronicleAutoDelay: 2,
+    lastArenaId: null,
 };
 
 /**
@@ -226,6 +235,8 @@ export const PREFS_SPEC: StorageSpec<Prefs> = {
             fullscreenOnStart: asBool(r.fullscreenOnStart, DEFAULT_PREFS.fullscreenOnStart),
             chronicleStyle: r.chronicleStyle === 'facts' ? 'facts' : DEFAULT_PREFS.chronicleStyle,
             quietSanity: asBool(r.quietSanity, DEFAULT_PREFS.quietSanity),
+            chronicleAutoDelay: Math.min(5, Math.max(1, Math.round(asNum(r.chronicleAutoDelay, DEFAULT_PREFS.chronicleAutoDelay)))),
+            lastArenaId: typeof r.lastArenaId === 'string' && r.lastArenaId.length <= 64 ? r.lastArenaId : null,
         };
     },
 };

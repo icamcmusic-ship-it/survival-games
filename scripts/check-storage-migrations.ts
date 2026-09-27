@@ -351,6 +351,18 @@ const FULL_LEDGER = {
     announcedQuell: { forRun: 14, quellId: 'the-reflection', announcedAfter: 12 },
     mentorArenas: { 11: { arenaId: 'reef', arenaName: 'Reef', terrain: 'water', bestSkill: 'swimming' } },
     upsetRewards: 1,
+    // AUDIT-13 S5/S7/P3/P5/P6/P8/§14.
+    dailyHistory: [{ date: '2026-09-26', seed: 'daily-2026-09-26', victorName: 'Rue', victorDistrict: 11, pickRight: true }],
+    seasonBank: { number: 2, buyIn: 10, net: 6, games: 3 },
+    seasonBoard: [{ number: 1, net: 12 }],
+    legacyDrift: { 11: 2.5, 1: -1 },
+    arenaScars: { reef: [{ kind: 'wipeout', zone: 'The Shoal', run: 9 }] },
+    weeklyBest: { key: 'week-2026-09-21', score: 9, max: 20 },
+    draftBest: { score: 14, max: 23, key: 'S1' },
+    draftsPlayed: 3,
+    scenariosWon: ['career-six'],
+    seasonCrowns: { 11: 2 },
+    bestSeasonCrowns: 2,
 };
 
 /*
@@ -434,6 +446,25 @@ test('a damaged season ledger is repaired field by field', () => {
     assert.equal(back.season?.number, 1);
     assert.equal(back.predictionBank?.bankroll, 0);
     assert.equal(back.announcedQuell, undefined, 'a Quell announcement with no Quell is dropped');
+});
+
+test('AUDIT-13: the new ledger fields repair member by member', () => {
+    const back = normalizeSeasonLedger({
+        dailyHistory: [{ date: '2026-09-26', seed: 'daily-2026-09-26', pickRight: 'yes' }, { date: 5 }, 'junk'],
+        seasonBank: { number: 'x' },
+        seasonBoard: [{ number: 1, net: 3 }, { number: 2 }],
+        legacyDrift: { 3: 99, 4: 'x' },
+        arenaScars: { reef: [{ kind: 'meteor', zone: 'Z' }, { kind: 'override', zone: 'Z', run: 2 }] },
+        scenariosWon: ['a', 'a', 3],
+        weeklyBest: { score: 3 },
+    })!;
+    assert.deepEqual(back.dailyHistory, [{ date: '2026-09-26', seed: 'daily-2026-09-26' }]);
+    assert.equal(back.seasonBank, undefined);
+    assert.deepEqual(back.seasonBoard, [{ number: 1, net: 3 }]);
+    assert.deepEqual(back.legacyDrift, { 3: 20 }, 'drift is clamped, junk dropped');
+    assert.deepEqual(back.arenaScars, { reef: [{ kind: 'override', zone: 'Z', run: 2 }] });
+    assert.deepEqual(back.scenariosWon, ['a']);
+    assert.equal(back.weeklyBest, undefined, 'a best score with no key is dropped');
 });
 
 test('the campaign-link ledger slice round-trips and drops what a run never reads', () => {
@@ -542,6 +573,8 @@ const FULL_CONFIG: Required<GameConfig> = {
     ageSpread: 2.5,
     mutators: ['blind-night', 'hazard-storm'],
     gauntlet: true,
+    scenario: 'career-six',
+    commentator: 'archivist',
 };
 
 test('CONFIG_KEYS covers every field on GameConfig', () => {

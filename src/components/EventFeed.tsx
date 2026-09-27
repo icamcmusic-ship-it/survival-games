@@ -99,10 +99,16 @@ export function stripZoneClause(text: string, zone: string): string {
     const z = zone.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     // " in {zone}", " at {zone}", " near {zone}", " of {zone}" etc., when
     // followed by punctuation or the end of a clause.
-    const stripped = text.replace(
-        new RegExp(`\\s+(?:in|at|near|inside|around|of|from|through|into) ${z}(?=[,.;:!?)\\s]|$)`, 'g'),
-        ''
-    );
+    const stripped = text
+        // AUDIT-13 U1: a comma-bounded clause (", in {zone},") goes whole,
+        // both commas with it — stripping only the middle left ",,".
+        .replace(new RegExp(`,\\s+(?:in|at|near|inside|around|of|from|through|into) ${z},`, 'g'), '')
+        .replace(
+            new RegExp(`\\s+(?:in|at|near|inside|around|of|from|through|into) ${z}(?=[,.;:!?)\\s]|$)`, 'g'),
+            ''
+        )
+        // Any doubled punctuation the strip still produced collapses to the stronger mark.
+        .replace(/,\s*([,.;:!?])/g, '$1');
     // Never strip down to something mangled — a template that *opens* with
     // the zone ("Sector 2 is on fire") keeps its subject.
     return stripped.trim().length >= 12 ? stripped : text;

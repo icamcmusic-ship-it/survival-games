@@ -8,7 +8,11 @@ import { massOf } from './physique';
 import { traitMod } from '../data/traits';
 
 // Item names that read as plurals and so take "some", not "a"/"an".
-const PLURAL_ITEM_IDS = new Set(['knife', 'berries', 'matches', 'bow']);
+// AUDIT-13 U7: every plural-named item, not just the first four ("an Throwing Axes").
+const PLURAL_ITEM_IDS = new Set([
+    'knife', 'berries', 'matches', 'bow',
+    'nightlock', 'bracers', 'tablets', 'iodine', 'crackers', 'bandages', 'fishing-kit', 'javelin', 'throwing-axes', 'bolas',
+]);
 
 /**
  * Turns an item into a grammatical noun phrase for the chronicle feed.
@@ -19,6 +23,15 @@ export function itemPhrase(item: Item): string {
     const name = displayName(item);
     if (PLURAL_ITEM_IDS.has(item.id)) return `some ${name}`;
     return `${/^[aeiou]/i.test(name) ? 'an' : 'a'} ${name}`;
+}
+
+/**
+ * AUDIT-13 U7: templates that open a sentence with {item} ("…what they raised.
+ * {item}, in {zone}.") read "raised. a Mace". Capitalise the first letter after
+ * a full stop (and at the very start) once the phrase is filled in.
+ */
+export function capitaliseSentences(text: string): string {
+    return text.replace(/(^|[.!?]\s+)([a-z])/g, (_m, lead: string, ch: string) => lead + ch.toUpperCase());
 }
 
 /**

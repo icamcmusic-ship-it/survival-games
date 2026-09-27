@@ -1,5 +1,5 @@
 import { Proficiency, Tribute } from '../models/types';
-import { PROFICIENCY } from './balance';
+import { AUDIT13_CONTENT, PROFICIENCY } from './balance';
 import { QUIRK_MODS } from './quirks';
 
 /**
@@ -154,8 +154,10 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         mods: { haggle: 0.25 },
     },
     'Shared-Burden': {
-        info: 'Will carry somebody. Volunteers for the injured ally and the long way round, and pays for it in exhaustion.',
-        mods: { allianceAffinity: 0.2 },
+        info: 'Will carry somebody. Volunteers for the injured ally and the long way round, and pays for it in exhaustion — and whoever they carried stands a little closer to them afterwards.',
+        // AUDIT-13 A14: all cost and no upside (4.63%, n=389). The person you
+        // carry covers you, and forgives you quicker.
+        mods: { allianceAffinity: 0.2, defended: 0.3, rapport: 0.2 },
     },
 
     // ---- deprivation and the body -------------------------------------
@@ -502,11 +504,15 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     },
     'Crowd-Pleaser': {
         info: 'Plays to the cameras. Sponsors like it; the people trying to hide from the cameras do not.',
-        mods: { sponsorAppeal: 1.5, excitement: 0.2, concealment: -0.05 },
+        // AUDIT-13 A13: appeal that never turned into parachutes (4.00%, n=400).
+        // The concealment cost goes; the appeal now reaches the sponsor line.
+        mods: { sponsorAppeal: 1.5, excitement: 0.2, sponsorTrust: 0.8 },
     },
     'Sleepless': {
-        info: 'Sleeps badly and wakes fast. Worse fatigue at night, far better awareness after dark, and the mind wears a little quicker.',
-        mods: { fatigueNight: 2, awarenessNight: 0.8, sanityDrain: 0.15 },
+        info: 'Wakes at the first noise. Far better awareness after dark, and harder to catch cold in the night — the mind wears a little quicker for it.',
+        // AUDIT-13 A5: this was Insomniac at a fifth of the size. It is now the
+        // cheap alternative to Sleepless Watch: it wakes, rather than it tires.
+        mods: { awarenessNight: 0.8, defended: 0.3, sanityDrain: 0.15 },
     },
     'Deep-Lunged': {
         info: 'A strong swimmer with a long breath. Prefers water when choosing where to go, and survives it.',
@@ -529,7 +535,8 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     // new hooks, so nothing here can be inert the way the pre-A2 table was.
     'Dead-Eyed': {
         info: 'Something behind the eyes has already left. Killing costs them almost nothing, and the field can tell.',
-        mods: { killSanity: -0.5, targetDraw: 0.6, allianceAffinity: -0.25, excitement: 0.15, intimidation: 1.2 },
+        // AUDIT-13 A15: social magnitude outlier (2.8 sd). Intimidation 1.2 -> 0.8.
+        mods: { killSanity: -0.5, targetDraw: 0.6, allianceAffinity: -0.25, excitement: 0.15, intimidation: 0.8 },
     },
     'Rope-Handed': {
         info: 'Grew up on lines and knots. Very hard to hold onto in a grapple, and their traps hold what other people\'s let go.',
@@ -680,7 +687,8 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         info: 'Earned in the current. Enough hard crossings and the water stops being an obstacle and starts being a road nobody else will take.',
         earned: true,
         // AUDIT-12 §7: magnitude outlier (3.4 sd) — every mod x0.7.
-        mods: { water: 1.05, concealment: 0.028, fatigueDay: -0.7 },
+        // AUDIT-13 A16: still 2.2 sd after it; a further x0.85.
+        mods: { water: 0.89, concealment: 0.024, fatigueDay: -0.6 },
     },
     'Silent Step': {
         info: 'Earned by simply never being found. Days of moving unseen have made quiet a habit rather than an effort.',
@@ -726,7 +734,9 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     },
     'Quiet Room': {
         info: 'Talks people round when nothing is happening, and not at all when something is. Persuasive out of a fight, useless in one.',
-        mods: { persuasion: 1.5, combatPower: -1 },
+        // AUDIT-13 A15: 2.7 sd, and the worst reaping trait at n=1,600 (1.07%,
+        // n=375): the combat cost is what sinks it. Both halves come down.
+        mods: { persuasion: 1.1, combatPower: -0.7 },
     },
     'Sworn Off': {
         info: 'Will not join anything early. Once they do, they stay — and the arena has usually thinned by then.',
@@ -851,7 +861,9 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     },
     'Horse Trader': {
         info: 'Knows what a thing is worth to the person who needs it, which is never what it is worth.',
-        mods: { haggle: 0.6, persuasion: 0.4 },
+        // AUDIT-13 A6: was a strict superset of Hard Bargain. Bargaining only,
+        // and the `bartering` skill (N19) is the ceiling above it.
+        mods: { haggle: 0.5 },
     },
     'Finisher': {
         info: 'Does not leave people on the ground. It costs them something every time and they do it anyway.',
@@ -1056,8 +1068,10 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         mods: { executeDrive: -0.35, griefResist: -0.15 },
     },
     'Grips Hard': {
-        info: 'Gets hold and does not let go. Dangerous with nothing in their hands and hard to shake off.',
-        mods: { wrestle: 0.2, unarmedPower: 1.5 },
+        info: 'Gets hold and does not let go. Very hard to disarm or throw off — a grip, not a punch.',
+        // AUDIT-13 A7: Grappler, Grips Hard and Wrestler were one trait at three
+        // sizes. This is the defensive one now.
+        mods: { wrestle: 0.6, unarmedPower: 0.5 },
     },
     'Fights Wounded': {
         info: 'Does not fight worse for bleeding. Everybody who reads them as finished is wrong once.',
@@ -1221,8 +1235,10 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         mods: { rumourCredibility: 0.3, trustGain: -0.1 },
     },
     'Long Memory': {
-        info: 'Remembers every face that ever hurt them. Hits harder against a sworn enemy, and grief lands heavier.',
-        mods: { vengeanceEdge: 1, griefResist: -0.1 },
+        info: 'Remembers every face that ever hurt them. A grudge fades half as fast, and grief lands heavier.',
+        // AUDIT-13 A8: Vengeful and Grudge-Fed already own `vengeanceEdge`.
+        // Long Memory owns how long a grudge lasts (`grudgeDecayScale`).
+        mods: { griefResist: -0.1 },
     },
     'Last-Light': {
         info: 'Does their best walking after dark, and pays for it at night.',
@@ -1235,6 +1251,75 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
     'Crowd-Shy': {
         info: 'Shrinks from a camera and from a crowd. Sponsors forget them, and so does the field.',
         mods: { sponsorAppeal: -0.8, concealment: 0.08, targetDraw: -0.5 },
+    },
+    /*
+     * AUDIT-13 §16 N1-N16: sixteen more. Every one carries an engine hook of
+     * its own, read in `engine/audit13Content.ts` or at the site that file's
+     * comment for it names; the mods row is the part that is only a number.
+     */
+    'Stitch-Fingered': {
+        info: 'Neat with a needle. Dresses a wound a little better, bleeds a little less, and an ally they have dressed stays clean for days afterwards.',
+        mods: { medicine: 0.08, bleedResist: 0.05 },
+    },
+    'Loud Heart': {
+        info: 'Laughs too loud and means it. Easy to find, easy to like — and anybody on their side standing next to them frightens less easily.',
+        mods: { concealment: -0.06, rapport: 0.3 },
+    },
+    'Bad Knee': {
+        info: 'An old injury that never set right. Worse at climbing, slower to break off, tired out by high ground — and never the one who walks the perimeter.',
+        mods: { retreat: -0.05 },
+    },
+    'Drowned Once': {
+        info: 'Went under once, as a child, and came up. Will not cross water unless the ground behind them is going, and feels the cold less than most.',
+        mods: { water: -1, coldResist: 0.15 },
+    },
+    'Mud-Skinned': {
+        info: 'Grew up in the reeds. Harder to see, and twice as hard in marsh or wetland — but not choosy about what gets in the mouth.',
+        mods: { concealment: 0.08, poisonResist: -0.05 },
+    },
+    'Bell-Voiced': {
+        info: 'A voice that carries across a valley. Better at running a group, easy to hear, and their people find their way back to them from further off.',
+        mods: { leadership: 0.3, concealment: -0.04 },
+    },
+    'Two-Faced': {
+        info: 'Tells everybody what they want to hear. Quicker to turn, slower to be suspected, and a story they pass on sometimes arrives in somebody else\'s mouth.',
+        mods: { treachery: 0.15, suspicionResist: 0.2 },
+    },
+    'Kin-Seeker': {
+        info: 'Looks for home in every face. Keen on company, and on the first day will not be refused by somebody from their own district.',
+        mods: { allianceAffinity: 0.25 },
+    },
+    'Ash-Lunged': {
+        info: 'Grew up breathing smoke. Smoke and ash hurt them half as much and fire a little less, but they tire by day and cannot sprint to save their life.',
+        mods: { burnResist: 0.2, fatigueDay: 1 },
+    },
+    'Tin Ear': {
+        info: 'Cannot hear the cannon properly, and does not listen for it. Never frightened by one, steadier in the head, and worse on a night watch.',
+        mods: { awarenessNight: -0.4, sanityDrain: -0.15 },
+    },
+    'Hunger-Sharp': {
+        info: 'Fights best on an empty stomach. Hungry, they hit harder and go hunting; they are hungry more often than most.',
+        mods: { hungerDrain: 0.5 },
+    },
+    'Borrowed Luck': {
+        info: 'Somebody up there likes them. Priced shorter, and the first blow of the Games that should kill them leaves them on the ground instead — once.',
+        mods: { odds: 0.8 },
+    },
+    'Bitter Root': {
+        info: 'Knows every root that will not kill you. Food the arena offers them is never the poisoned kind, though some of what they forage tastes like despair.',
+        mods: { forage: 0.05, poisonResist: 0.1 },
+    },
+    'Deadfall Mind': {
+        info: 'Thinks in triggers and weights. Better traps, better at waiting — and ground they hold with their own lines on it is a killing floor.',
+        mods: { trapSkill: 0.1, ambush: 0.04 },
+    },
+    'Slow Healer': {
+        info: 'Every cut takes its time. Wounds last longer and bandages take less well — but pain has never once talked them into quitting.',
+        mods: { resolveDrift: 0.2 },
+    },
+    'Keeps Watch Alone': {
+        info: 'Takes the whole night and will not hand it over. A far better watch after dark, especially when nobody shares it, and harder to share a camp with.',
+        mods: { awarenessNight: 0.8, allianceAffinity: -0.1 },
     },
 };
 
@@ -1316,6 +1401,17 @@ export function traitProficiencyFloor(t: Tribute, skill: Proficiency): number {
     return floor;
 }
 
+/**
+ * AUDIT-13 N3/N9: the other direction — a trait that names a competence the
+ * body will not allow. Subtracted in `profOf()`, floored at zero there.
+ */
+export function traitProficiencyPenalty(t: Tribute, skill: Proficiency): number {
+    let penalty = 0;
+    if (skill === 'climbing' && t.traits.includes('Bad Knee')) penalty += AUDIT13_CONTENT.badKneeClimbing;
+    if (skill === 'sprinting' && t.traits.includes('Ash-Lunged')) penalty += AUDIT13_CONTENT.ashLungSprinting;
+    return penalty;
+}
+
 /** Documentation lookup, tolerating a trait from an older save. */
 export function traitInfo(trait: string): string {
     return TRAIT_DEFS[trait]?.info ?? 'No recorded effect.';
@@ -1380,3 +1476,26 @@ export const isRationer = (t: { traits: string[] }) => t.traits.includes('Ration
 export const isCorneredRat = (t: { traits: string[] }) => t.traits.includes('Cornered Rat');
 export const isRumourMonger = (t: { traits: string[] }) => t.traits.includes('Rumour-Monger');
 export const isKnotTier = (t: { traits: string[] }) => t.traits.includes('Knot-Tier');
+
+/*
+ * AUDIT-13 §16 N1-N16: named predicates for the sixteen traits, read in
+ * `engine/audit13Content.ts` and at the sites that file names.
+ */
+export const isStitchFingered = (t: { traits: string[] }) => t.traits.includes('Stitch-Fingered');
+export const hasLoudHeart = (t: { traits: string[] }) => t.traits.includes('Loud Heart');
+export const hasBadKnee = (t: { traits: string[] }) => t.traits.includes('Bad Knee');
+export const drownedOnce = (t: { traits: string[] }) => t.traits.includes('Drowned Once');
+export const isMudSkinned = (t: { traits: string[] }) => t.traits.includes('Mud-Skinned');
+export const isBellVoiced = (t: { traits: string[] }) => t.traits.includes('Bell-Voiced');
+export const isTwoFaced = (t: { traits: string[] }) => t.traits.includes('Two-Faced');
+export const isKinSeeker = (t: { traits: string[] }) => t.traits.includes('Kin-Seeker');
+export const isAshLunged = (t: { traits: string[] }) => t.traits.includes('Ash-Lunged');
+export const hasTinEar = (t: { traits: string[] }) => t.traits.includes('Tin Ear');
+export const isHungerSharp = (t: { traits: string[] }) => t.traits.includes('Hunger-Sharp');
+export const hasBorrowedLuck = (t: { traits: string[] }) => t.traits.includes('Borrowed Luck');
+export const isBitterRoot = (t: { traits: string[] }) => t.traits.includes('Bitter Root');
+export const hasDeadfallMind = (t: { traits: string[] }) => t.traits.includes('Deadfall Mind');
+export const isSlowHealer = (t: { traits: string[] }) => t.traits.includes('Slow Healer');
+export const keepsWatchAlone = (t: { traits: string[] }) => t.traits.includes('Keeps Watch Alone');
+/** AUDIT-13 A8: the grudge that does not fade. */
+export const hasLongMemory = (t: { traits: string[] }) => t.traits.includes('Long Memory');

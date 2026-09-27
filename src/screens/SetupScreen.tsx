@@ -7,7 +7,7 @@ import { Play, ChevronDown, ChevronRight, ArrowRight, History, Lock } from 'luci
 import { gameActions, gameStore, readHallOfFame, readSavedRun } from '../store/gameStore';
 import type { SlotSummary } from '../store/gameStore';
 import { useStore } from '../store/createStore';
-import { enterFullscreen, prefsStore } from '../store/prefsStore';
+import { enterFullscreen, prefsStore, setPrefs } from '../store/prefsStore';
 import { Hint } from '../components/Hint';
 import { ConfirmButton } from '../components/ConfirmButton';
 import { resumeWithRecap } from '../ui/uiStore';
@@ -28,7 +28,7 @@ import { RNG } from '../utils/rng';
 import { QUELLS } from '../data/gamesProfile';
 import { MUTATORS as MUTATOR_DECK, MUTATORS_PER_GAMES, compatibleMutators, drawMutators, mutatorCap, mutatorConflict } from '../data/mutators';
 import { stackDifficulty } from '../engine/season/gauntlet';
-import { SetupSeasonPanel } from '../components/SeasonPanels';
+import { ArenaMasteryBadge, ChapterChip, SetupSeasonPanel } from '../components/SeasonPanels';
 
 /** §9 (audit): how many standing patronages the Capitol will sell one player. */
 const PATRON_MAX_DISTRICTS = COIN_ECONOMY.patronMaxDistricts;
@@ -348,7 +348,11 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
     const [patronPending, setPatronPending] = useState<number | null>(null);
     const [arenaBuyPending, setArenaBuyPending] = useState(false);
     const [arenaBought, setArenaBought] = useState<string | null>(null);
-    const [arenaId, setArenaId] = useState(ARENAS[0].id);
+    // AUDIT-13 Q10: the last arena started is where a new setup opens.
+    const [arenaId, setArenaId] = useState(() => {
+        const last = prefsStore.getState().lastArenaId;
+        return last && (ARENAS.some(a => a.id === last) || last === 'random-hidden') ? last : ARENAS[0].id;
+    });
     const [arenaFacet, setArenaFacet] = useState<'all' | 'unseen' | 'stacked' | 'blackout' | 'water' | 'small' | 'large'>('all');
     const [gamemakerMode, setGamemakerMode] = useState(false);
     const [forceQuell, setForceQuell] = useState(false);
@@ -430,6 +434,7 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
         // rather than anywhere that looks more like "app start". Silent if
         // refused; see `enterFullscreen`.
         if (prefs.fullscreenOnStart) enterFullscreen();
+        setPrefs({ lastArenaId: arenaId });
         onStart(trimmedSeed || randomSeed(), arenaId, gamemakerMode, config, forceQuell, forceQuell ? pinnedQuellId : null);
     };
 
@@ -682,7 +687,8 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                             </div>
                         );
                     })()}
-                    <SetupSeasonPanel config={config} setConfig={setConfig} onPickArena={(id: string) => setArenaId(id)} />
+                    <SetupSeasonPanel config={config} setConfig={setConfig} onPickArena={(id: string) => setArenaId(id)}
+                        arenaId={arenaId} onPlayRules={(s: string, id: string, c: GameConfig) => { setSeed(s); setArenaId(id); setConfig(c); }} />
                     {(() => {
                         // The Games profile is a pure function of the seed, so the
                         // temperament the player is committing to can be shown live.
@@ -907,6 +913,8 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                             <span className={`font-black uppercase leading-tight ${selected ? 'text-[var(--chrome-ink)] text-base' : 'text-[var(--ink)] text-label'}`}>
                                                 {a.name}
                                             </span>
+                                            {/* AUDIT-13 S3: mastery tier, from the ledger. */}
+                                            <ArenaMasteryBadge arenaId={a.id} arenaName={a.name} />
                                             {unseenArena(a.id, a.name) && (
                                                 <span className={`flex-none align-middle font-mono text-nano font-extrabold uppercase tracking-wider px-1 border ${selected ? 'text-[var(--chrome-muted)] border-[var(--chrome-muted)]' : 'text-[var(--red)] border-[var(--red)]'}`}>
                                                     New
@@ -941,6 +949,8 @@ export function SetupScreen({ onStart }: { onStart: (seed: string, arenaId: stri
                                             climate, no mutt kit until the bloodbath — and none
                                             of that is secret once the run starts. */}
                                         {selected && <ArenaBriefing arenaId={a.id} />}
+                                        {/* AUDIT-13 S1: the arena's story chain, and where it stands. */}
+                                        {selected && <ChapterChip arenaId={a.id} arenaName={a.name} />}
                                     </div>
                                     {!selected && <ArrowRight className="w-3.5 h-3.5 flex-none text-[var(--color-ink-500)]" />}
                                 </button>

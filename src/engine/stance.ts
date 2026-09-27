@@ -1,4 +1,5 @@
 import { GameState, Stance, TraceReason, Tribute, ArchetypeId } from '../models/types';
+import { cannotPatrol, hungerSharpHunting, mourningAvailable, regroupingAvailable, shelterScore, shelteringAvailable } from './audit13Content';
 import { griefStance } from './allianceBonds';
 import { ARCHETYPES } from '../data/archetypes';
 import { DECISION_TRACE, FEAR, RISK, RIVAL_READ, STANCE, STANCE_HOLD, STANCE_MODES, STEALTH, VITALS } from '../data/balance';
@@ -22,7 +23,7 @@ import { debtTo } from './debts';
 import { trapsIn } from './fieldcraft';
 import { inventoryValue } from './items';
 import { allied } from './alliance';
-import { AUDIT12_WAVE2_TRIBUTES as W2 } from '../data/balance';
+import { AUDIT12_WAVE2_TRIBUTES as W2, AUDIT13_CONTENT as A13 } from '../data/balance';
 import { hidingAvailable } from './traitHooks';
 
 /**
@@ -421,6 +422,20 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
     Parleying: (ctx, t, sig) => stickyHold(t, 'Parleying') || sig.hostile > 0 && riskTolerance(ctx, t) <= W2.parleyingRiskMax,
 
     /*
+     * AUDIT-13 §16 N35-N37. Regrouping: in a group and none of it here.
+     * Mourning: a death they grieve, in or next to this zone, inside the
+     * window, and nobody hostile here. Sheltering: weather on them or coming, and the skill to get
+     * under something. The payoffs are in `audit13Content.ts`.
+     */
+    // Walking back to your people is not something you do with a hostile in arm's reach.
+    Regrouping: (ctx, t, sig) => stickyHold(t, 'Regrouping') || (sig.hostile === 0 && regroupingAvailable(ctx, t)),
+    // Nobody sits down with a body while somebody hostile is standing over it.
+    Mourning: (ctx, t, sig) => stickyHold(t, 'Mourning') || (sig.hostile === 0 && mourningAvailable(ctx, t)),
+    // Somebody past caring (Desperate's own test) does not stop to build a roof.
+    Sheltering: (ctx, t, sig) => stickyHold(t, 'Sheltering')
+        || (!sig.broken && t.health >= STANCE_MODES.desperate.healthThreshold && shelteringAvailable(ctx, t)),
+
+    /*
      * Audit 5 §12: a pack with somewhere to walk the edge of.
      *
      * AUDIT-6 §3.1: 0.5% of tribute-cycles, the deadest stance in the roster,
@@ -435,6 +450,8 @@ export const STANCE_PRECONDITIONS: Partial<Record<Stance, StancePrecondition>> =
      * because two people holding a chokepoint is a picket.
      */
     Patrolling: (ctx, t, sig) => {
+        // AUDIT-13 N3: a Bad Knee is never the one walking the perimeter.
+        if (cannotPatrol(t)) return false;
         // AUDIT-12 §16: a Scout-Runner walks the edge of wherever their people
         // are, pack or no pack — that is the job.
         if (t.archetype === 'scout-runner'
@@ -626,6 +643,8 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
         s += profOf(t, 'tracking') * STANCE_MODES.hunting.perTrackingPoint;
         const quarry = t.objective?.kind === 'hunt' ? t.objective.targetId : undefined;
         if (quarry && ensureMemory(t).vengeance.includes(quarry)) s += STANCE_MODES.hunting.vengeanceBonus;
+        // AUDIT-13 N11: Hunger-Sharp goes looking when the stomach is empty.
+        s += hungerSharpHunting(t);
         if (sig.hasWeapon) s += STANCE.weaponAggression;
         // Somebody bleeding out does not run a manhunt.
         s -= Math.max(0, (STANCE.evasiveHealth - t.health) / STANCE.evasiveHealthDivisor);
@@ -769,6 +788,32 @@ export const STANCE_SCORERS: Record<Stance, StanceScorer> = {
         return s;
     },
 
+    // AUDIT-13 N35: a separated ally who would rather find their people than a fight.
+    Regrouping: (_ctx, t, sig) => {
+        let s = A13.regroupingBase;
+        s += sig.arch.allianceAffinity * STANCE.archetypeWeight * STANCE_MODES.conditionalArchetypeWeight;
+        s -= Math.min(W2.hidingThreatCap, sig.hostile) * A13.regroupingHostilePenalty;
+        s += sig.arch.stanceBias?.Regrouping ?? 0;
+        return s;
+    },
+
+    // AUDIT-13 N36: grief, for one cycle, outranks almost everything.
+    Mourning: (_ctx, _t, sig) => {
+        let s = A13.mourningBase;
+        s -= Math.min(W2.hidingThreatCap, sig.hostile) * A13.regroupingHostilePenalty;
+        s += sig.arch.stanceBias?.Mourning ?? 0;
+        return s;
+    },
+
+    // AUDIT-13 N37: getting under something before the weather arrives.
+    Sheltering: (ctx, t, sig) => {
+        let s = shelterScore(ctx, t);
+        if (sig.wounded) s += W2.hidingWoundedBonus;
+        s += sig.arch.caution * STANCE.archetypeWeight * STANCE_MODES.conditionalArchetypeWeight;
+        s += sig.arch.stanceBias?.Sheltering ?? 0;
+        return s;
+    },
+
     Patrolling: (ctx, t, sig) => {
         let s = STANCE_MODES.patrolling.base;
         const pack = sig.occupants.filter(o => allied(o, t)).length;
@@ -837,7 +882,10 @@ export function forceStance(t: Tribute, stance: Stance, reason = 'imposed by an 
     // never moved.
     if ((t.stanceChurn ?? 0) >= STANCE.churnMax) return false;
     t.stance = stance;
-    t.stanceHeld = 0;
+    // AUDIT-13: a reaction is held a little past the ordinary minimum — see
+    // `STANCE.reactionHold`. Counted as negative tenure so the hold, the
+    // emergency and the margin logic in `updateStance` stay one mechanism.
+    t.stanceHeld = reaction ? -STANCE.reactionHold : 0;
     // `reaction`: a posture the moment imposed (breaking off a fight is
     // getting clear, not deciding to run) is not the tribute changing their
     // mind, so it adds no churn. Churn is read as revealed indecision and
@@ -993,6 +1041,17 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
     };
 
     const ranked = (Object.entries(scores) as Array<[Stance, number]>).sort((a, b) => b[1] - a[1]);
+    // AUDIT-13: stance thrash for surviving Careers. A conditional stance
+    // (Fortified, Shadowing...) won on a near-tie with a lasting option was
+    // vacated the next cycle when its precondition flickered, and the
+    // tribute landed on that lasting option anyway — two changes for what
+    // was one decision. On a near-tie, the lasting option ranks first.
+    if (ranked.length > 1 && ranked[0][0] !== t.stance
+        && STANCE_PROFILES[ranked[0][0]]?.conditional
+        && !STANCE_PROFILES[ranked[1][0]]?.conditional
+        && ranked[0][1] - ranked[1][1] < STANCE_HOLD.conditionalEntryTieBand) {
+        [ranked[0], ranked[1]] = [ranked[1], ranked[0]];
+    }
     const [bestStance, bestScore] = ranked[0] ?? ['Defensive', 0];
 
     // A §1: what the scorer actually saw, kept for one cycle so the tribute
@@ -1036,8 +1095,14 @@ export function updateStance(ctx: SimContext, t: Tribute, occupants: Tribute[]) 
 
     // A genuine emergency overrides the *hold*: nobody stands their ground
     // bleeding out waiting for a minimum-cycles counter.
-    const emergency = t.health < STANCE.evasiveHealth * STANCE.emergencyHealthFactor
-        || sig.ratio > STANCE.outmatchedRatio * STANCE.emergencyRatioFactor
+    // AUDIT-13: ...and only a hold on a stance that is *not already* getting
+    // clear. A tribute pushed into Evasive by a break-off is, by definition,
+    // hurt or outmatched, so the emergency used to void the very hold that
+    // keeps them clear, and they flipped back to what they were doing the
+    // next cycle — then broke off again. Evasive is the emergency answer.
+    const emergency = (t.stance !== 'Evasive'
+        && (t.health < STANCE.evasiveHealth * STANCE.emergencyHealthFactor
+            || sig.ratio > STANCE.outmatchedRatio * STANCE.emergencyRatioFactor))
         || !stillValid;
 
     // §1.7: churn extends the hold as well as the margin. Aggressive/Evasive

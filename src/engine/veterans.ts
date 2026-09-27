@@ -41,11 +41,12 @@ function slotFor(field: Tribute[], entry: HallOfFameEntry, taken: Set<string>): 
  * is copied in from an archive. Every read site now goes through
  * `isVeteran()`, which still accepts a legacy save's names.
  */
-export function seatVeterans(_seed: string, field: Tribute[], entries: HallOfFameEntry[]): string[] {
+export function seatVeterans(_seed: string, field: Tribute[], entries: HallOfFameEntry[], cap: number = VETERANS.maxPerRun): string[] {
     const taken = new Set<string>();
     const seated: string[] = [];
 
-    entries.filter(e => !e.noVictor).slice(0, VETERANS.maxPerRun).forEach(entry => {
+    // AUDIT-13 P7: a victor-return Quell seats more than a Grudge Match's two.
+    entries.filter(e => !e.noVictor).slice(0, cap).forEach(entry => {
         const slot = slotFor(field, entry, taken);
         if (!slot) return;
         taken.add(slot.id);

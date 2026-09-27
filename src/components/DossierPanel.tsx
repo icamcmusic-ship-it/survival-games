@@ -18,6 +18,7 @@ import { prefsStore } from '../store/prefsStore';
 import { gameActions, gameStore } from '../store/gameStore';
 import { useStore } from '../store/createStore';
 import { SPONSOR_BLOCS } from '../engine/sponsorBlocs';
+import { regretLines } from '../engine/season/surfaced';
 import { arenaFlavor } from '../data/arenaFlavor';
 import { Glossed } from './Glossed';
 
@@ -576,6 +577,10 @@ export const DossierPanel = React.memo(function DossierPanel({
                         Every parachute is paid for by one of four crowds, each with its own taste and its own purse. A bloc that has
                         spent out stops giving — late-run scarcity that the seal on each crate only hinted at.
                     </p>
+                    {/* AUDIT-13 S4: patron's regret, which only ever moved a hidden weight. */}
+                    {regretLines(gameState).map(line => (
+                        <p key={line} className="text-mini text-[var(--red)] mb-1" data-testid="patron-regret">{line}</p>
+                    ))}
                     <div className="space-y-1.5">
                         {SPONSOR_BLOCS.map(b => {
                             const left = gameState.sponsorBlocBudgets?.[b.id] ?? 0;

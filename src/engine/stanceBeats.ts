@@ -109,11 +109,12 @@ function tickDesperate(ctx: SimContext, t: Tribute) {
     const allies = ctx.state.tributes.filter(o =>
         o.status === 'alive' && o.id !== t.id
         && allied(o, t) && o.zone === t.zone
-        && o.inventory.some(i => i.type === 'food' || i.type === 'water' || i.type === 'medical'));
+        && o.inventory.some(i => !i.keepsake && (i.type === 'food' || i.type === 'water' || i.type === 'medical')));
     if (allies.length === 0) return;
 
     const victim = ctx.rng.pick(allies);
-    const idx = victim.inventory.findIndex(i => i.type === 'food' || i.type === 'water' || i.type === 'medical');
+    // AUDIT-13 N32: never the keepsake.
+    const idx = victim.inventory.findIndex(i => !i.keepsake && (i.type === 'food' || i.type === 'water' || i.type === 'medical'));
     const taken = victim.inventory.splice(idx, 1)[0];
     giveItem(t, taken);
 

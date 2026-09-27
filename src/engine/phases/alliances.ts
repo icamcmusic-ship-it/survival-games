@@ -1,12 +1,13 @@
 import { dreadOf } from '../intent';
+import { kinBound } from '../audit13Content';
 import { oathRefusesBetrayal } from '../traitHooks';
 import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { GameState, Tribute } from '../../models/types';
 import { ARCHETYPES, archetypeCompatibility } from '../../data/archetypes';
-import { RESPECT, ALLIANCES, PERCEPTION, BETRAYAL, OBJECTIVES, PROFICIENCY, PROTECTOR_BOND, QUELL_MECHANICS, RELATIONSHIPS, ROMANCE, SUSPICION } from '../../data/balance';
+import { RESPECT, ALLIANCES, AUDIT13_CAREERS, AUDIT13_RELATIONS, PERCEPTION, BETRAYAL, OBJECTIVES, PROFICIENCY, PROTECTOR_BOND, QUELL_MECHANICS, RELATIONSHIPS, ROMANCE, SUSPICION } from '../../data/balance';
 import { profOf, trainProficiency } from '../proficiency';
-import { applyDamage, checkDeath } from '../combat';
+import { applyDamage, checkDeath, resolveCombat } from '../combat';
 import { clampTribute } from '../vitals';
 import { ALLIANCE_TEXTS, BETRAYAL_AFTERMATH_TEXTS, PROTECTOR_BOND_TEXTS, ROMANCE_BOND_TEXTS, ROMANCE_TEXTS } from '../../data/flavorText';
 import { adjustRel, getRel, trustOf } from '../relationships';
@@ -17,8 +18,9 @@ import { careerSocialFactor, sniffPerformances, isStarCrossed, cacheDivisionLine
 import { grudgeAgainst, grudgeTotal, noteGrudgeMotive, performsForCameras, stationBondOf, tickAllianceBonds, tickHollowVictories, tickLonerCamps } from '../allianceBonds';
 import { refreshTraitTiers } from '../earnedTraits';
 import { ALLIANCE_BONDS, AUDIT12_TRIBUTES } from '../../data/balance';
-import { allianceOf, areLovers, cacheValue, contributeToCache, isPerforming, maintainPerformance, membersOf, mergeAllianceRecords, pickLeader, reconcileAlliances, registerAlliance, shownRegard } from '../alliance';
+import { allianceOf, areLovers, cacheValue, contributeToCache, isPerforming, maintainPerformance, membersOf, inCohesionFloor, mergeAllianceRecords, noteAllianceEnd, pickLeader, reconcileAlliances, registerAlliance, shownRegard } from '../alliance';
 import { resolveBetrayal, preemptiveBetrayer } from '../betrayal';
+import { betrayalIntent, tickRelationsArc } from '../relationsArc';
 import { resolveDuePacts } from '../alliancePact';
 import { runAlliancePolitics, wasExpelled } from '../alliancePolitics';
 import { betrayalReluctance } from '../debts';
@@ -26,6 +28,8 @@ import { addExcitement } from '../audience';
 import { traitMod } from '../../data/traits';
 import { effectiveAllianceMaxSize, wildcardIs } from '../gamesProfile';
 import { COLD_PERSONAS, PERSONA_THREAT, WARM_PERSONAS } from '../../data/personas';
+
+const names = (ts: Tribute[]) => ts.map(t => t.name).join(' and ');
 
 const fill = (template: string, vars: Record<string, string>) =>
     Object.entries(vars).reduce((text, [k, v]) => text.split(`{${k}}`).join(v), template);
@@ -254,13 +258,15 @@ export function processAlliances(ctx: SimContext) {
         // warmth counts toward cohesion even when the ledger underneath is cold.
         const averageTrust = members.reduce((sum, m) =>
             sum + members.reduce((inner, o) => inner + (o.id === m.id ? 0 : shownRegard(m, o.id)), 0) / (members.length - 1), 0) / members.length;
-        if (averageTrust < ALLIANCES.rotDissolveTrust) {
+        // AUDIT-13 R1: a young group needs more than a cold mood to split.
+        if (averageTrust < ALLIANCES.rotDissolveTrust && !inCohesionFloor(ctx.state, allianceOf(ctx.state, id))) {
             // AUDIT-9 B07: the second of the three teardown paths that dropped
             // the shared cache on the floor. A group that stops being a group
             // still has to account for the food it was holding — and a bad
             // parting is exactly where who ends up with it is interesting.
             const division = distributeCache(ctx, allianceOf(ctx.state, id), members);
             members.forEach(m => { delete m.allianceId; });
+            noteAllianceEnd(ctx.state, id, 'walkout'); // AUDIT-13 R2
             const divisionLine = cacheDivisionLine(division);
             // One line for the whole collapse, not a near-identical one per member.
             ctx.logEvent(
@@ -378,6 +384,7 @@ export function processAlliances(ctx: SimContext) {
                 return;
             }
             delete m.allianceId;
+            noteAllianceEnd(ctx.state, id, 'walkout', m.id); // AUDIT-13 R2
             ctx.logEvent(
                 `${m.name} is gone before dawn. No theft, no knife — just a bedroll left cold and ${suspect.name} watched all the way out of sight. Some betrayals you leave before they happen.`,
                 [m.id, suspect.id],
@@ -396,6 +403,9 @@ export function processAlliances(ctx: SimContext) {
     if (alive.length <= ALLIANCES.soloDepartureFieldSize) {
         alliances.forEach((members, id) => {
             if (members.length < 2 || id.startsWith('lovers-')) return;
+            // AUDIT-13 R1: the arithmetic was just as plain when they shook
+            // on it yesterday. Nobody joins a group to leave it next cycle.
+            if (inCohesionFloor(ctx.state, allianceOf(ctx.state, id))) return;
             members.forEach(m => {
                 if (m.status !== 'alive' || m.allianceId !== id) return;
                 // Nobody walks out on someone they are bonded to.
@@ -414,6 +424,7 @@ export function processAlliances(ctx: SimContext) {
 
                 const others = members.filter(o => o.id !== m.id && o.status === 'alive');
                 delete m.allianceId;
+                noteAllianceEnd(ctx.state, id, 'walkout', m.id); // AUDIT-13 R2
                 // Leaving on good terms still costs: they are people you were
                 // sharing food with yesterday.
                 others.forEach(o => adjustRel(o, m.id, -ALLIANCES.soloDepartureRegard));
@@ -428,6 +439,67 @@ export function processAlliances(ctx: SimContext) {
     }
 
     refresh();
+    // 1d'. AUDIT-13 K6: the pack that got through the horn whole.
+    //
+    // Careers surviving the Cornucopia (K1-K5) is the fix; Careers therefore
+    // winning more is not. The source material's answer is the pack turning
+    // on itself once the easy prey is gone, and until now the pack's own clock
+    // (`careerSchismEarliestCycle`) held it together into the final eight.
+    // From day three the least-bound Career walks out on bad terms — and the
+    // people they walk out on are the best-armed tributes in the arena and
+    // standing next to them.
+    // A walkout happens in daylight, with the pack watching — once a day, not
+    // twice, so it reads as a decision rather than as churn.
+    // AUDIT-13 K5: a reaped Career never asked to be in the pack. Before the
+    // pack's own fracture opens, one of them may slip away on their own — the
+    // rare `career-defections` beat that the reaped half of the pack feeds.
+    if (ctx.state.day < AUDIT13_CAREERS.packFractureFromDay && ctx.state.phase === 'day') {
+        alliances.forEach((members, id) => {
+            if (!id.startsWith('career-pack')) return;
+            const live = members.filter(m => m.status === 'alive' && m.allianceId === id);
+            if (live.length < 3) return;
+            const reaped = live.find(m => !m.volunteered && ctx.rng.chance(AUDIT13_RELATIONS.reapedEarlyBreakChance));
+            if (!reaped) return;
+            const others = live.filter(o => o.id !== reaped.id);
+            delete reaped.allianceId;
+            noteAllianceEnd(ctx.state, id, 'walkout', reaped.id);
+            others.forEach(o => adjustRel(o, reaped.id, -AUDIT13_CAREERS.packFractureRegard / 2));
+            ctx.logEvent(
+                `${reaped.name} never volunteered for any of this. While ${names(others)} argue over the watch in ${reaped.zone}, `
+                + `${reaped.name} takes a pack and a knife and is simply not there in the morning.`,
+                [reaped.id, ...others.map(o => o.id)],
+                { type: 'career-defections', important: true, category: 'alliance' }
+            );
+        });
+    }
+    if (ctx.state.day >= AUDIT13_CAREERS.packFractureFromDay && ctx.state.phase === 'day') {
+        alliances.forEach((members, id) => {
+            if (!id.startsWith('career-pack')) return;
+            const live = members.filter(m => m.status === 'alive' && m.allianceId === id);
+            if (live.length < 2 || !ctx.rng.chance(AUDIT13_CAREERS.packFractureChance)) return;
+            const bound = (m: Tribute) => live.reduce((sum, o) => sum + (o.id === m.id ? 0 : getRel(m, o.id)), 0);
+            const leaver = [...live].sort((a, b) => bound(a) - bound(b))[0];
+            const others = live.filter(o => o.id !== leaver.id);
+            delete leaver.allianceId;
+            noteAllianceEnd(ctx.state, id, 'walkout', leaver.id); // AUDIT-13 R2
+            others.forEach(o => {
+                adjustRel(o, leaver.id, -AUDIT13_CAREERS.packFractureRegard);
+                adjustRel(leaver, o.id, -AUDIT13_CAREERS.packFractureRegard);
+            });
+            ctx.logEvent(
+                `${leaver.name} has been sleeping with one eye on ${others.map(o => o.name).join(' and ')} for two nights. `
+                + `In ${leaver.zone} they take their share and go, and nobody in the pack pretends it was friendly.`,
+                [leaver.id, ...others.map(o => o.id)],
+                { type: 'career-defections', important: true, category: 'alliance' }
+            );
+            // Walking out armed past the people you trained with is not a
+            // thing the pack lets go without a word. Somebody goes after them.
+            const chaser = others.find(o => o.zone === leaver.zone);
+            if (chaser && ctx.rng.chance(AUDIT13_CAREERS.packFractureFightChance)) resolveCombat(ctx, chaser, leaver, false, false, AUDIT13_CAREERS.packFractureLockedRounds);
+        });
+    }
+
+    refresh();
     // 1e. A2: the Mercenary's terms coming due.
     //
     // `parley.ts` gestured at alliance-as-transaction and nothing in the model
@@ -438,12 +510,16 @@ export function processAlliances(ctx: SimContext) {
         if (members.length < 2 || id.startsWith('lovers-')) return;
         const record = allianceOf(ctx.state, id);
         if (!record || cacheValue(record) > ALLIANCES.mercenaryRetainer) return;
+        // AUDIT-13 R1: a group formed yesterday has not run its cache dry, it
+        // has not filled it yet. The terms come due after the cohesion floor.
+        if (inCohesionFloor(ctx.state, record)) return;
         members.forEach(m => {
             if (m.status !== 'alive' || m.allianceId !== id) return;
             if (m.archetype !== 'mercenary') return;
             const others = members.filter(o => o.id !== m.id && o.status === 'alive');
             if (others.length === 0) return;
             delete m.allianceId;
+            noteAllianceEnd(ctx.state, id, 'walkout', m.id); // AUDIT-13 R2
             ctx.logEvent(
                 `${m.name} counts what is left in the alliance's cache in ${m.zone}, finds it empty, and leaves. `
                 + `${others.map(o => o.name).join(' and ')} are not betrayed so much as no longer paying, and ${m.name} makes no pretence that it was ever anything else.`,
@@ -458,6 +534,8 @@ export function processAlliances(ctx: SimContext) {
     // 2. Betrayal Logic
     alliances.forEach((members) => {
         if (members.length < 2) return;
+        // AUDIT-13 R3: a knife that was seen coming comes first.
+        if (betrayalIntent(ctx, members)) return;
         // §3.2 (audit): before the ordinary roll, anybody who has decided an
         // ally is about to turn on them gets to turn first.
         const first = preemptiveBetrayer(ctx, members);
@@ -563,7 +641,8 @@ export function processAlliances(ctx: SimContext) {
                         : baseChance;
                     const relThreshold = (ALLIANCES.baseRelThreshold - compat * 100 - persona * 60) * trustCost;
 
-                    if (rel > relThreshold && ctx.rng.chance(formChance)) {
+                    // AUDIT-13 N8: a Kin-Seeker on day 1 is not refused by their own district.
+                    if ((rel > relThreshold && ctx.rng.chance(formChance)) || kinBound(ctx.state, t1, t2)) {
                         const newId = `alliance-${t1.id}-${t2.id}`;
                         t1.allianceId = newId;
                         t2.allianceId = newId;
@@ -737,6 +816,9 @@ export function processAlliances(ctx: SimContext) {
     tickHollowVictories(ctx);
     tickLonerCamps(ctx);
     refreshTraitTiers(ctx);
+    // AUDIT-13 §6: reunions and feuds, the district partner, the slow burn,
+    // vengeance cooling, and wards.
+    if (!wildcardIs(ctx.state, 'rule-change-no-allies')) tickRelationsArc(ctx, (a, b) => declareLovers(ctx, a, b));
 }
 
 /**
@@ -895,6 +977,11 @@ function schismAlliances(ctx: SimContext, alliances: Map<string, Tribute[]>) {
         const splinterId = `alliance-${chosen[0].id}-splinter`;
         chosen.forEach(m => { m.allianceId = splinterId; });
         const splinterRecord = registerAlliance(ctx, splinterId, chosen);
+        // AUDIT-13 R1: both halves remember the split, for a reunion or a feud.
+        splinterRecord.splitFrom = id;
+        const parentRecord = allianceOf(ctx.state, id);
+        if (parentRecord) parentRecord.splitFrom = splinterId;
+        noteAllianceEnd(ctx.state, id, 'splinter');
         alliances.set(splinterId, chosen);
         alliances.set(id, remainder);
 
@@ -954,6 +1041,9 @@ function mergeAlliances(ctx: SimContext) {
             if (!a || !b || !groups.has(ids[i]) || !groups.has(ids[j])) continue;
             if (a.length < 2 || b.length < 2) continue;
             if (a.length + b.length > maxSize) continue;
+            // AUDIT-13 R1: a group that has only just formed is not shopping
+            // for a bigger one yet.
+            if (inCohesionFloor(ctx.state, allianceOf(ctx.state, ids[i])) || inCohesionFloor(ctx.state, allianceOf(ctx.state, ids[j]))) continue;
             // Same ground, or there is no conversation to have — judged by the
             // leaders who would do the negotiating, not by array order.
             if (pickLeader(a).zone !== pickLeader(b).zone) continue;
@@ -986,6 +1076,7 @@ function mergeAlliances(ctx: SimContext) {
                 ...b.filter(m => m.id !== leadB.id && regardFor(m, a) < ALLIANCES.mergeDissentThreshold),
             ];
             dissenters.forEach(m => { delete m.allianceId; });
+            [ids[i], ids[j]].forEach(gid => noteAllianceEnd(ctx.state, gid, 'walkout')); // AUDIT-13 R2
 
             const stayA = a.filter(m => !dissenters.includes(m));
             const stayB = b.filter(m => !dissenters.includes(m));
@@ -1380,7 +1471,9 @@ function declareLovers(ctx: SimContext, t1: Tribute, t2: Tribute, performer?: Tr
                 [t.id],
                 { category: 'alliance' }
             );
+            const left = t.allianceId;
             delete t.allianceId;
+            noteAllianceEnd(ctx.state, left, 'walkout', t.id); // AUDIT-13 R2
         }
     });
 

@@ -1,4 +1,5 @@
 import { GameState, Item, Tribute, TruceReason } from '../models/types';
+import { bargainingBase } from './audit13Content';
 import { sanityBandOf } from './sanityBands';
 import { dreadOf } from './intent';
 import { COMPOSURE, EARNED_TRAIT_RULES, INTEL, PARLEY, PROFICIENCY, RELATIONSHIPS, RESPECT, ROMANCE } from '../data/balance';
@@ -794,7 +795,8 @@ function attemptBluff(ctx: SimContext, bluffer: Tribute, mark: Tribute): boolean
     // parley layer actually contains, so this is where a hard bargainer shows.
     const odds = Math.max(PARLEY.bluffMinChance, Math.min(PARLEY.bluffMaxChance,
         PARLEY.bluffBase
-        + traitMod(bluffer, 'haggle')
+        // AUDIT-13 N19: `bartering`, with the haggle trait as its floor.
+        + bargainingBase(bluffer)
         + profOf(bluffer, 'persuasion') * PARLEY.bluffPerPersuasion
         + profOf(bluffer, 'deception') * PROFICIENCY.deceptionBluffWeight
         + (bluffer.attributes.charisma - 5) * PARLEY.bluffPerCharisma

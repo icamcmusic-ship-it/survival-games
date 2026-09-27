@@ -148,7 +148,8 @@ await step('confirm reaping lands on the chronicle, ready to start', async () =>
   await page.getByRole('heading', { name: /the chronicle/i }).waitFor();
   // The empty state, and the control that starts the run.
   await page.getByText(/the cast is confirmed and the record is empty/i).waitFor();
-  await page.getByRole('button', { name: /go to the square/i }).waitFor();
+  // AUDIT-13 U6: the empty state carries its own copy of the button.
+  await page.getByRole('button', { name: /go to the square/i }).first().waitFor();
   // AUDIT-6 §1.4: and the pager does not claim to be showing page one of none.
   const body = await page.locator('footer').first().innerText();
   if (/\b1 \/ 0\b/.test(body)) throw new Error('pager still reads "1 / 0" with no pages');

@@ -1,4 +1,5 @@
 import { craftKit, followPlan, tickArenaDepth } from '../arenaDepth';
+import { badKneeClimb } from '../audit13Content';
 import { arenaHazardForBorder, borderCapReached } from '../arenaWave2';
 import { directorTaste } from '../../data/directors';
 import { capitolCruelty } from '../campaign';
@@ -27,7 +28,7 @@ import { announceCrossing } from '../noise';
 import { correctAccusations, tradeAccusations } from '../accusations';
 import { onObjectiveArrival } from '../objectiveArrival';
 import { checkTraps, hasCamp, tickTraps } from '../fieldcraft';
-import { allianceRecords, areLovers, fractureBlocs, isHostileTo, leaderFor, allied } from '../alliance';
+import { allianceRecords, areLovers, fractureBlocs, isHostileTo, leaderFor, allied, noteAllianceEnd } from '../alliance';
 
 import { decayNotoriety, reputationPriors, spreadNotoriety } from '../notoriety';
 import { updateStance } from '../stance';
@@ -54,6 +55,7 @@ import { runArenaSignature } from '../arenaSignature';
 import { runGamemakerSignature } from '../gamemakerAgency';
 import { mutatorMuttFactor } from '../season/mutatorRules';
 import { tickWeatherFront } from '../weatherFront';
+import { tickArenaDynamics } from '../arenaDynamics';
 import { tickZoneControl } from '../zoneControl';
 import { resolveBreakdowns, tickResolve } from '../resolve';
 import { tickPersona } from '../persona';
@@ -438,6 +440,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     tickWeatherFront(ctx);
     // AUDIT-11 §7: weather layer, scars, hidden cache, acts, deception, risk curve.
     tickArenaDepth(ctx);
+    // AUDIT-13 W11–W16: zone states, weather chains, the night rule, the
+    // arena's arc and its memory of where people died.
+    tickArenaDynamics(ctx, time);
     tickZoneControl(ctx);
     tickSharedGrief(ctx);
     rollAmbientZoneEffects(ctx);
@@ -660,6 +665,9 @@ export function processDayNight(ctx: SimContext, time: 'day' | 'night') {
     // recognisable rhythm the source material has, and the moment a tribute
     // finds out whether the person they were travelling with is still alive.
     if (time === 'night') soundTheAnthem(ctx);
+    // AUDIT-13 B1: whatever walked them there, nobody ends the phase standing
+    // on closed ground.
+    herdOffClosedGround(ctx);
 }
 
 /**
@@ -1060,8 +1068,10 @@ function forceFinale(ctx: SimContext) {
         // standoff to reach, so the alliance is revoked for them too.
         && (ctx.state.config.singleVictor || !areLovers(alive[0], alive[1]))) {
         const [a, b] = alive;
+        const revoked = a.allianceId;
         delete a.allianceId;
         delete b.allianceId;
+        noteAllianceEnd(ctx.state, revoked, 'victor'); // AUDIT-13 R2
         ctx.logEvent(
             `The announcement is short: there will be one victor. Whatever ${a.name} and ${b.name} agreed, the Capitol has just revoked it from the sky.`,
             [a.id, b.id],
@@ -1305,9 +1315,20 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
         );
     }
 
-    if (ctx.state.escalationDay === undefined) return false;
+    // AUDIT-13 B1/B2: convergence, `earlyCollapse` and other set pieces write
+    // to `collapsedZones` directly. Those closures are permanent — the border
+    // below only ever adds to them — and whoever is standing in one is moved
+    // out by the relocation loop even before the border itself has started.
+    const priorClosed = ctx.state.collapsedZones ?? [];
+    const escalated = ctx.state.escalationDay !== undefined;
+    if (!escalated && !getAlive(ctx.state).some(t => priorClosed.includes(t.zone))) return false;
 
-    let collapsedList = collapseOrder.slice(0, thisCount);
+    let collapsedList = escalated
+        // The border never takes the zone the convergence is driving everyone
+        // into: closing it would leave nowhere, and the fallback below would
+        // then have to hand ground back.
+        ? [...new Set([...collapseOrder.slice(0, thisCount).filter(z => z !== ctx.state.convergenceZone), ...priorClosed])]
+        : [...priorClosed];
 
     /**
      * §11 (requests, second pass): the forced finale closes the arena for
@@ -1343,6 +1364,12 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
     }
     // Generic arena rule: ground lost for good stays lost when the border recomputes.
     collapsedList = withFallen(ctx.state, collapsedList);
+    // Never close the last open ground: if the union swallowed everything,
+    // keep the convergence zone (or the first standing zone) open.
+    if (collapsedList.length >= allZoneNames.length) {
+        const keep = ctx.state.convergenceZone ?? allZoneNames.find(z => !priorClosed.includes(z)) ?? allZoneNames[0];
+        collapsedList = collapsedList.filter(z => z !== keep);
+    }
     ctx.state.collapsedZones = collapsedList;
 
     getAlive(ctx.state).forEach(t => {
@@ -1360,8 +1387,11 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
         const capped = !finalists && borderCapReached(ctx.state);
         const rawDamage = finalists
             ? Math.min(ESCALATION.finalistCollapseDamage, Math.max(0, t.health - 1))
-            : ESCALATION.collapseDamageBase + (ctx.state.day - startDay) * ESCALATION.collapseDamagePerDay;
-        const damage = capped ? Math.min(rawDamage, Math.max(0, t.health - 1)) : rawDamage;
+            : ESCALATION.collapseDamageBase + Math.max(0, ctx.state.day - startDay) * ESCALATION.collapseDamagePerDay;
+        // AUDIT-13 B1: before the border has started, a set-piece closure
+        // (convergence, `earlyCollapse`) herds rather than wounds — those
+        // announcements never promised a wall, only a destination.
+        const damage = !escalated ? 0 : capped ? Math.min(rawDamage, Math.max(0, t.health - 1)) : rawDamage;
         const safeZones = allZoneNames.filter(z => !collapsedList.includes(z));
         // Nearest reachable safe zone via the adjacency graph, not an
         // arbitrary index — a tribute should not teleport across the arena,
@@ -1397,6 +1427,12 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
                 { important: true, zone: trappedZone, category: 'hazard' }
             );
             clampTribute(t);
+        } else if (damage <= 0) {
+            ctx.logEvent(
+                `${trappedZone} is closed with ${t.name} still in it, and the Gamemakers move them on: they end up in ${newSafeZone}.`,
+                [t.id],
+                { type: 'border-collapse', zone: newSafeZone, category: 'hazard' }
+            );
         } else {
             applyDamage(ctx, t, damage, { cause, kind: 'arena', code: 'border' });
             ctx.logEvent(
@@ -1414,7 +1450,7 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
         checkDeath(ctx, t, ownCause ?? cause);
     });
 
-    return true;
+    return escalated;
 }
 
 /** Field-expedient weapons from whatever is in the pack. */
@@ -1559,6 +1595,8 @@ function beginMove(ctx: SimContext, t: Tribute, destName: string): MoveOutcome {
     // itself, on top of whatever the destination terrain already costs.
     const cost = (dest ? travelCost(t, dest) : 1) + edgeTimeCost(ctx.state, t.zone, destName);
     applyEdgeToll(ctx, t, t.zone, destName);
+    // AUDIT-13 N3: a Bad Knee pays on the way up.
+    badKneeClimb(t, dest);
     // A1: Fortified is a commitment to *ground*. Pulling up a prepared
     // position and carrying it somewhere else costs double the fatigue —
     // which is the price that makes digging in a real decision rather than a
@@ -1589,6 +1627,8 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
     // anyone already brought ashore by an ally's iteration this cycle has
     // nothing left to do. See the arrival block below.
     if (crossed.has(t.id)) return;
+    // AUDIT-13 N36: Mourning does not leave the body for the cycle it lasts.
+    if (t.stance === 'Mourning' && !t.transit && !collapsed.includes(t.zone)) return;
 
     // §5.3: a traversal already underway finishes before anything else. A
     // crossing abandoned because the destination collapsed is just a wasted
@@ -2017,4 +2057,32 @@ function tickSharedGrief(ctx: SimContext) {
             return;
         }
     }
+}
+
+/**
+ * AUDIT-13 B1: the end-of-phase guarantee behind the border's relocation.
+ *
+ * `collapseBorders` moves whoever is standing in a closed zone when it runs,
+ * but several later movers in the phase (flight, pursuit, set-piece herding)
+ * pick a destination from adjacency rather than from the open map, and the
+ * soak found tributes ending phases inside convergence closures. The wall
+ * does not let them stay: they are pushed to the nearest open ground, with no
+ * damage — the damage belongs to the collapse itself, which already ran.
+ */
+export function herdOffClosedGround(ctx: SimContext) {
+    const collapsed = ctx.state.collapsedZones ?? [];
+    if (collapsed.length === 0) return;
+    const open = zoneNames(ctx.state.arena).filter(z => !collapsed.includes(z));
+    if (open.length === 0) return;
+    getAlive(ctx.state).forEach(t => {
+        if (!collapsed.includes(t.zone) || t.downed) return;
+        const from = t.zone;
+        t.zone = nearestSafeZone(ctx.state.arena, from, open, severedEdgeSet(ctx.state));
+        enterVerticalZone(ctx.state.arena, t);
+        ctx.logEvent(
+            `${t.name} is driven out of ${from} as the wall comes through it, and ends up in ${t.zone}.`,
+            [t.id],
+            { zone: t.zone, category: 'hazard' },
+        );
+    });
 }

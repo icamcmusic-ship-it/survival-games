@@ -17,15 +17,15 @@ import { getZone, zoneFeatures } from './map';
 import { loadFromViolence } from './loadBearing';
 import { noteFightOpened } from './runRecords';
 import { readOf, addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound, rattle } from './memory';
-import { classifyCause } from './causes';
+import { classifyCause, refineHazardCode } from './causes';
 import { incurDebt } from './debts';
 import { adjustRel, adjustTrust, getRel, propagateDeathFallout } from './relationships';
 import { noteMilestone } from './milestones';
 import { injure, injuryGrade, openWound } from './wounds';
 import { isUnfamiliar, noteWeaponUse, profOf, trainProficiency, weaponAffinity, weaponHandling, weaponProficiency } from './proficiency';
-import { addFear, fearFraction, reduceFear } from './fear';
+import { addFear, careerOutsiderScale, fearFraction, reduceFear } from './fear';
 import { notorietyFraction, witnessReputation } from './notoriety';
-import { areLovers, emptyCache, allied } from './alliance';
+import { areLovers, emptyCache, allied, noteAllianceEnd, recordAllianceState } from './alliance';
 import { hasTruce } from './parley';
 import { riskTolerance } from './risk';
 import { blocTreatyHolds, noteBlocKill } from './blocTreaty';
@@ -33,8 +33,9 @@ import { dominantSideCost, effectiveAgility, grappleResistance, injuryAbsorption
 import { addExcitement } from './audience';
 import { traitMod } from '../data/traits';
 import { earnTrait } from './earnedTraits';
-import { PREGAMES, AUDIT12_WAVE2_TRIBUTES } from '../data/balance';
+import { AUDIT13_CAREERS, PREGAMES, AUDIT12_WAVE2_TRIBUTES } from '../data/balance';
 import { evasionRetreat, lootChanceBonus, noteRetreatFailed, onCannon, traitPowerHooks, twitchyAllyHit } from './traitHooks';
+import { audit13DamageScale, audit13PowerHooks, onAudit13Death, spendBorrowedLuck } from './audit13Content';
 import { armourOf, effectiveDamage, encumbranceOf, wearArmour } from './items';
 import { isAggressiveStance, isEvasiveStance } from '../data/stances';
 import { loseSanity } from './sanityBands';
@@ -115,6 +116,8 @@ function shouldGoDown(ctx: SimContext, t: Tribute): boolean {
     // of a final two, which `checkDualVictory` has no other defence against.
     const standing = ctx.state.tributes.filter(o => o.status === 'alive' && !o.downed).length;
     if (standing <= DOWNED.finalistFloor) return false;
+    // AUDIT-13 N12: Borrowed Luck — the first one that should have killed them does not.
+    if (spendBorrowedLuck(t)) return true;
     const chance = Math.min(DOWNED.maxChance,
         DOWNED.baseChance + attr(t, 'endurance') * DOWNED.perEndurance);
     return ctx.rng.chance(chance);
@@ -316,6 +319,8 @@ export function applyDamage(
     record: Omit<DamageRecord, 'cycle' | 'amount'>,
 ): boolean {
     if (amount <= 0) return false;
+    // AUDIT-13 W5: split the `hazard` catch-all at the one place damage lands.
+    if (record.code === 'hazard') record = { ...record, code: refineHazardCode(record.code, record.cause) };
     // You cannot wound a corpse. Without this, any caller that damages a
     // tribute killed earlier in the same pass silently overwrites the damage
     // record their obituary was built from.
@@ -345,6 +350,8 @@ export function applyDamage(
     // not frame — and it is the first thing the run takes off a starving
     // tribute, so a long run strips the padding before it strips the health.
     if (ARMOURED_DAMAGE.includes(record.kind)) amount *= 1 - injuryAbsorption(t);
+    // AUDIT-13 N9 / N28: Ash-Lunged in smoke; a Lamplighter's marked route.
+    amount *= audit13DamageScale(t, record.kind, record.cause);
     /*
      * `naturalDeathRate`: how hard everything that is not another tribute hits.
      *
@@ -823,6 +830,8 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
     // AUDIT-12 T15 / §16: Homebody on first-camp ground, Night Owl after dark,
     // and the Cornered Rat after a retreat that did not work.
     power += traitPowerHooks(ctx, t);
+    // AUDIT-13 N11 / N27: Hunger-Sharp when hungry; a Mourner against an ally's killer.
+    power += audit13PowerHooks(t, opponent);
 
     return power;
 }
@@ -870,7 +879,25 @@ function targetWorth(o: Tribute): number {
         + o.trainingScore * ARCHETYPE_HOOKS.strongestPerTrainingPoint;
 }
 
+/**
+ * AUDIT-13 K4 (c): the tributes whose last break-off was the creed rather than
+ * fear. Set by `wantsToRetreat`, read by the duel paths so a Zealot turning to
+ * a better target is logged as that and never feeds `noteFled`.
+ */
+const creedDisengaged = new WeakSet<Tribute>();
+
+/**
+ * AUDIT-13 T8: somebody who has killed one of `t`'s own this Games — a
+ * packmate for a Career, anyone they held as a friend otherwise.
+ */
+function killedOneOfTheirs(ctx: SimContext, t: Tribute, opponent: Tribute): boolean {
+    return ctx.state.tributes.some(d => d.status === 'dead'
+        && d.lastDamage?.sourceId === opponent.id
+        && ((t.isCareer && d.isCareer) || getRel(t, d.id) >= AUDIT13_CAREERS.friendRegard));
+}
+
 function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, roundsFought: number, opponent?: Tribute): boolean {
+    creedDisengaged.delete(t);
     // §7: once the Gamemakers have forced the finale, there is nowhere to
     // retreat *to* — the arena has been drained down to the horn. Without
     // this, the two finalists met, the loser fled at low health, finalist
@@ -909,14 +936,17 @@ function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, round
      * Deliberately *not* a health check. This fires at full health, which is
      * what makes it a creed rather than a survival instinct wearing one.
      */
-    if (arch.disengage === 'unworthy' && opponent && roundsFought <= COMBAT.unworthyMaxRounds) {
+    // AUDIT-13 T8: the creed reads worth and nothing else, so it walked away
+    // from the person who had just killed a packmate. Not from them.
+    if (arch.disengage === 'unworthy' && opponent && roundsFought <= COMBAT.unworthyMaxRounds
+        && !hasVengeanceAgainst(t, opponent.id) && !killedOneOfTheirs(ctx, t, opponent)) {
         const worthier = ctx.state.tributes.some(o =>
             o.status === 'alive'
             && o.id !== t.id
             && o.id !== opponent.id
             && samePlace(ctx.state.arena, t, o)
             && targetWorth(o) > targetWorth(opponent) + COMBAT.unworthyTargetMargin);
-        if (worthier) return true;
+        if (worthier) { creedDisengaged.add(t); return true; }
     }
     const healthFraction = t.health / 100;
     if (healthFraction <= COMBAT.routHealthFraction) return true;
@@ -943,16 +973,29 @@ function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, round
     // left to lose and a shrinking field stands; one with a full pack on day
     // nine at half health takes the exit.
     chance -= riskTolerance(ctx, t) * RISK.retreatWeight;
-    if (t.isCareer) chance -= 0.1;
+    // AUDIT-13 K4 (b): a Career does not break off lightly, and less still
+    // with packmates standing in the same zone.
+    if (t.isCareer) {
+        chance -= AUDIT13_CAREERS.careerRetreatRelief;
+        const packHere = ctx.state.tributes.filter(o => o.status === 'alive' && o.id !== t.id
+            && allied(o, t) && o.zone === t.zone).length;
+        if (packHere >= 2) chance -= AUDIT13_CAREERS.packInZoneRetreatRelief;
+    }
+    // AUDIT-13 K4 (a)/K5: fear and reputation of an outsider are mostly noise
+    // to a Career; a volunteer barely hears them.
+    const outsiderScale = careerOutsiderScale(t, opponent, {
+        volunteer: AUDIT13_CAREERS.volunteerOutsiderRetreatScale,
+        reaped: AUDIT13_CAREERS.reapedOutsiderRetreatScale,
+    });
     if (isAggressiveStance(t.stance)) chance -= 0.12;
     if (isEvasiveStance(t.stance)) chance += 0.15;
     // Who they are fighting, not just how badly it is going: a tribute who has
     // watched this particular person kill wants out long before the numbers say so.
-    if (opponent) chance += fearFraction(t, opponent.id) * FEAR.retreatWeight;
+    if (opponent) chance += fearFraction(t, opponent.id) * FEAR.retreatWeight * outsiderScale;
     // §3.5: and what they have merely *heard* about them, which is weaker than
     // having seen it but is the reason a name works on somebody who has never
     // met the person carrying it.
-    if (opponent) chance += notorietyFraction(t, opponent.id) * NOTORIETY.retreatWeight;
+    if (opponent) chance += notorietyFraction(t, opponent.id) * NOTORIETY.retreatWeight * outsiderScale;
     // §5.2: a chokepoint has nowhere to run to — breaking off is harder to
     // choose when the exit is a bottleneck the opponent can watch.
     const zoneHere = getZone(ctx.state.arena, t.zone);
@@ -999,6 +1042,7 @@ function weaponLethality(weapon?: Item): number {
 }
 
 function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: number, weapon?: Item, multiplier = 1) {
+    const healthBefore = defender.health;
     // §3.2: a landed blow is a swing that taught them something about this
     // particular weapon. Recorded here rather than at the pick-up so carrying
     // a bow you never fire never makes you an archer.
@@ -1099,7 +1143,17 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
     adjustRel(defender, attacker.id, -COMBAT.grudgeOnWound);
     // Losing an exchange to someone is how you learn to be afraid of them
     // specifically — and how the attacker gets better at the weapon they used.
-    addFear(defender, attacker.id, FEAR.lostExchange);
+    // AUDIT-13 K3: `about` so a Career losing an exchange to an outsider gets
+    // the Career discount, without crediting the attacker with intimidation.
+    addFear(defender, attacker.id, FEAR.lostExchange, undefined, attacker);
+    // AUDIT-13 T7: seeing them bleed. The person you were afraid of going
+    // under 40 in front of you is the rumour meeting the fact of them.
+    if (defender.health < AUDIT13_CAREERS.bleedHealth && healthBefore >= AUDIT13_CAREERS.bleedHealth) {
+        ctx.state.tributes.forEach(w => {
+            if (w.status !== 'alive' || w.id === defender.id || w.zone !== defender.zone) return;
+            reduceFear(w, defender.id, AUDIT13_CAREERS.sawThemBleedFear);
+        });
+    }
     // §1.2: `rattled` is documented as the symmetric counterpart to momentum
     // and was written from grief and almost nothing else. Losing an exchange
     // shakes a person, and coming out of one barely standing shakes them more.
@@ -1214,7 +1268,8 @@ export function resolveCombat(
             // Same bookkeeping as the main retreat path, for both sides:
             // fleeing feeds the rivalry record, and the ambusher holds a
             // grudge and remembers the zone as contested too.
-            noteFled(t2, t1.id);
+            // AUDIT-13 K4 (c): the creed walking away is not a flight.
+            if (!creedDisengaged.has(t2)) noteFled(t2, t1.id);
             adjustRel(t2, t1.id, -COMBAT.grudgePerFight);
             adjustRel(t1, t2.id, -COMBAT.grudgePerFight);
             addZoneThreat(ctx.state, t2, t2.zone, MEMORY.fightThreat);
@@ -1325,7 +1380,23 @@ export function resolveCombat(
         if (t1Flees || t2Flees) {
             const fleer = t1Flees ? t1 : t2;
             const stayer = t1Flees ? t2 : t1;
-            noteFled(fleer, stayer.id);
+            // AUDIT-13 K4 (c): a creed disengage is a tribute choosing a
+            // better target, and is logged and remembered as that — not as a
+            // flight that feeds the rivalry record and their notoriety.
+            const creed = creedDisengaged.has(fleer);
+            if (!creed) noteFled(fleer, stayer.id);
+            // AUDIT-13 T7: surviving them. Standing while the person you
+            // feared runs is the lesson decay alone never taught.
+            reduceFear(stayer, fleer.id, AUDIT13_CAREERS.survivedThemFear);
+            if (creed) {
+                ctx.logEvent(
+                    `${fleer.name} breaks off from ${stayer.name} without a backward look and turns to a better target.`,
+                    [fleer.id, stayer.id],
+                    { important: true, category: 'combat' }
+                );
+                ended = true;
+                break;
+            }
             // Running turns your back on someone holding a weapon — unless you
             // are good at not being where they swing.
             /*
@@ -1796,6 +1867,7 @@ function resolveFreeForAll(ctx: SimContext, fighters: Tribute[], zone: string) {
                 // Only the pair who actually traded blows record who they fled
                 // from; a bystander scattering out of the melee was not in a
                 // fight with either of them.
+                if (creedDisengaged.has(t)) return;
                 if (t.id === attacker.id) noteFled(t, target.id);
                 else if (t.id === target.id) noteFled(t, attacker.id);
             });
@@ -2223,7 +2295,14 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         ctx.state.tributes.forEach(witness => {
             if (witness.status !== 'alive' || witness.id === killer.id || witness.id === victim.id) return;
             if (witness.zone !== victim.zone) return;
-            addFear(witness, killer.id, FEAR.witnessedKill);
+            // AUDIT-13 K3: a Career who watches an outsider kill at the horn
+            // marks them, rather than learning to fear them — the pack's job
+            // at the Cornucopia is exactly this person.
+            if (ctx.state.phase === 'bloodbath' && witness.isCareer && !killer.isCareer) {
+                adjustRel(witness, killer.id, -COMBAT.grudgePerFight);
+                return;
+            }
+            addFear(witness, killer.id, FEAR.witnessedKill, undefined, killer);
         });
     }
 
@@ -2283,6 +2362,16 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         delete victim.allianceId;
         const remaining = ctx.state.tributes.filter(t => t.status === 'alive' && t.allianceId === formerAlliance);
         if (remaining.length < 2) remaining.forEach(m => delete m.allianceId);
+        noteAllianceEnd(ctx.state, formerAlliance, 'attrition'); // AUDIT-13 R2
+        // AUDIT-13 B4: take the dead id off the record's live roster now,
+        // after the chronicle has captured it, rather than leaving it for the
+        // next reconcile. A record falling below two keeps its last roster:
+        // `reconcileAlliances` needs it to note who the survivor was allied to.
+        const record = ctx.state.alliances?.[formerAlliance];
+        if (record && remaining.length >= 2) {
+            recordAllianceState(ctx.state, record);
+            record.memberIds = record.memberIds.filter(id => id !== victim.id);
+        }
     }
 
     // Feeds the `scavenger` mutt role: only eligible where a cannon just
@@ -2294,6 +2383,8 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         .concat({ zone: victim.zone, cycle });
     // AUDIT-12 T15: the Cannon-Counter hears it and is steadier for it.
     onCannon(ctx, victim);
+    // AUDIT-13 N36: whoever grieves this one, close enough, can stop and mourn.
+    onAudit13Death(ctx, victim, killer);
 
     // 'The Bounty Quell': collecting the named quarry is a standing sponsor
     // stream, not a one-off gift — maintainBounty (dayNight.ts) names a new

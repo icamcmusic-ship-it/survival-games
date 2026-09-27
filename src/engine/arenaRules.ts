@@ -457,7 +457,10 @@ export function strandedZones(state: GameState): string[] {
             const empty = !state.tributes.some(t => t.status === 'alive' && t.zone === z.name);
             const deliberate = liveNeighbours.every(n => {
                 const k = edgeKey(z.name, n);
-                return isPermanentCut(state, k) || state.arenaRuleState?.marks?.[PACK_CUT_MARK + k] !== undefined;
+                // A lockdown's own cut on a lock whose timer has just run out is
+                // still deliberate: `tickLockdowns` puts it back later this cycle.
+                return isPermanentCut(state, k) || state.arenaRuleState?.marks?.[PACK_CUT_MARK + k] !== undefined
+                    || state.arenaRuleState?.marks?.[LOCK_CUT_MARK + k] !== undefined;
             });
             return !(empty && deliberate);
         })

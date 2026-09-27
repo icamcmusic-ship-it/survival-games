@@ -6,7 +6,7 @@ import { SimContext } from './context';
 import { witnessTheft } from './allianceBonds';
 import { ALLIANCE_BONDS } from '../data/balance';
 import { resolveCombat } from './combat';
-import { allianceOf, cacheValue, emptyCache } from './alliance';
+import { allianceOf, cacheValue, emptyCache, noteAllianceEnd } from './alliance';
 import { trainProficiency } from './proficiency';
 import { addZoneThreat, noteContact, raiseSuspicion, rememberedThreat, suspicionOf } from './memory';
 import { giveItem } from './items';
@@ -117,7 +117,7 @@ export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Trib
             const spoils = record ? emptyCache(record) : [];
             const dropped = giveItem(betrayer, ...spoils);
             applyBetrayalFallout(ctx, betrayer, victim, members);
-            delete betrayer.allianceId;
+            { const left = betrayer.allianceId; delete betrayer.allianceId; noteAllianceEnd(ctx.state, left, 'betrayal', betrayer.id); } // AUDIT-13 R2
             // AUDIT-11 §6: an ally caught at it becomes a rival.
             const awake = members.filter(m => m.id !== victim.id && m.id !== betrayer.id && ctx.rng.chance(ALLIANCE_BONDS.theftWitnessChance));
             ctx.logEvent(
@@ -158,7 +158,7 @@ export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Trib
             // the one where it costs a life, which is why it is granted whole.
             trainProficiency(betrayer, 'deception', ctx);
             applyBetrayalFallout(ctx, betrayer, victim, members);
-            delete betrayer.allianceId;
+            { const left = betrayer.allianceId; delete betrayer.allianceId; noteAllianceEnd(ctx.state, left, 'betrayal', betrayer.id); } // AUDIT-13 R2
             ctx.logEvent(
                 `${betrayer.name} tells ${victim.name} there is water in ${deathTrap.name}, and watches them go. ` +
                 `${betrayer.name} knows exactly what happened in ${deathTrap.name}.`,
@@ -196,7 +196,7 @@ export function resolveBetrayal(ctx: SimContext, betrayer: Tribute, victim: Trib
         case 'abandon': {
             // Walking away from someone who needed you there.
             applyBetrayalFallout(ctx, betrayer, victim, members);
-            delete betrayer.allianceId;
+            { const left = betrayer.allianceId; delete betrayer.allianceId; noteAllianceEnd(ctx.state, left, 'betrayal', betrayer.id); } // AUDIT-13 R2
             const away = reachableZones(ctx.state.arena, betrayer.zone, ctx.state.collapsedZones ?? [], severedEdgeSet(ctx.state))
                 .filter(z => z.name !== betrayer.zone);
             if (away.length > 0) {
@@ -262,7 +262,7 @@ function resolveKnife(ctx: SimContext, betrayer: Tribute, victim: Tribute, membe
         { important: true, category: 'betrayal' }
     );
     applyBetrayalFallout(ctx, betrayer, victim, members);
-    delete betrayer.allianceId;
+    { const left = betrayer.allianceId; delete betrayer.allianceId; noteAllianceEnd(ctx.state, left, 'betrayal', betrayer.id); } // AUDIT-13 R2
     resolveCombat(ctx, betrayer, victim, false, true);
     return 'knife';
 }

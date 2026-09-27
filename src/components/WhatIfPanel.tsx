@@ -3,7 +3,7 @@ import { Dices } from 'lucide-react';
 import { GameState } from '../models/types';
 import { gameActions } from '../store/gameStore';
 import type { WhatIfResult } from '../engine/whatIf';
-import type { CounterfactualResult } from '../engine/season/whatIfBranches';
+import type { ChallengeResult, CounterfactualResult } from '../engine/season/whatIfBranches';
 import { AUDIT12_UI } from '../data/balance';
 
 /**
@@ -19,7 +19,71 @@ export function WhatIfPanel({ gameState, onOpenTribute }: { gameState: GameState
         <>
             <PhaseWhatIf gameState={gameState} onOpenTribute={onOpenTribute} />
             <ReapingWhatIf gameState={gameState} />
+            <ChallengeWhatIf gameState={gameState} />
         </>
+    );
+}
+
+/**
+ * AUDIT-13 P2: the counterfactual challenge. Name one intervention — a
+ * parachute or a Gamemaker lever, at a tribute, on a day — and the Games is
+ * played again from the reaping on the same seed with it added. The
+ * challenge is to change who wins.
+ */
+const CHALLENGE_KINDS: Array<{ id: string; label: string; itemId?: string }> = [
+    { id: 'parachute', label: 'a medkit parachute to', itemId: 'medkit' },
+    { id: 'parachute', label: 'a sword parachute to', itemId: 'sword' },
+    { id: 'mercy', label: 'Gamemaker mercy for' },
+    { id: 'bounty', label: 'a bounty on' },
+    { id: 'reveal', label: 'reveal the position of' },
+];
+
+function ChallengeWhatIf({ gameState }: { gameState: GameState }) {
+    const available = useMemo(() => gameActions.canRunReapingWhatIf(), []);
+    const [kind, setKind] = useState(0);
+    const [target, setTarget] = useState<string>(gameState.tributes[0]?.id ?? '');
+    const [day, setDay] = useState(Math.max(1, Math.min(2, gameState.day)));
+    const [busy, setBusy] = useState(false);
+    const [result, setResult] = useState<ChallengeResult | null>(null);
+    if (!available || gameState.day < 1) return null;
+    const lastCycle = Math.max(1, gameState.cycle ?? 1);
+    const cycleForDay = (d: number) => Math.max(1, Math.round(((d - 1) / Math.max(1, gameState.day)) * lastCycle) + 1);
+    const run = async () => {
+        const k = CHALLENGE_KINDS[kind];
+        setBusy(true);
+        setResult(null);
+        const r = await gameActions.runCounterfactualChallenge({ cycle: cycleForDay(day), type: k.id, targetId: target, itemId: k.itemId });
+        setBusy(false);
+        setResult(r);
+    };
+    const nameOf = (ids: string[]) => ids.length === 0 ? 'nobody' : ids.map(id => gameState.tributes.find(t => t.id === id)?.name ?? '?').join(' & ');
+    return (
+        <div className="panel p-5 space-y-3" data-testid="whatif-challenge">
+            <h3 className="panel-title flex items-center gap-2 border-b border-[var(--color-ink-800)] pb-2">
+                <Dices className="w-3.5 h-3.5" /> Change the winner
+            </h3>
+            <p className="text-xs text-[var(--color-ink-400)]">One intervention, on the same seed, from the reaping. Can you crown somebody else?</p>
+            <div className="flex flex-wrap items-center gap-2">
+                <select className="field text-xs w-auto" aria-label="Which intervention" value={kind} disabled={busy} onChange={e => { setKind(Number(e.target.value)); setResult(null); }}>
+                    {CHALLENGE_KINDS.map((k, i) => <option key={i} value={i}>{k.label}</option>)}
+                </select>
+                <select className="field text-xs w-auto" aria-label="Which tribute" value={target} disabled={busy} onChange={e => { setTarget(e.target.value); setResult(null); }}>
+                    {[...gameState.tributes].sort((a, b) => a.district - b.district).map(t => <option key={t.id} value={t.id}>D{t.district} · {t.name}</option>)}
+                </select>
+                <label className="text-xs text-[var(--color-ink-400)]">on day{' '}
+                    <input type="number" className="field text-xs w-16" min={1} max={gameState.day} value={day} disabled={busy}
+                        onChange={e => { setDay(Math.max(1, Math.min(gameState.day, Number(e.target.value) || 1))); setResult(null); }} />
+                </label>
+                <button className="btn btn-sm" onClick={run} disabled={busy || !target}>{busy ? 'Playing the Games again…' : 'Try it'}</button>
+            </div>
+            {result && (
+                <div className="text-sm" aria-live="polite" data-testid="whatif-challenge-result">
+                    {result.changed
+                        ? <>Done. <span className="font-bold">{result.victorNames.join(' & ') || 'Nobody'}</span> wins instead of {nameOf(result.actualVictorIds)}, on day {result.endDay}.</>
+                        : <>The crown does not move: {nameOf(result.actualVictorIds)} still wins. Try another hand.</>}
+                </div>
+            )}
+        </div>
     );
 }
 
@@ -51,7 +115,7 @@ function ReapingWhatIf({ gameState }: { gameState: GameState }) {
                 <Dices className="w-3.5 h-3.5" /> What if, from the reaping?
             </h3>
             <div className="flex flex-wrap items-center gap-2">
-                <select className="field text-xs w-auto" aria-label="Which counterfactual" value={kind} disabled={busy}
+                <select className="field text-xs w-auto max-w-full min-w-0" aria-label="Which counterfactual" value={kind} disabled={busy}
                     onChange={e => {
                         const k = e.target.value as 'never-reaped' | 'no-alliance';
                         setKind(k);
@@ -61,7 +125,7 @@ function ReapingWhatIf({ gameState }: { gameState: GameState }) {
                     <option value="never-reaped">…this tribute was never reaped</option>
                     {alliances.length > 0 && <option value="no-alliance">…this alliance never formed</option>}
                 </select>
-                <select className="field text-xs w-auto" aria-label="About whom" value={subject} disabled={busy} onChange={e => { setSubject(e.target.value); setResult(null); }}>
+                <select className="field text-xs w-auto max-w-full min-w-0" aria-label="About whom" value={subject} disabled={busy} onChange={e => { setSubject(e.target.value); setResult(null); }}>
                     {kind === 'never-reaped'
                         ? [...gameState.tributes].sort((a, b) => a.district - b.district).map(t => <option key={t.id} value={t.id}>D{t.district} · {t.name}</option>)
                         : alliances.map(a => <option key={a.id} value={a.id}>{a.name ?? a.memberIds.map(id => gameState.tributes.find(t => t.id === id)?.name ?? '?').join(', ')}</option>)}
@@ -153,7 +217,7 @@ function PhaseWhatIf({ gameState, onOpenTribute }: { gameState: GameState; onOpe
                 <label className="text-xs text-[var(--color-ink-400)]" htmlFor="whatif-from">Re-roll</label>
                 <select
                     id="whatif-from"
-                    className="field text-xs w-auto"
+                    className="field text-xs w-auto max-w-full min-w-0"
                     value={picked ?? ''}
                     onChange={e => { setPicked(Number(e.target.value)); setResult(null); }}
                     disabled={progress !== null}
@@ -165,7 +229,7 @@ function PhaseWhatIf({ gameState, onOpenTribute }: { gameState: GameState; onOpe
                 <label className="text-xs text-[var(--color-ink-400)]" htmlFor="whatif-count">×</label>
                 <select
                     id="whatif-count"
-                    className="field text-xs w-auto"
+                    className="field text-xs w-auto max-w-full min-w-0"
                     aria-label="How many branches to play"
                     value={branchCount}
                     onChange={e => { setBranchCount(Number(e.target.value)); setResult(null); }}

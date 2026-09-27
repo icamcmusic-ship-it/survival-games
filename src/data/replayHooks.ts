@@ -237,3 +237,19 @@ export function weeklyArena(now: Date = new Date()): { id: string; name: string;
     }
     return { id: pick.id, name: pick.name, thin: thin.has(pick.id) };
 }
+
+/**
+ * AUDIT-13 P5: weekly rules — this week's rotation arena, a fixed mutator
+ * pair and a seed, the same for every player, so a week has a puzzle with a
+ * best score to beat (the slip, as with the daily).
+ */
+export function weeklyRules(now: Date = new Date()): { key: string; seed: string; arenaId: string; arenaName: string; mutators: string[] } {
+    const key = weekKey(now);
+    const arena = weeklyArena(now);
+    return { key, seed: key.replace(/^week-/, 'weekly-'), arenaId: arena.id, arenaName: arena.name, mutators: drawMutators(`${key}-weekly`) };
+}
+
+/** AUDIT-13 S5: the daily's date part, `YYYY-MM-DD`, or undefined for any other seed. */
+export function dailyDateOf(seed: string): string | undefined {
+    return /^daily-(\d{4}-\d{2}-\d{2})$/.exec(seed)?.[1];
+}

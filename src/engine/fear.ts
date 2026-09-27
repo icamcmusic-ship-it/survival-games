@@ -1,7 +1,8 @@
 import { profOf, trainProficiency } from './proficiency';
+import { heartenedScale } from './audit13Content';
 import { ARCHETYPES } from '../data/archetypes';
 import { GameState, Tribute } from '../models/types';
-import { FEAR, MEMORY, PROFICIENCY } from '../data/balance';
+import { AUDIT13_CAREERS, FEAR, MEMORY, PROFICIENCY } from '../data/balance';
 import { cyclesSinceContact, ensureMemory, rememberedPlaceOf } from './memory';
 import { traitMod } from '../data/traits';
 
@@ -23,8 +24,34 @@ export function fearOf(t: Tribute, otherId: string): number {
     return ensureMemory(t).fear?.[otherId] ?? 0;
 }
 
-export function addFear(t: Tribute, otherId: string, amount: number, source?: Tribute) {
+/**
+ * AUDIT-13 K3/K5: how much of a fright from an outsider sticks to a Career.
+ * Nothing discounted it before, so by day 2 three Careers in four held >= 30
+ * fear of some outsider. A volunteer asked to be here and gets the full
+ * discount; a reaped Career about half of it. Career-on-Career fear, and
+ * everything an outsider feels, is untouched.
+ */
+export function careerOutsiderScale(t: Tribute, other: Tribute | undefined, scales: { volunteer: number; reaped: number }): number {
+    if (!t.isCareer || !other || other.isCareer) return 1;
+    return t.volunteered ? scales.volunteer : scales.reaped;
+}
+
+export const CAREER_FEAR_SCALES = {
+    volunteer: AUDIT13_CAREERS.volunteerOutsiderFearScale,
+    reaped: AUDIT13_CAREERS.reapedOutsiderFearScale,
+};
+
+/**
+ * `about` is the person the fear is of, when the caller knows it but that
+ * person is not frightening anybody on purpose (a kill witnessed, an exchange
+ * lost) — so it can be read for the K3 discount without being credited as
+ * intimidation. `source`, when it is the same person, serves for both.
+ */
+export function addFear(t: Tribute, otherId: string, amount: number, source?: Tribute, about?: Tribute) {
     if (t.id === otherId) return;
+    // AUDIT-13 K3: a Career's fear of an outsider mostly does not stick.
+    const other = source?.id === otherId ? source : about?.id === otherId ? about : undefined;
+    amount *= careerOutsiderScale(t, other, CAREER_FEAR_SCALES);
     // §(requests, deferred): being frightening is a skill. `source` is the
     // person doing the frightening, where the caller knows who that is;
     // everything that frightens nobody in particular (a mutt, the border, the
@@ -44,6 +71,8 @@ export function addFear(t: Tribute, otherId: string, amount: number, source?: Tr
     amount *= ARCHETYPES[t.archetype].fearScale ?? 1;
     // Temperament decides how much of a frightening thing actually sticks.
     amount *= Math.max(0, 1 + traitMod(t, 'fearGain'));
+    // AUDIT-13 N2: a Loud Heart on their side, standing next to them.
+    amount *= heartenedScale(t);
     if (amount <= 0) return;
     const mem = ensureMemory(t);
     if (!mem.fear) mem.fear = {};
