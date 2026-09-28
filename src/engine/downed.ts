@@ -1,12 +1,13 @@
+import { audit14ExecuteDrive, noteTriage, triageBonus } from './audit14Content';
 import { Item, Tribute, attr } from '../models/types';
 import { thawRivals } from './allianceBonds';
 import { SimContext } from './context';
-import { DOWNED, STANCE } from '../data/balance';
+import { AUDIT14_RELATIONS, DOWNED, STANCE } from '../data/balance';
 import { ARCHETYPES } from '../data/archetypes';
 import { traitMod } from '../data/traits';
 import { clampTribute } from './vitals';
 import { consumeOne } from './items';
-import { cycleOf } from './memory';
+import { cycleOf, hasVengeanceAgainst } from './memory';
 import { adjustRel, adjustRespect } from './relationships';
 import { addFear } from './fear';
 import { hopsTo, severedEdgeSet } from './map';
@@ -56,7 +57,9 @@ function rescueChance(rescuer: Tribute, hasKit: boolean): number {
     return DOWNED.rescueBase
         + (rescuer.proficiencies?.medicine ?? 0) * DOWNED.rescuePerMedicine
         + attr(rescuer, 'intelligence') * DOWNED.rescuePerIntelligence
-        + (hasKit ? DOWNED.rescueItemBonus : 0);
+        + (hasKit ? DOWNED.rescueItemBonus : 0)
+        // AUDIT-14 K5: triage.
+        + triageBonus(rescuer);
 }
 
 /**
@@ -316,6 +319,8 @@ export function tickDowned(ctx: SimContext) {
                 (rescueChance(o, !!medicalItem(o)) > rescueChance(best, !!medicalItem(best)) ? o : best));
             // The kit is spent on the attempt, not on the outcome.
             noteAttempt(ctx.state, 'treat-downed');
+            // AUDIT-14 K5: treating a downed ally is how triage is learned.
+            noteTriage(ctx, rescuer);
             const kit = consumeOne(rescuer, i => i.type === 'medical');
             if (ctx.rng.chance(rescueChance(rescuer, !!kit))) {
                 const cause = t.downed!.cause;
@@ -360,7 +365,10 @@ export function tickDowned(ctx: SimContext) {
         {
             const hostiles = here.filter(o => !wouldHelp(o, t));
             if (hostiles.length > 0) {
-                const decider = ctx.rng.pick(hostiles);
+                // AUDIT-14 RB2/R11: somebody standing over the person they swore
+                // on is the one who decides, and mostly decides one way.
+                const avenger = hostiles.find(o => hasVengeanceAgainst(o, t.id));
+                const decider = avenger ?? ctx.rng.pick(hostiles);
                 // `killSanity` is the trait table's own mercy axis — Pacifist and
                 // Softhearted sit high on it, Ruthless and Bloodthirsty below zero
                 // — so it is the suitable key here rather than a new one. Grim has
@@ -369,6 +377,8 @@ export function tickDowned(ctx: SimContext) {
                     + ARCHETYPES[decider.archetype].aggression * DOWNED.executePerAggression
                     - traitMod(decider, 'killSanity') * DOWNED.executePerAggression;
                 chance += traitMod(decider, 'executeDrive');
+                // AUDIT-14 S2: somebody on a blood trail came here to finish it.
+                chance += audit14ExecuteDrive(decider);
                 /*
                  * AUDIT-6 §8.1: the Confessor's win condition, which the
                  * archetype advertised and the engine never implemented.
@@ -396,6 +406,7 @@ export function tickDowned(ctx: SimContext) {
                 const watching = here.filter(o => o.id !== decider.id).length;
                 chance -= (t.attributes.charisma / DOWNED.pleaCharismaScale)
                     * (DOWNED.pleaBase + watching * DOWNED.pleaPerWitness);
+                if (avenger) chance = Math.max(chance, AUDIT14_RELATIONS.oathExecuteChance);
                 const witnesses = here.filter(o => o.id !== decider.id);
                 if (ctx.rng.chance(Math.max(0, Math.min(1, chance)))) {
                     decider.finishedDowned = [...(decider.finishedDowned ?? []), t.id];

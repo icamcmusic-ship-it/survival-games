@@ -20,13 +20,13 @@
  */
 import { SimContext, getAlive } from './context';
 import { Proficiency, Tribute } from '../models/types';
-import { ALLIANCES, AUDIT13_RELATIONS } from '../data/balance';
+import { ALLIANCES, AUDIT13_RELATIONS, AUDIT14_RELATIONS } from '../data/balance';
 import { ARCHETYPES } from '../data/archetypes';
 import { TRAITS, traitFits } from '../data/constants';
 import { traitMod } from '../data/traits';
 import { adjustRel, getRel, trustOf } from './relationships';
-import { allianceOf, allied, areLovers, isStarCrossed, membersOf, mergeAllianceRecords } from './alliance';
-import { cycleOf, ensureMemory, hasStoodBy, rememberedPlaceOf } from './memory';
+import { allianceOf, allied, areLovers, isStarCrossed, membersOf, mergeAllianceRecords, registerAlliance } from './alliance';
+import { cycleOf, ensureMemory, hasStoodBy, hasVengeanceAgainst, rememberedPlaceOf } from './memory';
 import { inventoryValue } from './items';
 import { resolveBetrayal } from './betrayal';
 import { oathRefusesBetrayal } from './traitHooks';
@@ -51,6 +51,7 @@ const names = (ts: Tribute[]) => ts.map(t => t.name).join(' and ');
  * they act — and if the group breaks up in between, the knife never comes.
  */
 export function betrayalIntent(ctx: SimContext, members: Tribute[]): boolean {
+    lapseIntents(ctx);
     const alive = getAlive(ctx.state).length;
     if (alive > AUDIT13_RELATIONS.intentFieldSize || members.length < 2) return false;
     const cycle = cycleOf(ctx.state);
@@ -60,11 +61,56 @@ export function betrayalIntent(ctx: SimContext, members: Tribute[]): boolean {
     for (const m of live) {
         const intent = m.relationsArc?.betrayalIntent;
         if (!intent || intent.cycle >= cycle) continue;
-        m.relationsArc!.betrayalIntent = undefined;
         const victim = live.find(o => o.id === intent.targetId);
-        if (!victim || !allied(m, victim) || oathRefusesBetrayal(ctx, m)) continue;
+        if (!victim) continue; // lapseIntents has it
+        // AUDIT-14 T8: the fuse is one to three cycles, by ambition — cut
+        // short by opportunity: the two of them alone in the dark.
+        const alone = victim.zone === m.zone && ctx.state.phase === 'night'
+            && !live.some(o => o.id !== m.id && o.id !== victim.id && o.zone === victim.zone);
+        if (!alone && cycle - intent.cycle < (intent.fuse ?? 1)) continue;
+        if (!allied(m, victim)) { standDown(ctx, m, victim, 'split'); continue; }
+        // E6: a knife needs the two of them in one place. Apart, it waits a
+        // cycle; apart for longer, it lapses on screen.
+        if (victim.zone !== m.zone) {
+            if (cycle - intent.cycle <= AUDIT14_RELATIONS.intentApartGrace) continue;
+            standDown(ctx, m, victim, 'apart');
+            continue;
+        }
+        if (oathRefusesBetrayal(ctx, m)) { standDown(ctx, m, victim, 'oath'); continue; }
+        // AUDIT-14 T8: a target who saw the tell is not waiting to be knifed.
+        if (victim.relationsArc?.watchful?.fromId === m.id) {
+            victim.relationsArc.watchful = undefined;
+            if (ctx.rng.chance(AUDIT14_RELATIONS.watchfulPreempt)) {
+                m.relationsArc!.betrayalIntent = undefined;
+                // The warning resolves on screen: the tell is answered, first.
+                ctx.logEvent(
+                    `${victim.name} has been watching ${m.name} watch them for a day. ${victim.name} does not wait for the rest of it.`,
+                    [m.id, victim.id],
+                    { type: 'betrayal-stood-down', important: true, category: 'betrayal', zone: m.zone },
+                );
+                resolveBetrayal(ctx, victim, m, members, 'preempt');
+                return true;
+            }
+            if (ctx.rng.chance(AUDIT14_RELATIONS.watchfulSidestep)) {
+                standDown(ctx, m, victim, 'watchful');
+                adjustRel(m, victim.id, -AUDIT14_RELATIONS.sidestepRegard);
+                adjustRel(victim, m.id, -AUDIT14_RELATIONS.sidestepRegard);
+                continue;
+            }
+        }
+        m.relationsArc!.betrayalIntent = undefined;
         noteGrudgeMotive(ctx, m, victim);
-        resolveBetrayal(ctx, m, victim, members);
+        ctx.logEvent(
+            ctx.rng.pick([
+                `Everybody watching saw this coming a day ago. ${m.name} does it anyway, to ${victim.name}.`,
+                `${m.name} finishes the count they started yesterday. ${victim.name} was the thing being counted.`,
+                `The Capitol has been waiting on this since last night: ${m.name} finally moves on ${victim.name}.`,
+            ]),
+            [m.id, victim.id],
+            { type: 'betrayal-warning-paid', important: true, category: 'betrayal', zone: m.zone },
+        );
+        // E8: the victim was warned a cycle ahead ("saw it coming").
+        resolveBetrayal(ctx, m, victim, members, undefined, true);
         return true;
     }
 
@@ -75,7 +121,8 @@ export function betrayalIntent(ctx: SimContext, members: Tribute[]): boolean {
         const ambition = Math.max(AUDIT13_RELATIONS.intentAmbitionFloor,
             ARCHETYPES[m.archetype].treachery + traitMod(m, 'treachery'));
         live.forEach(o => {
-            if (o.id === m.id || areLovers(m, o)) return;
+            // E6: the tell is seen from across a camp, not across the arena.
+            if (o.id === m.id || areLovers(m, o) || o.zone !== m.zone) return;
             const distrust = Math.max(0, Math.min(1, (100 - trustOf(m, o)) / 200));
             const kit = Math.min(AUDIT13_RELATIONS.intentKitCap, 0.5 + inventoryValue(o) / AUDIT13_RELATIONS.intentKitNorm);
             const score = ambition * distrust * kit * (AUDIT13_RELATIONS.intentFieldSize / Math.max(2, alive));
@@ -83,15 +130,102 @@ export function betrayalIntent(ctx: SimContext, members: Tribute[]): boolean {
         });
     });
     if (!best) return false;
-    const { m, o } = best as { m: Tribute; o: Tribute };
-    arcOf(m).betrayalIntent = { targetId: o.id, cycle };
-    ctx.logEvent(
-        `${m.name} spends the evening sharpening everything they own and counting, twice, what ${o.name} is carrying. `
-        + `Nobody says anything. The cameras stay on ${m.name}.`,
-        [m.id, o.id],
-        { type: 'betrayal-warning', important: true, category: 'betrayal', zone: m.zone },
-    );
+    const { m, o, score } = best as { m: Tribute; o: Tribute; score: number };
+    // AUDIT-14 T8: the fuse, by how much they want it.
+    const ambition = ARCHETYPES[m.archetype].treachery + traitMod(m, 'treachery');
+    const fuse = Math.max(1, AUDIT14_RELATIONS.fuseMax
+        - (ambition > AUDIT14_RELATIONS.fuseAmbitionShort ? 1 : 0)
+        - (ambition > AUDIT14_RELATIONS.fuseAmbitionShorter ? 1 : 0));
+    arcOf(m).betrayalIntent = { targetId: o.id, cycle, fuse };
+    void score;
+    ctx.logEvent(warningLine(ctx, m, o), [m.id, o.id],
+        { type: 'betrayal-warning', important: true, category: 'betrayal', zone: m.zone });
+    noticeTell(ctx, m, o, live);
     return false;
+}
+
+/**
+ * AUDIT-14 T8: the tell is seen by the audience; now the target (or a sharp
+ * ally in the zone, who tells them) gets a roll at seeing it too. A watchful
+ * target may strike first or be somewhere else when the knife comes.
+ */
+function noticeTell(ctx: SimContext, m: Tribute, o: Tribute, live: Tribute[]) {
+    const chance = (w: Tribute) => AUDIT14_RELATIONS.noticeBase + w.attributes.intelligence * AUDIT14_RELATIONS.noticePerIntelligence
+        + profOf(w, 'vigilance') * AUDIT14_RELATIONS.noticePerVigilance;
+    let by: Tribute | undefined;
+    if (ctx.rng.chance(chance(o))) by = o;
+    else {
+        by = live.find(w => w.id !== m.id && w.id !== o.id && w.zone === o.zone
+            && w.attributes.intelligence >= AUDIT14_RELATIONS.noticeAllyIntelligence && ctx.rng.chance(chance(w)));
+    }
+    if (!by) return;
+    arcOf(o).watchful = { fromId: m.id, cycle: cycleOf(ctx.state) };
+    ctx.logEvent(
+        by.id === o.id
+            ? `${o.name} catches ${m.name} looking, and looks back. From now on ${o.name} sleeps with their back to a tree.`
+            : `${by.name} saw how ${m.name} was looking at ${o.name}, and says so, quietly, to ${o.name}.`,
+        by.id === o.id ? [o.id, m.id] : [by.id, o.id, m.id],
+        { type: 'betrayal-noticed', category: 'betrayal', zone: o.zone },
+    );
+}
+
+/**
+ * AUDIT-14 RB8/R10 (and E7): the tell, keyed to what is driving it (the kit,
+ * the distrust, or simply the field getting small) and to the hour.
+ */
+function warningLine(ctx: SimContext, m: Tribute, o: Tribute): string {
+    const when = ctx.state.phase === 'night' ? 'the evening' : 'the grey hour before the day starts';
+    const kit = inventoryValue(o) >= AUDIT13_RELATIONS.intentKitNorm;
+    const distrust = trustOf(m, o) < 0;
+    const endgame = getAlive(ctx.state).length <= 4;
+    const pool = endgame ? [
+        `${m.name} counts the cannons out loud, under their breath, and then looks at ${o.name} for a long time. The arithmetic only works one way.`,
+        `There are not many left, and ${m.name} spends ${when} working out how many of them are sitting at this fire. ${o.name} is one.`,
+    ] : kit ? [
+        `${m.name} spends ${when} sharpening everything they own and counting, twice, what ${o.name} is carrying. Nobody says anything. The cameras stay on ${m.name}.`,
+        `${m.name} offers to carry ${o.name}'s pack for a while. ${o.name} says no. ${m.name} keeps looking at it anyway.`,
+        `Through ${when}, ${m.name}'s eyes keep going back to what ${o.name} has and ${m.name} does not.`,
+    ] : distrust ? [
+        `${m.name} sleeps facing ${o.name}, and does not really sleep. Whatever was trust between them has turned into a watch.`,
+        `${m.name} spends ${when} asking ${o.name} small questions and not believing the answers. The cameras notice before ${o.name} does.`,
+    ] : [
+        `${m.name} spends ${when} very quiet, and positioned, always, just behind ${o.name}.`,
+        `Something has changed in how ${m.name} looks at ${o.name}. Nobody in the camp could say what. The audience can.`,
+    ];
+    return ctx.rng.pick(pool);
+}
+
+/** AUDIT-14 RB8: an intent that lapses says so, so the tell resolves on screen either way. */
+function standDown(ctx: SimContext, m: Tribute, o: Tribute, why: 'dead' | 'apart' | 'split' | 'oath' | 'downed' | 'watchful') {
+    if (m.relationsArc) m.relationsArc.betrayalIntent = undefined;
+    const line = {
+        dead: `${m.name} had been counting what ${o.name} carried. Somebody else has settled the question for them.`,
+        apart: `${m.name} spent a night deciding about ${o.name}, and by the time it was decided ${o.name} was somewhere else. The moment goes.`,
+        split: `Whatever ${m.name} was going to do to ${o.name}, the group coming apart has done first. ${m.name} lets it go.`,
+        oath: `${m.name} gets as far as reaching for it, and stops. Whatever they swore, it holds. ${o.name} never knows how close it was.`,
+        downed: `${m.name} was going to move on ${o.name}. Flat on the ground, ${m.name} is not going to move on anybody.`,
+        watchful: `${m.name} comes for ${o.name} in the night and finds their bedroll empty. ${o.name} is sleeping somewhere else, and both of them know why.`,
+    }[why];
+    ctx.logEvent(line, [m.id, o.id], { type: 'betrayal-stood-down', category: 'betrayal', zone: m.zone });
+}
+
+/**
+ * AUDIT-14 RB8 / E8: an intent whose target is dead, whose pair are no longer
+ * allied, or whose holder is down, is dropped with a line rather than carried
+ * silently into the holder's next group.
+ */
+export function lapseIntents(ctx: SimContext) {
+    ctx.state.tributes.forEach(m => {
+        const intent = m.relationsArc?.betrayalIntent;
+        if (!intent) return;
+        // E8: a dead holder's intent goes with them, silently.
+        if (m.status !== 'alive') { m.relationsArc!.betrayalIntent = undefined; return; }
+        const o = ctx.state.tributes.find(x => x.id === intent.targetId);
+        if (!o) { m.relationsArc!.betrayalIntent = undefined; return; }
+        if (o.status !== 'alive') standDown(ctx, m, o, 'dead');
+        else if (!allied(m, o)) standDown(ctx, m, o, 'split');
+        else if (m.downed) standDown(ctx, m, o, 'downed');
+    });
 }
 
 /** R1: the two halves of a split, meeting again. */
@@ -171,21 +305,11 @@ function partnerArc(ctx: SimContext) {
             return;
         }
 
-        // After the horn, somebody who cares goes looking.
-        const partner = living.find(o => getRel(t, o.id) >= AUDIT13_RELATIONS.partnerSearchRegard);
-        if (partner && !arc.partnerSearched && ctx.state.day <= 2 && !allied(t, partner)
-            && partner.zone !== t.zone && (!t.objective || t.objective.kind === 'survive')) {
-            const where = rememberedPlaceOf(ctx.state, t, partner.id);
-            if (where && !(ctx.state.collapsedZones ?? []).includes(where)) {
-                arc.partnerSearched = true;
-                t.objective = { kind: 'reach', zone: where, reason: 'ally', expires: cycle + AUDIT13_RELATIONS.partnerSearchCycles };
-                ctx.logEvent(
-                    `${t.name} did not see where ${partner.name} went at the gong, only where they were last. That is where ${t.name} goes.`,
-                    [t.id, partner.id],
-                    { type: 'partner-search', category: 'travel', zone: t.zone },
-                );
-            }
-        }
+        // After the horn, somebody who cares goes looking — and keeps
+        // looking. AUDIT-14 T14: the search replaces any non-urgent objective,
+        // re-aims on every fresh sighting or rumour, and ends with a meeting
+        // or with the evidence that there is nobody to meet.
+        partnerSearch(ctx, t, arc, kin, cycle);
     });
 
     // The final two, from one district: the oldest standoff there is.
@@ -205,19 +329,104 @@ function partnerArc(ctx: SimContext) {
     }
 }
 
+/** AUDIT-14 T14: the partner search, run every cycle it stays open. */
+function partnerSearch(ctx: SimContext, t: Tribute, arc: Arc, kin: Tribute[], cycle: number) {
+    const searching = arc.partnerSearchFor ? kin.find(o => o.id === arc.partnerSearchFor) : undefined;
+    // The cannon and the district on the sky: the search is over.
+    if (searching && searching.status !== 'alive') {
+        arc.partnerSearchFor = undefined;
+        if (t.objective?.kind === 'reach' && t.objective.reason === 'ally') t.objective = { kind: 'survive' };
+        ctx.logEvent(
+            `${t.name} sees District ${t.district} on the sky tonight and stops walking. There is nobody left out there to find.`,
+            [t.id, searching.id],
+            { type: 'partner-search', category: 'travel', zone: t.zone },
+        );
+        return;
+    }
+    const partner = searching ?? kin.find(o => o.status === 'alive' && getRel(t, o.id) >= AUDIT13_RELATIONS.partnerSearchRegard);
+    if (!partner || allied(t, partner) || ctx.state.day > AUDIT14_RELATIONS.partnerSearchDays) {
+        arc.partnerSearchFor = undefined;
+        return;
+    }
+    // Found them: an offer, face to face.
+    if (partner.zone === t.zone) {
+        if (!searching) return;
+        arc.partnerSearchFor = undefined;
+        if (t.objective?.kind === 'reach' && t.objective.reason === 'ally') t.objective = { kind: 'survive' };
+        adjustRel(t, partner.id, AUDIT14_RELATIONS.partnerMeetRegard);
+        adjustRel(partner, t.id, AUDIT14_RELATIONS.partnerMeetRegard);
+        const both = !t.allianceId && !partner.allianceId;
+        if (both) {
+            const id = `alliance-${t.id}-${partner.id}`;
+            t.allianceId = id;
+            partner.allianceId = id;
+            registerAlliance(ctx, id, [t, partner]);
+        }
+        ctx.logEvent(
+            both
+                ? `${t.name} finds ${partner.name} in ${t.zone}, and neither of them says anything for a while. Then they are two, from the same place, and that is a group.`
+                : `${t.name} finds ${partner.name} in ${t.zone}. Whatever else each of them has now, they stand together for a moment first.`,
+            [t.id, partner.id],
+            { type: 'partner-search', important: both, category: 'alliance', zone: t.zone },
+        );
+        return;
+    }
+    // Only a non-urgent objective gives way to it.
+    const urgent = t.objective && !['survive', 'hold', 'wait', 'scout', 'isolate'].includes(t.objective.kind)
+        && !(t.objective.kind === 'reach' && (t.objective.reason === 'ally' || t.objective.reason === 'forage'));
+    if (urgent) return;
+    const where = rememberedPlaceOf(ctx.state, t, partner.id);
+    if (!where || (ctx.state.collapsedZones ?? []).includes(where) || where === t.zone) return;
+    const aimed = t.objective?.kind === 'reach' && t.objective.zone === where;
+    if (aimed && searching) return;
+    const first = !searching;
+    arc.partnerSearchFor = partner.id;
+    arc.partnerSearched = true;
+    t.objective = { kind: 'reach', zone: where, reason: 'ally', expires: cycle + AUDIT13_RELATIONS.partnerSearchCycles };
+    ctx.logEvent(
+        first
+            ? `${t.name} did not see where ${partner.name} went at the gong, only where they were last. That is where ${t.name} goes.`
+            : `${t.name} hears ${partner.name} was seen in ${where}, and turns that way.`,
+        [t.id, partner.id],
+        { type: 'partner-search', category: 'travel', zone: t.zone },
+    );
+}
+
+/**
+ * AUDIT-14 T12: read by `riskTolerance`. An elder whose ward is down beside
+ * them stops weighing their own skin.
+ */
+export function wardDownedRisk(state: SimContext['state'], t: Tribute): number {
+    const down = state.tributes.some(o => o.status === 'alive' && o.downed && o.zone === t.zone
+        && o.relationsArc?.wardOf === t.id);
+    return down ? AUDIT14_RELATIONS.wardDownedRisk : 0;
+}
+
 /** R5: the slow burn, between allies of an age who keep sharing a camp. */
 function slowBurn(ctx: SimContext, declare: (a: Tribute, b: Tribute) => void) {
+    // AUDIT-14 RB1: one love story per Games is the budget the lovers guard
+    // holds; the slow burn is the sincere route into it, not a second one.
+    if ((ctx.state.romances ?? []).length > 0) return;
     const alive = getAlive(ctx.state);
     for (let i = 0; i < alive.length; i++) {
         for (let j = i + 1; j < alive.length; j++) {
             const a = alive[i], b = alive[j];
             if (!allied(a, b) || a.allianceId?.startsWith('lovers-')) continue;
-            if (isStarCrossed(a) || isStarCrossed(b) || a.zone !== b.zone) continue;
+            if (isStarCrossed(a) || isStarCrossed(b)) continue;
+            // AUDIT-14 E19: consecutive nights at the same fire. A cycle apart
+            // resets it; a day cycle neither adds nor breaks it.
+            if (a.zone !== b.zone) {
+                if (a.relationsArc?.rapport?.[b.id]) a.relationsArc.rapport[b.id] = 0;
+                if (b.relationsArc?.rapport?.[a.id]) b.relationsArc.rapport[a.id] = 0;
+                continue;
+            }
+            if (ctx.state.phase !== 'night') continue;
             if (a.age < AUDIT13_RELATIONS.romanceMinAge || b.age < AUDIT13_RELATIONS.romanceMinAge || Math.abs(a.age - b.age) > AUDIT13_RELATIONS.romanceAgeGap) continue;
             // A rescue or a shared watch: the camp is the watch rota.
             const record = allianceOf(ctx.state, a.allianceId);
             if (!record) continue;
-            if (!ctx.rng.chance(AUDIT13_RELATIONS.romanceRampChance * (hasStoodBy(a, b.id) || hasStoodBy(b, a.id) ? 2 : 1))) continue;
+            // A night the watch is shared counts; one it is not neither adds nor breaks the run.
+            if (!ctx.rng.chance(Math.min(1, AUDIT14_RELATIONS.slowBurnNightChance * (hasStoodBy(a, b.id) || hasStoodBy(b, a.id) ? 1.5 : 1)))) continue;
             const ra = (arcOf(a).rapport ??= {});
             const rb = (arcOf(b).rapport ??= {});
             ra[b.id] = (ra[b.id] ?? 0) + 1;
@@ -256,7 +465,12 @@ function coolVengeance(ctx: SimContext) {
         arc.cooled = [...(arc.cooled ?? []), stale];
         if (t.objective?.kind === 'hunt' && t.objective.targetId === stale) t.objective = { kind: 'survive' };
         ctx.logEvent(
-            `${t.name} has not seen ${target.name} in days. The oath is still there, somewhere, but ${t.name} has stopped walking towards it.`,
+            ctx.rng.pick([
+                `${t.name} has not seen ${target.name} in days. The oath is still there, somewhere, but ${t.name} has stopped walking towards it.`,
+                `${t.name} used to say ${target.name}'s name every night. Tonight they notice they have not said it in a while.`,
+                `Hunger has a way of crowding things out. ${target.name} is still out there; ${t.name} is mostly thinking about water.`,
+                `${t.name} does not forgive ${target.name}. They just stop going looking, which from the outside looks the same.`,
+            ]),
             [t.id, target.id],
             { type: 'vengeance-cooled', category: 'alliance', zone: t.zone },
         );
@@ -266,18 +480,42 @@ function coolVengeance(ctx: SimContext) {
 /** R7: the ward. */
 function wards(ctx: SimContext) {
     const alive = getAlive(ctx.state);
+    // AUDIT-14 RB5 / E12: the bond is the alliance's. When the pair part, or
+    // one of them swears on the other, it ends: the elder stops standing for
+    // them, and there is nothing more to learn or inherit.
+    alive.forEach(young => {
+        const arc = young.relationsArc;
+        if (!arc?.wardOf) return;
+        const elder = ctx.state.tributes.find(o => o.id === arc.wardOf);
+        if (!elder || elder.status !== 'alive') return;
+        if (allied(elder, young) && !hasVengeanceAgainst(elder, young.id) && !hasVengeanceAgainst(young, elder.id)) return;
+        arc.wardOf = undefined;
+        arc.inherited = true; // one ward, one ending
+        elder.protectorBonds = (elder.protectorBonds ?? []).filter(id => id !== young.id);
+    });
     // Bond forms between allies of the right ages.
     alive.forEach(young => {
         const arc = arcOf(young);
         if (young.age > AUDIT13_RELATIONS.wardYoungAge || arc.wardOf) return;
-        const elder = alive.find(o => o.age >= AUDIT13_RELATIONS.wardElderAge && allied(o, young) && !areLovers(o, young));
+        // AUDIT-14 T12: the elder who cares most, standing here — not the
+        // first one in array order.
+        const care = (o: Tribute) => getRel(o, young.id)
+            + (ARCHETYPES[o.archetype].objectiveBias?.protect ?? 0) * AUDIT14_RELATIONS.wardProtectWeight;
+        const elder = alive.filter(o => o.age >= AUDIT13_RELATIONS.wardElderAge && allied(o, young) && !areLovers(o, young)
+            && o.zone === young.zone && !hasVengeanceAgainst(o, young.id) && !hasVengeanceAgainst(young, o.id))
+            .sort((x, y) => care(y) - care(x))[0];
         if (!elder) return;
         arc.wardOf = elder.id;
         // The guardian stand rides the protector machinery: a protector
         // crosses a zone for a downed ward and takes a protect objective.
         if (!(elder.protectorBonds ?? []).includes(young.id)) elder.protectorBonds = [...(elder.protectorBonds ?? []), young.id];
         ctx.logEvent(
-            `${elder.name} starts making ${young.name} eat first and sleep in the middle. Nobody asked them to. Nobody asks them to stop.`,
+            ctx.rng.pick([
+                `${elder.name} starts making ${young.name} eat first and sleep in the middle. Nobody asked them to. Nobody asks them to stop.`,
+                `${elder.name} shows ${young.name} how to hold it properly. Then shows them again. Then stands a little closer than they need to.`,
+                `${young.name} is ${young.age}. ${elder.name} decides, without telling anybody, that ${young.name} is going to see ${young.age + 1}.`,
+                `${elder.name} takes ${young.name}'s watch as well as their own, and when asked about it says they were not tired.`,
+            ]),
             [elder.id, young.id],
             { type: 'ward-bond', category: 'alliance', zone: elder.zone },
         );
@@ -288,6 +526,14 @@ function wards(ctx: SimContext) {
         if (!arc?.wardOf) return;
         const elder = ctx.state.tributes.find(o => o.id === arc.wardOf);
         if (!elder) return;
+        // AUDIT-14 E12: the bond is an alliance bond. It goes when the
+        // alliance does, or when either has sworn on the other.
+        if (elder.status === 'alive' && (!allied(elder, young)
+            || hasVengeanceAgainst(elder, young.id) || hasVengeanceAgainst(young, elder.id))) {
+            arc.wardOf = undefined;
+            elder.protectorBonds = (elder.protectorBonds ?? []).filter(id => id !== young.id);
+            return;
+        }
         if (elder.status === 'alive') {
             if (elder.zone !== young.zone) return;
             const skill = (Object.keys(elder.proficiencies ?? {}) as Proficiency[]).sort((x, y) => profOf(elder, y) - profOf(elder, x))[0];
@@ -296,6 +542,8 @@ function wards(ctx: SimContext) {
         }
         if (arc.inherited) return;
         arc.inherited = true;
+        // AUDIT-14 E12: nothing is inherited across a killing between them.
+        if (elder.lastDamage?.sourceId === young.id || young.lastDamage?.sourceId === elder.id) return;
         const trait = elder.traits.find(tr => (TRAITS as readonly string[]).includes(tr) && !young.traits.includes(tr) && traitFits(young.traits, tr));
         if (!trait) return;
         young.traits.push(trait);
@@ -314,6 +562,7 @@ function wards(ctx: SimContext) {
  * of the phase's import cycle.
  */
 export function tickRelationsArc(ctx: SimContext, declare: (a: Tribute, b: Tribute) => void) {
+    lapseIntents(ctx);
     reunionOrFeud(ctx);
     partnerArc(ctx);
     slowBurn(ctx, declare);

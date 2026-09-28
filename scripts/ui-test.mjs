@@ -6,12 +6,31 @@
  *   npm run test:ui
  */
 import { chromium } from 'playwright';
+import { existsSync, readdirSync } from 'node:fs';
 
 const BASE = 'http://localhost:3000/survival-games/';
 const errors = [];
 const shots = process.env.SHOT_DIR || '/tmp';
 
-const browser = await chromium.launch(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {});
+/*
+ * AUDIT-14 Q6: the installed playwright can want a headless shell build the box
+ * does not have. Use CHROMIUM_PATH or PLAYWRIGHT_CHROMIUM_EXECUTABLE if set,
+ * else the newest /opt/pw-browsers/chromium-* that exists, else playwright's own.
+ */
+function chromiumPath() {
+  const env = process.env.CHROMIUM_PATH || process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE;
+  if (env) return env;
+  const root = '/opt/pw-browsers';
+  if (!existsSync(root)) return undefined;
+  const found = readdirSync(root)
+    .filter(d => /^chromium-\d+$/.test(d))
+    .sort((a, b) => Number(b.split('-')[1]) - Number(a.split('-')[1]))
+    .map(d => `${root}/${d}/chrome-linux/chrome`)
+    .find(p => existsSync(p));
+  return found;
+}
+const executablePath = chromiumPath();
+const browser = await chromium.launch(executablePath ? { executablePath } : {});
 const page = await browser.newPage({ viewport: { width: 1400, height: 950 } });
 page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
 page.on('pageerror', e => errors.push('pageerror: ' + e.message));
@@ -1071,6 +1090,99 @@ for (const zoom of [200, 400]) {
   });
 }
 await page.setViewportSize({ width: 1400, height: 950 });
+
+
+/*
+ * AUDIT-14 §4: a fresh run in its own tab, so autoplay and undo cannot disturb
+ * the steps above. U1 (autoplay survives the palette), U2 (undo locks the
+ * book), U3 (ticks do not overlap at 380), U4 (phone control bar), Q2 (N
+ * catches up), Q5 (Undo says where it goes).
+ */
+{
+  const p2 = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+  p2.on('pageerror', e => errors.push('pageerror (audit14): ' + e.message));
+  const s2 = async (label, fn) => {
+    try { await fn(); console.log('✓ ' + label); }
+    catch (e) { errors.push(`${label}: ${e.message}`); console.log('✗ ' + label + ' — ' + e.message); }
+  };
+  const footerText = () => p2.locator('footer.panel').first().innerText();
+  await s2('AUDIT-14: a fresh run reaches the chronicle', async () => {
+    await p2.goto(BASE, { waitUntil: 'networkidle' });
+    await p2.getByRole('button', { name: /reap the tributes/i }).click();
+    await p2.getByRole('button', { name: /confirm tributes/i }).click();
+    await p2.getByRole('heading', { name: /the chronicle/i }).waitFor();
+    for (let i = 0; i < 12; i++) {
+      const next = p2.getByRole('button', { name: /sound the gong/i });
+      if (await next.count()) break;
+      await p2.getByRole('button', { name: PRE_GAMES }).last().click();
+      await p2.waitForTimeout(150);
+    }
+    await p2.getByRole('button', { name: /sound the gong/i }).last().waitFor();
+  });
+  await s2('AUDIT-14 U2/Q5: undo past the gong names its target and locks the book', async () => {
+    await p2.getByRole('button', { name: /sound the gong/i }).last().click();
+    await p2.waitForTimeout(200);
+    await p2.getByRole('button', { name: /run the bloodbath/i }).last().click();
+    await p2.waitForTimeout(300);
+    const undo = p2.getByTestId('chronicle-undo');
+    const label = await undo.getAttribute('aria-label');
+    if (!/^Undo: back to /.test(label ?? '')) throw new Error(`undo label does not name its target: ${label}`);
+    await undo.click(); await p2.waitForTimeout(200);
+    await undo.click(); await p2.waitForTimeout(200);
+    await p2.getByRole('link', { name: /^arena$/i }).first().click();
+    await p2.getByRole('button', { name: /^roster$/i }).first().click();
+    await p2.getByText(/betting locked after undo/i).first().waitFor({ timeout: 3000 });
+    await p2.getByRole('link', { name: /^chronicle$/i }).first().click();
+  });
+  await s2('AUDIT-14 Q2: N off the last page catches up', async () => {
+    await p2.locator('footer.panel').first().waitFor();
+    await p2.evaluate(() => (document.activeElement instanceof HTMLElement) && document.activeElement.blur());
+    await p2.keyboard.press('ArrowLeft'); await p2.waitForTimeout(150);
+    const at = await footerText();
+    const m = /page (\d+)\/(\d+)/i.exec(at);
+    if (!m || m[1] === m[2]) throw new Error(`could not step off the last page: ${at.replace(/\s+/g, " ").slice(0, 300)}`);
+    await p2.keyboard.press('n');
+    await p2.getByText(/caught up/i).first().waitFor({ timeout: 2000 });
+  });
+  await s2('AUDIT-14 U1/Q3: autoplay keeps going after the palette opens and closes', async () => {
+    await p2.getByLabel('Seconds per stage when playing').selectOption('1');
+    await p2.getByRole('button', { name: /play — advance a stage automatically/i }).last().click();
+    await p2.getByTestId('autoplay-chip').waitFor({ timeout: 2000 });
+    await p2.keyboard.press('Control+k');
+    await p2.getByRole('dialog', { name: /search everything/i }).waitFor();
+    await p2.waitForTimeout(1500);
+    await p2.keyboard.press('Escape');
+    const before = await footerText();
+    await p2.waitForTimeout(3500);
+    const after = await footerText();
+    if (before === after) throw new Error('autoplay stalled after the palette closed');
+    const pause = p2.getByRole('button', { name: /pause autoplay/i });
+    if (await pause.count()) await pause.last().click();
+  });
+  await s2('AUDIT-14 U3/U4: at 380px ticks do not overlap and the controls ride along', async () => {
+    await p2.setViewportSize({ width: 380, height: 800 });
+    await p2.waitForTimeout(300);
+    const bar = p2.getByTestId('chronicle-mobile-bar');
+    await bar.waitFor();
+    const box = await bar.boundingBox();
+    if (!box || box.y + box.height > 802 || box.y < 0) throw new Error(`phone control bar is not in the viewport: ${JSON.stringify(box)}`);
+    const overlap = await p2.evaluate(() => {
+      const marks = [...document.querySelectorAll('.scrubber-tick')].map(el => {
+        const r = el.getBoundingClientRect();
+        const cs = getComputedStyle(el, '::after');
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2, w: parseFloat(cs.width), h: parseFloat(cs.height), shown: r.width > 0 };
+      }).filter(m => m.shown);
+      let n = 0;
+      for (let i = 0; i < marks.length; i++) for (let j = i + 1; j < marks.length; j++) {
+        const a = marks[i], b = marks[j];
+        if (Math.abs(a.x - b.x) < (a.w + b.w) / 2 && Math.abs(a.y - b.y) < (a.h + b.h) / 2) n++;
+      }
+      return { n, big: marks.filter(m => m.w > 12 || m.h > 22).length };
+    });
+    if (overlap.n > 0 || overlap.big > 0) throw new Error(`scrubber marks overlap (${overlap.n}) or are oversized (${overlap.big})`);
+  });
+  await p2.close();
+}
 
 console.log('\n' + (errors.length ? 'ERRORS:\n' + errors.map(e => ' - ' + e).join('\n') : 'No errors.'));
 await browser.close();

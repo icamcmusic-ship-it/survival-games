@@ -1,4 +1,5 @@
 import { traitMod } from '../data/traits';
+import { leaveKit } from './abandonedCamps';
 import { crownLeadership } from './audit13Content';
 import { ARCHETYPES } from '../data/archetypes';
 import { Alliance, AllianceEndReason, AllianceRole, EventType, GameState, Item, Tribute } from '../models/types';
@@ -551,8 +552,34 @@ function resolveSuccession(ctx: SimContext, record: Alliance, members: Tribute[]
             // runs. Three is enough for the group to come apart — the pair
             // keeps the camp, the odd one out keeps the grudge — and that is
             // the story the mechanic exists to tell.
-            if (withHeir.length >= 1 && withFavourite.length >= 1
-                && withHeir.length + withFavourite.length >= ALLIANCES.successionSplitMinMembers) {
+            // AUDIT-14 RB7: ...but "the odd one out keeps the grudge" means
+            // the odd one out *walks*. Registering a record for one person made
+            // a group of one with a pact and a chronicle entry, and left the
+            // other side a record of one until the next reconcile.
+            const lone = withHeir.length === 1 && withFavourite.length >= 2 ? withHeir[0]
+                : withFavourite.length === 1 && withHeir.length >= 2 ? withFavourite[0]
+                : undefined;
+            if (lone && withHeir.length + withFavourite.length >= ALLIANCES.successionSplitMinMembers) {
+                const stay = members.filter(m => m.id !== lone.id);
+                leaveAlliance(ctx.state, lone, 'walkout', lone.id);
+                stay.forEach(m => {
+                    adjustRel(lone, m.id, -ALLIANCES.successionLoserRegard);
+                    adjustRel(m, lone.id, -ALLIANCES.successionLoserRegard);
+                });
+                const next = lone.id === heir.id ? favourite : heir;
+                record.leaderId = next.id;
+                if (next.id === heir.id) next.succeededAsHeir = true;
+                record.successorId = undefined;
+                noteTookOverLead(next);
+                ctx.logEvent(
+                    `The leader named ${heir.name}; the group would rather have ${favourite.name}. ${lone.name} is the only one on their side of it, `
+                    + `and by the afternoon ${lone.name} is walking alone and ${next.name} is running what is left.`,
+                    members.map(m => m.id),
+                    { type: 'succession-split', important: true, category: 'alliance' }
+                );
+                return;
+            }
+            if (withHeir.length >= 2 && withFavourite.length >= 2) {
                 const splinterId = `alliance-succession-${record.id}-${cycleOf(ctx.state)}`;
                 withHeir.forEach(m => { m.allianceId = splinterId; });
                 // A group that comes apart is still a group. Assigning the id
@@ -665,12 +692,30 @@ export function pruneDeadAlliances(ctx: SimContext) {
         const record = records[id];
         if (!record) return;
         const living = membersOf(ctx.state, id);
-        if (living.length > 0) {
-            if (living.length >= 2) repairStructure(ctx, record, living);
-            return;
+        if (living.length >= 2) {
+            repairStructure(ctx, record, living);
+            // AUDIT-14 RB6: and the roster is the truth at the end of the step,
+            // whatever left mid-phase without going through `leaveAlliance`.
+            const now = membersOf(ctx.state, id);
+            if (now.length >= 2) {
+                const ids = now.map(m => m.id);
+                if (ids.join() !== record.memberIds.join()) record.memberIds = ids;
+                if (!ids.includes(record.leaderId)) record.leaderId = pickLeader(now).id;
+                return;
+            }
+        }
+        // AUDIT-14 RB6/RB7: a group of one is not a group, even for the rest
+        // of a step. The survivor keeps the cache and the memory of it.
+        const alone = membersOf(ctx.state, id);
+        if (alone.length === 1) {
+            const roster = (record.memberIds ?? [])
+                .map(mid => ctx.state.tributes.find(o => o.id === mid))
+                .filter((o): o is Tribute => o !== undefined);
+            if (roster.length >= 2) noteFormerAllies(roster);
+            delete alone[0].allianceId;
         }
         closeChronicle(ctx.state, record, 'attrition');
-        distributeCache(ctx, record, []);
+        distributeCache(ctx, record, alone);
         delete records[id];
     });
 }
@@ -768,6 +813,33 @@ export function noteAllianceEnd(state: GameState, id: string | undefined, reason
     record.endReason = reason;
     record.endedById = byId;
     closeChronicle(state, record, reason);
+}
+
+/**
+ * AUDIT-14 RB6: one living tribute leaving their group, with the record kept
+ * true. About sixteen sites used to `delete t.allianceId` and leave the
+ * record's `memberIds` (and sometimes `leaderId`) naming them until the next
+ * `reconcileAlliances`, which runs before the relations arc and romance — so
+ * a romance walkout or a coup left a stale roster for a whole step. The
+ * leftover is also never a group of one: the last member standing is out of
+ * it too, and the record keeps its roster for `reconcileAlliances` to close.
+ */
+export function leaveAlliance(state: GameState, t: Tribute, reason?: AllianceEndReason, byId?: string) {
+    const id = t.allianceId;
+    if (!id) return;
+    delete t.allianceId;
+    const remaining = membersOf(state, id);
+    if (remaining.length < 2) remaining.forEach(m => { delete m.allianceId; });
+    if (reason) noteAllianceEnd(state, id, reason, byId);
+    const record = state.alliances?.[id];
+    if (!record || remaining.length < 2) return;
+    recordAllianceState(state, record);
+    record.memberIds = record.memberIds.filter(mid => mid !== t.id);
+    if (!remaining.some(m => m.id === record.leaderId)) {
+        record.leaderId = record.successorId && remaining.some(m => m.id === record.successorId)
+            ? record.successorId
+            : pickLeader(remaining).id;
+    }
 }
 
 /**
@@ -998,14 +1070,9 @@ export function distributeCache(
     if (living.length === 0) {
         // Nobody left to take it. It stays where the group kept it, which is
         // what the abandoned-camp layer is for; the items are still real.
-        ctx.state.abandonedCamps = ctx.state.abandonedCamps ?? [];
-        ctx.state.abandonedCamps.push({
-            zone: record.campZone ?? ctx.state.arena.zones[0].name,
-            ownerId: record.leaderId ?? '',
-            ownerName: 'the group that kept it',
-            cycle: ctx.state.cycle ?? 0,
-            items: spoils.map(i => i.id),
-        });
+        // AUDIT-14 E4/E13: through the one cache writer — merged, never on
+        // closed ground, and the instances kept.
+        leaveKit(ctx, record.campZone ?? ctx.state.arena.zones[0].name, record.leaderId ?? '', 'the group that kept it', spoils, 'scatter');
         return { given, dropped: spoils };
     }
 

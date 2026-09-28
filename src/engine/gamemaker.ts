@@ -14,7 +14,7 @@ import { dropSupplies, severRandomEdge, startZoneEffect } from './zoneEffects';
 import { announceFeastTheme } from './phases/feast';
 import { cycleOf, noteSighting } from './memory';
 import { allied } from './alliance';
-import { sendPlayerParachute } from './playerSponsor';
+import { sendPlayerNote, sendPlayerParachute } from './playerSponsor';
 
 /**
  * Gamemaker weather, expressed as exposure profiles.
@@ -254,6 +254,11 @@ export function replayPlannedInterventions(ctx: SimContext) {
         if (a.type === 'bar-alliance') return barAlliance(ctx, a.targetId); // AUDIT-12 wave 3 what-if
         if (a.type === 'parachute') {
             if (a.targetId && a.itemId) sendPlayerParachute(ctx.state, a.targetId, a.itemId);
+            return;
+        }
+        // AUDIT-14 F5: the booth's paid note.
+        if (a.type === 'note') {
+            if (a.targetId) sendPlayerNote(ctx.state, a.targetId);
             return;
         }
         triggerGamemakerEvent(ctx, a.type as GamemakerEventType, a.targetId, false, true);

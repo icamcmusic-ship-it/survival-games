@@ -1321,6 +1321,72 @@ export const TRAIT_DEFS: Record<string, TraitDef> = {
         info: 'Takes the whole night and will not hand it over. A far better watch after dark, especially when nobody shares it, and harder to share a camp with.',
         mods: { awarenessNight: 0.8, allianceAffinity: -0.1 },
     },
+    /*
+     * AUDIT-14 §7 T1-T16: sixteen more. Each carries a hook of its own in
+     * `engine/audit14Content.ts` (or a mods key read at exactly one site); the
+     * counter the audit named for each is in the same row.
+     */
+    'Horn-Shy': {
+        info: 'Will not go near the horn. Always works the edge at the gong, and breaks off a little sooner — starting the Games with whatever they can pick up on the run.',
+        mods: { hornCommitment: -0.4, retreat: 0.03 },
+    },
+    'Sore Loser': {
+        info: 'Comes back for whoever last put them down. Fights harder against the last person who wounded them.',
+        mods: { retreat: -0.02 },
+    },
+    'Pack Mule': {
+        info: 'Carries two more than anybody else and feels it. Tires by day and is slow at night.',
+        mods: { capacity: 2, fatigueDay: 1, nightMovement: -0.05 },
+    },
+    'Quick Study': {
+        info: 'Learns anything a quarter faster once they are doing it for real — and looked worse than they are on the training floor.',
+    },
+    'Gallows Humor': {
+        info: 'Laughs at it. Keeps their head far better, and the sponsors like them for it — though they laugh at the wrong moments.',
+        mods: { sanityDrain: -0.2, sponsorAppeal: 0.3, concealment: -0.03 },
+    },
+    'Magpie': {
+        info: 'Cannot walk past anything shiny. Finds more, and is wanted more for what they are carrying.',
+        mods: { scavenge: 0.15, targetDraw: 0.3 },
+    },
+    'Fever-Proof': {
+        info: 'Never took a fever as a child. Infection takes hold far less often, though they bleed a little more freely.',
+        mods: { bleedResist: -0.05 },
+    },
+    'Rearguard': {
+        info: 'The last one out. An ally breaking off beside them is covered on the way, and they are harder to single out with friends near — but ambushes find them first.',
+        mods: { defended: 0.4 },
+    },
+    'Cold Feet': {
+        info: 'Has one foot out of every door. Quicker to leave a fight and an alliance, and trusted a little less for it.',
+        mods: { betrayalResist: -0.2, retreat: 0.05, trustGain: -0.2 },
+    },
+    'Late Bloomer': {
+        info: 'Weak in the first days and dangerous if they last. Fights worse through day four and better from day seven.',
+    },
+    'Blood-Shy': {
+        info: 'Cannot bear it. A kill costs them twice the sanity, and they would rather not start the fight.',
+        mods: { killSanity: 1, aggressionScore: -0.3 },
+    },
+    'Soft Step': {
+        info: 'Walks without a sound. Crossings make a fifth less noise and night travel comes easier — but they hear less after dark themselves.',
+        mods: { nightMovement: 0.1, awarenessNight: -0.2 },
+    },
+    'Iron Lungs': {
+        info: 'Breathes through anything. The arena\'s smoke, gas and hazards hurt them a good deal less, though they tire by day.',
+        mods: { fatigueDay: 0.5 },
+    },
+    'Sharp Elbows': {
+        info: 'Wins the scramble. Fights harder in the bloodbath and nowhere else — and is the one everybody saw on day one.',
+    },
+    'Hand-Me-Down': {
+        info: 'Walks in with a family weapon: the district\'s own, hidden in plain sight. The sponsors cannot see what there is left to buy them.',
+        mods: { sponsorTrust: -0.5 },
+    },
+    'Short Fuse': {
+        info: 'Hit them first and find out. Fights harder once the other side has drawn blood, and takes badly to making up.',
+        mods: { rapport: -0.2 },
+    },
 };
 
 
@@ -1497,5 +1563,26 @@ export const isBitterRoot = (t: { traits: string[] }) => t.traits.includes('Bitt
 export const hasDeadfallMind = (t: { traits: string[] }) => t.traits.includes('Deadfall Mind');
 export const isSlowHealer = (t: { traits: string[] }) => t.traits.includes('Slow Healer');
 export const keepsWatchAlone = (t: { traits: string[] }) => t.traits.includes('Keeps Watch Alone');
+/*
+ * AUDIT-14 §7 T1-T16: named predicates, read in `engine/audit14Content.ts`
+ * and at the sites that file names.
+ */
+export const isHornShy = (t: { traits: string[] }) => t.traits.includes('Horn-Shy');
+export const isSoreLoser = (t: { traits: string[] }) => t.traits.includes('Sore Loser');
+export const isQuickStudy = (t: { traits: string[] }) => t.traits.includes('Quick Study');
+export const isFeverProof = (t: { traits: string[] }) => t.traits.includes('Fever-Proof');
+export const isRearguard = (t: { traits: string[] }) => t.traits.includes('Rearguard');
+export const isLateBloomer = (t: { traits: string[] }) => t.traits.includes('Late Bloomer');
+export const hasSoftStep = (t: { traits: string[] }) => t.traits.includes('Soft Step');
+export const hasIronLungs = (t: { traits: string[] }) => t.traits.includes('Iron Lungs');
+export const hasSharpElbows = (t: { traits: string[] }) => t.traits.includes('Sharp Elbows');
+export const hasHandMeDown = (t: { traits: string[] }) => t.traits.includes('Hand-Me-Down');
+export const hasShortFuse = (t: { traits: string[] }) => t.traits.includes('Short Fuse');
+/** Read by the Cutpurse's lift: wakes at a touch. */
+export const sleepsLight = (t: { traits: string[] }) => t.traits.includes('Light Sleeper');
+/** Read by the Poacher's snare: knows a trap when they see one. */
+export const isTrapwise = (t: { traits: string[] }) => t.traits.includes('Trapwise');
+/** Read by the Showboat interview angle. */
+export const playsToCrowd = (t: { traits: string[] }) => t.traits.includes('Showman') || t.traits.includes('Crowd-Pleaser');
 /** AUDIT-13 A8: the grudge that does not fade. */
 export const hasLongMemory = (t: { traits: string[] }) => t.traits.includes('Long Memory');

@@ -1086,6 +1086,80 @@ export const QUIRKS: Quirk[] = [
             '{name} in {zone}, stomach loud, and the last of it untouched in the pack.',
         ],
     },
+    // AUDIT-14 §7 Q1-Q8: eight more, each with a mods row and, where the
+    // audit asked for one, a hook in `engine/audit14Content.ts`.
+    {
+        label: 'counts arrows before sleeping',
+        lines: [
+            '{name} tips the quiver out in {zone} and counts every shaft twice before lying down.',
+            'In {zone} {name} loses count, swears, and starts the arrows over from one.',
+            '{name} sleeps in {zone} only once the count comes out the same three times.',
+            'Somebody in {zone} could ask {name} how many they have left and get the number without a glance.',
+        ],
+    },
+    {
+        label: 'never takes the path they came by',
+        lines: [
+            '{name} leaves {zone} by a different gap than they came in by, as always, and it costs them an hour.',
+            'In {zone} {name} stops at the trail they arrived on and pointedly turns the other way.',
+            '{name} will not go back the way they came into {zone}. Nobody has ever got a reason out of them.',
+            'The long way round {zone} is the only way {name} knows.',
+        ],
+    },
+    {
+        label: 'sleeps under their pack',
+        lines: [
+            '{name} beds down in {zone} with the whole pack under their shoulders, and sleeps badly on it.',
+            'In {zone} {name} rolls onto the pack before closing their eyes. Nobody is having it without waking them.',
+            '{name} wakes in {zone} with the buckles printed on their back and everything still there.',
+            'Whatever {name} owns is under {name} in {zone}, all night.',
+        ],
+    },
+    {
+        label: 'talks to the mutts',
+        lines: [
+            '{name} talks under their breath in {zone} to something in the brush that nobody else can see.',
+            'In {zone} {name} says something low and even at the treeline, the way you would to a dog.',
+            '{name} hears something moving in {zone} and answers it, softly, before it can decide anything.',
+            'Nobody in {zone} knows who {name} is talking to. {name} seems to think it is listening.',
+        ],
+    },
+    {
+        label: 'eats the bitter leaves first',
+        lines: [
+            '{name} chews the bitter leaves in {zone} first and pulls a face, and waits, and only then eats the rest.',
+            'In {zone} {name} tests the worst of what they found on their own tongue before anything else.',
+            '{name} eats the leaf nobody else would in {zone}, on purpose, the way their mother taught them.',
+            'The bitterness goes first with {name}. In {zone} the sweet part is always last.',
+        ],
+    },
+    {
+        label: 'hides a blade in their boot',
+        lines: [
+            '{name} checks the boot in {zone} without looking down. It is still there.',
+            'In {zone} {name} sits with one knee up and one hand near the ankle.',
+            '{name} reties the boot in {zone} very carefully around something that is not a foot.',
+            'Whatever else {name} loses in {zone}, the boot stays laced.',
+        ],
+    },
+    {
+        label: 'marks every body they pass',
+        lines: [
+            '{name} stops at the body in {zone}, scratches a mark on a stone, and moves on.',
+            'In {zone} {name} counts the marks on the stone and adds one.',
+            '{name} will not walk past the dead in {zone} without leaving something to say they were seen.',
+            'There is a line of small marks behind {name} across {zone}, one for each of them.',
+        ],
+    },
+    {
+        label: 'keeps one sip for later',
+        lines: [
+            '{name} tips the bottle in {zone}, stops short, and caps it with a mouthful still in it.',
+            'In {zone} {name} is thirsty and does not drink the last of it. That one is for later.',
+            '{name} shakes the bottle in {zone} to hear the last sip still sloshing about.',
+            'The last swallow {name} carries through {zone} is the one they are saving for the worst day.',
+        ],
+    },
 ];
 
 /**
@@ -1233,6 +1307,15 @@ export const QUIRK_MODS: Record<string, Partial<Record<TraitMod, number>>> = {
     'keeps the first thing they find': {},
     'hums a lullaby for the dead': { griefResist: 0.08, concealment: -0.02 },
     'never eats the last of anything': { hungerDrain: 0.3 },
+    // AUDIT-14 §7 Q1-Q8.
+    'counts arrows before sleeping': { rangedPower: 0.05, fatigueNight: 0.3 },
+    'never takes the path they came by': { awareness: 0.1, nightMovement: -0.05 },
+    'sleeps under their pack': { fatigueNight: 0.3 },
+    'talks to the mutts': { muttDamage: -0.05, concealment: -0.03 },
+    'eats the bitter leaves first': { poisonResist: 0.05, hungerDrain: 0.2 },
+    'hides a blade in their boot': { unarmedPower: 0.05 },
+    'marks every body they pass': { griefResist: 0.05, sanityDrain: 0.05 },
+    'keeps one sip for later': { thirstDrain: 0.2 },
 };
 
 /**

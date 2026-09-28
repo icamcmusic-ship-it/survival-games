@@ -6,12 +6,12 @@ import {
     isHomebody, isMimic, isNightOwl, isOathkeeper, isPackRat, isPlateSprinter, isRationer, readsScars,
 } from '../data/traits';
 import { cycleOf, raiseSuspicion, rivalRecord } from './memory';
-import { allied, allianceRecords, membersOf, noteAllianceEnd } from './alliance';
+import { allied, allianceRecords, membersOf, leaveAlliance } from './alliance';
 import { hasTruce } from './parley';
 import { isActive, isDowned, widenRescueWindow } from './downed';
 import { getZone } from './map';
 import { awareness, concealment } from './stealth';
-import { adjustRel, adjustTrust, getRel } from './relationships';
+import { adjustRel, adjustTrust, applyBetrayalFallout, getRel } from './relationships';
 import { addFear } from './fear';
 import { loseSanity } from './sanityBands';
 import { clampTribute } from './vitals';
@@ -440,8 +440,12 @@ export function turncoatCoup(ctx: SimContext, t: Tribute): boolean {
     record.leaderId = t.id;
     const roles = record.roles ?? {};
     (Object.keys(roles) as Array<keyof typeof roles>).forEach(role => { if (roles[role] === leader.id) roles[role] = t.id; });
-    delete leader.allianceId;
-    noteAllianceEnd(ctx.state, record.id, 'betrayal', t.id); // AUDIT-13 R2
+    // AUDIT-14 RB4: a coup is a betrayal, and the record says so: fallout on
+    // the deposed leader (vengeance, betrayedBy, the witnesses), expelled so
+    // recruitment does not hand the seat back, and off the roster now.
+    applyBetrayalFallout(ctx, t, leader, members);
+    record.expelledIds = [...(record.expelledIds ?? []), leader.id];
+    leaveAlliance(ctx.state, leader, 'betrayal', t.id); // AUDIT-13 R2
     adjustRel(leader, t.id, -W2.turncoatRegard);
     raiseSuspicion(leader, t.id, W2.turncoatSuspicion);
     members.filter(m => m.id !== t.id && m.id !== leader.id).forEach(m => raiseSuspicion(m, t.id, W2.turncoatSuspicion / 2));

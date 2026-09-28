@@ -1,3 +1,4 @@
+import { shortFuseTruce } from './audit14Content';
 import { GameState, Item, Tribute, TruceReason } from '../models/types';
 import { bargainingBase } from './audit13Content';
 import { sanityBandOf } from './sanityBands';
@@ -131,7 +132,8 @@ function reasonSpent(ctx: SimContext, a: Tribute, b: Tribute): boolean {
 }
 
 function declareTruce(ctx: SimContext, a: Tribute, b: Tribute) {
-    const until = cycleOf(ctx.state) + PARLEY.truceCycles;
+    // AUDIT-14 T16: a Short Fuse keeps a truce a cycle less.
+    const until = cycleOf(ctx.state) + PARLEY.truceCycles - shortFuseTruce(a, b);
     // A renewal re-declares the same pair; the ledger counts a *new* term
     // only when nothing was standing between them.
     if (a.truces?.[b.id] === undefined && b.truces?.[a.id] === undefined) truceLedger(ctx.state).struck++;

@@ -265,9 +265,12 @@ function LogRow({ log, cast, byId, facts, onSelectTribute, showZone, continuatio
 /** AUDIT-13 Q4: the chronicle's own keys, listed in its help overlay and in How to Play. */
 export const CHRONICLE_KEYS: Array<[string, string]> = [
     ['← / →', 'Previous / next page'],
-    ['N', 'Run the next stage (on the last page)'],
+    ['N', 'Run the next stage (on an earlier page, the first press catches up)'],
     ['/', 'Search the chronicle'],
     ['?', 'This list'],
+    // AUDIT-14 U5: the page's other keys, which worked and were not listed.
+    ['Ctrl+K', 'Command palette (Cmd+K on a Mac)'],
+    ['Esc', 'Close a dialog or the tribute panel'],
 ];
 
 function ChronicleKeysHelp({ onClose }: { onClose: () => void }) {
@@ -483,13 +486,37 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
     useEffect(() => {
         if (!playing) return;
         if (runProgress || selectedTributeId) return;
-        const id = window.setTimeout(() => {
-            if (isDialogOpen()) return;
+        let id = 0;
+        const tick = () => {
+            // AUDIT-14 U1: a dialog mounted outside this screen (the command
+            // palette) closes without re-rendering it, so a tick that just
+            // returned here was never re-armed and autoplay stalled for good
+            // with the button still reading "Pause". Wait and look again.
+            if (isDialogOpen()) { id = window.setTimeout(tick, 500); return; }
             if (!onLastPage) go(1);
             else advanceGames();
-        }, autoDelay * 1000);
+        };
+        id = window.setTimeout(tick, autoDelay * 1000);
         return () => window.clearTimeout(id);
     }); // eslint-disable-line react-hooks/exhaustive-deps
+
+    // AUDIT-14 Q3: say when autoplay stops on its own (at the epilogue), rather
+    // than only swapping the icon back.
+    const [autoNotice, setAutoNotice] = useTransientFlag<string>('', 4000);
+    const wasPlaying = useRef(false);
+    useEffect(() => {
+        if (wasPlaying.current && !playing && playRequested) {
+            setAutoNotice('Autoplay stopped: the Games have reached the epilogue.');
+            setPlaying(false);
+        }
+        wasPlaying.current = playing;
+    }, [playing, playRequested, setAutoNotice]);
+
+    // AUDIT-14 Q5: what Undo will rewind to, in words.
+    const undoTarget = canUndo ? gameActions.checkpoints()[0] : undefined;
+    const undoLabel = undoTarget
+        ? `Undo: back to ${undoTarget.day === 0 ? prettyPhase(undoTarget.phase) : `Day ${undoTarget.day} — ${prettyPhase(undoTarget.phase)}`}`
+        : 'Undo the last stage';
 
     // AUDIT-13 Q2: next/previous death, on the page. The palette and the arena
     // screen have had this; the chronicle is where the reader is looking.
@@ -551,6 +578,13 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
             // AUDIT-13 Q4: N runs the next stage, / searches, ? lists the keys.
             else if (e.key === 'n' || e.key === 'N') {
                 if (onLastPage && canAdvance) { e.preventDefault(); advanceGames(); }
+                // AUDIT-14 Q2: N used to do nothing off the last page. The
+                // first press catches up; the second runs the next stage.
+                else if (!onLastPage && pages.length > 0) {
+                    e.preventDefault();
+                    setPageIndex(pages.length - 1);
+                    if (canAdvance) setAutoNotice('Caught up. Press N again to run the next stage.');
+                }
             }
             else if (e.key === '/') { e.preventDefault(); searchRef.current?.focus(); }
             else if (e.key === '?') { e.preventDefault(); setShowKeys(true); }
@@ -714,6 +748,38 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                 plus the play controls made a footer half the viewport tall,
                 parked over the log it pages; the empty state and swipe cover
                 the phone case. */}
+            {/* AUDIT-14 U4: below sm the full footer stays at the end of a very
+                long page, so a compact bar with the three controls a reader
+                actually presses rides along at the bottom of the viewport. */}
+            {pages.length > 0 && (canAdvance || onLastPage) && (
+                <div className="sm:hidden sticky bottom-0 z-30 panel px-3 pt-2 flex items-center justify-between gap-2"
+                    style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}
+                    data-testid="chronicle-mobile-bar" role="group" aria-label="Chronicle controls">
+                    <button type="button" className="btn btn-ghost" onClick={() => go(-1)} disabled={clamped === 0} aria-label="Previous page">
+                        <ChevronLeft className="w-4 h-4" />
+                    </button>
+                    {canAdvance && (
+                        <button type="button" className="btn btn-ghost" aria-pressed={playing}
+                            aria-label={playing ? 'Pause autoplay' : 'Play — advance a stage automatically'}
+                            onClick={() => setPlaying(!playing)}>
+                            {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                        </button>
+                    )}
+                    {onLastPage && canAdvance ? (
+                        <button type="button" className="btn btn-primary flex-1 min-w-0 truncate" onClick={advanceGames}>
+                            {nextStageLabel(gameState.phase)} <ChevronRight className="w-4 h-4" />
+                        </button>
+                    ) : onLastPage ? (
+                        <button type="button" className="btn btn-primary flex-1 min-w-0" onClick={() => gameActions.setView('debrief')}>
+                            See the debrief <ChevronRight className="w-4 h-4" />
+                        </button>
+                    ) : (
+                        <button type="button" className="btn flex-1 min-w-0" onClick={() => setPageIndex(pages.length - 1)}>
+                            Catch up <ChevronRight className="w-4 h-4" />
+                        </button>
+                    )}
+                </div>
+            )}
             <footer className="panel p-4 flex flex-wrap items-center justify-between gap-3 sm:sticky sm:bottom-0">
                 <button
                     className="btn"
@@ -730,7 +796,15 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                     {/* AUDIT-6 §1.4: an empty scrubber and a day picker with
                         nothing to pick are both announced to a screen reader as
                         real controls. With no pages there is nothing to jump to. */}
-                    <div className="flex gap-0.5 flex-wrap justify-center" role="group" aria-label="Jump to a phase" hidden={pages.length === 0}>
+                    {/* AUDIT-14 Q4: on a phone, more than a dozen ticks overlap as
+                        tap targets. A single slider replaces the grid there. */}
+                    {pages.length > 12 && (
+                        <input type="range" className="sm:hidden w-full" min={1} max={pages.length}
+                            value={clamped + 1} aria-label="Jump to a phase"
+                            aria-valuetext={page?.label}
+                            onChange={e => setPageIndex(Number(e.target.value) - 1)} />
+                    )}
+                    <div className={`${pages.length > 12 ? 'hidden sm:flex' : 'flex'} gap-0.5 flex-wrap justify-center`} role="group" aria-label="Jump to a phase" hidden={pages.length === 0}>
                         {pages.map((p, i) => {
                             const deadly = gameState.tributes.some(t => t.status === 'dead' && t.dayOfDeath === p.day)
                                 && p.phase === 'night';
@@ -754,12 +828,18 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                                        margin pulls the row back to its old width,
                                        so nothing moves and every tick gains a
                                        thumb's worth of reach. */
-                                    className="scrubber-tick tap-target-cell border border-[var(--color-ink-700)]"
+                                    /* AUDIT-14 U3: the inline `background`
+                                       shorthand reset the stylesheet's
+                                       `background-clip` and painted the whole
+                                       padded target, border and all. The colour
+                                       is now handed to the stylesheet, which
+                                       draws a fixed 10x20 mark in the middle. */
+                                    className="scrubber-tick tap-target-cell"
                                     style={{
-                                        background: i === clamped ? 'var(--red)'
+                                        '--tick': i === clamped ? 'var(--red)'
                                             : deadly ? 'var(--cat-death)'
                                             : 'var(--paper-flush)',
-                                    }}
+                                    } as React.CSSProperties}
                                 />
                             );
                         })}
@@ -813,14 +893,21 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                             onClick={() => setPlaying(!playing)}>
                             {playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                         </button>
+                        {/* AUDIT-14 Q3: the autoplay state, visible. */}
+                        {playing && (
+                            <span className="font-mono text-micro uppercase tracking-wider text-[var(--red)]" data-testid="autoplay-chip">
+                                Playing · {autoDelay}s
+                            </span>
+                        )}
                         <select className="field text-xs w-auto" aria-label="Seconds per stage when playing"
                             value={autoDelay} onChange={e => setPrefs({ chronicleAutoDelay: Number(e.target.value) })}>
                             {[1, 2, 3, 4, 5].map(n => <option key={n} value={n}>{n}s</option>)}
                         </select>
-                        <Hint text="Undo the last stage" align="right">
+                        <Hint text={gameActions.wagersLocked() ? `${undoLabel}. Wagers stay locked until you re-play what you undid.` : undoLabel} align="right">
                             <button type="button" className="btn btn-ghost" disabled={!canUndo}
-                                aria-label="Undo the last stage" onClick={undoAdvance}>
+                                aria-label={undoLabel} onClick={undoAdvance} data-testid="chronicle-undo">
                                 <Undo2 className="w-4 h-4" />
+                                {undoTarget && <span className="hidden sm:inline text-xs">{undoLabel}</span>}
                             </button>
                         </Hint>
                     </span>
@@ -858,6 +945,11 @@ export function ChronicleScreen({ gameState }: { gameState: GameState }) {
                 screen-reader user — say which page they landed on. */}
             <div aria-live="polite" className="sr-only">
                 {page ? `${page.label}. ${beats.length} moments. ${survivorsAtPage} still standing.` : ''}
+            </div>
+            {/* AUDIT-14 Q2/Q3: short notices — caught up, autoplay stopped. */}
+            <div aria-live="polite" data-testid="chronicle-notice"
+                className={autoNotice ? 'fixed bottom-20 left-1/2 -translate-x-1/2 z-40 panel px-3 py-2 text-sm' : 'sr-only'}>
+                {autoNotice}
             </div>
 
             {/*

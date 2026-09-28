@@ -41,16 +41,19 @@ export function readHallOfFame(): HallOfFameEntry[] {
 /**
  * Applies the archive cap while honouring pins: pinned entries are never
  * evicted, and unpinned ones fill the remaining space newest-first (list
- * order). If a player somehow pins more than the cap, the pins all survive —
- * the cap exists for storage hygiene, not to delete what they asked to keep.
+ * order). The cap is hard (AUDIT-14 S3): pins past it are dropped, oldest
+ * last in list order.
  */
 export function capWithPins(entries: HallOfFameEntry[], cap = HOF_CAP): HallOfFameEntry[] {
     if (entries.length <= cap) return entries;
     const kept: HallOfFameEntry[] = [];
     let unpinned = 0;
     const unpinnedBudget = Math.max(0, cap - entries.filter(e => e.pinned).length);
+    // AUDIT-14 S3: the cap is hard. Pins are kept first (in list order), but
+    // never past the cap.
+    let pinned = 0;
     for (const e of entries) {
-        if (e.pinned) kept.push(e);
+        if (e.pinned) { if (pinned < cap) { kept.push(e); pinned++; } }
         else if (unpinned < unpinnedBudget) { kept.push(e); unpinned++; }
     }
     return kept;
@@ -236,16 +239,37 @@ export function importHallOfFame(rawJson: string, existing: HallOfFameEntry[]): 
         };
     }
 
+    /*
+     * AUDIT-14 S3: an imported file is untrusted. Its pin flags and dates used
+     * to be believed, so 60 entries marked pinned and dated 2099 evicted every
+     * one of the player's own victors (and the pins broke the cap). Imported
+     * entries now arrive unpinned and no newer than now, and the player's own
+     * records are never evicted to make room: the overflow is refused instead.
+     */
+    const now = Date.now();
+    const sanitised = incoming.map(e => {
+        const when = Date.parse(e.date);
+        return {
+            ...e,
+            pinned: false,
+            date: Number.isFinite(when) && when <= now ? e.date : new Date(now).toISOString(),
+        };
+    });
     const seen = new Set(existing.map(e => e.id));
-    const added = incoming.filter(e => !seen.has(e.id));
-    const merged = [...existing, ...added].sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
-    const capped = capWithPins(merged);
-    const evicted = merged.length - capped.length;
+    const fresh = sanitised.filter(e => {
+        if (seen.has(e.id)) return false;
+        seen.add(e.id);
+        return true;
+    }).sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
+    const room = Math.max(0, HOF_CAP - existing.length);
+    const added = fresh.slice(0, room);
+    const evicted = fresh.length - added.length;
+    const capped = [...existing, ...added].sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
 
     const parts = [`Imported ${added.length} new record${added.length === 1 ? '' : 's'}`];
     if (incoming.length - added.length > 0) parts.push(`${incoming.length - added.length} already on file`);
     if (rejected > 0) parts.push(`${rejected} unreadable and skipped`);
-    if (evicted > 0) parts.push(`${evicted} oldest dropped at the ${HOF_CAP}-record cap`);
+    if (evicted > 0) parts.push(`${evicted} not imported: the archive is full at ${HOF_CAP} records`);
 
     return { ok: true, message: `${parts.join(' · ')}.`, entries: capped };
 }

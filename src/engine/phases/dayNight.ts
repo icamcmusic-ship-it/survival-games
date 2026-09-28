@@ -1,3 +1,4 @@
+import { holdsGround, mustMove } from '../audit14Content';
 import { craftKit, followPlan, tickArenaDepth } from '../arenaDepth';
 import { badKneeClimb } from '../audit13Content';
 import { arenaHazardForBorder, borderCapReached } from '../arenaWave2';
@@ -28,7 +29,7 @@ import { announceCrossing } from '../noise';
 import { correctAccusations, tradeAccusations } from '../accusations';
 import { onObjectiveArrival } from '../objectiveArrival';
 import { checkTraps, hasCamp, tickTraps } from '../fieldcraft';
-import { allianceRecords, areLovers, fractureBlocs, isHostileTo, leaderFor, allied, noteAllianceEnd } from '../alliance';
+import { allianceRecords, areLovers, fractureBlocs, isHostileTo, leaderFor, allied, leaveAlliance } from '../alliance';
 
 import { decayNotoriety, reputationPriors, spreadNotoriety } from '../notoriety';
 import { updateStance } from '../stance';
@@ -79,6 +80,7 @@ import { QUALITY_BIAS } from '../../data/balance';
 import { isAggressiveStance, isEvasiveStance } from '../../data/stances';
 import { loseSanity } from '../sanityBands';
 import { withFallen } from '../arenaRules';
+import { plainZoneName } from '../rescueLine';
 
 /**
  * The day/night cycle: the orchestrator, not the implementation.
@@ -1068,10 +1070,10 @@ function forceFinale(ctx: SimContext) {
         // standoff to reach, so the alliance is revoked for them too.
         && (ctx.state.config.singleVictor || !areLovers(alive[0], alive[1]))) {
         const [a, b] = alive;
-        const revoked = a.allianceId;
-        delete a.allianceId;
+        // AUDIT-14 RB6: through the one departure helper, so the record's
+        // roster follows (the second leaver closes it).
+        leaveAlliance(ctx.state, a, 'victor');
         delete b.allianceId;
-        noteAllianceEnd(ctx.state, revoked, 'victor'); // AUDIT-13 R2
         ctx.logEvent(
             `The announcement is short: there will be one victor. Whatever ${a.name} and ${b.name} agreed, the Capitol has just revoked it from the sky.`,
             [a.id, b.id],
@@ -1407,10 +1409,10 @@ function collapseBorders(ctx: SimContext, time: 'day' | 'night'): boolean {
         const zone = getZone(ctx.state.arena, trappedZone);
         const inAChokepoint = zone !== undefined && zoneFeatures(zone).chokepoint === true;
         const cause = hasForceField(ctx.state.arena, trappedZone)
-            ? `Driven into the force field as the border closed over ${trappedZone}`
+            ? `Driven into the force field as the border closed over ${plainZoneName(trappedZone)}`
             : inAChokepoint
-                ? `Crushed as ${trappedZone} closed`
-                : `Caught in the collapsing border of ${trappedZone}`;
+                ? `Crushed as ${plainZoneName(trappedZone)} closed`
+                : `Caught in the collapsing border of ${plainZoneName(trappedZone)}`;
         // The crush *replaces* the open-ground collapse rather than preceding
         // it. A survivor used to take the multiplied crush and then the full
         // base damage again under the same cause — so the multiplier was really
@@ -1629,6 +1631,8 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
     if (crossed.has(t.id)) return;
     // AUDIT-13 N36: Mourning does not leave the body for the cycle it lasts.
     if (t.stance === 'Mourning' && !t.transit && !collapsed.includes(t.zone)) return;
+    // AUDIT-14 S1: a rally is called from where the group can find it.
+    if (holdsGround(t) && !t.transit && !collapsed.includes(t.zone)) return;
 
     // §5.3: a traversal already underway finishes before anything else. A
     // crossing abandoned because the destination collapsed is just a wasted
@@ -1824,7 +1828,8 @@ function move(ctx: SimContext, t: Tribute, currentAlive: Tribute[], collapsed: s
         return;
     }
 
-    if (!ctx.rng.chance(wanderChanceFor(ctx, t))) return;
+    // AUDIT-14 S2/S3: a blood trail and a withdrawal are walked, not wandered.
+    if (!mustMove(t) && !ctx.rng.chance(wanderChanceFor(ctx, t))) return;
     const newZone = pickDestination(ctx, t, options).name;
     if (t.zone === newZone) return;
     if (beginMove(ctx, t, newZone) !== 'arrived') return;

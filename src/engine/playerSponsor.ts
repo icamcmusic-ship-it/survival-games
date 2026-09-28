@@ -1,7 +1,8 @@
 import { giftRefusal } from './arenaPolicy';
+import { arenaHasLaw } from './gamesProfile';
 import { GameState, Item, Tribute } from '../models/types';
 import { ITEMS } from '../data/constants';
-import { SPONSOR_MARKET, QUALITY_BIAS } from '../data/balance';
+import { SPONSOR_MARKET, QUALITY_BIAS, SPONSOR_NOTE } from '../data/balance';
 import { SPONSOR_BLOCS, blocWeight } from './sponsorBlocs';
 import { audiencePriceFactor } from './audienceSegments';
 import { RNG } from '../utils/rng';
@@ -132,7 +133,7 @@ export function sendPlayerParachute(state: GameState, tributeId: string, itemId:
         id: `player-gift-${state.logCounter = (state.logCounter ?? 0) + 1}`,
         day: state.day,
         phase: state.phase,
-        text: `A parachute comes down through the canopy over ${t.zone} with no name on it. ${t.name} opens it and finds ${itemPhrase(gift)}. Somebody in the Capitol is watching them specifically.`,
+        text: playerParachuteLine(state, t, itemPhrase(gift), rng),
         tributesInvolved: [t.id],
         important: true,
         category: 'sponsor',
@@ -150,4 +151,89 @@ export function sendPlayerParachute(state: GameState, tributeId: string, itemId:
     }
 
     return { ok: true, cost, message: `${itemPhrase(gift)} is on its way to ${t.name}.` };
+}
+
+/*
+ * AUDIT-14 S8: the player's parachute had one line, and it came "through the
+ * canopy" in the Vault, the Salt Mirror and every underground arena. The line
+ * is now drawn from a pool, with the way in fitted to the ground it lands on.
+ */
+const PARACHUTE_WAY_IN: Record<string, string[]> = {
+    cave: ['through a vent in the rock', 'down a shaft in the ceiling', 'out of a hatch in the roof'],
+    urban: ['between the rooftops', 'down past the broken windows', 'through a gap in the roofs'],
+    ruins: ['through the open roof', 'between the fallen walls', 'past what is left of the upper floors'],
+    water: ['out of the sky onto the water', 'down to the waterline', 'onto the shallows'],
+    ice: ['out of a white sky', 'down onto the ice', 'through the glare'],
+    forest: ['through the canopy', 'down between the trunks', 'through the branches'],
+    default: ['out of the sky', 'down on the wind', 'from somewhere overhead'],
+};
+
+const PLAYER_PARACHUTE_LINES = [
+    'A parachute comes down {way} over {zone} with no name on it. {name} opens it and finds {item}. Somebody in the Capitol is watching them specifically.',
+    'Silver catches the light {way} above {zone}. The parachute settles at {name}\'s feet: {item}, and no card.',
+    'A chime, and a parachute drifts {way} into {zone}. {name} tears it open and finds {item}. Nobody in the arena paid for that.',
+    '{name} hears it before they see it: a parachute, coming {way} over {zone}. Inside is {item}. Somebody out there has picked them.',
+    'The parachute lands {way} in {zone}, close enough to touch. {name} finds {item} and looks up, as if the sponsor could be seen.',
+    'A small silver parachute comes {way} into {zone}, straight to {name}. {item} is inside. The cameras linger on the moment they open it.',
+    'Something comes {way} over {zone} and bumps to a stop beside {name}: a parachute, {item} inside, and not a word with it.',
+];
+
+function playerParachuteLine(state: GameState, t: Tribute, item: string, rng: RNG): string {
+    const terrain = state.arena.zones.find(z => z.name === t.zone)?.terrain ?? 'open';
+    const ways = PARACHUTE_WAY_IN[terrain] ?? PARACHUTE_WAY_IN.default;
+    const template = rng.pick(PLAYER_PARACHUTE_LINES);
+    const way = rng.pick(ways);
+    return template
+        .replace('{way}', way)
+        .replace('{zone}', t.zone)
+        .replace('{name}', t.name)
+        .replace('{item}', item);
+}
+
+/*
+ * AUDIT-14 F5: a paid note. No item, only a line on a card and the knowledge
+ * that somebody outside is watching. Logged in the intervention log, so a
+ * replay or a what-if puts it back at the cycle it landed.
+ */
+const PLAYER_NOTES = [
+    'A tiny parachute over {zone} with nothing in it but a card for {name}. It says: keep going.',
+    'A note comes down to {name} in {zone}. Three words, no signature: we are watching.',
+    '{name} unfolds a card that came down over {zone}. Somebody has written their name on it, and underneath: not yet.',
+    'The parachute over {zone} is almost weightless. Inside is a note for {name}: they believe you.',
+    'A card for {name}, dropped over {zone}. It says only: home is waiting.',
+    '{name} reads the note that came down in {zone} twice, then puts it inside their jacket.',
+];
+
+export function notesReceived(state: GameState, tributeId: string): number {
+    return (state.interventionLog ?? []).filter(r => r.type === 'note' && r.targetId === tributeId).length;
+}
+
+export function sendPlayerNote(state: GameState, tributeId: string): SponsorResult {
+    const t = state.tributes.find(o => o.id === tributeId);
+    if (!t) return { ok: false, cost: 0, message: 'That note cannot be sent.' };
+    if (t.status !== 'alive') return { ok: false, cost: 0, message: `${t.name} is beyond the reach of a note.` };
+    if (state.phase !== 'day' && state.phase !== 'night' && state.phase !== 'feast') {
+        return { ok: false, cost: 0, message: 'Notes can only be sent once the tributes are in the arena.' };
+    }
+    if (arenaHasLaw(state, 'noSponsors')) {
+        return { ok: false, cost: 0, message: `Nothing reaches the floor in ${state.arena.name}, not even a card.` };
+    }
+    if (notesReceived(state, t.id) >= SPONSOR_NOTE.maxPerTribute) {
+        return { ok: false, cost: 0, message: `The Capitol will not deliver another note to ${t.name}.` };
+    }
+    const rng = new RNG(`${state.seed}-player-note-${t.id}-${notesReceived(state, t.id)}`);
+    (state.interventionLog ??= []).push({ cycle: cycleOf(state), type: 'note', targetId: t.id });
+    t.sponsorTrust = Math.min(100, t.sponsorTrust + SPONSOR_NOTE.trustGain);
+    t.vitals.sanity = Math.min(100, t.vitals.sanity + SPONSOR_NOTE.sanityGain);
+    clampTribute(t);
+    state.log.push({
+        id: `player-note-${state.logCounter = (state.logCounter ?? 0) + 1}`,
+        day: state.day,
+        phase: state.phase,
+        text: rng.pick(PLAYER_NOTES).replace('{zone}', t.zone).replace('{name}', t.name),
+        tributesInvolved: [t.id],
+        important: false,
+        category: 'sponsor',
+    });
+    return { ok: true, cost: SPONSOR_NOTE.cost, message: `Your note reaches ${t.name}.` };
 }

@@ -3,7 +3,7 @@ import { ArenaMastery, CampaignLedger, SeasonLedger, StoryChainProgress } from '
 import { AUDIT12_WAVE3, AUDIT13_SIDE } from '../../data/balance';
 import { SPONSOR_BLOCS } from '../sponsorBlocs';
 import { campaignOf } from '../campaign';
-import { STORY_CHAIN_META } from '../../data/replayCards';
+import { STORY_CHAIN_META, storyChainIndex } from '../../data/replayCards';
 
 type StoryChain = (typeof STORY_CHAIN_META)[number];
 
@@ -46,7 +46,7 @@ export function chapterChipFor(chains: Record<string, StoryChainProgress> | unde
     const completed = saved?.completed ?? 0;
     const unfinished = saved && saved.step > 0 && saved.step < S.steps ? saved : undefined;
     const chain = (unfinished && STORY_CHAIN_META.find(c => c.id === unfinished.chainId))
-        ?? STORY_CHAIN_META[(hashKey(arenaKey) + completed) % STORY_CHAIN_META.length];
+        ?? STORY_CHAIN_META[storyChainIndex(hashKey(arenaKey), completed, STORY_CHAIN_META.length)];
     return { chain, chapter: (unfinished?.step ?? 0) + 1, of: S.steps, completed };
 }
 

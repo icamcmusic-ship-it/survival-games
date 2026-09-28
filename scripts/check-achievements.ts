@@ -28,6 +28,8 @@ import { RNG } from '../src/utils/rng';
 import { oddsScore } from '../src/engine/odds';
 import { sendPlayerParachute, sponsorCost, sponsorableItems } from '../src/engine/playerSponsor';
 import { SCENARIO_CARDS } from '../src/data/replayCards';
+import { setStorageBackend } from '../src/utils/storage';
+import { campaignSnapshotOf, commitRun, readPanem } from '../src/utils/panemStorage';
 
 /**
  * Audit 3 §1.6: 500 rather than 200.
@@ -171,18 +173,9 @@ function fillSlip(state: GameState, rng: RNG) {
     state.draft = [...ids].sort(() => rng.nextFloat() - 0.5).slice(0, 4);
 }
 
-for (let i = 0; i < RUNS; i++) {
-    const seed = `ACH${i}`;
-    const scripted = SCRIPTED && i % 2 === 1;
-    const init = start(seed, arenaIds[i % arenaIds.length], configs[i % configs.length], i % 4 === 3);
-    if (scripted && i % 10 === 5) {
-        const card = SCENARIO_CARDS[Math.floor(i / 10) % SCENARIO_CARDS.length].id;
-        init.config = { ...init.config, scenario: card };
-        init.baseConfig = { ...init.baseConfig!, scenario: card };
-    }
+/** Plays one run to the end with (optionally) the scripted player at the booth. */
+function play(init: GameState, seed: string, scripted: boolean): GameState {
     if (scripted) init.playerPurseAtStart = SCRIPTED_PURSE;
-    // §11 (audit): a quarter of runs in Gamemaker mode, so the booth's own
-    // achievements are measured rather than listed as never-unlocked.
     const sim = new Simulator(init);
     const player = new RNG(`${seed}-scripted-player`);
     let purse = SCRIPTED_PURSE;
@@ -208,6 +201,21 @@ for (let i = 0; i < RUNS; i++) {
         }
         state = sim.getState();
     }
+    return state;
+}
+
+for (let i = 0; i < RUNS; i++) {
+    const seed = `ACH${i}`;
+    const scripted = SCRIPTED && i % 2 === 1;
+    const init = start(seed, arenaIds[i % arenaIds.length], configs[i % configs.length], i % 4 === 3);
+    if (scripted && i % 10 === 5) {
+        const card = SCENARIO_CARDS[Math.floor(i / 10) % SCENARIO_CARDS.length].id;
+        init.config = { ...init.config, scenario: card };
+        init.baseConfig = { ...init.baseConfig!, scenario: card };
+    }
+    // §11 (audit): a quarter of runs in Gamemaker mode, so the booth's own
+    // achievements are measured rather than listed as never-unlocked.
+    const state = play(init, seed, scripted);
     if (state.phase !== 'ended') continue;
     completed++;
     seeFields(ceiling, state as unknown as Record<string, unknown>);
@@ -232,9 +240,72 @@ for (let i = 0; i < RUNS; i++) {
     });
 }
 
-const rate = (id: string) => (unlocks[id] ?? 0) / Math.max(1, completed);
+/*
+ * AUDIT-14 H3: campaign mode.
+ *
+ * Every run above starts from an empty record book, so an entry that needs a
+ * ledger — a nemesis, a rival, a reunion, a mentor's own arena, an arena scar,
+ * a feud — could only ever measure 0% here, which read as "never unlocks" when
+ * it meant "never measured". These chains fold five runs in sequence through
+ * `commitRun` into an in-memory store, each run created under the snapshot the
+ * last one left (and with the victor-mentor graft the store applies), in one
+ * arena so that arena-keyed history accumulates. Entries tagged
+ * `requiresCampaign` are measured on the chains' later runs instead of against
+ * the per-run floor.
+ */
+const CAMPAIGN_CHAINS = Number(process.env.ACHIEVEMENT_CAMPAIGN_CHAINS ?? 40);
+const CAMPAIGN_LENGTH = 5;
+const campaignOnly = ACHIEVEMENTS.filter(a => a.requiresCampaign);
+const campaignUnlocks: Record<string, number> = {};
+let campaignCompleted = 0;
+for (let c = 0; c < CAMPAIGN_CHAINS && campaignOnly.length > 0; c++) {
+    const store = new Map<string, string>();
+    setStorageBackend({
+        getItem: k => (store.has(k) ? store.get(k)! : null),
+        setItem: (k, v) => { store.set(k, v); },
+        removeItem: k => { store.delete(k); },
+    });
+    const arenaId = arenaIds[c % arenaIds.length];
+    for (let r = 0; r < CAMPAIGN_LENGTH; r++) {
+        const seed = `ACHC${c}-${r}`;
+        const init = start(seed, arenaId, configs[c % configs.length], (c + r) % 4 === 3);
+        const campaign = campaignSnapshotOf(readPanem());
+        init.campaign = campaign;
+        // The store's victor-mentor graft (gameStore), which the engine never does itself.
+        init.tributes.forEach(t => {
+            const m = campaign.victorMentors?.[t.district];
+            if (m) { t.mentorIsVictor = true; t.mentorLegacy = m.name; }
+        });
+        const state = play(init, seed, SCRIPTED && r % 2 === 1);
+        if (state.phase !== 'ended') continue;
+        if (r > 0) {
+            campaignCompleted++;
+            const victor = state.tributes.find(t => t.status === 'alive');
+            campaignOnly.forEach(a => {
+                try {
+                    if (a.test(state, victor)) campaignUnlocks[a.id] = (campaignUnlocks[a.id] ?? 0) + 1;
+                    a.nearMiss?.(state, victor);
+                } catch (e) {
+                    errors.push(`${a.id} (campaign): ${(e as Error).message}`);
+                }
+            });
+        }
+        try {
+            commitRun(state);
+        } catch (e) {
+            errors.push(`commitRun (campaign ${seed}): ${(e as Error).message}`);
+        }
+    }
+    setStorageBackend(null);
+}
+// The campaign measurement replaces the per-run one for these entries.
+campaignOnly.forEach(a => { unlocks[a.id] = campaignUnlocks[a.id] ?? 0; });
+const isCampaign = new Set(campaignOnly.map(a => a.id));
 
-console.log(`achievement coverage: ${ACHIEVEMENTS.length} entries over ${completed} completed runs\n`);
+const rate = (id: string) => (unlocks[id] ?? 0) / Math.max(1, isCampaign.has(id) ? campaignCompleted : completed);
+
+console.log(`achievement coverage: ${ACHIEVEMENTS.length} entries over ${completed} completed runs`
+    + ` (+ ${campaignCompleted} campaign runs for ${campaignOnly.length} ledger-only entries)\n`);
 
 const byCategory: Record<string, number> = {};
 ACHIEVEMENTS.forEach(a => { byCategory[a.category] = (byCategory[a.category] ?? 0) + 1; });

@@ -35,6 +35,7 @@
  * sponsors, betrayal opportunism) consults. Nothing downstream had to learn a
  * new field.
  */
+import { feverProofScale } from './audit14Content';
 import { stitchedInfectionScale } from './audit13Content';
 import { InjurySite, Tribute } from '../models/types';
 import { INFECTION, PROFICIENCY, VITALS } from '../data/balance';
@@ -96,6 +97,8 @@ function infectionChance(ctx: SimContext, t: Tribute, grade: number): number {
     chance -= traitMod(t, 'bleedResist') * INFECTION.hardyRelief;
     // AUDIT-13 N1: a Stitch-Fingered ally's dressing is a clean one.
     chance *= stitchedInfectionScale(ctx, t);
+    // AUDIT-14 T7: Fever-Proof.
+    chance *= feverProofScale(t);
     return Math.max(0, Math.min(INFECTION.maxChance, chance));
 }
 

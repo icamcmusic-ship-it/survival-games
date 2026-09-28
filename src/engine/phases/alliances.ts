@@ -1,3 +1,4 @@
+import { outsiderPull } from '../audit14Content';
 import { dreadOf } from '../intent';
 import { kinBound } from '../audit13Content';
 import { oathRefusesBetrayal } from '../traitHooks';
@@ -5,7 +6,7 @@ import { SimContext, getAlive } from '../context';
 import { RNG } from '../../utils/rng';
 import { GameState, Tribute } from '../../models/types';
 import { ARCHETYPES, archetypeCompatibility } from '../../data/archetypes';
-import { RESPECT, ALLIANCES, AUDIT13_CAREERS, AUDIT13_RELATIONS, PERCEPTION, BETRAYAL, OBJECTIVES, PROFICIENCY, PROTECTOR_BOND, QUELL_MECHANICS, RELATIONSHIPS, ROMANCE, SUSPICION } from '../../data/balance';
+import { AUDIT14_RELATIONS, RESPECT, ALLIANCES, AUDIT13_CAREERS, AUDIT13_RELATIONS, PERCEPTION, BETRAYAL, OBJECTIVES, PROFICIENCY, PROTECTOR_BOND, QUELL_MECHANICS, RELATIONSHIPS, ROMANCE, SUSPICION } from '../../data/balance';
 import { profOf, trainProficiency } from '../proficiency';
 import { applyDamage, checkDeath, resolveCombat } from '../combat';
 import { clampTribute } from '../vitals';
@@ -18,7 +19,7 @@ import { careerSocialFactor, sniffPerformances, isStarCrossed, cacheDivisionLine
 import { grudgeAgainst, grudgeTotal, noteGrudgeMotive, performsForCameras, stationBondOf, tickAllianceBonds, tickHollowVictories, tickLonerCamps } from '../allianceBonds';
 import { refreshTraitTiers } from '../earnedTraits';
 import { ALLIANCE_BONDS, AUDIT12_TRIBUTES } from '../../data/balance';
-import { allianceOf, areLovers, cacheValue, contributeToCache, isPerforming, maintainPerformance, membersOf, inCohesionFloor, mergeAllianceRecords, noteAllianceEnd, pickLeader, reconcileAlliances, registerAlliance, shownRegard } from '../alliance';
+import { allianceOf, areLovers, cacheValue, contributeToCache, isPerforming, maintainPerformance, membersOf, inCohesionFloor, mergeAllianceRecords, leaveAlliance, noteAllianceEnd, pickLeader, reconcileAlliances, registerAlliance, shownRegard } from '../alliance';
 import { resolveBetrayal, preemptiveBetrayer } from '../betrayal';
 import { betrayalIntent, tickRelationsArc } from '../relationsArc';
 import { resolveDuePacts } from '../alliancePact';
@@ -383,8 +384,7 @@ export function processAlliances(ctx: SimContext) {
                 }
                 return;
             }
-            delete m.allianceId;
-            noteAllianceEnd(ctx.state, id, 'walkout', m.id); // AUDIT-13 R2
+            leaveAlliance(ctx.state, m, 'walkout', m.id); // AUDIT-13 R2, AUDIT-14 RB6
             ctx.logEvent(
                 `${m.name} is gone before dawn. No theft, no knife — just a bedroll left cold and ${suspect.name} watched all the way out of sight. Some betrayals you leave before they happen.`,
                 [m.id, suspect.id],
@@ -423,8 +423,7 @@ export function processAlliances(ctx: SimContext) {
                 if (!ctx.rng.chance(Math.max(0, chance))) return;
 
                 const others = members.filter(o => o.id !== m.id && o.status === 'alive');
-                delete m.allianceId;
-                noteAllianceEnd(ctx.state, id, 'walkout', m.id); // AUDIT-13 R2
+                leaveAlliance(ctx.state, m, 'walkout', m.id); // AUDIT-13 R2, AUDIT-14 RB6
                 // Leaving on good terms still costs: they are people you were
                 // sharing food with yesterday.
                 others.forEach(o => adjustRel(o, m.id, -ALLIANCES.soloDepartureRegard));
@@ -461,8 +460,7 @@ export function processAlliances(ctx: SimContext) {
             const reaped = live.find(m => !m.volunteered && ctx.rng.chance(AUDIT13_RELATIONS.reapedEarlyBreakChance));
             if (!reaped) return;
             const others = live.filter(o => o.id !== reaped.id);
-            delete reaped.allianceId;
-            noteAllianceEnd(ctx.state, id, 'walkout', reaped.id);
+            leaveAlliance(ctx.state, reaped, 'walkout', reaped.id); // AUDIT-14 RB6
             others.forEach(o => adjustRel(o, reaped.id, -AUDIT13_CAREERS.packFractureRegard / 2));
             ctx.logEvent(
                 `${reaped.name} never volunteered for any of this. While ${names(others)} argue over the watch in ${reaped.zone}, `
@@ -480,8 +478,7 @@ export function processAlliances(ctx: SimContext) {
             const bound = (m: Tribute) => live.reduce((sum, o) => sum + (o.id === m.id ? 0 : getRel(m, o.id)), 0);
             const leaver = [...live].sort((a, b) => bound(a) - bound(b))[0];
             const others = live.filter(o => o.id !== leaver.id);
-            delete leaver.allianceId;
-            noteAllianceEnd(ctx.state, id, 'walkout', leaver.id); // AUDIT-13 R2
+            leaveAlliance(ctx.state, leaver, 'walkout', leaver.id); // AUDIT-13 R2, AUDIT-14 RB6
             others.forEach(o => {
                 adjustRel(o, leaver.id, -AUDIT13_CAREERS.packFractureRegard);
                 adjustRel(leaver, o.id, -AUDIT13_CAREERS.packFractureRegard);
@@ -518,8 +515,7 @@ export function processAlliances(ctx: SimContext) {
             if (m.archetype !== 'mercenary') return;
             const others = members.filter(o => o.id !== m.id && o.status === 'alive');
             if (others.length === 0) return;
-            delete m.allianceId;
-            noteAllianceEnd(ctx.state, id, 'walkout', m.id); // AUDIT-13 R2
+            leaveAlliance(ctx.state, m, 'walkout', m.id); // AUDIT-13 R2, AUDIT-14 RB6
             ctx.logEvent(
                 `${m.name} counts what is left in the alliance's cache in ${m.zone}, finds it empty, and leaves. `
                 + `${others.map(o => o.name).join(' and ')} are not betrayed so much as no longer paying, and ${m.name} makes no pretence that it was ever anything else.`,
@@ -626,7 +622,8 @@ export function processAlliances(ctx: SimContext) {
                     const asked = suitor ? (suitor === t1 ? t2 : t1) : undefined;
                     const baseChance = Math.max(
                         ALLIANCES.minFormChance,
-                        (ALLIANCES.baseFormChance + affinity + compat + persona + history) / trustCost
+                        // AUDIT-14 P1: an Outsider and somebody else outside.
+                        (ALLIANCES.baseFormChance + affinity + compat + persona + history + outsiderPull(t1, t2)) / trustCost
                             * (1 + dread * ALLIANCES.dreadFormationWeight)
                             // §9 (requests): a Career does not pair off with an
                             // outer-district tribute unless that tribute is
@@ -1249,7 +1246,11 @@ function growRomance(ctx: SimContext) {
                     }
                     // Playing it well is a charisma job, and the crowd is the
                     // only audience that matters.
-                    if (performer.attributes.charisma >= ROMANCE.performerCharisma || performsForCameras(performer)) {
+                    // AUDIT-14 RB9: an unplanned performance is the twist, not the
+                    // norm. 14 of 19 romances were performed; with the sincere
+                    // slow burn reachable again, the performed side is halved.
+                    if ((performer.attributes.charisma >= ROMANCE.performerCharisma || performsForCameras(performer))
+                        && ctx.rng.chance(AUDIT14_RELATIONS.performedRomanceChance)) {
                         declareLovers(ctx, smitten, performer, performer);
                         if (++declared >= ROMANCE.maxPerCycle) return;
                         continue;
@@ -1471,9 +1472,7 @@ function declareLovers(ctx: SimContext, t1: Tribute, t2: Tribute, performer?: Tr
                 [t.id],
                 { category: 'alliance' }
             );
-            const left = t.allianceId;
-            delete t.allianceId;
-            noteAllianceEnd(ctx.state, left, 'walkout', t.id); // AUDIT-13 R2
+            leaveAlliance(ctx.state, t, 'walkout', t.id); // AUDIT-13 R2, AUDIT-14 RB6
         }
     });
 

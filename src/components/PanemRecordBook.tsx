@@ -184,6 +184,19 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
         { label: 'Arena events', seen: (panem.eventsSeen ?? []).length, total: TOTAL_ARENA_EVENTS },
         { label: 'Laws won under', seen: (panem.lawsWonUnder ?? []).length, total: ARENA_LAW_COUNT },
     ];
+    // AUDIT-14 P5: the codex shelves, from the data tables the totals come from.
+    const arenasSeen = new Set(panem.arenasSeen ?? []);
+    const quellsSeen = new Set(panem.quellsSeen ?? []);
+    const muttsSeen = new Set(panem.muttsSeen ?? []);
+    const codex: Array<{ label: string; items: Array<{ key: string; name: string; seen: boolean }> }> = [
+        { label: 'Arenas', items: ARENAS.map(a => ({ key: a.id, name: a.name, seen: arenasSeen.has(a.id) || arenasSeen.has(a.name) || arenasSeen.has(a.mapId ?? '') })) },
+        { label: 'Quells', items: QUELLS.map(q => ({ key: q.id, name: q.name, seen: quellsSeen.has(q.id) })) },
+        {
+            label: 'Mutts',
+            items: [...new Set(Object.values(ARENA_MUTTS).flatMap(roster => roster.map(m => m.name)))]
+                .map(name => ({ key: name, name, seen: muttsSeen.has(name) })),
+        },
+    ];
     // Absent on any record written before district crowns existed, which reads
     // correctly as "nothing crowned yet".
     const crowns = panem.districtCrowns ?? {};
@@ -278,6 +291,34 @@ export function PanemRecordBook({ panem }: { panem: PanemRecords }) {
                         </div>
                     ))}
                 </div>
+                {/* AUDIT-14 P5: the codex. The counters say how much is left;
+                    this says *what*, with a silhouette for everything not yet
+                    seen, so a twentieth-run player knows what to look for. */}
+                <details className="mt-3" data-testid="codex">
+                    <summary className="eyebrow cursor-pointer">Codex: what you have seen, and what is still out there</summary>
+                    <div className="mt-2 space-y-3 text-xs">
+                        {codex.map(shelf => (
+                            <div key={shelf.label}>
+                                <div className="eyebrow mb-1">{shelf.label} · {shelf.items.filter(i => i.seen).length}/{shelf.items.length}</div>
+                                <div className="flex flex-wrap gap-1">
+                                    {shelf.items.map(item => item.seen ? (
+                                        <span key={item.key} className="chip">{item.name}</span>
+                                    ) : (
+                                        <span key={item.key} className="chip text-[var(--color-ink-500)]" aria-label="Not yet seen" title="Not yet seen">
+                                            {'▒'.repeat(Math.min(10, Math.max(3, Math.round(item.name.length / 2))))}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        ))}
+                        {(panem.deathsSeen ?? []).length > 0 && (
+                            <div>
+                                <div className="eyebrow mb-1">Ways to die, seen · {(panem.deathsSeen ?? []).length}</div>
+                                <p className="text-[var(--color-ink-300)]">{(panem.deathsSeen ?? []).join(' · ')}</p>
+                            </div>
+                        )}
+                    </div>
+                </details>
             </section>
 
             {/* REPLAY-12: the aggregate counters above cannot tell a player that a

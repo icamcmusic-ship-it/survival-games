@@ -1,3 +1,4 @@
+import { quickStudyScorePenalty } from '../audit14Content';
 import { SimContext, getAlive } from '../context';
 import { noteStationMates, stationBondOf } from '../allianceBonds';
 import { ALLIANCE_BONDS } from '../../data/balance';
@@ -312,7 +313,7 @@ function attemptStation(
     ctx.logEvent(
         fillLine(line, { tribute: t.name, station, watcher: watcher?.name ?? 'somebody' }),
         watcher ? [t.id, watcher.id] : [t.id],
-        { type: 'tribute-paid', important: true, category: 'training' }
+        { type: 'training-flub', important: true, category: 'training' }
     );
     loseSanity(t, TRAINING.failureSanity);
     clampTribute(t);
@@ -1422,7 +1423,7 @@ const PRIVATE_SESSION_ATTEMPTS: SessionAttempt[] = [
         botched: 'It is a snare, and it collapses under its own weight in front of them. Somebody on the balcony laughs before they can stop themselves.',
     },
     {
-        stunt: '{tribute} climbs the {station} rig to the ceiling and works from up there for the rest of the session.',
+        stunt: '{tribute} climbs the {station} to the ceiling and works from up there for the rest of the session.',
         landed: 'Nobody on the balcony can see them properly, which is the entire demonstration, and at least one Gamemaker understands that.',
         botched: 'A trainer has to talk them down, which the panel watches all the way through in silence.',
     },
@@ -1462,7 +1463,7 @@ const PRIVATE_SESSION_ATTEMPTS: SessionAttempt[] = [
         botched: 'They do not finish the drill, and the strap comes off in front of everybody.',
     },
     {
-        stunt: '{tribute} says nothing at all, does the {station} drill exactly as trained, and stands still until dismissed.',
+        stunt: '{tribute} says nothing at all, does the {station} work exactly as trained, and stands still until dismissed.',
         landed: 'It is the most disciplined thing the panel has seen all afternoon, and one of them writes for a long time.',
         botched: 'It is the fourteenth time the panel has seen that drill today and their faces do not trouble to hide it.',
     },
@@ -1871,7 +1872,8 @@ export function processTrainingScores(ctx: SimContext) {
             }
         }
 
-        t.trainingScore = score;
+        // AUDIT-14 T4: a Quick Study looked worse than they are.
+        t.trainingScore = quickStudyScorePenalty(t) > 0 ? Math.max(1, score - quickStudyScorePenalty(t)) : score;
         const reaction = attempt
             ? fillLine(landed ? attempt.landed : attempt.botched, { tribute: t.name, station: showStation })
             : fillLine(ctx.pickText(ROUTINE_SESSIONS), { tribute: t.name, station: showStation });

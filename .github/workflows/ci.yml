@@ -95,10 +95,14 @@ jobs:
       # the fear and retreat numbers that used to put them there.
       - run: npm run test:audit13-careers
       - run: npm run test:audit13-relations
+      - run: npm run test:audit14-relations
       # AUDIT-13 §16: every new trait, skill, archetype, quirk and stance
       # reaches its hook in a real run.
       - run: npm run test:audit13-content
+      - run: npm run test:audit14-content
       - run: npm run test:zone-strip
+      - run: npm run test:audit14-arenas
+      - run: npm run test:arena-deathmix
       # AUDIT-10 batch 2: the shared legal-action contract. "Validated twice"
       # is not something a reader can check by inspection.
       - run: npm run test:actions
@@ -165,6 +169,7 @@ jobs:
       # stays the exception. The proposed "Receipt of Mercy" was unreachable.
       - run: npm run test:mercy
       - run: npm run test:whatif
+      - run: npm run test:audit14-engine
 
       # Content and structure.
       - run: npm run test:arenas
@@ -173,6 +178,8 @@ jobs:
       - run: npm run test:flavor
       - run: npm run test:names
       - run: npm run test:achievements
+      # AUDIT-14 §8: achievement fixes H1-H4, the a14-* entries and the added names.
+      - run: npm run test:audit14-achievements
       - run: npm run test:predicates
       # AUDIT-8 §1.5: a string in one data table that is supposed to name a row
       # in another. Unguarded until now, and `broker.preferredTraits` listed
@@ -183,6 +190,7 @@ jobs:
 
       # Saves written by an older build must still open.
       - run: npm run test:storage
+      - run: npm run test:audit14-ui
 
       - run: npm run build
 

@@ -1,8 +1,14 @@
 import { SimContext, getAlive } from './context';
 import { GameState, Tribute, ZoneStateKind } from '../models/types';
-import { AUDIT13_ARENA } from '../data/balance';
+import { AUDIT13_ARENA, AUDIT14_ARENA, AUDIT14_ENGINE } from '../data/balance';
+import { getMark, setMark } from './arenaRules';
+import { applyDamage, checkDeath } from './combat';
+import { clampTribute } from './vitals';
 import { RNG } from '../utils/rng';
 import { getZone, zoneFeatures } from './map';
+import { leaveKit } from './abandonedCamps';
+import { exposureScale } from './audit13Content';
+import { hasCamp } from './fieldcraft';
 import { loseSanity } from './sanityBands';
 import { cycleOf } from './memory';
 
@@ -27,6 +33,8 @@ export function zoneStateOf(state: GameState, zone: string): ZoneStateKind {
 
 function setZoneState(ctx: SimContext, zone: string, kind: ZoneStateKind, line?: string) {
     const states = ctx.state.zoneStates ?? (ctx.state.zoneStates = {});
+    // AUDIT-14 E5: nothing happens to ground that is closed.
+    if ((ctx.state.collapsedZones ?? []).includes(zone)) { delete states[zone]; return; }
     const prev = states[zone]?.kind ?? 'intact';
     if (prev === kind) return;
     if (kind === 'intact') delete states[zone];
@@ -82,10 +90,23 @@ const NIGHT_RULES: Record<string, NightRule> = {
     carnival: 'wake', menagerie: 'wake', clockwork: 'wake', thresher: 'wake', culdesac: 'wake', vault: 'wake',
     acousticforest: 'mimic', canopyweb: 'mimic', storywood: 'mimic', nooneplace: 'mimic', silkwood: 'mimic',
 };
-const NIGHT_LINES: Record<NightRule, string> = {
-    cold: 'The cold comes down properly after dark. Anybody without a roof over them spends the night working just to stay warm.',
-    wake: 'Something in the arena wakes up after dark that sleeps through the day, and it is not quiet about it.',
-    mimic: 'The voices start again after dark, closer than they were last night, and some of them use names.',
+// AUDIT-14 W7: three lines per rule, so the nightly beat is not one fixed sentence.
+const NIGHT_LINES: Record<NightRule, string[]> = {
+    cold: [
+        'The cold comes down properly after dark. Anybody without a roof over them spends the night working just to stay warm.',
+        'The temperature drops off a cliff at sunset. Breath hangs in the air, and nobody in the open sleeps more than an hour at a time.',
+        'Frost forms on the packs before midnight. Whoever has no shelter spends the dark hours stamping and rubbing their hands.',
+    ],
+    wake: [
+        'Something in the arena wakes up after dark that sleeps through the day, and it is not quiet about it.',
+        'After sunset the arena stops being empty. Things move in it that were not there at noon.',
+        'The night shift starts. Whatever the arena keeps for the dark comes out to work, loudly.',
+    ],
+    mimic: [
+        'The voices start again after dark, closer than they were last night, and some of them use names.',
+        'After dark, someone calls from the trees in a voice that sounds like home. It knows things it should not.',
+        'The night fills with voices again. One of them laughs the way a dead tribute used to laugh.',
+    ],
 };
 
 /** Which damage codes push a zone into which state. */
@@ -107,13 +128,17 @@ export function tickArenaDynamics(ctx: SimContext, time: 'day' | 'night') {
 
     // --- W11: damage this cycle moves the ground on. Signature damage counts
     // double: it is the arena's mechanic acting on it.
+    // AUDIT-14 E5: closed ground has no state to move on. Whatever collapsed
+    // it (border, event, convergence), its entry goes, and neither pass below
+    // narrates a zone nobody can stand in.
+    if (state.zoneStates) collapsed.forEach(z => { delete state.zoneStates![z]; });
     const pushed = new Set<string>();
     state.tributes.forEach(t => {
         const d = t.lastDamage;
         if (!d || d.cycle !== cycle || !d.code) return;
         if (d.kind === 'tribute' || d.kind === 'status') return;
         const next = DAMAGE_STATE[d.code];
-        if (!next || pushed.has(t.zone)) return;
+        if (!next || pushed.has(t.zone) || collapsed.includes(t.zone)) return;
         if (!d.signature && !rng.chance(AUDIT13_ARENA.damageAdvanceChance)) return;
         pushed.add(t.zone);
         advanceZone(ctx, t.zone, next);
@@ -121,7 +146,7 @@ export function tickArenaDynamics(ctx: SimContext, time: 'day' | 'night') {
 
     // --- W11: time moves it on too.
     Object.entries(state.zoneStates ?? {}).forEach(([zone, s]) => {
-        if (pushed.has(zone)) return;
+        if (pushed.has(zone) || collapsed.includes(zone)) return;
         const age = cycle - s.since;
         if (s.kind === 'burning' && age >= AUDIT13_ARENA.burningCycles) {
             setZoneState(ctx, zone, 'ash', `The fire in ${zone} has run out of things to burn. What is left is ash, and nothing hides in ash.`);
@@ -143,12 +168,21 @@ export function tickArenaDynamics(ctx: SimContext, time: 'day' | 'night') {
         if (rule) {
             const living = getAlive(state);
             if (living.length > 0 && arenaArcStage(state) !== 'quiet' && rng.chance(AUDIT13_ARENA.nightRuleChance)) {
-                ctx.logEvent(NIGHT_LINES[rule], [], { category: 'arena' });
+                // AUDIT-14 W7: the rule still bites every night it fires; the
+                // announcement is not repeated inside a few nights.
+                const last = getMark(state, 'a14:nightRuleDay');
+                if (typeof last !== 'number' || state.day - last >= AUDIT14_ARENA.nightRuleQuietNights) {
+                    ctx.logEvent(rng.pick(NIGHT_LINES[rule]), [], { category: 'arena' });
+                    setMark(state, 'a14:nightRuleDay', state.day);
+                }
                 living.forEach(t => {
                     const zone = getZone(state.arena, t.zone);
                     const shelter = zone ? zoneFeatures(zone).shelterQuality ?? 0 : 0;
                     if (rule === 'cold') {
-                        t.vitals.fatigue = Math.min(100, t.vitals.fatigue + Math.round(AUDIT13_ARENA.nightColdFatigue * (1 - shelter)));
+                        // AUDIT-14 T13: the posture that exists for cold nights, and
+                        // a roof they built, both count against the cold night.
+                        const kept = exposureScale(ctx, t) * (hasCamp(ctx, t, 'shelter') ? AUDIT14_ENGINE.nightColdCampScale : 1);
+                        t.vitals.fatigue = Math.min(100, t.vitals.fatigue + Math.round(AUDIT13_ARENA.nightColdFatigue * (1 - shelter) * kept));
                     } else {
                         const alone = !living.some(o => o.id !== t.id && o.zone === t.zone);
                         loseSanity(t, AUDIT13_ARENA.nightSanity * (alone && rule === 'mimic' ? 2 : 1));
@@ -159,7 +193,8 @@ export function tickArenaDynamics(ctx: SimContext, time: 'day' | 'night') {
     }
 
     // --- W15: the finale mutation, once.
-    if (arenaArcStage(state) === 'finale' && !state.arenaFinaleMutated && open.length > 2) {
+    // AUDIT-14 E14: "overnight" means overnight — it waits for the night tick.
+    if (time === 'night' && arenaArcStage(state) === 'finale' && !state.arenaFinaleMutated && open.length > 2) {
         state.arenaFinaleMutated = true;
         const targets = rng.shuffle(open.filter(n => !/cornucopia/i.test(n) && zoneStateOf(state, n) !== 'ruined'))
             .slice(0, AUDIT13_ARENA.finaleRuinedZones);
@@ -174,14 +209,42 @@ export function tickArenaDynamics(ctx: SimContext, time: 'day' | 'night') {
         }
     }
 
+    // --- AUDIT-14 W9: carnival's midway powers up all at once on day 10.
+    if (state.arena.id === 'carnival' && state.day >= AUDIT14_ARENA.carnivalFinaleDay && getMark(state, 'a14:midway') !== 1 && time === 'night') {
+        setMark(state, 'a14:midway', 1);
+        ctx.logEvent('Every ride on the midway powers up at once. The lights come on, the music starts, and every machine in the carnival moves.', [], { important: true, category: 'gamemaker' });
+        getAlive(state).forEach(t => {
+            const zone = getZone(state.arena, t.zone);
+            if (!zone || zone.terrain !== 'ruins' && !/cornucopia/i.test(t.zone)) return;
+            if (rng.chance(AUDIT14_ARENA.carnivalFinaleDodge + t.attributes.agility * 0.03)) return;
+            applyDamage(ctx, t, AUDIT14_ARENA.carnivalFinaleDamage, { cause: 'Caught in the rides when the whole midway powered up', kind: 'arena', code: 'machinery', signature: true });
+            clampTribute(t);
+            checkDeath(ctx, t, 'Caught in the rides when the whole midway powered up');
+        });
+    }
+
     // --- W16: where people died. Recorded once per body; a zone with a
     // cairn in it weighs on whoever camps there.
     const sites = state.deathSites ?? (state.deathSites = {});
     const noted = state.deathSitesNoted ?? (state.deathSitesNoted = []);
+    const siteAt = state.deathSitesAt ?? (state.deathSitesAt = {});
     state.tributes.forEach(t => {
         if (t.status !== 'dead' || noted.includes(t.id)) return;
         noted.push(t.id);
+        // AUDIT-14 E15: the bloodbath is not a haunting. Every Games opened
+        // with the horn permanently cursed, and the endgame pulls people to it.
+        if (t.diedInBloodbath) return;
         sites[t.zone] = (sites[t.zone] ?? 0) + 1;
+        siteAt[t.zone] = cycle;
+    });
+    // ...and a site fades, one death's weight per regrowth span without a new one.
+    Object.keys(sites).forEach(z => {
+        const since = siteAt[z] ?? cycle;
+        if (siteAt[z] === undefined) siteAt[z] = cycle;
+        if (cycle - since < AUDIT13_ARENA.regrowthCycles) return;
+        sites[z] = Math.max(0, sites[z] - 1);
+        siteAt[z] = cycle;
+        if (sites[z] === 0) { delete sites[z]; delete siteAt[z]; }
     });
     getAlive(state).forEach(t => {
         const n = sites[t.zone] ?? 0;
@@ -304,14 +367,7 @@ function sweepCorpseKit(ctx: SimContext) {
     state.tributes.forEach(t => {
         if (t.status !== 'dead' || t.inventory.length === 0) return;
         if (t.dayOfDeath === undefined || state.day - t.dayOfDeath < AUDIT13_ARENA.corpseKitDays) return;
-        state.abandonedCamps = state.abandonedCamps ?? [];
-        state.abandonedCamps.push({
-            zone: t.zone,
-            ownerId: t.id,
-            ownerName: t.name,
-            cycle: cycleOf(state),
-            items: t.inventory.map(i => i.id),
-        });
+        leaveKit(ctx, t.zone, t.id, t.name, t.inventory, 'corpse');
         t.inventory = [];
     });
 }

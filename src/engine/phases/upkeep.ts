@@ -1,3 +1,4 @@
+import { tickAudit14Content } from '../audit14Content';
 import { SimContext } from '../context';
 import { tickSeason } from '../season/tick';
 import { processSpoilage, processVitals } from '../survival';
@@ -77,6 +78,8 @@ export function postActionUpkeep(ctx: SimContext) {
     tickTraitHooks(ctx);
     // AUDIT-13 §16: the new traits', archetypes' and stances' per-cycle half.
     tickAudit13Content(ctx);
+    // AUDIT-14 §7: the new content's per-cycle pieces.
+    tickAudit14Content(ctx);
     tickRescueLines(ctx);
     tickDowned(ctx);
     // ...and the beat a cycle or two later that reads what actually happened.

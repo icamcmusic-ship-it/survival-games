@@ -80,7 +80,7 @@ export function gallerySignature(ctx: SimContext, _cycle: number, rng: RNG) {
                 return;
             }
             const cause = `Crushed by the lighting rig in ${live}`;
-            applyDamage(ctx, t, knobs.rigDamage, { cause, kind: 'arena', code: 'collapse' });
+            applyDamage(ctx, t, knobs.rigDamage, { cause, kind: 'arena', code: 'collapse', signature: true });
             if (rng.chance(knobs.rigBleedChance)) openWound(t, BLEEDING.hazardSeverity);
             clampTribute(t);
             ctx.logEvent(`A lighting bar comes down out of the flies onto ${live} and takes ${t.name} across the shoulders.`, [t.id], { important: true, zone: live, category: 'hazard' });
@@ -192,7 +192,7 @@ export function circuitSignature(ctx: SimContext, cycle: number, rng: RNG) {
             return;
         }
         const cause = `Hit by the pace car on ${here}`;
-        applyDamage(ctx, t, knobs.damage, { cause, kind: 'arena', code: 'machinery' });
+        applyDamage(ctx, t, knobs.damage, { cause, kind: 'arena', code: 'machinery', signature: true });
         if (rng.chance(knobs.bleedChance)) openWound(t, BLEEDING.hazardSeverity);
         t.vitals.fatigue += knobs.fatigue;
         addZoneThreat(ctx.state, t, here, MEMORY.hazardThreat * 2);
@@ -222,6 +222,12 @@ export function wardblockSignature(ctx: SimContext, cycle: number, rng: RNG) {
         trapped.forEach(t => {
             loseSanity(t, knobs.trappedSanity);
             t.vitals.fatigue += knobs.trappedFatigue;
+            // AUDIT-14: a cell with the doors run shut is hurting whoever is in it.
+            if (rng.chance(knobs.trappedHurtChance)) {
+                const cause = `Died locked in ${block}`;
+                applyDamage(ctx, t, knobs.trappedHurt, { cause, kind: 'arena', code: 'exposure', signature: true });
+                checkDeath(ctx, t, cause);
+            }
             clampTribute(t);
         });
         const roster = rosterFor(ctx);
@@ -247,7 +253,7 @@ export function wardblockSignature(ctx: SimContext, cycle: number, rng: RNG) {
     trapped.forEach(t => {
         if (!rng.chance(knobs.doorChance)) return;
         const cause = `Caught in a cell door in ${block}`;
-        applyDamage(ctx, t, knobs.doorDamage, { cause, kind: 'arena', code: 'trap' });
+        applyDamage(ctx, t, knobs.doorDamage, { cause, kind: 'arena', code: 'trap', signature: true });
         clampTribute(t);
         ctx.logEvent(`${t.name} is in the doorway in ${block} when it runs shut.`, [t.id], { zone: block, category: 'hazard' });
         checkDeath(ctx, t, cause);
@@ -294,6 +300,13 @@ export function glasshouseSignature(ctx: SimContext, cycle: number, rng: RNG) {
         order.slice(0, given).forEach(wing => tributesIn(ctx, wing).forEach(t => {
             t.vitals.fatigue += knobs.exposureFatigue;
             t.vitals.thirst += knobs.exposureThirst;
+            // AUDIT-14: open glass is cold glass — a small wound the arena
+            // owns, so the Glasshouse kills with its own weather and not only
+            // through the fights its broken wings drive people into.
+            if (rng.chance(knobs.rooflessColdChance)) {
+                applyDamage(ctx, t, knobs.rooflessColdDamage, { cause: `Froze under the broken roof of ${wing}`, kind: 'arena', code: 'hypothermia', signature: true });
+                checkDeath(ctx, t, `Froze under the broken roof of ${wing}`);
+            }
             clampTribute(t);
         }));
         const safe = safeShelter(ctx.state);
@@ -326,7 +339,7 @@ export function glasshouseSignature(ctx: SimContext, cycle: number, rng: RNG) {
                 return;
             }
             const cause = `Cut to pieces when the glass gave in ${cracking}`;
-            applyDamage(ctx, t, knobs.damage, { cause, kind: 'arena', code: 'collapse' });
+            applyDamage(ctx, t, knobs.damage, { cause, kind: 'arena', code: 'collapse', signature: true });
             openWound(t, BLEEDING.hazardSeverity);
             addZoneThreat(ctx.state, t, cracking, MEMORY.hazardThreat * 2);
             clampTribute(t);

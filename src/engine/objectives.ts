@@ -1,8 +1,10 @@
+import { isolationZone } from './audit14Content';
+import { AUDIT14_CONTENT as C14 } from '../data/balance';
 import { targetDrawOf } from './targeting';
 import { hiddenFromHunt } from './traitHooks';
 import { GameState, Objective, Tribute, Zone } from '../models/types';
 import { ARCHETYPES } from '../data/archetypes';
-import { AUDIT12_TRIBUTES, AUDIT13_CAREERS, ENDGAME, ESCALATION, PERCEPTION, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, MEMORY, MOVEMENT, OBJECTIVES, PLANNING, REPUTATION_TARGETING, RISK, STANDING_GOAL } from '../data/balance';
+import { AUDIT12_TRIBUTES, AUDIT13_CAREERS, AUDIT14_RELATIONS, ENDGAME, ESCALATION, PERCEPTION, ENDGAME_POSITIONING, INJURY_BEHAVIOUR, MEMORY, MOVEMENT, OBJECTIVES, PLANNING, REPUTATION_TARGETING, RISK, STANDING_GOAL, AUDIT14_ENGINE } from '../data/balance';
 import { SimContext } from './context';
 import { cycleOf, cyclesSinceContact, ensureMemory, hasVengeanceAgainst, impressionOf, rememberedBarren, rememberedRivals, rememberedThreat } from './memory';
 import { getZone, hopsTo, nextHopToward, severedEdgeSet, zoneFeatures } from './map';
@@ -21,6 +23,7 @@ import { fill } from './encounters';
 import { isAggressiveStance } from '../data/stances';
 import { objectiveBiasFor, targetPreferenceScore } from './archetypeHooks';
 import { resolveOf } from './resolve';
+import { canRunHunt } from './stance';
 
 /**
  * Intentions.
@@ -127,6 +130,13 @@ function announce(ctx: SimContext, t: Tribute, objective: Objective) {
                 { type: 'objective-formed', category: 'survival' }
             );
             return;
+        case 'isolate':
+            ctx.logEvent(
+                `${t.name} has had enough of company in ${t.zone}, and goes looking for somewhere nobody else is: ${objective.zone}.`,
+                [t.id],
+                { type: 'objective-formed', category: 'travel' }
+            );
+            return;
         case 'scout':
             ctx.logEvent(
                 `${t.name} realises they have not seen another living soul in days, and sets off for the high ground at ${objective.zone}.`,
@@ -209,6 +219,7 @@ export function isObjectiveValid(ctx: SimContext, t: Tribute): boolean {
                     c.zone === objective.zone && c.ownerId === objective.ownerId && c.foundBy === undefined);
         case 'mourn':
         case 'scout':
+        case 'isolate':
             return t.zone !== objective.zone && !collapsed.includes(objective.zone);
         // §16: courting ends when you are standing in front of them — the
         // asking itself is the alliance layer's business, not this one's.
@@ -256,7 +267,8 @@ function isObjectiveReachable(ctx: SimContext, t: Tribute, goal: Objective): boo
         case 'recover': return !collapsed.includes(goal.zone);
         case 'scavenge':
         case 'mourn':
-        case 'scout': return !collapsed.includes(goal.zone) && t.zone !== goal.zone;
+        case 'scout':
+        case 'isolate': return !collapsed.includes(goal.zone) && t.zone !== goal.zone;
         case 'court': return !!living(goal.targetId);
         default: return false;
     }
@@ -558,7 +570,10 @@ function chooseObjective(
         // written for.
         const withPactMate = here.some(o => o.id !== t.id && o.status === 'alive' && sharesVengeancePact(state, t, o)
             && ensureMemory(o).vengeance.includes(sworn.id));
-        const o = offer(withPactMate ? OBJECTIVES.pactHuntTier : 56, { kind: 'hunt', targetId: sworn.id, expires: expiry(OBJECTIVES.huntCycles) });
+        // AUDIT-14 RB2/R11: an oath with a plan. A hurt or downed target is
+        // the moment the swearer was waiting for, and it outranks a pact-mate.
+        const moment = sworn.downed || sworn.health < AUDIT14_RELATIONS.oathAdvantageHealth;
+        const o = offer(moment ? AUDIT14_RELATIONS.oathMomentTier : withPactMate ? OBJECTIVES.pactHuntTier : 56, { kind: 'hunt', targetId: sworn.id, expires: expiry(OBJECTIVES.huntCycles) });
         if (o) return o;
     }
     // §3.3: in the endgame, a tribute who concludes they win a straight fight
@@ -869,6 +884,16 @@ function chooseObjective(
         }
     }
 
+    // AUDIT-14 A34: the Hermit's rung. Company here, and emptier ground
+    // they know of within a couple of hops: they go to it.
+    if (objectiveBiasFor(t, 'isolate') > 0) {
+        const lonely = isolationZone(ctx, t);
+        if (lonely) {
+            const o = offer(C14.isolateTier, { kind: 'isolate', zone: lonely, expires: expiry(C14.isolateCycles) });
+            if (o) return o;
+        }
+    }
+
     // 7. Ground worth standing on: good forage, no bad memories, nobody else in it.
     const current = getZone(state.arena, t.zone);
     if (current && rememberedThreat(state, t, t.zone) < OBJECTIVES.holdMaxThreat
@@ -937,6 +962,7 @@ function nearestZoneMatching(
  */
 export function updateObjective(ctx: SimContext, t: Tribute, here: Tribute[]) {
     commitmentByCaution(ctx, t, here);
+    downgradeUnrunnableHunt(ctx, t);
     if (isObjectiveValid(ctx, t)) {
         // §3.2: being torn is now cumulative. Three cycles pulled the same two
         // ways and the runner-up wins outright, loudly — the tension system
@@ -1150,6 +1176,7 @@ function hesitate(ctx: SimContext, t: Tribute, chosen: Objective, other: Objecti
             case 'mourn': return `going back for ${name(o.forId)}`;
             case 'recover': return 'letting the wound close';
             case 'scout': return `getting eyes on the arena from ${o.zone}`;
+            case 'isolate': return `getting away from everybody, to ${o.zone}`;
             case 'reach': return {
                 water: 'finding water', shelter: 'finding somewhere to sleep',
                 feast: 'the feast', ally: 'reaching their allies', forage: 'finding food',
@@ -1206,6 +1233,7 @@ export function objectiveZone(ctx: SimContext, t: Tribute): string | undefined {
         case 'scavenge':
         case 'mourn':
         case 'scout':
+        case 'isolate':
             return objective.zone;
         // §16: courting reads the same rule as protecting — you go to where
         // you last saw them, not to where they actually are.
@@ -1304,7 +1332,8 @@ function recordObjectiveOutcome(ctx: SimContext, t: Tribute, previous: Objective
         case 'scavenge': won = t.zone === previous.zone
             && (state.abandonedCamps ?? []).some(c => c.zone === previous.zone && c.foundBy === t.id); break;
         case 'mourn':
-        case 'scout': won = t.zone === previous.zone; break;
+        case 'scout':
+        case 'isolate': won = t.zone === previous.zone; break;
         // §16: the win is standing in front of them. Whether they said yes is
         // the alliance layer's question, and it is asked one rung later.
         case 'court': { const them = find(previous.targetId); won = !!them && them.zone === t.zone; break; }
@@ -1348,6 +1377,7 @@ export function objectiveLabel(state: { tributes: Tribute[] }, t: Tribute): stri
         case 'mourn': return `Going back to where ${name(objective.forId)} fell`;
         case 'recover': return `Resting up in ${objective.zone}`;
         case 'scout': return `Climbing ${objective.zone} for a look`;
+        case 'isolate': return `Going to ground alone in ${objective.zone}`;
         case 'reach': {
             const why = {
                 water: 'for water', shelter: 'for shelter', feast: 'for the feast',
@@ -1357,4 +1387,21 @@ export function objectiveLabel(state: { tributes: Tribute[] }, t: Tribute): stri
         }
         default: return 'Surviving';
     }
+}
+
+/**
+ * AUDIT-14 T2: a hunt the tribute cannot run becomes a stalk.
+ *
+ * `hunt` was the objective on 40% of tribute-cycles and the Hunting stance on
+ * 1.7%: the objective walked them toward the quarry while the stance said
+ * Evasive or Defensive, which read as an aimless hunt. When they lack the
+ * fieldcraft (and the oath) that Hunting needs *and* their posture is not a
+ * fighting one, the intention is what it really is — following, not closing.
+ */
+function downgradeUnrunnableHunt(ctx: SimContext, t: Tribute) {
+    const o = t.objective;
+    if (o?.kind !== 'hunt' || isAggressiveStance(t.stance)) return;
+    if (canRunHunt(t)) return;
+    if (!ctx.rng.chance(AUDIT14_ENGINE.huntDowngradeChance)) return;
+    t.objective = { kind: 'stalk', targetId: o.targetId, expires: o.expires };
 }

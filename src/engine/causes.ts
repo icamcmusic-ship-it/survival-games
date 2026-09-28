@@ -93,11 +93,17 @@ const RULES: Array<[DeathCauseCode, RegExp]> = [
  * bucket, never a re-reading of anything else.
  */
 const HAZARD_RULES: Array<[DeathCauseCode, RegExp]> = [
+    // AUDIT-14 W4: the named leftovers that still ended on `hazard`.
+    ['asphyxiation', /in the flue|in the chimney|flue\b/i],
+    ['machinery', /by the pumps|the pumps|winch|turbine|mangle|press house/i],
+    ['crush', /on gull rock|under gull rock|lost a hand/i],
     ['electrocution', /electrocut|lightning|live (wire|rail)|substation|^struck$|arc(ed)? (flash|through)|third rail/i],
-    ['exposure-pressure', /pressure|decompress|vacuum|air-?lock|the bends|nitrogen|cold shock|depth/i],
+    // AUDIT-14 E10: crush reads before pressure, so "Crushed by a pressure
+    // ridge" is a crush; and pressure means a pressure *change*, not the word.
+    ['crush', /crush|trampled|pinned|squeezed|between (the )?(ice )?plates|under (a|the) (serac|wheel|big top|snow load|counterweight)|falling (bell|limb|pine|serac|snag|cable car|big top|star|trunk)|fallen (star|giant)|collapsing cap|failing support|blast door|rafting ice|moving ice|wedged/i],
+    ['exposure-pressure', /pressure (drop|change|shift|wave)|decompress|vacuum|own atmosphere|atmosphere (went|failed|vented)|air-?lock|the bends|nitrogen|cold shock|depth/i],
     ['sound', /resonan|deafen|the note|shriek|the (bells?|organ)\b|bell-?toll|sound|scream(ed|ing)? (them|until)|deep organ/i],
     ['animal', /mauled|gored|bitten|trampled by|stampede|snake|adder|viper|\bbear\b|\bboar\b|\bherd\b|shark|vultures?|\bowls\b|\bbats\b|harriers|wasps?|hornets?|jellyfish|stonefish|\beels?\b|crocodile|big cat|\blions?\b|tiger|wolves|wolf\b|swarm/i],
-    ['crush', /crush|trampled|pinned|squeezed|between (the )?(ice )?plates|under (a|the) (serac|wheel|big top|snow load|counterweight)|falling (bell|limb|pine|serac|snag|cable car|big top|star|trunk)|fallen (star|giant)|collapsing cap|failing support|blast door|rafting ice|moving ice|wedged/i],
     // Existing codes the prose names in words the main rules never learned.
     ['burns', /scald|cooked|boiled|steam/i],
     ['mutt', /jabberjay|tracker jacker/i],
@@ -112,7 +118,31 @@ const HAZARD_RULES: Array<[DeathCauseCode, RegExp]> = [
     ['drowning', /(taken|swept|pulled) (by|under|off|out)( by)? the (tide|wave|surge|rip|king tide|storm surge|great wave|rogue wave)|swallowed by|taken under|swept (away|off|out)/i],
     ['collapse', /\bburied\b|avalanche|collapse|(rock|scree|mud|snow)[ -]?slide|landslip|cave-?in/i],
     ['dehydration', /thirst/i],
-    ['impact', /struck by|blown (off|from|out)|thrown (from|when|off)|knocked (off|out)|flying (timber|debris|glass)|ricochet|hail|explo|detonat|blast|shatter|shards|flayed|shot\b|eruption|when the .+ (burst|went|woke)|swung|scheduled blast|dump went/i],
+    ['impact', /struck by|blown (off|from|out)|thrown (from|when|off)|knocked (off|out)|flying (timber|debris|glass)|ricochet|hail|explo|detonat|blast|shatter|shards|flayed|shot\b|eruption|when the .+ (burst|went|woke)|swung|scheduled blast|dump went|ejecta|falling (stone|rock)|glass rain/i],
+    /*
+     * AUDIT-14 W4: the ~330 arena-pack obituaries that still reached the
+     * catch-all. Grouped by what the words actually describe; the order runs
+     * from the most specific wording to the least, and the last rule is the
+     * arena's makers themselves, never `hazard`.
+     */
+    ['asphyxiation', /suffocat|scrubbers|strangl|garrot|breathed|\bash\b|ventilation|\bchoke\b|lungs|sealed on|locked (in|into)/i],
+    ['animal', /condors|ravens|\btroop\b|cat house|aviary|aquarium|feeding time|constricted|eaten alive|borer|leeches|locusts|gulls|petrels|choughs/i],
+    ['mutt', /hounds|\bdogs\b|stalkers|ticks|worm|the (warden|dredger|ferryman|barker|others|bramble|topiary|unseen|deep listener|standing char|thing|understory)|taken (from below|from above|from under|by something)|wrapped|\bweb\b|silk|whatever was in|thornvine|vines|mycelium|cordyceps|sump wader|hook line|hooks/i],
+    ['drowning', /tide|tidal|water table|shallows|reservoir|\bpool\b|river|millpond|\bwell\b|\bsink\b|open water|ice edge|under the ice|went through|into the water|channel|brine|\bmud\b|thaw|drifted|adrift|with the island|flooded/i],
+    ['heatstroke', /heat|no shade|salt-cured|outcrop/i],
+    ['dehydration', /last water|dried oasis|water that was not|waited for a parachute/i],
+    ['infection', /\brot|wound|infected|fouled|fruited|spores|digested/i],
+    ['shock', /fright|mind|whispers|\bhum\b|voices|sleep from waking|never heard/i],
+    ['machinery', /\bline\b|escapement|ore cart|loose cart|rendering|sawmill|sprinklers|emergency lights|sector line/i],
+    ['impact', /impaled|cut down|shredded|hit the far end|charge|brained|ambush|put against|scree|ice slide|picket wire|crown break|lighthouse|beam|\bbench\b|signal post|rebar|breaking cover|weapon broke/i],
+    ['fall', /^fell\b|broke|over the edge|off (an|a|the)|pushed off|went down with|carried down|caldera|drain grate|tripped|slick|\bnest\b|shaken out|driven off|into a wall|stump/i],
+    ['exposure', /radiation|lost|walked|wander|stepped|followed|led astray|mirage|shimmer|passage|bearing|ran out of|dusk|\bdark\b|fog|blind|circles|stopped|went on until|never (got out|left)|left in|room|new door|thread|turn they|hour|stranded|squall|exhausted|watch|dug in|carrying too much|\bopen\b|flats|glass sea|dust|cordon/i],
+    ['trap', /root cage/i],
+    ['poison', /urchin/i],
+    ['burns', /lit up/i],
+    ['collapse', /did not come out/i],
+    ['mutt', /run down|tracked|hunted|given away|called out|found (in|by|under|them)/i],
+    ['gamemaker', /killed|died|taken|cornered|caught|answered|bargain|wished|word|register|kept|moral|plot|ending|offered|period|session|bow|names|wrong camp|fire|parachute|went into|carpet|reception|hedge|walls|centre|gate/i],
 ];
 
 /**
@@ -122,12 +152,33 @@ const HAZARD_RULES: Array<[DeathCauseCode, RegExp]> = [
  * those files), the one place damage lands refines it through the same table.
  * Anything the table cannot place stays `hazard`.
  */
-export function refineHazardCode(code: DeathCauseCode | undefined, cause: string | undefined): DeathCauseCode | undefined {
-    if (code !== 'hazard') return code;
-    for (const [c, pattern] of HAZARD_RULES) {
-        if (pattern.test(cause ?? '')) return c;
+export function refineHazardCode(code: DeathCauseCode | undefined, cause: string | undefined, kind?: DamageRecord['kind']): DeathCauseCode | undefined {
+    if (code === 'hazard') {
+        for (const [c, pattern] of HAZARD_RULES) {
+            if (pattern.test(cause ?? '')) return c;
+        }
+        return code;
+    }
+    // AUDIT-14 E9: the six AUDIT-13 codes fired on 0.26% of deaths, because a
+    // site that wrote a *broad* code (collapse, fall, burns) was never refined.
+    // Arena damage under a broad code now gets the specific one when the prose
+    // names it; nothing a tribute or the body did moves.
+    if (code && BROAD_ARENA_CODES.has(code) && (kind === undefined || kind === 'hazard' || kind === 'arena')) {
+        return specificArenaCode(cause) ?? code;
     }
     return code;
+}
+
+/** AUDIT-14 E9: the broad arena codes a specific AUDIT-13 code may refine. */
+const BROAD_ARENA_CODES = new Set<DeathCauseCode>(['hazard', 'collapse', 'fall', 'burns', 'machinery', 'trap', 'mutt']);
+/** AUDIT-14 E9: the six specific arena codes, in HAZARD_RULES order. */
+const SPECIFIC_ARENA_CODES = new Set<DeathCauseCode>(['electrocution', 'crush', 'exposure-pressure', 'sound', 'animal', 'impact']);
+
+function specificArenaCode(cause: string | undefined): DeathCauseCode | undefined {
+    for (const [c, pattern] of HAZARD_RULES) {
+        if (SPECIFIC_ARENA_CODES.has(c) && pattern.test(cause ?? '')) return c;
+    }
+    return undefined;
 }
 
 /**
@@ -137,8 +188,17 @@ export function refineHazardCode(code: DeathCauseCode | undefined, cause: string
  */
 export function classifyCause(cause: string | undefined, kind?: DamageRecord['kind']): DeathCauseCode {
     const text = cause ?? '';
+    const arenaKind = kind === 'hazard' || kind === 'arena';
     for (const [code, pattern] of RULES) {
-        if (pattern.test(text)) return code;
+        // AUDIT-14 E10: "Killed by the dust" is not a tribute kill. Where the
+        // damage record says something other than a tribute did it, the
+        // wording does not get to say otherwise.
+        if (code === 'tribute' && kind !== undefined && kind !== 'tribute') continue;
+        if (pattern.test(text)) {
+            // AUDIT-14 E9: a broad arena rule yields to a specific one.
+            if (arenaKind && BROAD_ARENA_CODES.has(code)) return specificArenaCode(text) ?? code;
+            return code;
+        }
     }
     // Nothing in the wording matched. The damage record's broad bucket is a
     // weaker answer than a code but a much better one than nothing, and it is
@@ -217,3 +277,18 @@ export const CAUSE_FAMILY: Record<DeathCauseCode, 'tribute' | 'body' | 'arena' |
     gamemaker: 'gamemaker',
     unknown: 'unknown',
 };
+
+/**
+ * AUDIT-14 W3: an obituary names a zone by its plain name. "The Cornucopia
+ * (The Ash Clearing)" is a map label; in a cause of death it reads as
+ * "The Cornucopia". Applied where a non-tribute death's cause is recorded, so
+ * every path that builds the string from `t.zone` is covered at once.
+ */
+export function plainZoneLabels(state: { arena: { zones: Array<{ name: string }> } }, cause: string): string {
+    let out = cause;
+    for (const z of state.arena.zones) {
+        if (!z.name.includes('(') || !out.includes(z.name)) continue;
+        out = out.split(z.name).join(z.name.replace(/\s*\([^)]*\)\s*$/, '') || z.name);
+    }
+    return out;
+}

@@ -1,3 +1,4 @@
+import { audit14AmbushShift } from './audit14Content';
 import { scarCoverShift, weatherConcealment } from './arenaDepth';
 import { audit13AmbushShift, audit13Awareness, mudSkinConcealment } from './audit13Content';
 import { profOf, trainProficiency } from './proficiency';
@@ -315,6 +316,11 @@ export function rollAmbush(ctx: SimContext, attacker: Tribute, defender: Tribute
     chance += lureAmbushBonus(ctx, attacker, defender) + ambushSkillShift(ctx, attacker, defender);
     // AUDIT-13 N14 / N35: Deadfall Mind on held, trapped ground; Regrouping watching its back.
     chance += audit13AmbushShift(ctx, attacker, defender);
+    // AUDIT-14 T8 / S2 / R6: a Rearguard and a blood trail are found first; a
+    // Nightwarden turns the night's first knife aside outright.
+    const warded = audit14AmbushShift(ctx, attacker, defender);
+    if (warded === undefined) return false;
+    chance += warded;
     if (isAggressiveStance(defender.stance)) chance -= 0.1;
 
     return ctx.rng.chance(Math.max(0, Math.min(STEALTH.maxAmbushChance, chance)));

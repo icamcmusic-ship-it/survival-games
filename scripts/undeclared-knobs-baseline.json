@@ -34,7 +34,6 @@
   "src/engine/mentors.ts :: threshold :: t.health <= 60": 1,
   "src/engine/mentors.ts :: threshold :: t.vitals.hunger >= 82": 1,
   "src/engine/mentors.ts :: threshold :: t.vitals.thirst >= 72": 1,
-  "src/engine/movement.ts :: accumulate :: score += 4": 1,
   "src/engine/movement.ts :: accumulate :: score -= 3": 1,
   "src/engine/movement.ts :: threshold :: arch.aggression > 0.1": 1,
   "src/engine/objectives.ts :: accumulate :: edge += Math.min(0.2": 1,

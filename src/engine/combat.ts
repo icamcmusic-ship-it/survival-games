@@ -1,3 +1,4 @@
+import { noteShowboatKill, afterFight, afterLandedHit, audit14DamageScale, audit14PowerHooks, audit14RetreatShift, beforeFight, rearguardCover } from './audit14Content';
 import { deceptionEdge, dropPlan, weaponFails, weatherRangedPenalty } from './arenaDepth';
 import { arenaHasLaw } from './gamesProfile';
 import { targetDrawOf } from './targeting';
@@ -14,10 +15,11 @@ import { clampTribute } from './vitals';
 import { enforceCapacity, giveItem } from './items';
 import { rollAmbush } from './stealth';
 import { getZone, zoneFeatures } from './map';
+import { leaveKit } from './abandonedCamps';
 import { loadFromViolence } from './loadBearing';
 import { noteFightOpened } from './runRecords';
 import { readOf, addZoneThreat, broadcastDeath, cycleOf, ensureMemory, hasVengeanceAgainst, noteContact, noteFight, noteFled, noteStoodBy, noteWound, rattle } from './memory';
-import { classifyCause, refineHazardCode } from './causes';
+import { classifyCause, plainZoneLabels, refineHazardCode } from './causes';
 import { incurDebt } from './debts';
 import { adjustRel, adjustTrust, getRel, propagateDeathFallout } from './relationships';
 import { noteMilestone } from './milestones';
@@ -33,7 +35,7 @@ import { dominantSideCost, effectiveAgility, grappleResistance, injuryAbsorption
 import { addExcitement } from './audience';
 import { traitMod } from '../data/traits';
 import { earnTrait } from './earnedTraits';
-import { AUDIT13_CAREERS, PREGAMES, AUDIT12_WAVE2_TRIBUTES } from '../data/balance';
+import { AUDIT13_CAREERS, PREGAMES, AUDIT12_WAVE2_TRIBUTES, AUDIT14_RELATIONS } from '../data/balance';
 import { evasionRetreat, lootChanceBonus, noteRetreatFailed, onCannon, traitPowerHooks, twitchyAllyHit } from './traitHooks';
 import { audit13DamageScale, audit13PowerHooks, onAudit13Death, spendBorrowedLuck } from './audit13Content';
 import { armourOf, effectiveDamage, encumbranceOf, wearArmour } from './items';
@@ -320,11 +322,22 @@ export function applyDamage(
 ): boolean {
     if (amount <= 0) return false;
     // AUDIT-13 W5: split the `hazard` catch-all at the one place damage lands.
-    if (record.code === 'hazard') record = { ...record, code: refineHazardCode(record.code, record.cause) };
+    // AUDIT-14 E10: "tribute" means a tribute did it. An arena site that
+    // wrote the code with no tribute behind it is classified from its words.
+    if (record.code === 'tribute' && record.kind !== 'tribute' && !record.sourceId) {
+        record = { ...record, code: classifyCause(record.cause, record.kind) };
+    }
+    // AUDIT-14 E9: ...and refine a broad arena code the same way.
+    if (record.code) {
+        const refined = refineHazardCode(record.code, record.cause, record.kind);
+        if (refined !== record.code) record = { ...record, code: refined };
+    }
     // You cannot wound a corpse. Without this, any caller that damages a
     // tribute killed earlier in the same pass silently overwrites the damage
     // record their obituary was built from.
     if (t.status !== 'alive') return false;
+    // AUDIT-14 W3: the wound record names the zone the way the obituary will.
+    if (record.cause?.includes('(') && record.kind !== 'tribute') record = { ...record, cause: plainZoneLabels(ctx.state, record.cause) };
 
     // §9.1: while they are in the rescue window they are out of the damage
     // system entirely. This reads like a bug until you follow the callers:
@@ -352,6 +365,8 @@ export function applyDamage(
     if (ARMOURED_DAMAGE.includes(record.kind)) amount *= 1 - injuryAbsorption(t);
     // AUDIT-13 N9 / N28: Ash-Lunged in smoke; a Lamplighter's marked route.
     amount *= audit13DamageScale(t, record.kind, record.cause);
+    // AUDIT-14 T13 / K6: Iron Lungs against the arena; bracing against a fall.
+    amount *= audit14DamageScale(ctx, t, record.kind, record.code);
     /*
      * `naturalDeathRate`: how hard everything that is not another tribute hits.
      *
@@ -805,6 +820,11 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
         && (hasVengeanceAgainst(t, opponent.id) || getRel(t, opponent.id) <= COMBAT.vengefulHatredRegard)) {
         power += traitMod(t, 'vengeanceEdge');
     }
+    // AUDIT-14 RB2/R11: the oath that waited. Against a sworn target who is
+    // already hurt, the swearer is fighting the fight they were waiting for.
+    if (opponent && opponent.health < AUDIT14_RELATIONS.oathAdvantageHealth && hasVengeanceAgainst(t, opponent.id)) {
+        power += AUDIT14_RELATIONS.oathAdvantagePower;
+    }
 
     /*
      * AUDIT-8 §8.1: the Archivist, converting.
@@ -832,6 +852,8 @@ function combatPower(ctx: SimContext, t: Tribute, weapon?: Item, allies = 0, opp
     power += traitPowerHooks(ctx, t);
     // AUDIT-13 N11 / N27: Hunger-Sharp when hungry; a Mourner against an ally's killer.
     power += audit13PowerHooks(t, opponent);
+    // AUDIT-14 §7: Sore Loser, Late Bloomer, Sharp Elbows, Short Fuse, feinting, Rallying.
+    power += audit14PowerHooks(ctx, t, opponent);
 
     return power;
 }
@@ -965,6 +987,8 @@ function wantsToRetreat(ctx: SimContext, t: Tribute, opponentEdge: number, round
     // A §8: somebody in shock is not weighing anything. They break off.
     if (inShock(ctx, t)) chance += COMBAT.retreatLosingBonus;
     chance += traitMod(t, 'retreat');
+    // AUDIT-14 S3 / P3: a withdrawal keeps withdrawing; a Scrapper stands the first fight.
+    chance += audit14RetreatShift(t);
     // AUDIT-12 §16: the Evasion skill.
     chance += evasionRetreat(t);
     // AUDIT-12 §7: an archetype that will not fight bare-handed.
@@ -1135,6 +1159,8 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
             { important: true, category: 'injury' }
         );
     }
+    // AUDIT-14 K1 / K3 / Q6: poisoncraft, disarming, and the boot knife.
+    afterLandedHit(ctx, attacker, defender, weapon);
     wearWeapon(weapon, ctx, attacker);
     // AUDIT-12 E6: the weapon can break into the hand holding it and finish
     // them. A dead or downed attacker trains nothing and frightens nobody.
@@ -1179,7 +1205,31 @@ function landHit(ctx: SimContext, attacker: Tribute, defender: Tribute, edge: nu
  * fight someone walked away from on purpose, which meant no fleeing, no
  * wearing an opponent down over two encounters, and no tension in a rematch.
  */
+/**
+ * AUDIT-14 §7: the fight, with the new content's before-and-after around it —
+ * the Gambler's side bet (A35), the blood trail and the withdrawal it leaves
+ * (S2/S3), feinting (K2) and the Scrapper's first stand (P3). Every early
+ * return in the fight itself passes through here, which is why it wraps.
+ */
 export function resolveCombat(
+    ctx: SimContext,
+    t1: Tribute,
+    t2: Tribute,
+    isBloodbath: boolean = false,
+    isBetrayal: boolean = false,
+    noRetreatRounds: number = 0,
+    damageMultiplier: number = 1,
+) {
+    if (t1.status === 'dead' || t2.status === 'dead' || isDowned(t1) || isDowned(t2)) return;
+    const note = beforeFight(ctx, t1, t2, isBloodbath);
+    try {
+        fightOut(ctx, t1, t2, isBloodbath, isBetrayal, noRetreatRounds, damageMultiplier);
+    } finally {
+        afterFight(ctx, t1, t2, note);
+    }
+}
+
+function fightOut(
     ctx: SimContext,
     t1: Tribute,
     t2: Tribute,
@@ -1409,7 +1459,9 @@ export function resolveCombat(
             trainProficiency(fleer, 'sprinting', undefined, PROFICIENCY.sprintingRetreatShare);
             const partingChance = Math.max(0.05,
                 COMBAT.partingShotChance - fleer.attributes.stealth * STEALTH.disengagePerPoint
-                    - profOf(fleer, 'sprinting') * PROFICIENCY.sprintingPartingRelief);
+                    - profOf(fleer, 'sprinting') * PROFICIENCY.sprintingPartingRelief)
+                // AUDIT-14 T8: a Rearguard ally covers the one breaking off.
+                * rearguardCover(ctx, fleer);
             if (ctx.rng.chance(partingChance)) {
                 const parting = bestWeapon(stayer);
                 landHit(ctx, stayer, fleer, 2, parting);
@@ -1671,7 +1723,9 @@ export function resolveGroupCombat(ctx: SimContext, participants: Tribute[]) {
         twitchyAllyHit(ctx, attackers, fighters.length, twitchyRolled);
         if (!attackers.some(isActive)) continue;
 
-        const lead = attackers.filter(isActive).reduce((best, a) =>
+        // AUDIT-14 RB2: whoever swore on the target takes point on them.
+        const avenger = sworn === target ? attackers.find(a => isActive(a) && hasVengeanceAgainst(a, target.id)) : undefined;
+        const lead = avenger ?? attackers.filter(isActive).reduce((best, a) =>
             (combatPower(ctx, a, bestWeapon(a)) > combatPower(ctx, best, bestWeapon(best)) ? a : best));
         // A pack fight feeds the same rivalry ledger a duel does — the pair
         // actually trading blows remember it, which is what rematch study,
@@ -2017,7 +2071,11 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         if (kept.length > 0) {
             ctx.state.abandonedCamps = ctx.state.abandonedCamps ?? [];
             if (!ctx.state.abandonedCamps.some(c => c.zone === victim.zone && c.foundBy === undefined)) {
-                ctx.state.abandonedCamps.push({ zone: victim.zone, ownerId: victim.id, ownerName: victim.name, cycle: cycleOf(ctx.state), items: kept.map(i => i.id) });
+                // AUDIT-14 E2: the kit leaves the body when it becomes a
+                // cache. It used to be copied, and the corpse sweep two days
+                // later cached the same items a second time.
+                victim.inventory = victim.inventory.filter(i => !kept.includes(i));
+                leaveKit(ctx, victim.zone, victim.id, victim.name, kept, 'corpse');
                 ctx.logEvent(`Nobody comes for ${victim.name}. What they were carrying stays in ${victim.zone}, and the whole arena heard where.`, [victim.id], { category: 'loot', zone: victim.zone });
             }
         }
@@ -2066,7 +2124,7 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         // AUDIT-9 (audit B20): and the other end of the same thread. Written
         // unconditionally, so at the epilogue it names whoever killed last.
         ctx.state.lastKillerId = killer.id;
-        victim.causeOfDeath = cause
+        victim.causeOfDeath = (cause && plainZoneLabels(ctx.state, cause))
             || (weapon ? `Killed by ${killer.name} (${weapon.name})` : `Killed by ${killer.name}`);
 
         const weaponType = weapon ? weapon.id : 'unarmed';
@@ -2083,6 +2141,8 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         // feel it, carry loot, or wear out gear.
         if (killerAlive) {
             addExcitement(killer, 20);
+            // AUDIT-14 P2: the Showboat's first kill is paid twice over.
+            noteShowboatKill(killer, 20);
             // Bloodlust: briefly stronger and far less willing to break off.
             killer.momentum = Math.min(HUNTING.momentumMax, (killer.momentum ?? 0) + HUNTING.momentumPerKill);
 
@@ -2111,10 +2171,16 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
                 addExcitement(killer, COMBAT.vengeanceExcitement);
                 // §(requests 1): the discharge is about the killer's head, not
                 // a second announcement of the death. Off the red channel.
+                // AUDIT-14 RB2: a solo oath paid is the same beat a pact's is.
                 ctx.logEvent(
-                    `${killer.name} settles the debt. ${victim.name} is dead, and whatever was driving ${killer.name} goes quiet.`,
+                    ctx.rng.pick([
+                        `${killer.name} settles the debt. ${victim.name} is dead, and whatever was driving ${killer.name} goes quiet.`,
+                        `${killer.name} waited for this, and it came. ${victim.name} is dead, and ${killer.name} sits down beside the body for a long time.`,
+                        `${killer.name} finishes what they swore to finish. There is no speech. There is not even very much relief.`,
+                        `${victim.name} dies knowing exactly who and exactly why. ${killer.name} made sure of both.`,
+                    ]),
                     [killer.id, victim.id],
-                    { important: true, category: 'sanity' }
+                    { important: true, category: 'sanity', type: 'vengeance-paid', actorId: killer.id }
                 );
             }
 
@@ -2229,7 +2295,7 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             });
         }
     } else if (posthumousKiller) {
-        victim.causeOfDeath = cause || victim.lastDamage?.cause || `Died of the wounds ${posthumousKiller.name} gave them`;
+        victim.causeOfDeath = plainZoneLabels(ctx.state, cause || victim.lastDamage?.cause || `Died of the wounds ${posthumousKiller.name} gave them`);
         if (!silent) {
             ctx.logEvent(
                 `${victim.name} dies of the wounds ${posthumousKiller.name} gave them. ${posthumousKiller.name} is not alive to know it.`,
@@ -2238,7 +2304,8 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
             );
         }
     } else {
-        victim.causeOfDeath = cause || victim.lastDamage?.cause || 'Died to environment';
+        // AUDIT-14 W3: one choke point for the zone sub-label in an obituary.
+        victim.causeOfDeath = plainZoneLabels(ctx.state, cause || victim.lastDamage?.cause || 'Died to environment');
         const witness = ctx.state.tributes.find(o =>
             o.status === 'alive' && o.id !== victim.id && o.zone === victim.zone);
         const pool = pickEnvironmentalDeathPool(victim, witness);
@@ -2340,14 +2407,7 @@ export function killTribute(ctx: SimContext, victim: Tribute, killer?: Tribute, 
         if (record && carrier && record.sharedCache.length > 0) {
             const scattered = emptyCache(record);
             delete record.roles![carrier];
-            ctx.state.abandonedCamps = ctx.state.abandonedCamps ?? [];
-            ctx.state.abandonedCamps.push({
-                zone: victim.zone,
-                ownerId: victim.id,
-                ownerName: victim.name,
-                cycle: cycleOf(ctx.state),
-                items: scattered.map(i => i.id),
-            });
+            leaveKit(ctx, victim.zone, victim.id, victim.name, scattered, 'scatter');
             ctx.logEvent(
                 `${victim.name} was carrying everything the group had. It is in ${victim.zone} now, in the open, `
                 + `and whoever comes through next will find ${scattered.map(i => i.name).join(', ')} before any of them get back to it.`,

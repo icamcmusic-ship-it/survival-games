@@ -1,3 +1,4 @@
+import { holdTheLine, juryRig, lastRites, liftPurse, runGoods, snareHunt } from './audit14Content';
 import { samePlace } from './verticality';
 import { AUDIT12_WAVE2_TRIBUTES } from '../data/balance';
 import { forgeWeapon, gamblerWager, guardianStand, scoutSighting, turncoatCoup } from './traitHooks';
@@ -97,6 +98,12 @@ export function targetPreferenceScore(state: GameState, t: Tribute, candidate: T
     const present = candidate.zone === t.zone;
     switch (pref) {
         case 'weakest':
+            // AUDIT-14 A19: a Scholar reads weakness only where it is plain —
+            // on the ground or visibly hurt, in front of them. Everywhere else
+            // the preference had them stalking the field for a fight they
+            // were built to avoid (kills 0.47, the lowest row).
+            if (t.archetype === 'scholar' && !(present && (candidate.downed
+                || Object.values(candidate.injuries).some(Boolean)))) return 0;
             return (100 - seen.health) * w;
         case 'strongest':
             return seen.health * ARCHETYPE_HOOKS.strongestHealthWeight + candidate.trainingScore * ARCHETYPE_HOOKS.strongestPerTrainingPoint;
@@ -1257,6 +1264,13 @@ export const SIGNATURES: Record<string, Signature> = {
     pilgrimArrival,
     mournerVigil,
     lightBeacon,
+    // AUDIT-14 §7 R1-R6: the six new set pieces live in audit14Content.ts.
+    liftPurse,
+    lastRites,
+    snareHunt,
+    juryRig,
+    runGoods,
+    holdTheLine,
 };
 
 /**

@@ -1,3 +1,4 @@
+import { noForage } from './audit14Content';
 import { Terrain, Tribute, attr } from '../models/types';
 import { afterForage, anglingForage, neverPoisonous, noteStitched } from './audit13Content';
 import { noteParleyFailed } from './traitHooks';
@@ -14,7 +15,7 @@ import { spend } from './actionBudget';
 import { mitigate } from './hazardChain';
 import { SimContext , getAlive } from './context';
 import { applyDamage, checkDeath, resolveCombat } from './combat';
-import { depleteZone, depletionOf, effectiveResources, getZone, zoneFeatures , reachableZones } from './map';
+import { depleteZone, depletionOf, effectiveResources, getZone, zoneFeatures, reachableZones, severedEdgeSet } from './map';
 import { collapseStructure, isLoadBearing } from './loadBearing';
 import { noteEffectCaused } from './runRecords';
 import type { SanityBand } from './sanityBands';
@@ -439,6 +440,8 @@ function requirementsHold(ctx: SimContext, t: Tribute, event: ArenaEventDef): bo
         if (!f || !(f.elevation || f.chokepoint)) return false;
     }
     if (need.loadBearing && !isLoadBearing(ctx.state, t.zone)) return false;
+    // AUDIT-14 §6: a landmark death happens at the landmark.
+    if (need.zone && !need.zone.some(z => t.zone === z || t.zone.startsWith(`${z} (`))) return false;
     if (need.storm && !ctx.state.weatherFront) return false;
     if (need.stance && !need.stance.includes(t.stance)) return false;
     if (need.trait && !t.traits.includes(need.trait)) return false;
@@ -818,6 +821,8 @@ function attemptForage(
     // AUDIT-9 stage C §3: searching ground takes hours. A tribute who has
     // spent the day crossing does not also comb this zone for food.
     if (!spend(t, ACTION_BUDGET.forageHours)) return false;
+    // AUDIT-14 S3: a withdrawal does not stop to look for food.
+    if (noForage(t)) return false;
     // §5 `noForage`: nothing edible grows here. Everything anybody eats in
     // this arena came out of the horn, which makes the horn the only pantry
     // and going back to it the only plan.
@@ -1151,7 +1156,7 @@ export function idleAction(ctx: SimContext, t: Tribute, flavor: ReturnType<typeo
         // same pool — the ones the pool exists to vary between — did not count.
         noteMilestone(ctx, 'patrol-posted', [t.id]);
         say('patrol');
-        reachableZones(ctx.state.arena, t.zone, ctx.state.collapsedZones ?? []).forEach(z => {
+        reachableZones(ctx.state.arena, t.zone, ctx.state.collapsedZones ?? [], severedEdgeSet(ctx.state)).forEach(z => {
             noteSighting(ctx.state, t, z.name, getAlive(ctx.state).filter(o => o.zone === z.name && isHostileTo(t, o)).length, depletionOf(ctx.state, z.name));
         });
         trainProficiency(t, 'tracking');

@@ -1,3 +1,4 @@
+import { forcedHornPlan, issueHandMeDowns, smallFieldHornShift } from '../audit14Content';
 import { ARENA_REVEALS } from '../../data/arenaReveals';
 import { noteRetreatFailed, runDownCatchScale } from '../traitHooks';
 import { dreadOf } from '../intent';
@@ -5,11 +6,13 @@ import { targetDrawOf } from '../targeting';
 import { SimContext, getAlive } from '../context';
 import { tickRunRecords } from '../runRecords';
 import { RNG } from '../../utils/rng';
+import { updateStance } from '../stance';
+import { STANCE_PROFILES } from '../../data/stances';
 import { Item, Tribute } from '../../models/types';
 import { ITEMS } from '../../data/constants';
 import { traitMod } from '../../data/traits';
 import { ARCHETYPES } from '../../data/archetypes';
-import { ALLIANCES, AUDIT12_TRIBUTES, AUDIT13_CAREERS, AUDIT13_RELATIONS, BLOODBATH, ESCALATION, QUALITY_BIAS, TRAINING } from '../../data/balance';
+import { ALLIANCES, AUDIT12_TRIBUTES, AUDIT13_CAREERS, AUDIT13_RELATIONS, BLOODBATH, ESCALATION, QUALITY_BIAS, STANCE, TRAINING } from '../../data/balance';
 import { allied, pruneDeadAlliances, registerAlliance } from '../alliance';
 
 /**
@@ -119,6 +122,8 @@ export function startGames(ctx: SimContext) {
     initializeCareerAlliance(ctx);
     // §(requests): ...and everybody else's, which used to evaporate at the gong.
     initializePactAlliances(ctx);
+    // AUDIT-14 T15: the family weapon comes onto the plate with them.
+    issueHandMeDowns(ctx);
 }
 
 /**
@@ -438,6 +443,9 @@ function pedestalMinute(ctx: SimContext, alive: Tribute[]) {
  * pact partner is waiting somewhere other than the horn.
  */
 function chooseHornPlan(ctx: SimContext, t: Tribute, proximity: number): 'grab' | 'scatter' | 'run' {
+    // AUDIT-14 T1: Horn-Shy works the edge, whatever the plate says.
+    const forced = forcedHornPlan(t);
+    if (forced) return forced;
     const arch = ARCHETYPES[t.archetype];
     const partner = (t.trainingPact ?? []).length > 0;
     const grab = proximity * 1.2 + arch.aggression - arch.caution * 0.5 + (t.isCareer ? 0.6 : 0);
@@ -689,6 +697,8 @@ export function processBloodbath(ctx: SimContext) {
         // The persona sold on the interview couch is a promise the crowd — and
         // everyone else on the plates — remembers.
         fightChance += personaThreat(t) * 0.6;
+        // AUDIT-14 A28: a horn the Careers visibly own is left to them.
+        fightChance += smallFieldHornShift(alive, t);
         // AUDIT-12 §5: the horn plan made on the plate, before the gong.
         t.hornPlan = chooseHornPlan(ctx, t, proximity);
         fightChance += t.hornPlan === 'grab' ? AUDIT12_TRIBUTES.hornPlanGrabFight
@@ -1099,6 +1109,16 @@ export function processBloodbath(ctx: SimContext) {
     // AUDIT-12 E4/E16: the horn is where most leaders and role holders die.
     // Re-deal before the first day rather than waiting for a caller to prune.
     pruneDeadAlliances(ctx);
+    // AUDIT-14 T16: the first day starts from a scored stance, not the
+    // archetype's reaping-day posture. Somebody who fled the horn with
+    // nothing reads the board differently from a Career who held it.
+    const standing = getAlive(ctx.state);
+    standing.forEach(t => {
+        updateStance(ctx, t, standing.filter(o => o.zone === t.zone));
+        // A starting point, not a commitment: the first day's scorer is not
+        // held to a posture read off the horn in the confusion of the gong.
+        t.stanceHeld = Math.max(t.stanceHeld, STANCE_PROFILES[t.stance]?.minHold ?? STANCE.minHold);
+    });
 }
 
 /**

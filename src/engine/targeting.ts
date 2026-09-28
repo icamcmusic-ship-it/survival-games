@@ -1,5 +1,6 @@
 import { Tribute } from '../models/types';
 import { hearthDraw } from './audit13Content';
+import { audit14TargetDraw } from './audit14Content';
 import { TraitMod, traitMod } from '../data/traits';
 import { ARCHETYPES } from '../data/archetypes';
 import { LEGACY_EFFECTS, legacyOf } from '../data/districts';
@@ -25,5 +26,7 @@ export function targetDrawOf(t: Tribute): number {
         + (ARCHETYPES[t.archetype]?.targetDraw ?? 0)
         + LEGACY_EFFECTS[legacyOf(t.district).tier].targetDraw
         // AUDIT-13 N23: a hearth kept for nights is seen from everywhere.
-        + hearthDraw(t);
+        + hearthDraw(t)
+        // AUDIT-14 T14 / S1 / R5: day-one elbows, a rally call, a loaded Smuggler.
+        + audit14TargetDraw(t);
 }

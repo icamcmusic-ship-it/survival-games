@@ -43,6 +43,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Chatoyant', 'Moonstone', 'Kunzite', 'Spinel', 'Lazulite',
             // AUDIT-13 M3.
             'Damaskin', 'Nacarat', 'Carcanet', 'Sautoir', 'Guilloche',
+            // AUDIT-14 §8 names.
+            'Zafir', 'Quentin', 'Ysandre', 'Ulisse', 'Xavier', 'Jaspar', 'Onyxian', 'Aurelio', 'Filigran', 'Moissan', 'Sapphiro', 'Tanzan', 'Rubellan', 'Ivoire', 'Damascene', 'Kunzo', 'Ozmund', 'Yves', 'Lazulo', 'Xavi', 'Isandro', 'Zenobio', 'Topazio', 'Lustran', 'Siloam', 'Brillo', 'Tourmal',
         ],
         Female: [
             'Glimmer', 'Crystal', 'Diamond', 'Opal', 'Sapphire', 'Silk', 'Solitaria', 'Amber', 'Auriel', 'Ruby',
@@ -116,6 +118,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Travertine', 'Dolomite', 'Arkose', 'Breccia', 'Merlon',
             // AUDIT-13 M3.
             'Quarrie', 'Stelae', 'Architra',
+            // AUDIT-14 §8 names.
+            'Ursula', 'Ilona', 'Onyxa', 'Masonne', 'Gravella', 'Graniet', 'Brecciana', 'Tufa', 'Cairna', 'Dolmena', 'Plinthe', 'Scoria', 'Zelda', 'Ottavine', 'Vigila', 'Ramparta', 'Glaciska', 'Quarryn', 'Ursa', 'Zofia', 'Olwen', 'Isaura', 'Cantera', 'Chisella', 'Travia',
         ],
     },
     // District 3 — Technology: circuitry words worn plain, plus Beetee-style
@@ -239,6 +243,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Fulgor', 'Kilovolt',
             // AUDIT-13 M3.
             'Coulomb', 'Henri', 'Stator', 'Megawyn',
+            // AUDIT-14 §8 names.
+            'Zeppo', 'Yuri', 'Ozias', 'Uziel', 'Tesloy', 'Ignaz', 'Joulian', 'Quade', 'Oberon', 'Ulysses', 'Zorion', 'Izaak', 'Arcward',
         ],
         Female: [
             'Electra', 'Nova', 'Astra', 'Flare', 'Aurora', 'Lumina', 'Solara', 'Nebula', 'Helix', 'Voltina',
@@ -260,6 +266,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Tesselle', 'Ohma', 'Argon', 'Krypton', 'Anouk', 'Dagny', 'Ailsa', 'Birgit',
             // AUDIT-13 M3.
             'Kilowa',
+            // AUDIT-14 §8 names.
+            'Quenby', 'Yselda', 'Iskra', 'Wattsie', 'Amperelle', 'Joulie', 'Yevna', 'Galvina', 'Ionella', 'Luxie', 'Zdena', 'Ursule', 'Ivette', 'Zoya', 'Oriette', 'Dynamia', 'Gridella', 'Uma', 'Zelma',
         ],
     },
     // District 6 — Transportation: rails, roads, and flight. Grounded nouns
@@ -385,6 +393,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Loden', 'Paavo', 'Bertil',
             // AUDIT-13 M3.
             'Felting', 'Hessian', 'Warpling', 'Serger', 'Tweedy', 'Boucle',
+            // AUDIT-14 §8 names.
+            'Tatting', 'Quilter', 'Ikat', 'Xeno', 'Zarek', 'Organzo', 'Loomis', 'Shuttleton', 'Vicuna', 'Pashmin', 'Brocard', 'Fustian', 'Calicot', 'Ignatz', 'Izidor', 'Tussore',
         ],
         Female: [
             'Cecelia', 'Paylor', 'Wilma', 'Nan', 'Taffet', 'Lace', 'Damaris', 'Percale', 'Chiffon', 'Taffeta',
@@ -739,6 +749,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Rimeve', 'Crysa', 'Gelra',
             // AUDIT-13 M3.
             'Briney', 'Frostine',
+            // AUDIT-14 §8 names.
+            'Quiesca', 'Yukiko', 'Xiomara', 'Salina', 'Sleetie', 'Rimeza', 'Glacina', 'Nevada', 'Icelyn', 'Sorbetta', 'Frazil', 'Ozerka', 'Tundria', 'Xarifa', 'Yzolde', 'Snezana', 'Blizza', 'Kristalla', 'Yelena', 'Olga', 'Iglika', 'Zima', 'Quinta', 'Oyuna', 'Xylina', 'Salinda', 'Frostelle', 'Glissade', 'Kryo', 'Hielita',
         ],
     },
     // District 15 — Glassworks: heat, clarity, fragility, and the vocabulary
@@ -763,6 +775,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Jarric', 'Nimbric', 'Isinglas', 'Urnell', 'Elucid', 'Kilnric', 'Blowick', 'Jaxon', 'Emberic', 'Nardis', 'Igneous', 'Ulmarc', 'Yettrik', 'Kaneal', 'Brittan',
             // AUDIT-13 M3.
             'Fresnel',
+            // AUDIT-14 §8 names.
+            'Ulrik', 'Zoltan', 'Oskar', 'Ugo', 'Iolo', 'Luxan', 'Diopter', 'Yorick', 'Ilario', 'Vasco', 'Kaleido', 'Ximeno', 'Vitreo', 'Lucernan', 'Yitzak', 'Ottokar', 'Iwan', 'Umbert', 'Zbigniew', 'Refractor', 'Ulf', 'Ingvar', 'Xaver', 'Loupe',
         ],
         Female: [
             'Vitra', 'Prisma', 'Clarity', 'Lumen', 'Silica', 'Annealla', 'Sharda', 'Facette', 'Crazia', 'Collette',
@@ -833,6 +847,8 @@ export const DISTRICT_NAMES: Record<number, Record<Gender, string[]>> = {
             'Rovana',
             // AUDIT-13 M3.
             'Sonar', 'Bathysph',
+            // AUDIT-14 §8 names.
+            'Naphtha', 'Kerosina', 'Oriana', 'Zaida', 'Yael', 'Ulrica', 'Brinella', 'Zosia', 'Maristel', 'Wellsa', 'Sondra', 'Ysabel', 'Ivana', 'Orsola', 'Yvonne', 'Derricka', 'Pumpella', 'Petrella', 'Oceane',
         ],
     },
 };
@@ -979,6 +995,8 @@ export const NEUTRAL_NAMES: Record<number, string[]> = {
         // AUDIT-9 stage D: vetted candidates from the audit's §11.
         'Emberin',
         'Nils', // AUDIT-12 §15
+            // AUDIT-14 §8 names.
+            'Kibble',
     ],
     // 13 — graphite and munitions: the mineral index and the ordnance list.
     13: ['Xenolith', 'Xylonite', 'Uranite', 'Ulexite', 'Yttria', 'Ytterbite', 'Zincite', 'Zeolite',
@@ -988,6 +1006,8 @@ export const NEUTRAL_NAMES: Record<number, string[]> = {
         'Nitrin',
             // AUDIT-13 M3.
             'Ordnan', 'Uranie',
+            // AUDIT-14 §8 names.
+            'Isotope',
     ],
     // 14 — salt and cold: brine, frost, and the far north.
     14: ['Xeric', 'Xanthar', 'Umiak', 'Ural', 'Yukon', 'Yakut', 'Zero', 'Zirka',
@@ -997,6 +1017,8 @@ export const NEUTRAL_NAMES: Record<number, string[]> = {
         'Nivren',
             // AUDIT-13 M3.
             'Evapora', 'Vapor',
+            // AUDIT-14 §8 names.
+            'Iceberg',
     ],
     // 15 — glass: the furnace, the pigment and the finished pane.
     15: ['Xenoglass', 'Xanthel', 'Uviol', 'Urania', 'Yris', 'Yvaine', 'Zaffrine', 'Zirconil',
@@ -1006,6 +1028,8 @@ export const NEUTRAL_NAMES: Record<number, string[]> = {
         'Vitrin',
             // AUDIT-13 M3.
             'Opalux',
+            // AUDIT-14 §8 names.
+            'Vial', 'Etching',
     ],
     // 16 — deepwater: pressure, the rig, and what lives under it.
     16: ['Xenobath', 'Xanthid', 'Upthrust', 'Umbral', 'Ymir', 'Yonder', 'Zabel', 'Zorin',

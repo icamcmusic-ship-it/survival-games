@@ -185,7 +185,7 @@ scenario('P8: a scarred arena warns the field on day one, and a ledger-less run 
 
 scenario('S5/P5: daily streaks count consecutive dates; weekly rules are stable inside a week', 'AUDIT-13 S5/P5', () => {
     const row = (date: string) => ({ date, seed: `daily-${date}` });
-    eq(dailyStreakOf([row('2026-09-26'), row('2026-09-25'), row('2026-09-24'), row('2026-09-20')]), 3, 'three in a row');
+    eq(dailyStreakOf([row('2026-09-26'), row('2026-09-25'), row('2026-09-24'), row('2026-09-20')], new Date(Date.UTC(2026, 8, 26, 12))), 3, 'three in a row');
     eq(dailyStreakOf([]), 0, 'none');
     const mon = weeklyRules(new Date(Date.UTC(2026, 8, 21)));
     const sun = weeklyRules(new Date(Date.UTC(2026, 8, 27, 23)));
